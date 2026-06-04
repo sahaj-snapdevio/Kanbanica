@@ -234,6 +234,37 @@ TaskSprint
 
 ---
 
+## Data Lifecycle
+
+### Archive
+- Sprints do not have an Archive state — they use a status-based lifecycle instead:
+  `Planned → Active → Closed`
+- **Closed** is the terminal state for a Sprint — it functions like a permanent archive.
+- Closed Sprint data (name, goal, dates, task list, story points, completion stats) is preserved in Sprint History indefinitely.
+- No new tasks can be added to a Closed Sprint.
+
+### Soft Delete
+- **Planned Sprints** can be hard-deleted — no soft delete, no recovery.
+- **Active and Closed Sprints cannot be deleted** — they are protected once started.
+- Closing a Sprint is irreversible — it cannot be reopened.
+- `TaskSprint` records for tasks in the sprint are preserved when the sprint is closed (for history).
+
+### Recovery Period
+- **Deleted Sprint (Planned only):** No recovery. Hard delete — Sprint record and all `TaskSprint` records for that Sprint are removed. Tasks themselves are unaffected (they return to backlog).
+- **Closed Sprint:** Cannot be deleted — always preserved in history. No recovery needed.
+
+### Permanent Deletion Rules
+- Only **Planned** Sprints can be deleted (Full Access / Admin+).
+- On deletion of a Planned Sprint:
+  - The `Sprint` record is permanently deleted.
+  - All `TaskSprint` records linking tasks to this sprint are deleted.
+  - Tasks that were assigned to this sprint are **not deleted** — they return to the backlog (their `sprint_id` reference is removed).
+  - Story points set on `TaskSprint` are lost.
+- If the parent List is deleted, all Sprints (Planned, Active, and Closed) are deleted in cascade.
+- If the parent Space or Workspace is deleted, all Sprints follow.
+
+---
+
 ## Business Rules
 
 1. Sprint is optional — a List can be used with or without sprints.

@@ -168,6 +168,43 @@ List (reference — belongs to Folder or Space directly)
 
 ---
 
+## Data Lifecycle
+
+### Archive
+- Archived Folders are hidden from the sidebar for all Space members.
+- All Lists and Tasks inside are preserved — fully searchable.
+- No new Lists or Tasks can be created inside an archived Folder.
+- Can be unarchived at any time — **no time limit**.
+- Archiving a Folder does **not** archive its Lists individually — they remain active inside the Folder.
+- When unarchived, all Lists and Tasks become immediately accessible again.
+- If the parent Space is archived or deleted, the Folder follows the same fate.
+
+### Soft Delete
+- Folder deletion has **two modes** (no soft delete in either):
+  1. **Folder only (hard delete):** Removes the Folder container. Lists inside move to Space root. No data lost.
+  2. **Folder + contents (hard delete):** Permanently removes Folder and all Lists, Tasks, and their data. No recovery.
+- Archive is the recommended alternative to deletion when you need to preserve data.
+
+### Recovery Period
+- **Archived Folder:** Recoverable at any time — no expiry.
+- **Deleted Folder (folder only):** The Folder container is gone but Lists are moved to Space root — no data lost.
+- **Deleted Folder with contents:** No recovery. All data is permanently gone.
+
+### Permanent Deletion Rules
+- **Delete folder only:** Folder record deleted, all child Lists have their `folder_id` set to `null` (moved to Space root).
+- **Delete folder with contents:** The following are permanently removed in cascade:
+  - All Lists inside the Folder
+  - All Tasks and Subtasks in those Lists
+  - All Checklists, ChecklistItems, TaskAttachments (DB + S3/R2 files)
+  - All Comments (including soft-deleted tombstones)
+  - All ActivityLog entries for tasks in this Folder
+  - All Sprints and TaskSprint records
+  - All Notifications referencing tasks in this Folder
+- Requires explicit confirmation modal with the user choosing which deletion mode.
+- Admin+ required for full deletion — Full Access members can only delete folder-only.
+
+---
+
 ## Business Rules
 
 1. A Folder always belongs to exactly one Space.

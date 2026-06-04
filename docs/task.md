@@ -422,6 +422,43 @@ ActivityLog
 
 ---
 
+## Data Lifecycle
+
+### Archive
+- Archived Tasks are hidden from List View and Board View by default.
+- Viewable via the filter toggle: `Show Archived`.
+- No new comments or field changes can be made on an archived Task.
+- Subtasks are **not** auto-archived — they remain in their current state but are only accessible via the archived parent.
+- Can be unarchived at any time — **no time limit**.
+- When unarchived, the Task and all its Subtasks become immediately editable again.
+- If the parent List is archived or deleted, the Task follows.
+
+### Soft Delete
+- Task deletion is a **hard delete** — no soft delete, no tombstone for the Task itself.
+- Exception: **Comments** on a task use soft delete when the comment has replies (see [collaboration.md](./collaboration.md)).
+- Archive is the recommended alternative to keep task history accessible.
+
+### Recovery Period
+- **Archived Task:** Recoverable at any time — no expiry.
+- **Deleted Task:** No recovery. Data is permanently gone immediately.
+- **Recurring Task:** When a recurring task is closed, the original is kept in history — only a new copy is created. The original is never deleted automatically.
+
+### Permanent Deletion Rules
+- **Full Access, Admin, and Owner** can permanently delete a Task.
+- Requires a single confirmation click.
+- On deletion, the following are permanently removed in cascade:
+  - All Subtasks (and their own comments, attachments, checklists)
+  - All Checklists and ChecklistItems
+  - All TaskAttachments (DB records + files deleted from S3/R2)
+  - All Comments — soft-deleted tombstones are also hard-deleted at this point
+  - All ActivityLog entries
+  - All TaskAssignee, TaskWatcher, TaskTag, TaskDependency records
+  - All TaskSprint records (task is removed from any sprint records)
+  - All Notifications referencing this Task
+- The Task record itself is deleted — no tombstone.
+
+---
+
 ## Business Rules
 
 1. Every Task must belong to exactly one List at all times.

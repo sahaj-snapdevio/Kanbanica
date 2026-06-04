@@ -412,6 +412,42 @@ All admin endpoints are prefixed with `/api/admin/` and require `is_platform_adm
 
 ---
 
+## Data Lifecycle
+
+### PlatformAuditLog
+- Audit log entries are **immutable and permanent** — never deleted, never soft-deleted.
+- Even if a Workspace or User is deleted, their audit log entries are retained forever.
+- This is the only table that survives Workspace and User deletion for compliance purposes.
+
+### Workspace Force Delete (Admin action)
+- Hard delete — same cascade rules as Owner-initiated workspace deletion.
+- Sends notification email to workspace Owner before deletion.
+- The deletion event itself is recorded in `PlatformAuditLog` before the workspace data is removed.
+- No recovery period — immediate and permanent.
+
+### User Ban / Unban
+- **Ban:** Soft disable — User record stays intact, `banned = true`. All sessions revoked. User data preserved.
+- **Unban:** Soft re-enable — `banned = false`. User can log in again. No data loss.
+- Banning is **not** deletion — all workspace memberships, tasks, and comments are preserved.
+
+### Impersonation Sessions
+- Impersonation creates a temporary Session record with `impersonated_by` set to the admin's user ID.
+- Impersonation sessions auto-expire after **1 hour** of inactivity.
+- When the admin exits impersonation, the impersonated session is immediately hard-deleted.
+- The `PlatformAuditLog` entry for the impersonation start is **never deleted**.
+
+### Plan Overrides
+- `PlanOverride` records are **soft-retained** — when an override expires or is manually removed, the record is kept with `reverted_at` timestamp set.
+- This provides a full audit trail of plan changes per workspace.
+- `PlanOverride` records are only hard-deleted if the Workspace itself is permanently deleted.
+
+### Support Ticket Messages (Admin)
+- Internal notes (`is_internal_note = true`) are never exposed to customers — no delete needed for security.
+- Admin replies and internal notes are retained for as long as the Support Ticket exists.
+- No individual message deletion in MVP (post-MVP: admin can redact a message).
+
+---
+
 ## Business Rules
 
 1. Admin Panel access is controlled by `is_platform_admin` flag on the User table — no customer role grants access.

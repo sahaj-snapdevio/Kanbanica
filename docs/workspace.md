@@ -208,6 +208,41 @@ WorkspaceMember
 
 ---
 
+## Data Lifecycle
+
+### Archive
+- Workspaces cannot be archived — only deleted or kept active.
+- Individual Spaces, Folders, Lists, and Tasks within the workspace can be archived independently.
+
+### Soft Delete
+- Workspace deletion is a **hard delete** — there is no soft delete or tombstone.
+- All child data (Spaces, Folders, Lists, Tasks, Comments, Attachments, Members) is permanently removed immediately.
+
+### Recovery Period
+- There is **no recovery period** for a deleted Workspace.
+- Once deletion is confirmed, all data is gone permanently.
+- **Best practice before deleting:** Advise users to export any important data manually. (Data export is a post-MVP feature.)
+
+### Permanent Deletion Rules
+- Only the **Owner** can delete a Workspace.
+- Requires typing the Workspace name to confirm — prevents accidental deletion.
+- On deletion, the following are permanently removed in cascade:
+  - All Spaces (public and private)
+  - All Folders, Lists, ListStatuses
+  - All Tasks, Subtasks, Checklists, ChecklistItems
+  - All Comments (including soft-deleted comment tombstones)
+  - All Attachments (DB records + files deleted from S3/R2)
+  - All ActivityLog entries
+  - All Notifications scoped to this workspace
+  - All SpaceMember, WorkspaceMember records
+  - All SavedFilters, UserListViewPreferences scoped to this workspace
+  - All Sprints and TaskSprint records
+- The Workspace record itself is deleted (no tombstone kept).
+- A confirmation email is sent to the Owner after deletion.
+- The deletion event is logged in `PlatformAuditLog` (platform-level — survives workspace deletion).
+
+---
+
 ## Business Rules
 
 1. Every user must belong to at least one Workspace after onboarding.

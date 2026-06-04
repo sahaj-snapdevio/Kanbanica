@@ -201,6 +201,38 @@ Task
 
 ---
 
+## Data Lifecycle
+
+### Archive
+- Subtasks can be archived individually — same behavior as Tasks.
+- Archiving a parent Task does **not** automatically archive its Subtasks.
+- However, archived parent Tasks are inaccessible in the UI, so Subtasks are effectively hidden even if not individually archived.
+- Archiving a Subtask hides it from the Subtask list in the parent Task detail panel.
+- Archived Subtasks are **not** counted in the progress rollup (closed / total) — only active subtasks count.
+- Can be unarchived at any time — no time limit.
+
+### Soft Delete
+- Subtask deletion is a **hard delete** — same as Task, no soft delete or tombstone.
+- When a parent Task is deleted, all its Subtasks are hard-deleted in cascade — no recovery.
+
+### Recovery Period
+- **Archived Subtask:** Recoverable at any time — no expiry.
+- **Deleted Subtask:** No recovery. Data is permanently gone immediately.
+- **Deleted via parent Task deletion:** No recovery for any subtask deleted through parent cascade.
+
+### Permanent Deletion Rules
+- **Full Access, Admin, and Owner** can delete a Subtask directly.
+- Deleting a parent Task permanently deletes all its Subtasks in cascade (regardless of individual Subtask archive state).
+- On Subtask deletion, the following are permanently removed:
+  - All Comments on the Subtask (soft-deleted tombstones also hard-deleted)
+  - All TaskAttachments (DB records + S3/R2 files)
+  - All ActivityLog entries
+  - All TaskAssignee, TaskWatcher records
+  - All Notifications referencing this Subtask
+- The Subtask's `Task` record is hard-deleted — no tombstone.
+
+---
+
 ## Business Rules
 
 1. A Subtask always belongs to exactly one parent Task.

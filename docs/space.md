@@ -208,6 +208,41 @@ SpaceMember
 
 ---
 
+## Data Lifecycle
+
+### Archive
+- Archived Spaces are hidden from the sidebar for all members.
+- All Lists, Tasks, Comments, and Attachments inside are preserved — fully searchable.
+- No new Lists or Tasks can be created inside an archived Space.
+- Archived Spaces can be unarchived at any time — **no time limit**.
+- Members retain their SpaceMember records and permissions during archival.
+- If a Workspace is deleted, archived Spaces are permanently deleted along with it.
+
+### Soft Delete
+- Space deletion is a **hard delete** — no soft delete or recovery period.
+- Archive is the recommended alternative to deletion when you want to preserve history.
+
+### Recovery Period
+- **Archived Space:** Recoverable at any time — no expiry.
+- **Deleted Space:** No recovery. Deletion is permanent and immediate.
+
+### Permanent Deletion Rules
+- Only **Admin and Owner** can permanently delete a Space.
+- Requires confirmation (button click — no name-typing required, unlike Workspace).
+- On deletion, the following are permanently removed in cascade:
+  - All Folders and Lists inside the Space
+  - All Tasks and Subtasks inside those Lists
+  - All Checklists, ChecklistItems, TaskAttachments (DB + S3/R2 files)
+  - All Comments (including soft-deleted tombstones)
+  - All ActivityLog entries for tasks in this Space
+  - All SpaceMember records
+  - All Notifications referencing tasks in this Space
+  - All SavedFilters and UserListViewPreferences scoped to Lists in this Space
+  - All Sprints and TaskSprint records in Lists in this Space
+- The Space record itself is deleted — no tombstone.
+
+---
+
 ## Business Rules
 
 1. A Space always belongs to exactly one Workspace.

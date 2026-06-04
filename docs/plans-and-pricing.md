@@ -339,6 +339,32 @@ Workspace
 
 ---
 
+## Data Lifecycle
+
+### Plan Records
+- Plan records (`Plan`, `PlanLimit`, `PlanFeatureFlag`, `PlanBullet`) are **never hard-deleted** in MVP.
+- Plans can be set to `status = hidden` to retire them — hidden plans are invisible to new signups and the public pricing page but remain valid for workspaces already on them.
+- Changing limits or feature flags on a Plan takes effect immediately for all workspaces on that plan.
+
+### Plan Overrides
+- `PlanOverride` records use **soft retention** — when an override expires or is removed, `reverted_at` is set on the record. The record is kept for audit history.
+- Override history is never deleted individually — it is only removed if the parent Workspace is deleted.
+
+### Data on Plan Downgrade
+- **Lowering limits does NOT delete existing data** — it only blocks new actions once the limit is exceeded.
+  - Example: Downgrading from Pro (50 members) to Free (5 members) does not remove existing members over the limit. New invites are blocked until membership drops below 5.
+  - Example: Reducing storage limit does not delete existing files. New uploads are blocked until storage is below the new limit.
+- **Disabling a feature flag does NOT delete feature data:**
+  - Disabling Sprints: existing Sprint records are preserved. Sprint UI is hidden. On re-enable, all Sprint data is accessible again.
+  - Disabling Calendar View: no data impact (it's a view-only feature, no data stored).
+  - Disabling Recurring Tasks: existing recurring task rules are preserved but no new recurrences are generated. On re-enable, recurrence resumes from the next scheduled date.
+
+### Recovery Period
+- **Plan downgrade:** No recovery needed — data is never deleted on downgrade.
+- **Plan override expiry:** Workspace reverts to base plan automatically. `PlanOverride` record is kept with `reverted_at` set.
+
+---
+
 ## Business Rules
 
 1. Plans are applied per Workspace — individual users do not have plans.

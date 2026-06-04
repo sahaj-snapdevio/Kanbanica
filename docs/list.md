@@ -255,6 +255,42 @@ ListStatus
 
 ---
 
+## Data Lifecycle
+
+### Archive
+- Archived Lists are hidden from the sidebar for all Space members.
+- All Tasks and Subtasks inside are preserved — fully searchable.
+- No new Tasks can be created in an archived List.
+- Can be unarchived at any time — **no time limit**.
+- Archiving a List does **not** archive its Tasks individually — Tasks remain in their current state inside the archived List.
+- When unarchived, the List and all its Tasks become immediately accessible again with their existing statuses.
+- If the parent Space or Folder is archived or deleted, the List follows the same fate.
+
+### Soft Delete
+- List deletion is a **hard delete** — no soft delete or recovery period.
+- Archive is the strongly recommended alternative for any List with valuable task history.
+
+### Recovery Period
+- **Archived List:** Recoverable at any time — no expiry.
+- **Deleted List:** No recovery. All data is permanently gone immediately.
+
+### Permanent Deletion Rules
+- Only **Admin and Owner** can permanently delete a List.
+- Requires confirmation (type List name).
+- On deletion, the following are permanently removed in cascade:
+  - All Tasks and Subtasks in the List
+  - All Checklists and ChecklistItems
+  - All TaskAttachments (DB records + files deleted from S3/R2)
+  - All Comments on all tasks (including soft-deleted tombstones)
+  - All ActivityLog entries for tasks in this List
+  - All ListStatus records for this List
+  - All SavedFilters and UserListViewPreferences scoped to this List
+  - All Sprints and TaskSprint records in this List
+  - All Notifications referencing tasks in this List
+- The List record itself is deleted — no tombstone.
+
+---
+
 ## Business Rules
 
 1. Every Task must belong to exactly one List.

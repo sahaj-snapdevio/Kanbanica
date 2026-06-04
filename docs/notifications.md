@@ -15,52 +15,106 @@ Notifications keep team members informed about changes and activity that are rel
 
 ## 1. Notification Triggers
 
-These are the events that generate a notification. Each trigger can be enabled or disabled per user in notification settings.
+Every event below creates a `Notification` record. Each trigger has:
+- **Who gets notified** — the recipient set
+- **Channels** — which delivery channels fire by default (In-App / Email / Push)
+- **Configurable** — whether the user can turn it off in settings
+- **Notification text** — the exact message shown in the panel and email subject
+
+**Key rules that apply to all triggers:**
+- The actor (person who caused the event) **never** receives a notification for their own action.
+- If a user is both an Assignee and a Watcher, they receive **one** notification — no duplicates.
+- If a task or Space is **muted** by the recipient, no notification is sent regardless of trigger.
+
+---
 
 ### Task Notifications
 
-| Trigger | Who gets notified | Default |
-|---------|------------------|---------|
-| Task assigned to you | Assignee | On |
-| Task unassigned from you | Former assignee | On |
-| Task due date reminder | Assignees + Watchers | On |
-| Task overdue (past due date, not closed) | Assignees | On |
-| Task status changed | Assignees + Watchers | On |
-| Task priority changed | Assignees + Watchers | Off |
-| Task due date changed | Assignees + Watchers | On |
-| Task moved to a different List | Assignees + Watchers | Off |
-| Task completed (status → closed) | Reporter + Watchers | On |
-| Task deleted | Assignees + Watchers | On |
-| Subtask assigned to you | Assignee | On |
-| Subtask completed | Parent task assignees | Off |
+| Trigger | Who gets notified | In-App | Email | Push | Configurable | Notification text |
+|---------|------------------|:------:|:-----:|:----:|:------------|------------------|
+| Task assigned to you | New assignee | ✅ | ✅ | ✅ | Yes | *"[Actor] assigned you to [Task title]"* |
+| Task unassigned from you | Former assignee | ✅ | ✅ | ❌ | Yes | *"[Actor] unassigned you from [Task title]"* |
+| Task status changed | Assignees + Watchers | ✅ | ✅ | ❌ | Yes | *"[Actor] changed status of [Task title] to [New Status]"* |
+| Task priority changed | Assignees + Watchers | ✅ | ❌ | ❌ | Yes (default off) | *"[Actor] changed priority of [Task title] to [Priority]"* |
+| Task due date changed | Assignees + Watchers | ✅ | ✅ | ❌ | Yes | *"[Actor] changed due date of [Task title] to [Date]"* |
+| Task completed (status → closed type) | Reporter + Watchers | ✅ | ✅ | ❌ | Yes | *"[Task title] was marked as done by [Actor]"* |
+| Task moved to a different List | Assignees + Watchers | ✅ | ❌ | ❌ | Yes (default off) | *"[Actor] moved [Task title] to [List name]"* |
+| Task deleted | Assignees + Watchers | ✅ | ❌ | ❌ | Yes | *"[Actor] deleted task [Task title]"* |
+| Subtask assigned to you | New assignee | ✅ | ✅ | ✅ | Yes | *"[Actor] assigned you to [Subtask title] in [Parent task title]"* |
+| Subtask completed | Parent task assignees | ✅ | ❌ | ❌ | Yes (default off) | *"[Actor] completed [Subtask title] in [Parent task title]"* |
 
-### Comment Notifications
+---
 
-| Trigger | Who gets notified | Default |
-|---------|------------------|---------|
-| New comment on task | Assignees + Watchers | On |
-| Reply to your comment | Comment author | On |
-| @mention in comment | Mentioned user | On |
-| @mention in task description | Mentioned user | On |
-| Comment resolved | Comment author | Off |
+### Due Date Notifications (System-generated, not actor-triggered)
 
-### Workspace / Space Notifications
+These are sent by the system on a schedule — no human actor. Shown with a system icon in the notification panel.
 
-| Trigger | Who gets notified | Default |
-|---------|------------------|---------|
-| Invited to workspace | Invited user | On (always) |
-| Added to a Space | Added user | On |
-| Removed from a Space | Removed user | On |
-| Role changed in workspace | Affected user | On |
+| Trigger | Who gets notified | In-App | Email | Push | Configurable | Notification text |
+|---------|------------------|:------:|:-----:|:----:|:------------|------------------|
+| Due date reminder — 1 day before | Assignees + Watchers | ✅ | ✅ | ✅ | Yes | *"[Task title] is due tomorrow"* |
+| Due date reminder — on due date | Assignees | ✅ | ✅ | ✅ | Yes | *"[Task title] is due today"* |
+| Task overdue (next day, still not closed) | Assignees | ✅ | ✅ | ✅ | Yes | *"[Task title] is overdue"* |
+
+**Firing rules:**
+- Reminders are sent once per trigger per task — not repeated daily.
+- If the task is closed before the reminder fires, the reminder is **cancelled**.
+- If the due date is changed after a reminder was sent, the new due date generates fresh reminders.
+
+---
+
+### Comment & Mention Notifications
+
+| Trigger | Who gets notified | In-App | Email | Push | Configurable | Notification text |
+|---------|------------------|:------:|:-----:|:----:|:------------|------------------|
+| New comment on task | Assignees + Watchers | ✅ | ✅ | ✅ | Yes | *"[Actor] commented on [Task title]: [first 80 chars of comment]"* |
+| Reply to your comment | Original comment author | ✅ | ✅ | ✅ | Yes | *"[Actor] replied to your comment on [Task title]"* |
+| @mention in comment | Mentioned user | ✅ | ✅ | ✅ | No (always on) | *"[Actor] mentioned you in [Task title]"* |
+| @mention in task description | Mentioned user | ✅ | ✅ | ✅ | No (always on) | *"[Actor] mentioned you in the description of [Task title]"* |
+| Comment thread resolved | Original comment author | ✅ | ❌ | ❌ | Yes (default off) | *"[Actor] resolved a comment thread on [Task title]"* |
+
+**Deduplication rule for comments:**
+- If 3 or more comment notifications on the same task arrive within a **10-minute window**, they are grouped into one:
+  *"[Actor1] and 2 others commented on [Task title]"*
+- Grouped notifications link to the task, not a specific comment.
+
+---
+
+### Workspace & Space Notifications
+
+| Trigger | Who gets notified | In-App | Email | Push | Configurable | Notification text |
+|---------|------------------|:------:|:-----:|:----:|:------------|------------------|
+| Invited to workspace | Invited user | ✅ | ✅ (always) | ❌ | No (always on) | *"[Actor] invited you to [Workspace name]"* |
+| Invite accepted | Inviter (Admin/Owner) | ✅ | ❌ | ❌ | Yes | *"[User] accepted your invitation to [Workspace name]"* |
+| Added to a Space | Added user | ✅ | ✅ | ❌ | Yes | *"[Actor] added you to [Space name]"* |
+| Removed from a Space | Removed user | ✅ | ✅ | ❌ | Yes | *"[Actor] removed you from [Space name]"* |
+| Role changed in workspace | Affected user | ✅ | ✅ | ❌ | Yes | *"[Actor] changed your role in [Workspace name] to [New Role]"* |
+| Space permission changed | Affected user | ✅ | ❌ | ❌ | Yes | *"[Actor] changed your permission in [Space name] to [Permission]"* |
+
+---
 
 ### Sprint Notifications
 
-| Trigger | Who gets notified | Default |
-|---------|------------------|---------|
-| Sprint started | All members with tasks in the sprint | On |
-| Sprint ending soon (1 day before end date) | All members with open tasks in the sprint | On |
-| Sprint closed | All members who had tasks in the sprint | Off |
-| New sprint auto-created | Space members with Full Access | Off |
+| Trigger | Who gets notified | In-App | Email | Push | Configurable | Notification text |
+|---------|------------------|:------:|:-----:|:----:|:------------|------------------|
+| Sprint started | Members with tasks in the sprint | ✅ | ✅ | ❌ | Yes | *"[Actor] started [Sprint name] — you have [N] tasks in this sprint"* |
+| Sprint ending soon (1 day before end) | Members with open tasks in the sprint | ✅ | ✅ | ✅ | Yes | *"[Sprint name] ends tomorrow — you have [N] open tasks"* |
+| Sprint closed | Members who had tasks in the sprint | ✅ | ❌ | ❌ | Yes (default off) | *"[Actor] closed [Sprint name]"* |
+| New sprint auto-created | Space members with Full Access | ✅ | ❌ | ❌ | Yes (default off) | *"[Sprint name] was automatically created in [List name]"* |
+
+---
+
+### Notification Deduplication & Grouping Rules
+
+| Rule | Detail |
+|------|--------|
+| No self-notifications | The actor never receives a notification for their own action |
+| No duplicates | If a user qualifies via multiple roles (assignee + watcher), they receive one notification |
+| Comment grouping | 3+ comments on the same task within 10 min → grouped into one notification |
+| Muted task | No notifications for any event on a muted task, regardless of trigger |
+| Muted Space | No notifications for any task event in a muted Space |
+| Task deleted before reminder fires | Reminder is cancelled — no notification sent |
+| Task closed before due date reminder | All pending reminders for that task are cancelled |
+| User loses Space access | Future notifications for tasks in that Space are not sent |
 
 ---
 
@@ -316,6 +370,35 @@ PushSubscription
 | Notification panel | Bell icon → slide-out panel (global) | All workspace members |
 | Notification settings | `/settings/notifications` | All workspace members |
 | Muted items list | `/settings/notifications#muted` | All workspace members |
+
+---
+
+## Data Lifecycle
+
+### Archive
+- Notifications cannot be archived — they are either unread, read, or dismissed.
+- Dismissing a notification removes it from the panel (hard delete).
+
+### Soft Delete
+- Notifications use **hard delete** only — no soft delete or tombstone.
+- Dismissed notifications are permanently removed from the DB.
+
+### Recovery Period
+- **Dismissed notification:** No recovery. Hard deleted immediately.
+- **Auto-expired notification:** No recovery. Auto-deleted by the cron job after **90 days**.
+- **Unread notification:** Retained for 90 days from creation, then auto-deleted regardless of read state.
+
+### Permanent Deletion Rules
+- Notifications are permanently deleted in the following cases:
+  1. **User dismisses** a notification — immediate hard delete.
+  2. **Cron job** runs daily and deletes all Notification records where `created_at < now() - 90 days`.
+  3. **Parent entity deleted** (e.g. the Task the notification references is deleted) — the Notification record is hard-deleted in cascade.
+  4. **User account deleted** — all Notification records for that user are hard-deleted.
+  5. **Workspace deleted** — all Notifications scoped to that workspace are hard-deleted.
+- `PushSubscription` records are deleted when:
+  - The user explicitly removes a device from settings.
+  - The user account is deleted.
+  - The push endpoint returns a `410 Gone` response from the browser vendor (endpoint expired).
 
 ---
 

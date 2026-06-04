@@ -392,6 +392,62 @@ Better Auth exposes a unified handler at `/api/auth/[...all]` in Next.js. These 
 
 ---
 
+## Data Lifecycle
+
+### Archive
+- User accounts cannot be archived — they are either active, banned, or deleted.
+- **Banned** users are the functional equivalent of a suspended/soft-disabled state — account exists but cannot authenticate.
+
+### Soft Delete — User Account
+- User account deletion is a **hard delete** — no soft delete or tombstone on the User record.
+- Before deletion is allowed, all ownership dependencies must be resolved (transfer workspace ownership).
+- There is **no grace period** or recovery after deletion is confirmed.
+
+### Token Lifecycle
+
+| Token type | Expiry | Single-use | On expiry |
+|------------|--------|-----------|-----------|
+| Email verification | 24 hours | Yes — invalidated on use | Link shows "expired" error; user can request a new one |
+| Password reset | 1 hour | Yes — invalidated on use | Link shows "expired" error; user must request a new reset |
+| Session token | 7 days (30 days with Remember Me) | No — sliding expiry on each request | Session is invalidated; user redirected to sign-in |
+| OAuth state param | 10 minutes | Yes | OAuth flow fails; user retries |
+
+### Session Lifecycle
+- Sessions use **sliding expiry** — TTL resets on every authenticated request.
+- Sessions are hard-deleted from the `Session` table when:
+  - User signs out (single session).
+  - User revokes a session from settings.
+  - User clicks "Sign out all devices".
+  - Password is changed (all sessions revoked immediately).
+  - User is banned (all sessions revoked immediately by Admin Plugin).
+  - Session TTL expires without activity.
+
+### Recovery Period
+- **Banned user:** Recoverable — Admin can unban at any time. All user data is preserved during ban.
+- **Deleted user account:** No recovery. Hard delete is permanent and immediate.
+- **Expired token:** No recovery — user must request a new token (re-send verification email, re-initiate password reset).
+- **Expired session:** No recovery — user must sign in again.
+
+### Permanent Deletion Rules
+- On user account deletion, the following are permanently removed:
+  - `User` record
+  - All `Session` records for the user
+  - All `Account` records (OAuth links, credential record)
+  - All `Verification` records for the user
+  - All `WorkspaceMember` records (user removed from all workspaces)
+  - All `SpaceMember` records
+  - All `UserNotificationPreference`, `UserEmailPreference`, `MutedEntity` records
+  - All `PushSubscription` records
+  - All `SavedFilter`, `UserListViewPreference`, `UserSearchHistory`, `UserMyTasksPreference` records
+  - All `Notification` records where the user is the recipient
+- **Tasks and Comments are NOT deleted** — they remain with their content intact, but:
+  - Assignee references are set to `null` (unassigned)
+  - Reporter reference is kept as the user ID (orphaned reference, shown as "Deleted User" in UI)
+  - Comment `author_id` is kept (orphaned — shown as "Deleted User" in UI)
+- If the user was the **sole Owner** of a Workspace, deletion is blocked until ownership is transferred — the Workspace is not deleted automatically.
+
+---
+
 ## Business Rules
 
 1. Email addresses are unique across the platform — one account per email.

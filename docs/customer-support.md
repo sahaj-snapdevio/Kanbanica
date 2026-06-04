@@ -325,6 +325,42 @@ FeatureRequestComment
 
 ---
 
+## Data Lifecycle
+
+### Support Tickets
+
+| State | Behavior |
+|-------|----------|
+| Open | Active — user and admin can reply |
+| In Progress | Active — assigned admin working on it |
+| Resolved | Locked — no edits; user can reply to reopen within 14 days |
+| Auto-closed | After 14 days of no reply on a Resolved ticket — moves to permanent Resolved state |
+
+- **Soft delete:** Tickets are never deleted — they are only status-changed.
+- **Recovery:** A Resolved ticket can be reopened by user reply within **14 days**. After 14 days, it is permanently Resolved and cannot be reopened without a new ticket.
+- **Permanent deletion:** Support tickets are **not** deleted when a user deletes their account. They are retained for audit purposes with the user referenced as "Deleted User". Tickets are only deleted if the platform admin explicitly purges them (post-MVP operation).
+
+### Help Center Articles
+
+- Articles use a **published/unpublished** flag (`is_published`) — no soft or hard delete in MVP.
+- Unpublished articles are invisible to customers but remain in the Admin Panel.
+- Platform admins can delete articles from the Admin Panel — **hard delete**, immediate.
+
+### Feature Requests
+
+- Feature requests are **never deleted** — they are status-changed (Under Review → Planned → Shipped / Declined).
+- `FeatureRequestVote` and `FeatureRequestComment` records are hard-deleted when:
+  - A user deletes their account — their votes and comments are removed.
+  - A platform admin explicitly deletes a feature request (hard delete cascades to votes and comments).
+- Declined feature requests remain visible on the board with their decline reason — they are not hidden.
+
+### Recovery Period
+- **Support Ticket (Resolved):** Reopenable by user reply within **14 days**.
+- **Help Article (deleted by admin):** No recovery.
+- **Feature Request (deleted by admin):** No recovery — votes and comments cascade-deleted.
+
+---
+
 ## Business Rules
 
 1. Users can have a maximum of 5 open tickets at a time — submitting a 6th is blocked with a message to resolve existing tickets first.
