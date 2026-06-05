@@ -60,6 +60,55 @@ The default view for every List. Tasks are displayed as rows with key fields vis
 - `+ Add Task` button at the bottom of the list (or bottom of each group when grouped)
 - Type title → Enter → task created instantly in that group's context (e.g. creating in the "High Priority" group sets priority to High)
 
+**Bulk selection:**
+- Each task row has a checkbox on the far left — hidden by default, appears on row hover
+- Checking any task reveals all other checkboxes and activates the **Bulk Action Bar** at the bottom of the screen
+- `Shift+Click` a checkbox — range-selects all tasks between the last selected and the clicked row
+- Checkbox in the column header — selects / deselects all currently visible tasks (respects active filters and grouping)
+- Selection is cleared when: navigating away, switching views, or clicking `✕ Clear` in the Bulk Action Bar
+
+**Bulk Action Bar** (appears at bottom of screen when ≥1 task is selected):
+```
+[✓ 5 selected]  [Assign]  [Status]  [Priority]  [Move]  [Archive]  [Delete]  [✕ Clear]
+```
+
+| Bulk Action | Behavior | Required Permission |
+|-------------|----------|-------------------|
+| Assign | Opens user picker — replaces all assignees on every selected task | Edit / Full Access |
+| Status | Dropdown of the current List's statuses — applies to all selected tasks | Edit / Full Access |
+| Priority | Dropdown (None/Low/Medium/High/Urgent) — applies to all selected tasks | Edit / Full Access |
+| Move | List picker (all accessible Lists in the workspace) — moves all selected tasks | Full Access / Admin+ |
+| Archive | Archives all selected tasks in one action — removes from view | Full Access / Admin+ |
+| Delete | Confirmation modal: `"Delete 5 tasks? This cannot be undone."` — permanently deletes all selected | Full Access / Admin+ |
+
+**Bulk action rules:**
+- If selected tasks span different statuses and the user applies a status — all tasks move to the new status regardless of their current status
+- Moving tasks to a different List: status is remapped to the closest match by name (same rule as single task move)
+- Archived tasks are excluded from the selectable rows by default (unless `Show Archived` filter is active)
+- Activity log entry is created per task for each bulk action — not a single grouped entry
+
+**"Close All Tasks" list action:**
+
+Available from the List toolbar (`···` overflow menu → `Close All Tasks`):
+
+```
+List toolbar:  [ List ][ Board ][ Calendar ]  [+ Add Task]  [ Filter ]  [ ··· ▾ ]
+                                                                          └─ Close All Tasks
+                                                                          └─ Archive All Closed Tasks
+```
+
+- **Close All Tasks** — sets every open task in the List (or current filtered view) to the List's `closed`-type status in one action
+  - A confirmation dialog appears: `"Close all 24 open tasks in this List? This will mark them as [Done]."` with `[Close All]` and `[Cancel]` buttons
+  - If filters are active, only the currently visible tasks are affected — the dialog clearly states this: `"Close 8 filtered tasks"`
+  - Each affected task gets an Activity Log entry: `"[User] marked task as Done via Close All"`
+  - Completed tasks (already closed) are skipped silently
+  - Required permission: **Full Access / Admin+**
+
+- **Archive All Closed Tasks** — archives every task in the List that is already in a `closed` status
+  - Confirmation dialog: `"Archive all 18 completed tasks? They will be hidden from the List view."`
+  - Useful after using "Close All Tasks" to clean up the view
+  - Required permission: **Full Access / Admin+**
+
 **Sorting:**
 - Manual sort (drag-and-drop to reorder)
 - Sort by: Due Date / Priority / Status / Assignee / Created Date / Last Updated
@@ -225,6 +274,12 @@ My Tasks
 - Change due date
 - Open Task detail panel (click title)
 
+**Bulk selection in My Tasks:**
+- Same checkbox + Shift+Click selection model as List View
+- Bulk actions available: **Assign**, **Status**, **Priority**, **Archive**
+- **Move** and **Delete** are not available in My Tasks bulk actions — tasks here span multiple Lists, making bulk move/delete too destructive without clear context
+- Status dropdown in My Tasks bulk action shows a merged list of statuses — if selected tasks are from different Lists, only statuses that exist by name across all of them are shown. If none match, the action is disabled with a tooltip: `"Selected tasks have incompatible statuses — apply status from within a single List"`
+
 **Filters:**
 - Filter by Space (show tasks from specific spaces only)
 - Filter by Priority
@@ -291,6 +346,10 @@ UserMyTasksPreference
 | GET | `/api/me/tasks` | Get all tasks assigned to current user (My Tasks) | Authenticated user |
 | PATCH | `/api/me/list-preferences/:listId` | Save view preference for a List | Authenticated user |
 | PATCH | `/api/me/my-tasks-preferences` | Save My Tasks grouping/filter preference | Authenticated user |
+| POST | `/api/tasks/bulk` | Apply a bulk action to multiple tasks | Edit / Full Access / Admin+ |
+| POST | `/api/lists/:listId/close-all` | Close all open tasks in a List (respects active filters) | Full Access / Admin+ |
+| POST | `/api/lists/:listId/archive-closed` | Archive all closed tasks in a List | Full Access / Admin+ |
+| POST | `/api/sprints/:id/mark-all-done` | Mark all incomplete sprint tasks as done (used in close sprint modal) | Full Access / Admin+ |
 
 ---
 
@@ -317,6 +376,12 @@ UserMyTasksPreference
 8. Calendar View only places tasks that have a due date — tasks without a due date appear in the Unscheduled panel.
 9. Column visibility and order in List View are per user — they are not shared with other members.
 10. View switcher is only available at the List level — My Tasks is a global view accessible from the sidebar.
+11. Bulk selection is only available in List View and My Tasks — not in Board View or Calendar View.
+12. Bulk actions are applied server-side atomically per task — if one task fails a permission check, that task is skipped and the others still apply. The result message shows how many succeeded and how many were skipped.
+13. Each task in a bulk action generates its own Activity Log entry — bulk actions do not create a single grouped log.
+14. Bulk delete requires an explicit confirmation modal showing the exact count — no undo.
+15. "Close All Tasks" and "Archive All Closed Tasks" respect active filters — only visible tasks are affected. The confirmation dialog always states the exact count and whether filters are applied.
+16. "Mark all as Done" inside the Close Sprint modal uses the List's `closed`-type status — if the List has multiple closed-type statuses, the first one in the status order is used.
 
 ---
 

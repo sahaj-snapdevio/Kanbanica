@@ -20,6 +20,7 @@ A fast, workspace-wide search accessible from anywhere in the app.
 - Keyboard shortcut: `Ctrl + K` (Windows) / `Cmd + K` (Mac) — opens the search command palette
 - Click the search icon in the top navigation bar
 - Available on every page in the app
+- For the full list of keyboard shortcuts across the app, see [keyboard-shortcuts.md](./keyboard-shortcuts.md)
 
 ### What can be searched
 

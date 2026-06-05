@@ -15,9 +15,8 @@ The Admin Panel is an internal tool for the Teamority platform operators (us) to
 1. [Dashboard](#1-dashboard)
 2. [User Management](#2-user-management)
 3. [Workspace Management](#3-workspace-management)
-4. [Subscription Management](#4-subscription-management)
-5. [Support Tickets](#5-support-tickets)
-6. [Analytics](#6-analytics)
+4. [Support Tickets](#4-support-tickets)
+5. [Analytics](#5-analytics)
 
 ---
 
@@ -124,14 +123,13 @@ View and manage all workspaces on the platform.
 ### Workspace List
 
 - Paginated table of all workspaces (50 per page)
-- Columns: Name, Owner email, Members count, Plan, Created Date, Last Active, Status
+- Columns: Name, Owner email, Members count, Created Date, Last Active, Status
 - Default sort: newest first
 
 **Search:**
 - Search by workspace name or owner email
 
 **Filters:**
-- Plan: Free / Pro / Business / All
 - Status: Active / Inactive / Deleted
 - Created date range
 
@@ -143,7 +141,6 @@ Clicking a workspace opens its detail page:
 - Workspace name, logo, URL slug
 - Created date, last active date
 - Owner name + email
-- Plan (with override option — see [Subscription Management](#4-subscription-management))
 
 **Members section:**
 - List of all members: name, email, workspace role, join date
@@ -159,7 +156,6 @@ Clicking a workspace opens its detail page:
 | Action | Description |
 |--------|-------------|
 | Impersonate Owner | Log in as the workspace Owner (same impersonation flow as User Management) |
-| Override Plan | Manually set the workspace plan (e.g. upgrade to Pro for free for a support case) |
 | Force Delete Workspace | Permanently delete the workspace and all its data. Requires typing the workspace name to confirm. Cannot be undone. |
 | Send Email to Owner | Open a pre-filled email draft to the workspace owner (opens email client) |
 
@@ -171,42 +167,7 @@ Clicking a workspace opens its detail page:
 
 ---
 
-## 4. Subscription Management
-
-Track and manage workspace plans. Full plan configuration (pricing, limits, feature flags, pricing page display) is covered in [Plans & Pricing](./plans-and-pricing.md).
-
-### Plan Configuration (`/admin/plans`)
-
-- Create and edit plans (Free / Pro / Business)
-- Configure pricing, limits, feature flags, and pricing page bullets per plan
-- Toggle plan visibility (Active / Hidden)
-- Manage pricing page FAQ
-- See [Plans & Pricing](./plans-and-pricing.md) for the full spec
-
-### Workspace Plan Overview (`/admin/plans/workspaces`)
-
-- Table of all workspaces with their current plan
-- Columns: Workspace name, Plan, Override (Yes/No), Override set by, Override expires
-- Filterable by plan
-
-### Plan Override (per workspace)
-
-- Admin can manually set any workspace to any plan from the Workspace Detail page
-- Override fields:
-  - Plan: Free / Pro / Business
-  - Reason (required — logged in audit trail)
-  - Expiry date (optional — if set, plan reverts to base plan on expiry)
-- Override is marked visually on the workspace detail and plan list
-- Override history is logged (who set it, when, what plan, reason)
-
-### Plan Revert
-
-- When an override expiry date passes, the workspace automatically reverts to its base plan
-- An internal notification is sent to all platform admins when a plan override expires
-
----
-
-## 5. Support Tickets
+## 4. Support Tickets
 
 View and respond to support tickets submitted by customers from within the app.
 
@@ -257,7 +218,7 @@ View and respond to support tickets submitted by customers from within the app.
 
 ---
 
-## 6. Analytics
+## 5. Analytics
 
 Platform-level usage metrics to understand how the product is being used.
 
@@ -306,7 +267,6 @@ Platform-level usage metrics to understand how the product is being used.
 | Grant / revoke Platform Admin | Platform Admin (senior — separate flag `is_super_admin` for MVP can be hardcoded) |
 | View / manage workspaces | Platform Admin |
 | Force delete workspace | Platform Admin |
-| Override subscription plan | Platform Admin |
 | View / reply to support tickets | Platform Admin |
 | View analytics | Platform Admin |
 
@@ -340,21 +300,11 @@ SupportTicketMessage
 ├── is_internal_note    (boolean, default: false)
 └── created_at          (timestamp)
 
-PlanOverride
-├── id                  (uuid, primary key)
-├── workspace_id        (foreign key → Workspace)
-├── plan                (enum: free | pro | business)
-├── reason              (text, required)
-├── set_by              (foreign key → User — platform admin)
-├── expires_at          (date, nullable)
-├── reverted_at         (timestamp, nullable)
-└── created_at          (timestamp)
-
 PlatformAuditLog
 ├── id                  (uuid, primary key)
 ├── admin_id            (foreign key → User — platform admin who performed action)
-├── action              (string — e.g. user_banned, workspace_deleted, plan_overridden, impersonation_started)
-├── target_type         (enum: user | workspace | ticket | plan)
+├── action              (string — e.g. user_banned, workspace_deleted, impersonation_started)
+├── target_type         (enum: user | workspace | ticket)
 ├── target_id           (uuid)
 ├── meta                (json — additional context e.g. reason, old value, new value)
 └── created_at          (timestamp)
@@ -380,9 +330,6 @@ All admin endpoints are prefixed with `/api/admin/` and require `is_platform_adm
 | GET | `/api/admin/workspaces/:id` | Get workspace detail and usage stats |
 | DELETE | `/api/admin/workspaces/:id` | Force delete workspace |
 | POST | `/api/admin/workspaces/:id/impersonate-owner` | Impersonate workspace owner |
-| GET | `/api/admin/plan-overrides` | List all plan overrides |
-| POST | `/api/admin/workspaces/:id/plan-override` | Set plan override for a workspace |
-| DELETE | `/api/admin/workspaces/:id/plan-override` | Remove plan override |
 | GET | `/api/admin/tickets` | List all support tickets (paginated, filterable) |
 | GET | `/api/admin/tickets/:id` | Get ticket detail and message thread |
 | POST | `/api/admin/tickets/:id/messages` | Reply to ticket or add internal note |
@@ -404,7 +351,6 @@ All admin endpoints are prefixed with `/api/admin/` and require `is_platform_adm
 | User Detail | `/admin/users/:id` |
 | Workspace List | `/admin/workspaces` |
 | Workspace Detail | `/admin/workspaces/:id` |
-| Plan Overrides | `/admin/plans` |
 | Support Tickets List | `/admin/tickets` |
 | Ticket Detail | `/admin/tickets/:id` |
 | Analytics | `/admin/analytics` |
@@ -436,11 +382,6 @@ All admin endpoints are prefixed with `/api/admin/` and require `is_platform_adm
 - When the admin exits impersonation, the impersonated session is immediately hard-deleted.
 - The `PlatformAuditLog` entry for the impersonation start is **never deleted**.
 
-### Plan Overrides
-- `PlanOverride` records are **soft-retained** — when an override expires or is manually removed, the record is kept with `reverted_at` timestamp set.
-- This provides a full audit trail of plan changes per workspace.
-- `PlanOverride` records are only hard-deleted if the Workspace itself is permanently deleted.
-
 ### Support Ticket Messages (Admin)
 - Internal notes (`is_internal_note = true`) are never exposed to customers — no delete needed for security.
 - Admin replies and internal notes are retained for as long as the Support Ticket exists.
@@ -451,13 +392,12 @@ All admin endpoints are prefixed with `/api/admin/` and require `is_platform_adm
 ## Business Rules
 
 1. Admin Panel access is controlled by `is_platform_admin` flag on the User table — no customer role grants access.
-2. Every destructive or sensitive admin action (ban, delete workspace, plan override, impersonation) is logged in `PlatformAuditLog` with actor, target, and timestamp.
+2. Every destructive or sensitive admin action (ban, delete workspace, impersonation) is logged in `PlatformAuditLog` with actor, target, and timestamp.
 3. Impersonation must be logged before the session is created — the log entry is written first.
-4. While impersonating, the admin cannot perform irreversible actions: delete workspace, change password, modify billing.
+4. While impersonating, the admin cannot perform irreversible actions: delete workspace, change password.
 5. Impersonation sessions are time-limited — automatically expire after **1 hour** of inactivity.
 6. Force deleting a workspace sends a notification email to the workspace Owner before deletion completes.
-7. Plan override expiry is checked daily by a background job — expired overrides automatically revert the workspace to Free.
-8. Internal notes on support tickets are never visible to the customer under any circumstance.
+7. Internal notes on support tickets are never visible to the customer under any circumstance.
 9. Resolving a support ticket automatically notifies the customer.
 10. All admin API endpoints return `403 Forbidden` for non-platform-admin users — no information about the admin routes is exposed.
 
@@ -465,9 +405,7 @@ All admin endpoints are prefixed with `/api/admin/` and require `is_platform_adm
 
 ## Out of Scope (MVP)
 
-- Stripe billing dashboard integration
-- Automated churn detection alerts
-- Role-based access within the Admin Panel (e.g. Support agent vs Billing admin)
+- Role-based access within the Admin Panel (e.g. Support agent vs regular admin)
 - Bulk user operations (bulk ban, bulk export)
 - Advanced analytics (cohort analysis, funnel, retention curves)
 - Customer-facing status page (uptime monitoring)

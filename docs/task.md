@@ -4,7 +4,9 @@
 
 A Task is the core unit of work in Teamority. Everything actionable lives inside a Task. A Task always belongs to a List, inherits the Space's permission model, and can have Subtasks nested inside it.
 
-**Real-world analogy:** A Task = a work item, ticket, or to-do. e.g. `Design login screen`, `Fix payment bug`, `Write Q3 report`, `Review pull request`
+Every task has a **human-readable ID** scoped to the workspace (e.g. `#1`, `#42`, `#103`). This ID is permanent, never reused, and is the primary way users reference tasks in conversation, comments, and external tools.
+
+**Real-world analogy:** A Task = a work item, ticket, or to-do. e.g. `#12 Design login screen`, `#47 Fix payment bug`, `#103 Write Q3 report`
 
 **Hierarchy position:**
 ```
@@ -38,7 +40,7 @@ Workspace
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | Title | Short text | Yes | The name of the task |
-| Description | Rich text | No | Detailed context — supports bold, italic, headings, bullet lists, numbered lists, code blocks, inline code, links |
+| Description | Rich text | No | Detailed context — supports bold, italic, headings, bullet lists, numbered lists, code blocks, inline code, links. **The previous version is saved as a snapshot before each edit** (one level of recovery). Full version history with diff and restore is post-MVP. |
 | Status | Enum (per List) | Yes | Defaults to first status in the List (usually "Todo") |
 | Priority | Enum | No | None / Low / Medium / High / Urgent |
 | Assignees | User[] | No | One or more workspace members |
@@ -115,9 +117,16 @@ Clicking a task opens a side panel (or full-page modal) showing all fields.
 
 - A task can have **multiple assignees**
 - Search for workspace members by name or email in the assignee field
-- Any member who has access to the Space can be assigned (regardless of their Space permission level — even View users can be assigned to tasks)
-- Assigning a user sends them a notification
+- **Only active members can be assigned** — users with a pending invite (`status = invited`) are excluded from the assignee picker entirely. They have not yet confirmed their account and cannot receive notifications or act on assignments.
+- Any **active** member who has access to the Space can be assigned (regardless of their Space permission level — even View users can be assigned to tasks)
+- Assigning a user sends them an in-app notification and email
 - Removing an assignee sends them a notification
+
+**Edge case — member removed after assignment:**
+- If an assigned member is removed from the workspace (or their invite is cancelled before they accepted), their `TaskAssignee` record is kept but they lose all access to the task and workspace
+- The task card shows their avatar as greyed out with a tooltip: `"This user no longer has access to this workspace"`
+- Admins can re-assign or remove the stale assignee from the task detail panel
+- This state is shown in the Activity Log as: `"[User] was assigned" / "[User] lost workspace access"`
 
 ---
 
@@ -291,15 +300,60 @@ Each entry shows: **who** did it, **what** changed, and **when** (timestamp).
 
 ---
 
+### 20. Bulk Actions
+
+Bulk actions allow users to apply changes to multiple tasks simultaneously from List View or My Tasks.
+
+**Triggering bulk mode:**
+- Hover over any task row → a checkbox appears on the left
+- Check the checkbox → bulk mode activates, all row checkboxes become visible
+- `Shift+Click` another checkbox → selects all tasks in range
+- Header checkbox → selects / deselects all visible tasks (filtered set only)
+
+**Bulk Action Bar** (fixed at bottom of screen while in bulk mode):
+```
+[✓ 5 selected]  [Assign]  [Status]  [Priority]  [Move]  [Archive]  [Delete]  [✕ Clear]
+```
+
+**Available actions and their behavior:**
+
+| Action | Applies to | Behavior | Permission |
+|--------|-----------|----------|-----------|
+| Assign | All selected | Opens member picker — replaces existing assignees on all selected tasks | Edit+ |
+| Status | All selected | Dropdown of current List's statuses — sets all to chosen status | Edit+ |
+| Priority | All selected | Sets all selected tasks to chosen priority level | Edit+ |
+| Move | All selected | List picker — moves all selected tasks to chosen List; status remapped by name match | Full Access+ |
+| Archive | All selected | Archives all selected tasks in one action | Full Access+ |
+| Delete | All selected | Confirmation modal with exact count — permanently deletes all selected | Full Access+ |
+
+**API shape for `POST /api/tasks/bulk`:**
+```json
+{
+  "task_ids": ["uuid1", "uuid2", "uuid3"],
+  "action": "set_status | set_priority | set_assignees | move | archive | delete",
+  "payload": {
+    "status_id": "uuid",
+    "priority": "high",
+    "assignee_ids": ["uuid"],
+    "target_list_id": "uuid"
+  }
+}
+```
+
+Response includes `{ succeeded: 3, skipped: 1, skipped_ids: ["uuid"] }` — tasks the user lacks permission for are skipped, not errored.
+
+---
+
 ## Data Model
 
 ```
 Task
 ├── id                  (uuid, primary key)
+├── seq_number          (integer — human-readable task number, e.g. 42 → shown as #42)
 ├── list_id             (foreign key → List)
 ├── parent_task_id      (foreign key → Task, nullable — null means top-level task)
 ├── title               (string, required)
-├── description         (text / rich text JSON, nullable)
+├── description         (jsonb — Tiptap rich text JSON, nullable)
 ├── status_id           (foreign key → ListStatus)
 ├── priority            (enum: none | low | medium | high | urgent, default: none)
 ├── reporter_id         (foreign key → User)
@@ -376,7 +430,16 @@ ActivityLog
 ├── event_type          (string — e.g. status_changed, assignee_added, comment_added)
 ├── meta                (json — { from, to, value } depending on event type)
 └── created_at          (timestamp)
+
+TaskDescriptionSnapshot
+├── id                  (uuid, primary key)
+├── task_id             (foreign key → Task, unique — one snapshot per task at a time)
+├── content             (jsonb — the Tiptap JSON content of the description BEFORE the most recent edit)
+├── saved_by            (foreign key → User — who triggered the edit that caused this snapshot)
+└── saved_at            (timestamp — when the snapshot was taken, i.e. when the edit started)
 ```
+
+> **One snapshot per task (not full history):** `TaskDescriptionSnapshot` uses a unique constraint on `task_id` — each save overwrites the previous snapshot. This gives one level of recovery ("undo the last edit") without the storage cost of full version history. Full history with diff and restore is post-MVP.
 
 ---
 
@@ -406,6 +469,9 @@ ActivityLog
 | POST | `/api/tasks/:id/dependencies` | Add dependency | Edit / Full Access / Admin+ |
 | DELETE | `/api/tasks/:id/dependencies/:depId` | Remove dependency | Edit / Full Access / Admin+ |
 | POST | `/api/tasks/:id/time-logs` | Log time | Edit / Full Access / Admin+ |
+| POST | `/api/tasks/bulk` | Apply a bulk action to multiple tasks | Edit / Full Access / Admin+ |
+| GET | `/api/tasks/:id/description-snapshot` | Get the previous description snapshot (for recovery) | Edit / Full Access / Admin+ |
+| POST | `/api/tasks/:id/description-snapshot/restore` | Restore the snapshot as the current description | Edit / Full Access / Admin+ |
 
 ---
 
@@ -415,7 +481,7 @@ ActivityLog
 |--------|-------------|--------|
 | List View | Tasks as rows in a List | All Space members |
 | Board View | Tasks as cards grouped by status | All Space members |
-| Task Detail Panel | Side panel or full page with all task fields | All Space members |
+| Task Detail Panel | Side panel or full page with all task fields — shows `#42` in header with copy icon | All Space members |
 | Task context menu (`...`) | Quick actions: duplicate, move, archive, delete, copy link | Based on permission |
 | Create Task (quick) | Inline row in List View — type title + Enter | Edit / Full Access / Admin+ |
 | Create Task (full) | Open full detail panel before saving | Edit / Full Access / Admin+ |
@@ -461,20 +527,28 @@ ActivityLog
 
 ## Business Rules
 
-1. Every Task must belong to exactly one List at all times.
+1. Every Task has a `seq_number` that is unique per Workspace and auto-assigned at creation using an atomic increment on `Workspace.task_seq`. The displayed ID is `#seq_number` (e.g. `#42`).
+2. `seq_number` is never reused — if a Task is deleted, that number is permanently retired.
+3. Every Task must belong to exactly one List at all times.
 2. A Task's status must be one of the statuses defined in its current List.
-3. When a Task is moved to a different List, its status is remapped to the closest match by name; if no match, it falls back to the first `open` status.
-4. Reporter is set at creation and cannot be changed.
-5. Any workspace member with Space access (even View) can be assigned to a task — assignment does not grant edit permission.
-6. A View-only member who is assigned a task can still only view it, not edit it.
-7. Task creator and all assignees are automatically added as Watchers on creation.
-8. Circular dependencies (A blocked by B, B blocked by A) are not allowed.
-9. Dependencies are informational only in MVP — they do not hard-block status changes.
-10. Deleting a Task permanently deletes all its Subtasks, Comments, Attachments, Checklists, and ActivityLog entries.
-11. Archiving a Task does not archive its Subtasks — they must be archived individually or will appear as orphaned subtasks.
-12. When a recurring Task is closed, the new recurrence copy is created immediately with reset status and unchecked checklists.
-13. File attachments are stored externally (S3/R2) — deleting an attachment removes the DB record and the file from storage.
-14. Tags are Workspace-scoped — the same tag can appear across multiple Spaces and Lists.
+3. `seq_number` is derived from `Workspace.task_seq` which is incremented atomically on each task creation — use a DB transaction to avoid race conditions.
+4. When a Task is moved to a different List, its status is remapped to the closest match by name; if no match, it falls back to the first `open` status.
+5. Reporter is set at creation and cannot be changed.
+6. Only **active** workspace members (`status = active`) can be assigned to a task — pending invites (`status = invited`) are excluded from the assignee picker.
+7. Any active member with Space access (even View) can be assigned to a task — assignment does not grant edit permission.
+8. A View-only member who is assigned a task can still only view it, not edit it.
+9. If an assigned member loses workspace access after assignment, their `TaskAssignee` record is preserved but their avatar is shown greyed out — admins can clean up the stale assignment.
+10. Task creator and all assignees are automatically added as Watchers on creation.
+11. Circular dependencies (A blocked by B, B blocked by A) are not allowed.
+12. Dependencies are informational only in MVP — they do not hard-block status changes.
+13. Deleting a Task permanently deletes all its Subtasks, Comments, Attachments, Checklists, and ActivityLog entries.
+14. Archiving a Task does not archive its Subtasks — they must be archived individually or will appear as orphaned subtasks.
+15. When a recurring Task is closed, the new recurrence copy is created immediately with reset status and unchecked checklists. The new copy gets its own new `seq_number`.
+16. File attachments are stored externally (S3/R2) — deleting an attachment removes the DB record and the file from storage.
+17. Tags are Workspace-scoped — the same tag can appear across multiple Spaces and Lists.
+18. Bulk actions apply permission checks per task — tasks the user lacks permission for are silently skipped. The response reports how many succeeded and how many were skipped.
+19. Bulk delete requires an explicit confirmation modal showing the exact count — there is no undo.
+20. Each task modified by a bulk action generates its own individual Activity Log entry — bulk actions do not create a single grouped entry.
 
 ---
 
@@ -487,3 +561,4 @@ ActivityLog
 - Task approval workflow
 - Time tracking with a live timer (only manual time log in MVP)
 - Subtask progress auto-closing parent task
+- **Description version history with diff and restore** — full history (like Notion's page history or Jira's description diff) is post-MVP. MVP provides one level of recovery via `TaskDescriptionSnapshot` (restore the immediately previous version only). Research note: ClickUp and Linear also do not offer description restore — they only log that the description changed, not what it was.

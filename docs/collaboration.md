@@ -72,13 +72,15 @@ The Activity Log is a complete, immutable audit trail of everything that has hap
 
 Every event that creates an `ActivityLog` record is listed below. Each entry stores: `task_id`, `user_id` (actor), `event_type` (machine key), `meta` (JSON payload with old/new values), and `created_at`.
 
+> **Known limitation — description content:** The `description_updated` event records *who* changed the description and *when*, but not *what* it was before. Full description version history with diff and restore is post-MVP (see task.md Out of Scope). However, a `TaskDescriptionSnapshot` record stores the previous version before each save — giving one level of recovery. See the Data Model section for details.
+
 #### Task Field Changes
 
 | Event | `event_type` key | `meta` payload | Example display |
 |-------|-----------------|----------------|-----------------|
 | Task created | `task_created` | `{}` | *John created this task* |
 | Title changed | `title_changed` | `{ from, to }` | *Jane changed title from "Fix bug" → "Fix login bug"* |
-| Description updated | `description_updated` | `{}` (no content stored — too large) | *Jane updated the description* |
+| Description updated | `description_updated` | `{}` | *Jane updated the description* |
 | Status changed | `status_changed` | `{ from_status_name, to_status_name }` | *John changed status from In Progress → Review* |
 | Priority changed | `priority_changed` | `{ from, to }` | *Jane changed priority from Medium → High* |
 | Due date set | `due_date_set` | `{ date }` | *Jane set due date to Jun 15, 2026* |

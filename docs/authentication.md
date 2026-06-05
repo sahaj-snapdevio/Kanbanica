@@ -230,7 +230,10 @@ Available at `/settings/account`
 ### Profile
 
 - Update Full Name
-- Update Avatar (upload image or use initials as default)
+- Update Avatar:
+  - Upload a photo (JPEG, PNG, WebP — max 2MB, min 100×100px)
+  - If no photo is uploaded: initials fallback is shown automatically — first + last initial of the user's name, on a deterministic background color derived from the user's `id`
+  - See [avatar-system.md](./avatar-system.md) for the full avatar spec (sizes, color palette, stacking, greyed-out state, workspace avatars)
 - Email address (read-only — cannot be changed in MVP)
 
 ### Password
@@ -284,10 +287,14 @@ Step 2: Create first Space
   └── Enter Space name + pick color
   └── Default List named "List" is auto-created inside the Space
 
-Step 3: Done → land inside the Space, ready to create first task
+Step 3: Done → land inside the first List
+  └── Getting Started checklist is shown pinned above the empty task list
+  └── Checklist guides: create task → invite teammate → set due date → try Board view
 ```
 
 Returning users skip onboarding and go directly to their last active workspace.
+
+**Empty states after onboarding:** Every screen the user can land on with no data has a defined empty state with a clear message and CTA. See [empty-states.md](./empty-states.md) for the full spec of all empty states including the Getting Started checklist.
 
 ---
 

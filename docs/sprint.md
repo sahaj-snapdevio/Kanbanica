@@ -126,20 +126,45 @@ Visible on the Sprint panel and Sprint detail page.
 
 - **Who can close:** Members with **Full Access**, Admin, Owner
 - Triggered manually — sprints do not auto-close when the end date passes
-- Before closing, user must decide what to do with **incomplete tasks** (tasks not in a `closed` status):
 
-  | Option | Description |
-  |--------|-------------|
-  | Move to Backlog | Task is removed from the sprint, stays in the List with no sprint assignment |
-  | Move to Next Sprint | Task is assigned to a selected existing Planned sprint |
-  | Leave as-is | Task stays in the closed sprint for reference (no further action) |
+**Close Sprint modal — step 1: Mark tasks done (optional)**
 
-- User can handle tasks individually or apply one option to all incomplete tasks at once
-- After closing:
-  - Sprint status changes to **Closed**
-  - No more tasks can be added to the closed sprint
-  - Sprint data is preserved in Sprint History
-  - A new Sprint can now be started
+Before deciding what to do with incomplete tasks, the modal shows a summary:
+
+```
+Close Sprint 1 — Auth & Onboarding
+
+  ✅ 14 tasks completed
+  ⏳  6 tasks still incomplete
+
+  [ Mark all incomplete tasks as Done ]   ← one-click shortcut
+
+  or handle them individually below ↓
+```
+
+- **`Mark all incomplete tasks as Done`** button — sets all incomplete tasks to the List's `closed`-type status in one action before proceeding
+- This is the "wrap up the sprint cleanly" shortcut — when the team is done but forgot to close a few tasks
+- After clicking, the modal re-evaluates: if all tasks are now closed, the sprint can close immediately with no further decisions needed
+- The action is recorded in the Activity Log for each affected task: `"[User] marked task as Done via sprint close"`
+
+**Close Sprint modal — step 2: Handle remaining incomplete tasks**
+
+If any incomplete tasks remain (user skipped step 1 or only some were closed), user must decide what happens to each:
+
+| Option | Description |
+|--------|-------------|
+| Move to Backlog | Task is removed from the sprint, stays in the List with no sprint assignment |
+| Move to Next Sprint | Task is assigned to a selected existing Planned sprint |
+| Leave as-is | Task stays in the closed sprint for reference (no further action) |
+
+- User can apply one option to **all remaining incomplete tasks at once** (bulk apply) or handle them individually row by row
+- If no Planned sprint exists for "Move to Next Sprint", the option is disabled with a tooltip: `"No planned sprint available — create one first"`
+
+**After closing:**
+- Sprint status changes to **Closed**
+- No more tasks can be added to the closed sprint
+- Sprint data is preserved in Sprint History
+- A new Sprint can now be started
 
 ---
 
@@ -273,7 +298,7 @@ TaskSprint
 4. A task can only belong to one Sprint at a time within the same List.
 5. Tasks are never physically moved out of their List — sprint assignment is a separate relationship.
 6. Story points are stored per TaskSprint, not on the Task — so carry-over tasks can be re-estimated in the new sprint.
-7. Closing a Sprint requires an explicit decision for each incomplete task (move to backlog, move to next sprint, or leave).
+7. Closing a Sprint shows a two-step modal: (1) optional "Mark all as Done" shortcut, (2) handle any remaining incomplete tasks — move to backlog, move to next sprint, or leave as-is. If all tasks are closed after step 1, step 2 is skipped automatically.
 8. A Closed Sprint cannot be reopened.
 9. Only Planned sprints can be deleted — Active and Closed sprints cannot be deleted.
 10. Sprint end date does not auto-close the sprint unless **Auto-close on next sprint** is enabled.

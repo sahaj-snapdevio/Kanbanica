@@ -49,10 +49,9 @@ Phase 13 →  Collaboration (Comments + Activity)
 Phase 14 →  Search & Filters
 Phase 15 →  Notifications
 Phase 16 →  Permission Enforcement (audit pass)
-Phase 17 →  Plans & Pricing
-Phase 18 →  Admin Panel
-Phase 19 →  Customer Support
-Phase 20 →  QA & Launch Prep
+Phase 17 →  Admin Panel
+Phase 18 →  Customer Support
+Phase 19 →  QA & Launch Prep
 ```
 
 ---
@@ -178,15 +177,12 @@ Phase 20 →  QA & Launch Prep
   - [ ] `MutedEntity`
   - [ ] `PushSubscription`
   - [ ] `UserListViewPreference`
+  - [ ] `UserMyTasksPreference`
   - [ ] `SavedFilter`
   - [ ] `UserSearchHistory`
+  - [ ] `UserOnboardingProgress`
 
   **Platform tables:**
-  - [ ] `Plan`
-  - [ ] `PlanLimit`
-  - [ ] `PlanFeatureFlag`
-  - [ ] `PlanBullet`
-  - [ ] `PlanOverride`
   - [ ] `SupportTicket`
   - [ ] `SupportTicketMessage`
   - [ ] `FeatureRequest`
@@ -200,7 +196,6 @@ Phase 20 →  QA & Launch Prep
   npx prisma migrate dev --name init
   ```
 - [ ] Seed database with:
-  - [ ] Default Free / Pro / Business plans with limits and feature flags
   - [ ] One platform admin user (for development)
 - [ ] Confirm Prisma Studio opens and shows all tables:
   ```bash
@@ -225,7 +220,7 @@ Phase 20 →  QA & Launch Prep
 - [ ] Mobile hamburger menu
 - [ ] Logo + wordmark
 - [ ] Smooth scroll to section on anchor link click
-- [ ] Nav links: Features, Pricing, Help, Sign In, Get Started
+- [ ] Nav links: Features, Help, Sign In, Get Started
 
 **Sections (in order):**
 - [ ] Hero section — headline, subheadline, primary + secondary CTA, trust nudge, hero image placeholder
@@ -233,18 +228,12 @@ Phase 20 →  QA & Launch Prep
 - [ ] Features section — 6 feature cards (Tasks, Sprints, Views, Comments, Notifications, Search)
 - [ ] How It Works — 4 steps (Create Workspace → Invite Team → Organize → Start Working)
 - [ ] Views Showcase — tab switcher (List / Board / Calendar) with screenshots or placeholder images
-- [ ] Pricing section — skeleton loader while fetching, then renders plan cards from `GET /api/plans`
-  - [ ] Monthly / Annual toggle (saves state in `localStorage`)
-  - [ ] Plan cards with bullets, badge, CTA button
-  - [ ] "All plans include" row
-  - [ ] Pricing FAQ accordion
 - [ ] Testimonials — 3 static cards
-- [ ] General FAQ — accordion (8 questions)
+- [ ] General FAQ — accordion (7 questions)
 - [ ] Final CTA banner
 - [ ] Footer — all links (Product, Company, Support, Legal, Social)
 
 **Additional pages:**
-- [ ] `/pricing` — standalone pricing page (reuse pricing section component)
 - [ ] `/privacy` — Privacy Policy (required before launch — can be placeholder text initially)
 - [ ] `/terms` — Terms of Service (required before launch)
 - [ ] `/cookies` — Cookie Policy (required before launch)
@@ -258,7 +247,6 @@ Phase 20 →  QA & Launch Prep
 
 **Performance:**
 - [ ] Hero image uses Next.js `<Image>` with `priority` flag
-- [ ] Pricing section shows skeleton while `GET /api/plans` loads
 - [ ] Lighthouse score 90+ (Performance, Accessibility, SEO)
 
 **Analytics:**
@@ -313,29 +301,70 @@ Phase 20 →  QA & Launch Prep
 - [ ] `/settings/sessions` — view all active sessions, revoke individual, revoke all others
 - [ ] Change password form (requires current password)
 - [ ] Connected accounts (linked OAuth providers)
+
+**Avatar system (build once here, used everywhere — reference [avatar-system.md](./avatar-system.md)):**
+- [ ] `getInitials(fullName)` utility — first + last initial, max 2 chars, uppercased
+- [ ] `getAvatarColor(userId)` utility — deterministic hash of UUID → index into 10-color palette
+- [ ] `<Avatar>` component — accepts `user: { name, image, id }`, size prop (`xs/sm/md/lg/xl`), renders photo → initials fallback in correct priority order
+- [ ] `<AvatarStack>` component — stacks up to 3 avatars with white border + `+N` overflow chip
+- [ ] Avatar upload: resize server-side to max 256×256px before storing to R2, delete old file on replace
+- [ ] Greyed-out avatar state (40% opacity + tooltip) for removed workspace members
+- [ ] Workspace avatar: rounded square (8px radius), supports `logo_url` → `logo_emoji` → initials fallback
+- [ ] "Deleted User" avatar: grey circle with person icon, no initials
+- [ ] System event avatar: Teamority logo mark for automated activity log entries
 - [ ] Delete account (with ownership transfer guard)
 
 **Done when:** A new user can fully sign up, verify email, sign in (email + OAuth), reset password, and sign out. All auth pages are styled consistently with the landing page.
 
 ---
 
-## Phase 4 — Onboarding
+## Phase 4 — Onboarding & Empty States
 
-**Goal:** New users are guided to create a Workspace and first Space before reaching the main app.
+**Goal:** New users are guided to create a Workspace and first Space before reaching the main app. Every screen a user can land on with no data shows a clear empty state with a CTA.
 
-**Reference docs:** [workspace.md](./workspace.md), [space.md](./space.md)
+**Reference docs:** [workspace.md](./workspace.md), [space.md](./space.md), [empty-states.md](./empty-states.md)
 
 ### Tasks
 
+**Onboarding flow:**
 - [ ] `/onboarding` route — protected, only accessible if user has no workspace
 - [ ] Step 1 UI: Create Workspace (name input + logo upload)
 - [ ] Step 2 UI: Create first Space (name input + color picker)
 - [ ] On Space creation: auto-create default List named `"List"` inside it
-- [ ] On completion: redirect to `/[workspaceSlug]/[spaceId]`
+- [ ] On completion: redirect to `/[workspaceSlug]/[spaceId]/list/[listId]`
 - [ ] If user already has a workspace: redirect away from `/onboarding` to their workspace
 - [ ] Workspace slug auto-generated from name (slugify) — ensure uniqueness
+- [ ] Create `UserOnboardingProgress` record for the workspace creator on workspace creation
 
-**Done when:** A new user after sign-up is guided through onboarding and lands inside their first Space with a default List ready to use.
+**Getting Started checklist (workspace creator only):**
+- [ ] Show checklist pinned above task list in the first List for the workspace creator
+- [ ] 6 checklist items — steps 1 & 2 auto-checked, steps 3–6 tracked via `UserOnboardingProgress`
+- [ ] Auto-check `step_first_task` when user creates any task
+- [ ] Auto-check `step_invite` when user sends any workspace invite
+- [ ] Auto-check `step_due_date` when user sets a due date on any task
+- [ ] Auto-check `step_board_view` when user switches to Board view
+- [ ] Progress bar fills as steps complete
+- [ ] On all 6 complete: show `"You're all set! 🎉"` → fade out after 3 seconds
+- [ ] `[Dismiss checklist]` link → sets `dismissed_at`, hides permanently
+
+**Empty states (implement alongside each feature phase, but plan here):**
+- [ ] Empty List (no tasks) — icon + headline + `"+ Add your first task"` CTA
+- [ ] Empty Board View — 3 cases: no tasks, filtered no results, sprint with no tasks
+- [ ] Empty Calendar View — no tasks with due dates
+- [ ] Empty Backlog — all tasks are in sprints
+- [ ] Empty Sprint panel — no sprints created yet
+- [ ] My Tasks — no assigned tasks
+- [ ] Empty Space — no Lists
+- [ ] Empty Folder — no Lists
+- [ ] Notifications inbox — zero notifications
+- [ ] Search — no results (with recent searches)
+- [ ] Comments — no comments (merges into composer)
+- [ ] Support Tickets — no tickets submitted
+- [ ] Workspace Members — only the creator (invite CTA)
+- [ ] All empty states: do NOT show create CTAs to View-only permission users
+- [ ] All empty states: show skeleton loader during fetch, switch to empty state only on confirmed zero results
+
+**Done when:** A new user after sign-up is guided through onboarding, lands inside their first Space with a default List, sees the Getting Started checklist, and every other empty screen they might reach shows a clear message and CTA.
 
 ---
 
@@ -684,7 +713,7 @@ Phase 20 →  QA & Launch Prep
 ### Tasks
 
 **Global Search:**
-- [ ] `Ctrl+K` / `Cmd+K` opens search command palette (intercepts browser default)
+- [ ] `Ctrl+K` / `Cmd+K` opens search command palette (intercepts browser default using `{ capture: true }`)
 - [ ] Search input with 300ms debounce
 - [ ] Search tasks, lists, spaces, members (min 2 characters)
 - [ ] Results grouped by type (Tasks / Lists / Spaces / Members)
@@ -693,6 +722,20 @@ Phase 20 →  QA & Launch Prep
 - [ ] Recent items shown when palette opens with no input
 - [ ] Permission scoping — private Spaces excluded
 - [ ] Archived items excluded by default (toggle to include)
+
+**Keyboard Shortcuts (reference [keyboard-shortcuts.md](./keyboard-shortcuts.md)):**
+- [ ] Global shortcut handler — single `keydown` listener on `window` with `{ capture: true }`, mounted in root client component
+- [ ] Suppress single-key shortcuts when focus is inside `<input>`, `<textarea>`, or `contenteditable`
+- [ ] `C` — open quick-create task (context-aware: inline in List View, modal elsewhere)
+- [ ] `?` — open in-app keyboard shortcuts reference panel
+- [ ] `Esc` — close topmost open modal / panel / dropdown (one layer at a time)
+- [ ] `G` → `H` / `G` → `S` / `G` → `N` — sequential navigation shortcuts (1-second window)
+- [ ] List View: `↑`/`↓` row focus, `Enter` open panel, `E` inline title edit, `Space` toggle checkbox
+- [ ] Task detail panel: `A` assignee picker, `D` due date picker, `L` tag picker, `Ctrl/Cmd+Shift+,` cycle priority
+- [ ] Rich text editor: `Ctrl/Cmd+Enter` submit comment — override Tiptap default if needed
+- [ ] `Backspace`/`Delete` on focused task row — show confirmation modal, `event.preventDefault()` to block browser back
+- [ ] Keyboard shortcuts panel UI: modal triggered by `?`, also linked from sidebar Help menu
+- [ ] Verify `Ctrl/Cmd+K` inside Tiptap opens link dialog (not global search) — Tiptap handles this natively
 
 **List Filters:**
 - [ ] Filter panel in List / Board / Calendar view toolbar
@@ -799,45 +842,7 @@ Phase 20 →  QA & Launch Prep
 
 ---
 
-## Phase 17 — Plans & Pricing
-
-**Goal:** Plan limits are enforced per workspace. Upgrade prompts show when limits are hit. Admin can configure plans.
-
-**Reference doc:** [plans-and-pricing.md](./plans-and-pricing.md)
-
-### Tasks
-
-**Plan enforcement:**
-- [ ] Create `getPlanLimits(workspaceId)` utility — reads effective plan (with override support)
-- [ ] Create `checkLimit(workspaceId, limitKey)` utility — returns `{ allowed, current, max }`
-- [ ] Enforce member limit on workspace invite
-- [ ] Enforce Space limit on Space creation
-- [ ] Enforce task limit on task creation
-- [ ] Enforce storage limit on file upload
-- [ ] Enforce file size limit on file upload
-- [ ] Enforce feature flags (Calendar View, Sprints, Recurring Tasks)
-- [ ] Show upgrade prompt modal when limit is hit
-- [ ] Upgrade prompt CTA visible to Owner/Admin only — Members see "contact your admin"
-
-**Usage indicators:**
-- [ ] `/settings/plan` — current plan, usage stats (members, storage, tasks vs limits)
-- [ ] Warning indicator at 80% usage
-
-**Admin Plan Config (`/admin/plans`):**
-- [ ] List all plans
-- [ ] Edit plan: pricing, limits, feature flags, bullets, display settings
-- [ ] Manage pricing page FAQ
-- [ ] Plan override per workspace (from Workspace Detail in Admin Panel)
-- [ ] Auto-revert expired overrides (cron job)
-
-**Public API:**
-- [ ] `GET /api/plans` — returns all active plans with limits, flags, bullets (no auth)
-
-**Done when:** All limits are enforced server-side, upgrade prompts show correctly, admin can change plan config from the Admin Panel and it reflects instantly on the pricing page.
-
----
-
-## Phase 18 — Admin Panel
+## Phase 17 — Admin Panel
 
 **Goal:** Internal `/admin` panel works for platform admins. User management, workspace management, support tickets, and analytics.
 
@@ -889,7 +894,7 @@ Phase 20 →  QA & Launch Prep
 
 ---
 
-## Phase 19 — Customer Support
+## Phase 18 — Customer Support
 
 **Goal:** Help Center, Support Tickets, and Feature Requests are all functional.
 
@@ -928,7 +933,7 @@ Phase 20 →  QA & Launch Prep
 
 ---
 
-## Phase 20 — QA & Launch Prep
+## Phase 19 — QA & Launch Prep
 
 **Goal:** The product is stable, tested, and ready for real users.
 
@@ -941,8 +946,6 @@ Phase 20 →  QA & Launch Prep
 - [ ] Email delivery tests (sign up, invite, reset, notifications, digest)
 - [ ] Browser push notification test
 - [ ] File upload + attachment preview (images and non-images)
-- [ ] Plan limit enforcement for each limit type
-- [ ] Upgrade prompt shows correctly for non-Owner/Admin
 
 **Security checks:**
 - [ ] All admin routes return 403 for non-platform-admins
@@ -966,7 +969,6 @@ Phase 20 →  QA & Launch Prep
 - [ ] R2 bucket configured for production
 - [ ] Environment variables set in production
 - [ ] Error monitoring set up (Sentry or similar)
-- [ ] Seed production database with default plans (Free, Pro, Business)
 - [ ] Create first platform admin account
 
 **Done when:** All tests pass, all pre-launch checklist items are complete, and the app is deployed to production.
@@ -980,4 +982,4 @@ Phase 20 →  QA & Launch Prep
 - **Server Actions over API Routes where possible** — use Next.js Server Actions for mutations, API Routes for external consumers
 - **Optimistic UI** — status changes, reactions, checklist checks should feel instant (update UI before server confirms)
 - **Error states** — every async action needs a loading state and an error state in the UI
-- **No hardcoded data** — plan pricing, feature flags, limits all come from the DB
+- **No magic numbers** — configurable values (limits, timeouts, retention periods) belong in config/constants, not scattered inline

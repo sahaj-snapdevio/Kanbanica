@@ -18,11 +18,10 @@ The landing page is the public-facing marketing site for Teamority. It is the fi
 4. [Features Section](#4-features-section)
 5. [How It Works](#5-how-it-works)
 6. [Views Showcase](#6-views-showcase)
-7. [Pricing Section](#7-pricing-section)
-8. [Testimonials](#8-testimonials)
-9. [FAQ Section](#9-faq-section)
-10. [Final CTA Banner](#10-final-cta-banner)
-11. [Footer](#11-footer)
+7. [Testimonials](#7-testimonials)
+8. [FAQ Section](#8-faq-section)
+9. [Final CTA Banner](#9-final-cta-banner)
+10. [Footer](#10-footer)
 
 ---
 
@@ -33,7 +32,7 @@ Sticky top navigation bar — stays visible while scrolling.
 ### Layout
 
 ```
-[Logo + Teamority]          Features  Pricing  Help      [Sign In]  [Get Started →]
+[Logo + Teamority]          Features  Help      [Sign In]  [Get Started →]
 ```
 
 ### Elements
@@ -42,7 +41,6 @@ Sticky top navigation bar — stays visible while scrolling.
 |---------|-------------|
 | Logo | Teamority logo + wordmark — links to `/` |
 | Features | Anchor link → scrolls to Features section |
-| Pricing | Anchor link → scrolls to Pricing section |
 | Help | Links to `/help` (Help Center) |
 | Sign In | Link to `/sign-in` |
 | Get Started | Primary CTA button → `/sign-up` |
@@ -51,7 +49,7 @@ Sticky top navigation bar — stays visible while scrolling.
 
 - **Transparent** background at top of page, transitions to a solid white / dark background with a shadow after scrolling 60px
 - On mobile: collapses into a hamburger menu (`☰`)
-- Mobile menu shows: Features, Pricing, Help, Sign In, Get Started
+- Mobile menu shows: Features, Help, Sign In, Get Started
 
 ---
 
@@ -238,60 +236,7 @@ List View: Tasks as rows with inline fields — sort, filter, and edit without l
 
 ---
 
-## 7. Pricing Section
-
-The pricing section is **fetched from the API** at runtime — not hardcoded. See [Plans & Pricing](./plans-and-pricing.md) for the full pricing spec.
-
-### Layout
-
-```
-         Simple, transparent pricing
-
-         [Monthly ●────── Annual  Save 20%]   ← toggle
-
-┌──────────────┐  ┌────────────────────┐  ┌──────────────┐
-│     Free     │  │    ★ Pro           │  │   Business   │
-│              │  │   Most Popular     │  │              │
-│    $0/mo     │  │   $12/mo           │  │   $29/mo     │
-│  Free forever│  │  Billed monthly    │  │  Billed mthly│
-│              │  │                    │  │              │
-│ ✅ 5 members │  │ ✅ 50 members      │  │ ✅ Unlimited │
-│ ✅ 3 Spaces  │  │ ✅ 20 Spaces       │  │ ✅ Unlimited │
-│ ✅ Board view│  │ ✅ Calendar view   │  │ ✅ All views │
-│ ❌ Sprints   │  │ ✅ Sprints         │  │ ✅ Sprints   │
-│ ❌ Recurring │  │ ✅ Recurring tasks │  │ ✅ All feat. │
-│              │  │                    │  │              │
-│ [Get Started]│  │ [Get Started]      │  │[Get Started] │
-└──────────────┘  └────────────────────┘  └──────────────┘
-
-         All plans include:
-  ✅ Unlimited tasks    ✅ File attachments
-  ✅ Comments & mentions  ✅ Global search
-  ✅ In-app notifications ✅ Customer support
-```
-
-### Behavior
-
-- **Monthly / Annual toggle** — switches all prices to annual monthly equivalent. Annual prices show savings badge (e.g. `"Save $24/year"`)
-- **Most Popular badge** — shown on the plan with `is_highlighted = true` in the DB
-- **CTA button** — label and action come from the plan config (`signup` → `/sign-up?plan=pro`, `contact_sales` → contact modal)
-- **Feature bullets** — pulled from `PlanBullet` DB table — fully managed from Admin Panel
-- **"All plans include" row** — static list of features included on every plan (configured in Admin Panel as well)
-- Pricing data fetched from `GET /api/plans` — updates instantly when admin changes pricing
-
-### Pricing FAQ
-
-Below the pricing cards — 5 common questions (managed from Admin Panel):
-
-- Can I switch plans later?
-- What happens when I reach a limit?
-- Is there a free trial?
-- Do you offer discounts for nonprofits or students?
-- Can I cancel anytime?
-
----
-
-## 8. Testimonials
+## 7. Testimonials
 
 Social proof from real users. Shown as cards.
 
@@ -320,9 +265,9 @@ Social proof from real users. Shown as cards.
 
 ---
 
-## 9. FAQ Section
+## 8. FAQ Section
 
-General product FAQs — not pricing-specific.
+General product FAQs.
 
 ### Layout
 
@@ -334,11 +279,12 @@ Accordion — click to expand each question.
 |----------|---------------|
 | What is Teamority? | A project management tool for teams of all sizes |
 | How is Teamority different from ClickUp / Asana? | Simpler by design, faster to get started, no feature bloat |
-| Can I use Teamority for free? | Yes — Free plan is free forever with no credit card required |
-| How many people can be on the Free plan? | Up to 5 members per workspace |
+| What is Teamority? | A project management tool for teams of all sizes |
+| How is Teamority different from ClickUp / Asana? | Simpler by design, faster to get started, open source |
+| Is Teamority free? | Yes — Teamority is fully free and open source |
 | Is my data secure? | Yes — data is encrypted at rest and in transit |
+| Can I self-host Teamority? | Yes — it is open source and can be self-hosted |
 | Can I import data from another tool? | Not yet — import is on the roadmap |
-| What happens if I go over my plan limits? | New actions are blocked with an upgrade prompt — existing data is never deleted |
 | Do you have a mobile app? | Not yet — the web app is mobile-friendly and works in all mobile browsers |
 
 - Accordion style — one open at a time
@@ -346,7 +292,7 @@ Accordion — click to expand each question.
 
 ---
 
-## 10. Final CTA Banner
+## 9. Final CTA Banner
 
 A strong closing call to action before the footer.
 
@@ -367,15 +313,15 @@ A strong closing call to action before the footer.
 | Element | Content |
 |---------|---------|
 | Headline | `"Ready to bring your team together?"` |
-| Subtext | `"Start for free — no credit card required."` |
-| CTA Button | `"Get Started for Free →"` → `/sign-up` |
+| Subtext | `"Free and open source — get started in minutes."` |
+| CTA Button | `"Get Started →"` → `/sign-up` |
 
 - Full-width section with a brand color background
 - High contrast button (white on brand color)
 
 ---
 
-## 11. Footer
+## 10. Footer
 
 ### Layout
 
@@ -384,7 +330,7 @@ A strong closing call to action before the footer.
 
 Product          Company          Support          Legal
 Features         About            Help Center      Privacy Policy
-Pricing          Blog             Contact Us       Terms of Service
+GitHub           Blog             Contact Us       Terms of Service
 Changelog        Careers          Status           Cookie Policy
 
 © 2026 Teamority. All rights reserved.     [Twitter] [GitHub] [LinkedIn]
@@ -394,7 +340,7 @@ Changelog        Careers          Status           Cookie Policy
 
 **Product:**
 - Features → `/#features`
-- Pricing → `/#pricing`
+- GitHub → link to GitHub repository
 - Changelog → `/changelog` (post-MVP)
 
 **Company:**
@@ -453,8 +399,6 @@ Changelog        Careers          Status           Cookie Policy
 | `cta_click_hero` | Hero "Get Started" button clicked |
 | `cta_click_nav` | Nav "Get Started" button clicked |
 | `cta_click_final` | Final CTA banner button clicked |
-| `pricing_toggle` | Monthly / Annual toggle switched |
-| `pricing_plan_click` | Plan CTA button clicked (with plan name as property) |
 | `view_tab_switch` | Views showcase tab switched |
 | `faq_expand` | FAQ accordion item opened |
 | `sign_in_click` | "Sign In" link clicked |
@@ -472,7 +416,6 @@ Changelog        Careers          Status           Cookie Policy
 | Lighthouse score | 90+ (Performance, Accessibility, SEO) |
 
 - Hero image / GIF must be optimized (Next.js `<Image>` component with `priority` flag)
-- Pricing section fetches plan data — show skeleton loader while fetching, no layout shift
 - All fonts preloaded
 - No blocking third-party scripts on initial paint
 
@@ -480,13 +423,10 @@ Changelog        Careers          Status           Cookie Policy
 
 ## Business Rules
 
-1. Pricing section data is fetched from `GET /api/plans` at runtime — never hardcoded. Admin changes reflect immediately.
-2. The landing page must be fully accessible to unauthenticated users — no auth check on any landing page route.
-3. If a logged-in user visits `/`, redirect them to `/` of their last active workspace (skip the landing page).
-4. Legal pages (`/privacy`, `/terms`, `/cookies`) must be live before public launch.
-5. All CTA buttons tracking analytics events — event fires before navigation (not after).
-6. Annual pricing toggle state is saved in `localStorage` — persists on refresh.
-7. The `/pricing` standalone page and the `/#pricing` section share the same component — single source of truth.
+1. The landing page must be fully accessible to unauthenticated users — no auth check on any landing page route.
+2. If a logged-in user visits `/`, redirect them to `/` of their last active workspace (skip the landing page).
+3. Legal pages (`/privacy`, `/terms`, `/cookies`) must be live before public launch.
+4. All CTA buttons track analytics events — event fires before navigation (not after).
 
 ---
 
