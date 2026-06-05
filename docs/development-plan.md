@@ -22,9 +22,9 @@ At the start of each phase, reference the relevant feature doc from the `docs/` 
 | Styling | Tailwind CSS |
 | UI Components | shadcn/ui |
 | State Management | Zustand (client state) + React Query / SWR (server state) |
-| File Storage | Cloudflare R2 |
-| Cache | Redis (Upstash) |
-| Email | Resend |
+| File Storage | S3-compatible (any provider) |
+| Cache | None (MVP) — Better Auth built-in rate limiting |
+| Email | SMTP (Nodemailer) |
 | Rich Text | Tiptap |
 
 ---
@@ -94,25 +94,28 @@ Phase 19 →  QA & Launch Prep
   DATABASE_URL=
   BETTER_AUTH_SECRET=
   BETTER_AUTH_URL=
-  GOOGLE_CLIENT_ID=
-  GOOGLE_CLIENT_SECRET=
-  GITHUB_CLIENT_ID=
-  GITHUB_CLIENT_SECRET=
-  RESEND_API_KEY=
-  R2_ACCOUNT_ID=
-  R2_ACCESS_KEY_ID=
-  R2_SECRET_ACCESS_KEY=
-  R2_BUCKET_NAME=
-  UPSTASH_REDIS_REST_URL=
-  UPSTASH_REDIS_REST_TOKEN=
+  SMTP_HOST=
+  SMTP_PORT=
+  SMTP_USER=
+  SMTP_PASSWORD=
+  SMTP_FROM=
+  S3_ENDPOINT=
+  S3_ACCESS_KEY_ID=
+  S3_SECRET_ACCESS_KEY=
+  S3_BUCKET_NAME=
+  S3_REGION=
   ```
 - [ ] Install Better Auth
   ```bash
   npm install better-auth
   ```
-- [ ] Install Resend for email
+- [ ] Install Nodemailer for SMTP email
   ```bash
-  npm install resend
+  npm install nodemailer @types/nodemailer
+  ```
+- [ ] Install pg-boss for background jobs
+  ```bash
+  npm install pg-boss
   ```
 - [ ] Install Tiptap for rich text
   ```bash
@@ -259,7 +262,7 @@ Phase 19 →  QA & Launch Prep
 
 ## Phase 3 — Authentication
 
-**Goal:** Users can sign up, sign in, sign out, verify email, and reset password. OAuth with Google and GitHub works.
+**Goal:** Users can sign up, sign in, sign out, verify email, and reset password. Magic link passwordless login works.
 
 **Reference doc:** [authentication.md](./authentication.md)
 
@@ -267,40 +270,33 @@ Phase 19 →  QA & Launch Prep
 
 **Better Auth setup:**
 - [ ] Configure Better Auth in `src/lib/auth.ts`
-  - Email + password provider
-  - Google OAuth provider
-  - GitHub OAuth provider
+  - Magic link provider (passwordless — sends a one-time sign-in link via email)
   - Admin Plugin
   - Prisma adapter
   - Session config (7-day TTL, 30-day with remember me)
 - [ ] Mount Better Auth handler at `src/app/api/auth/[...all]/route.ts`
-- [ ] Configure Resend as the email provider for Better Auth
+- [ ] Configure Nodemailer (SMTP) as the email provider for Better Auth
 
 **Pages:**
-- [ ] `/sign-up` — sign up form (name, email, password) + Google/GitHub buttons
-- [ ] `/sign-in` — sign in form (email, password, remember me) + Google/GitHub buttons
-- [ ] `/forgot-password` — email input form
-- [ ] `/reset-password` — new password + confirm password form (reads token from URL)
-- [ ] `/verify-email` — handles token from URL, shows success or expired error
+- [ ] `/sign-in` — email input form; user enters email and receives a magic link
+- [ ] `/magic-link` — handles token from URL, signs user in or shows expired error
+- [ ] `/verify-email` — handles email verification token (for new accounts)
 
 **Logic:**
-- [ ] Rate limiting on sign-in: 5 failed attempts per 15 min per IP + email (Upstash Redis)
-- [ ] Forgot password always returns same message regardless of email existence
-- [ ] On sign-up: send verification email via Resend
-- [ ] On password reset: revoke all sessions after password change
+- [ ] Rate limiting on magic link requests: rely on Better Auth's built-in rate limiting
+- [ ] Magic link valid for **15 minutes**, single-use, invalidated after click
+- [ ] If email is not registered: auto-create account on first magic link use (sign up = sign in)
+- [ ] On magic link use: revoke the token immediately after session creation
 - [ ] Redirect logged-in users away from auth pages → app
 - [ ] Protect all app routes — unauthenticated users redirected to `/sign-in`
 
-**Email templates (via Resend):**
-- [ ] Email verification email (link valid 24 hours)
-- [ ] Password reset email (link valid 1 hour, single-use)
-- [ ] Welcome email (after first successful sign up)
+**Email templates (via SMTP / Nodemailer):**
+- [ ] Magic link email (link valid 15 minutes)
+- [ ] Welcome email (after first successful sign in — new account created)
 
 **Account Settings (built here, used throughout):**
 - [ ] `/settings/account` — update name, avatar upload
 - [ ] `/settings/sessions` — view all active sessions, revoke individual, revoke all others
-- [ ] Change password form (requires current password)
-- [ ] Connected accounts (linked OAuth providers)
 
 **Avatar system (build once here, used everywhere — reference [avatar-system.md](./avatar-system.md)):**
 - [ ] `getInitials(fullName)` utility — first + last initial, max 2 chars, uppercased
@@ -314,7 +310,7 @@ Phase 19 →  QA & Launch Prep
 - [ ] System event avatar: Teamority logo mark for automated activity log entries
 - [ ] Delete account (with ownership transfer guard)
 
-**Done when:** A new user can fully sign up, verify email, sign in (email + OAuth), reset password, and sign out. All auth pages are styled consistently with the landing page.
+**Done when:** A new user can sign in via magic link (auto-creates account on first use), verify email, and sign out. All auth pages are styled consistently with the landing page.
 
 ---
 
@@ -788,7 +784,7 @@ Phase 19 →  QA & Launch Prep
 - [ ] Workspace invite
 
 **Email Notifications:**
-- [ ] Instant email via Resend on notification creation (if user preference = instant)
+- [ ] Instant email via SMTP (Nodemailer) on notification creation (if user preference = instant)
 - [ ] Daily digest email (cron job at configured time)
 - [ ] Skip digest if zero notifications
 - [ ] Unsubscribe link in every email
@@ -813,7 +809,7 @@ Phase 19 →  QA & Launch Prep
 - [ ] Cron: runs daily, finds tasks that became overdue → send reminders
 - [ ] Skip if task is already closed
 
-**Done when:** All notification triggers fire correctly, in-app bell shows unread count, email notifications send via Resend, browser push works after permission grant.
+**Done when:** All notification triggers fire correctly, in-app bell shows unread count, email notifications send via SMTP, browser push works after permission grant.
 
 ---
 
@@ -964,9 +960,8 @@ Phase 19 →  QA & Launch Prep
 - [ ] `/privacy` page live
 - [ ] `/terms` page live
 - [ ] `/cookies` page live
-- [ ] Email sender domain verified in Resend
-- [ ] OAuth apps configured with production redirect URIs (Google, GitHub)
-- [ ] R2 bucket configured for production
+- [ ] SMTP credentials configured and sending verified in production
+- [ ] S3-compatible bucket configured for production
 - [ ] Environment variables set in production
 - [ ] Error monitoring set up (Sentry or similar)
 - [ ] Create first platform admin account

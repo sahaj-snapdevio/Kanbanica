@@ -53,8 +53,12 @@ Workspace
     - New sprint starts in **Planned** status — it is NOT auto-started
   - **Auto-close current sprint when next sprint is created** (toggle — only visible when Auto-create is enabled, default: off)
     - When enabled: at the time the new sprint is auto-created, the current sprint is automatically closed
-    - Incomplete tasks are automatically moved to the **Backlog** (no manual decision prompt — since this is automated)
     - When disabled: current sprint remains Active even after the new sprint is created — user must close it manually
+  - **Incomplete task strategy** (dropdown — only visible when Auto-close is enabled, default: `move_to_backlog`)
+    - `Move to Backlog` — incomplete tasks are unassigned from the sprint and return to the List backlog
+    - `Move to Next Sprint` — incomplete tasks are automatically assigned to the newly created sprint. If no planned sprint exists at close time, falls back to Move to Backlog
+    - `Leave as-is` — incomplete tasks remain in the closed sprint for reference only (visible in Sprint History)
+    - This setting removes the guesswork from automated closes — teams configure their preferred strategy once upfront
 - On creation:
   - Sprint status is set to **Planned**
   - No tasks are added yet — tasks are added separately
@@ -211,6 +215,7 @@ Sprint
 ├── end_date                (date, required — calculated: start_date + duration_weeks * 7)
 ├── auto_create_next        (boolean, default: false)
 ├── auto_close_on_next      (boolean, default: false — only relevant when auto_create_next = true)
+├── auto_incomplete_strategy (enum: move_to_backlog | move_to_next_sprint | leave_as_is, default: move_to_backlog — only relevant when auto_close_on_next = true)
 ├── started_at              (timestamp, nullable — when sprint was manually started)
 ├── closed_at               (timestamp, nullable — when sprint was closed)
 ├── created_by              (foreign key → User)
@@ -303,10 +308,11 @@ TaskSprint
 9. Only Planned sprints can be deleted — Active and Closed sprints cannot be deleted.
 10. Sprint end date does not auto-close the sprint unless **Auto-close on next sprint** is enabled.
 11. When **Auto-create next sprint** is enabled, a new Planned sprint is created automatically when the end date is reached — it is never auto-started.
-12. When **Auto-close on next sprint** is enabled, incomplete tasks are moved to the Backlog automatically — no manual decision prompt since the action is automated.
-13. **Auto-close on next sprint** can only be enabled when **Auto-create next sprint** is also enabled — it has no meaning otherwise.
-14. Sprint History is read-only — no edits after closing.
-15. Sprints are scoped to a List — they cannot span multiple Lists.
+12. When **Auto-close on next sprint** is enabled, incomplete tasks are handled according to `auto_incomplete_strategy` — no manual decision prompt since the action is automated. Default strategy is `move_to_backlog`.
+13. If `auto_incomplete_strategy = move_to_next_sprint` but no planned sprint exists at close time, the system falls back to `move_to_backlog` and logs a warning in the activity feed: `"Sprint auto-closed — no planned sprint found, incomplete tasks moved to backlog instead."`
+14. **Auto-close on next sprint** can only be enabled when **Auto-create next sprint** is also enabled — it has no meaning otherwise.
+15. Sprint History is read-only — no edits after closing.
+16. Sprints are scoped to a List — they cannot span multiple Lists.
 
 ---
 

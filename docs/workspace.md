@@ -48,11 +48,9 @@ Workspace is the top-level container in Teamority. Every user belongs to at leas
 ### 3. Delete Workspace
 
 - Only **Owner** can delete a Workspace
-- Deleting a Workspace permanently removes:
-  - All Spaces, Folders, Lists, Tasks, Comments, Attachments
-  - All member associations
 - Requires confirmation (type workspace name to confirm)
 - Cannot be undone
+- **Deletion is asynchronous** — the API returns immediately with a `202 Accepted` response. The workspace is marked `status = deleting` and a background job handles the actual cascade deletion. See the Data Lifecycle section for details.
 
 ---
 
@@ -170,6 +168,7 @@ Workspace
 ├── logo_emoji          (string, nullable — single emoji character; used if logo_url is null)
 ├── invite_link_token   (string, unique, nullable — null means link is disabled)
 ├── task_seq            (integer, default: 0 — atomically incremented on each task creation, gives each task its #number)
+├── status              (enum: active | deleting, default: active — set to deleting on deletion confirm, background job does the rest)
 ├── created_by          (user_id, foreign key)
 ├── created_at          (timestamp)
 └── updated_at          (timestamp)
@@ -228,31 +227,42 @@ WorkspaceMember
 - Workspaces cannot be archived — only deleted or kept active.
 - Individual Spaces, Folders, Lists, and Tasks within the workspace can be archived independently.
 
-### Soft Delete
-- Workspace deletion is a **hard delete** — there is no soft delete or tombstone.
-- All child data (Spaces, Folders, Lists, Tasks, Comments, Attachments, Members) is permanently removed immediately.
+### Soft Delete / Async Deletion Pattern
+
+Workspace deletion is **not synchronous** — a large workspace can contain thousands of tasks and attachments. Deleting everything in a single API request would exceed serverless execution timeouts (Vercel default: 15s) and risk orphaning files in R2 if the DB deletion succeeds but the R2 call fails.
+
+**Deletion flow:**
+1. Owner confirms deletion (types workspace name)
+2. API call: workspace `status` is set to `deleting` — returns `202 Accepted` immediately
+3. The workspace is immediately hidden from all members' workspace switchers
+4. A background job (cron) picks up all workspaces with `status = deleting` and performs the full cascade:
+   - Delete R2 files in chunks (attachments, avatars) — retries on failure
+   - Delete DB child records in dependency order (TaskAttachment → Task → List → Space → Workspace)
+5. On completion: send confirmation email to Owner
+
+**Why this matters:** If R2 deletion runs before DB deletion and the job crashes, file references still exist in DB — recoverable. If DB deletes first and R2 crashes, files are orphaned forever — expensive and unrecoverable. Always delete storage last.
 
 ### Recovery Period
 - There is **no recovery period** for a deleted Workspace.
-- Once deletion is confirmed, all data is gone permanently.
+- Once the Owner confirms, deletion begins immediately and cannot be stopped.
 - **Best practice before deleting:** Advise users to export any important data manually. (Data export is a post-MVP feature.)
 
 ### Permanent Deletion Rules
 - Only the **Owner** can delete a Workspace.
 - Requires typing the Workspace name to confirm — prevents accidental deletion.
-- On deletion, the following are permanently removed in cascade:
+- Workspace `status` is set to `deleting` on confirm — the background job then permanently removes in cascade:
   - All Spaces (public and private)
   - All Folders, Lists, ListStatuses
   - All Tasks, Subtasks, Checklists, ChecklistItems
   - All Comments (including soft-deleted comment tombstones)
-  - All Attachments (DB records + files deleted from S3/R2)
+  - All Attachments — **R2 files deleted before DB records**
   - All ActivityLog entries
   - All Notifications scoped to this workspace
   - All SpaceMember, WorkspaceMember records
   - All SavedFilters, UserListViewPreferences scoped to this workspace
   - All Sprints and TaskSprint records
-- The Workspace record itself is deleted (no tombstone kept).
-- A confirmation email is sent to the Owner after deletion.
+- The Workspace record itself is deleted last.
+- A confirmation email is sent to the Owner after the background job completes.
 - The deletion event is logged in `PlatformAuditLog` (platform-level — survives workspace deletion).
 
 ---

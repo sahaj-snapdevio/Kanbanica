@@ -6,6 +6,11 @@ Authentication handles user identity — who you are, how you prove it, and how 
 
 **Powered by:** [Better Auth](https://better-auth.com)
 
+**Auth method: Magic Link (passwordless)**
+- User enters their email address → receives a one-time sign-in link → clicks it → session created
+- No passwords to remember or manage
+- First-time use automatically creates an account (sign up and sign in are the same flow)
+
 **Why Better Auth:**
 - Built specifically for Next.js (API Routes + Server Actions)
 - Database-backed sessions (more secure than stateless JWT)
@@ -18,162 +23,51 @@ Authentication handles user identity — who you are, how you prove it, and how 
 
 | Flow | Description |
 |------|-------------|
-| Sign Up | New user creates an account with email + password |
-| Sign In | Existing user logs in with email + password or OAuth |
-| OAuth | Sign in / sign up via Google or GitHub |
-| Email Verification | Verify email after sign up before accessing the app |
-| Forgot Password | Request a password reset link via email |
-| Reset Password | Set a new password via the reset link |
+| Sign In / Sign Up | User enters email → receives magic link → clicks link → session created (account auto-created on first use) |
+| Email Verification | Email is considered verified on first successful magic link use |
 | Sign Out | End the current session |
 | Session Management | View and revoke active sessions across devices |
 
 ---
 
-## 1. Sign Up (Email + Password)
+## 1. Sign In / Sign Up (Magic Link)
 
 ### Flow
 
-1. User visits `/sign-up`
-2. Fills in:
-   - Full Name (required)
-   - Email Address (required)
-   - Password (required — min 8 characters, at least one number)
-3. Submits form
-4. Better Auth creates the user record and a session
-5. Verification email is sent to the provided email address
-6. User is redirected to `/onboarding` (Create Workspace step)
-7. A banner is shown: `"Please verify your email. Check your inbox."` — app is accessible but limited until verified
+1. User visits `/sign-in`
+2. Enters their email address
+3. Clicks `"Send Sign-In Link"`
+4. Always shows: `"If this email is valid, a sign-in link has been sent."` — same message regardless of whether the email exists (prevents account enumeration)
+5. Better Auth sends a magic link email via SMTP
+6. User clicks the link → `GET /api/auth/magic-link/verify?token=:token`
+7. Better Auth validates the token:
+   - **New user** (email not in DB): account is auto-created, user is redirected to `/onboarding`
+   - **Existing user**: session is created, user is redirected to the app (last active workspace or workspace switcher)
+8. On expired/invalid token: `"This link has expired or has already been used. Request a new one."` with a button to go back to `/sign-in`
+
+### Magic link rules
+
+- Link is valid for **15 minutes**
+- Link is **single-use** — invalidated immediately after the session is created
+- If the user requests another link before the first expires, the old link is invalidated
+- Rate limited: max **5 magic link requests** per email per 15 minutes (Better Auth built-in)
+
+### Account auto-creation on first use
+
+When a magic link is used and no account exists for that email:
+- A `User` record is created with the provided email
+- `email_verified` is set to `true` (magic link itself proves email ownership)
+- User is redirected to `/onboarding` to complete workspace setup
 
 ### Validation
 
 | Field | Rules |
 |-------|-------|
-| Full Name | Required, 2–100 characters |
-| Email | Required, valid email format, must be unique |
-| Password | Required, minimum 8 characters, at least one letter and one number |
-
-### On duplicate email
-
-- If the email is already registered: `"An account with this email already exists. Sign in instead?"`
-- If the email is registered via OAuth: `"This email is linked to a Google / GitHub account. Sign in with Google / GitHub instead."`
+| Email | Required, valid email format |
 
 ---
 
-## 2. Sign In (Email + Password)
-
-### Flow
-
-1. User visits `/sign-in`
-2. Enters email + password
-3. Better Auth verifies credentials
-4. On success: session is created, user is redirected to `/` (last visited workspace or workspace switcher)
-5. On failure: `"Invalid email or password."` — generic message (do not reveal which field is wrong)
-
-### Rate limiting
-
-- Max **5 failed attempts** per email per 15 minutes
-- After 5 failures: `"Too many login attempts. Please try again in 15 minutes."`
-- Rate limit is per IP + per email to prevent brute force
-
-### Remember me
-
-- Default session duration: **7 days**
-- `"Remember me"` checkbox → extends session to **30 days**
-- Session is refreshed on each active use (sliding expiry)
-
----
-
-## 3. OAuth — Google & GitHub
-
-Users can sign up or sign in using their Google or GitHub account. No password needed.
-
-### Flow
-
-1. User clicks `"Continue with Google"` or `"Continue with GitHub"` on sign-in or sign-up page
-2. Browser redirects to Google / GitHub OAuth consent screen
-3. User approves → redirected back to `/api/auth/callback/:provider`
-4. Better Auth handles the callback:
-   - **New user** (email not in DB): account is auto-created, user goes to `/onboarding`
-   - **Existing user** (email matches): session is created, user is redirected to the app
-   - **Email conflict** (email exists with password): accounts are linked automatically — user can now use both password and OAuth to sign in
-5. No email verification required for OAuth accounts (email is already verified by Google / GitHub)
-
-### OAuth providers (MVP)
-
-| Provider | Scope requested |
-|----------|----------------|
-| Google | `email`, `profile` |
-| GitHub | `user:email` |
-
-### OAuth button labels
-
-- Sign up page: `"Continue with Google"` / `"Continue with GitHub"`
-- Sign in page: same labels — Better Auth handles new vs existing automatically
-
----
-
-## 4. Email Verification
-
-Every user who signs up with email + password must verify their email address.
-
-### Flow
-
-1. After sign up, a verification email is sent with a **secure token link** valid for **24 hours**
-2. User clicks the link → `GET /api/auth/verify-email?token=:token`
-3. Better Auth validates the token
-4. On success: email is marked as verified, user is redirected to the app with a success toast
-5. On expired/invalid token: `"This link has expired. Request a new verification email."`
-
-### Unverified user restrictions
-
-- Can access the app and complete onboarding
-- Cannot invite members to their workspace until verified
-- A persistent banner is shown: `"Please verify your email to unlock all features. Resend email →"`
-
-### Resend verification email
-
-- Available from the banner or `/settings/account`
-- Rate limited: max **3 resend requests** per hour per user
-
----
-
-## 5. Forgot Password
-
-### Flow
-
-1. User visits `/forgot-password`
-2. Enters their email address
-3. Clicks `"Send Reset Link"`
-4. **Always shows:** `"If an account exists with this email, a reset link has been sent."` — same message regardless of whether the email exists (prevents email enumeration)
-5. If the email exists: a password reset email is sent with a **secure token link** valid for **1 hour**
-6. User clicks the link → `/reset-password?token=:token`
-7. Enters new password + confirm password
-8. On success: password is updated, all existing sessions are **revoked**, user is redirected to `/sign-in` with a success message
-
-### Security rules
-
-- Reset token is **single-use** — invalidated immediately after use
-- Reset token expires in **1 hour**
-- Changing password revokes all active sessions (forces re-login on all devices)
-
----
-
-## 6. Reset Password
-
-### Flow (from reset link)
-
-1. User clicks the reset link from their email
-2. Redirected to `/reset-password?token=:token`
-3. Better Auth validates the token silently
-4. If invalid/expired: redirect to `/forgot-password` with: `"This reset link has expired. Request a new one."`
-5. If valid: show the reset password form
-   - New Password (required, same rules as sign up)
-   - Confirm Password (must match)
-6. On submit: password updated, all sessions revoked, redirect to `/sign-in`
-
----
-
-## 7. Sign Out
+## 2. Sign Out
 
 ### Single device sign out
 
@@ -190,7 +84,7 @@ Every user who signs up with email + password must verify their email address.
 
 ---
 
-## 8. Session Management
+## 3. Session Management
 
 Users can view and manage all active sessions on their account.
 
@@ -217,13 +111,13 @@ Each active session shows:
 ### Session rules
 
 - Database-backed sessions (stored in `Session` table via Better Auth)
-- Default TTL: 7 days (30 days with Remember Me)
-- Sessions are refreshed (TTL reset) on each authenticated request
+- Default TTL: **7 days** (no "remember me" needed — magic link is already low friction)
+- Sessions use sliding expiry — TTL resets on each authenticated request
 - A banned user's sessions are all revoked immediately by Better Auth Admin Plugin
 
 ---
 
-## 9. Account Settings
+## 4. Account Settings
 
 Available at `/settings/account`
 
@@ -236,30 +130,27 @@ Available at `/settings/account`
   - See [avatar-system.md](./avatar-system.md) for the full avatar spec (sizes, color palette, stacking, greyed-out state, workspace avatars)
 - Email address (read-only — cannot be changed in MVP)
 
-### Password
-
-- Change password (requires current password)
-- Changing password revokes all other sessions
-
-### Connected Accounts
-
-- Shows which OAuth providers are linked (Google, GitHub)
-- Link a new provider (if signed up via email, user can add Google/GitHub)
-- Unlink a provider (only if the account has a password set — cannot unlink if it is the only auth method)
-
 ### Danger Zone
 
 - Delete Account
   - Permanently deletes the user's account and all personal data
-  - If the user is the **Owner** of any workspace:
-    - Must transfer ownership first before deleting account
-    - Shown: `"You are the Owner of X workspace(s). Transfer ownership before deleting your account."`
-  - If not an owner: account is deleted immediately
   - Requires typing email address to confirm
+  - **If the user is the Owner of a workspace with other members:**
+    - Must transfer ownership first — account deletion is blocked
+    - Shown: `"You are the Owner of [Workspace Name]. Transfer ownership to another member before deleting your account."`
+    - One prompt per workspace if they own multiple
+  - **If the user is the Owner and the sole member of a workspace:**
+    - No other member to transfer to — workspace is automatically deleted along with the account
+    - Shown: `"Deleting your account will also permanently delete [Workspace Name] and all its data. This cannot be undone."`
+    - User must confirm this explicitly before proceeding
+    - The cascade deletion follows the same rules as a manual workspace deletion
+  - **If the user is not an owner of any workspace:**
+    - Account is deleted immediately
+    - Their task assignments, comments, and activity log entries are attributed to `"Deleted User"`
 
 ---
 
-## 10. Better Auth — Admin Plugin Features
+## 5. Better Auth — Admin Plugin Features
 
 The Better Auth Admin Plugin gives platform admins additional capabilities managed via the Admin Panel:
 
@@ -277,7 +168,7 @@ These are accessed via the Admin Panel — not exposed to customers.
 
 ## Onboarding Flow (post-auth)
 
-After a new user successfully authenticates (sign up or first OAuth login), they go through a guided onboarding:
+After a new user successfully authenticates for the first time, they go through a guided onboarding:
 
 ```
 Step 1: Create Workspace
@@ -307,7 +198,7 @@ User
 ├── id                  (uuid, primary key)
 ├── name                (string)
 ├── email               (string, unique)
-├── email_verified      (boolean, default: false)
+├── email_verified      (boolean, default: false — set to true on first magic link use)
 ├── image               (string — avatar URL, nullable)
 ├── is_platform_admin   (boolean, default: false)  ← custom field added by us
 ├── banned              (boolean, default: false)   ← managed by Admin Plugin
@@ -329,17 +220,16 @@ Session
 Account
 ├── id                  (uuid, primary key)
 ├── user_id             (foreign key → User)
-├── provider            (string — "credential" | "google" | "github")
-├── provider_account_id (string — provider's user ID for OAuth)
-├── password            (string, nullable — hashed, only for credential accounts)
+├── provider            (string — "magic-link")
+├── provider_account_id (string — the user's email)
 ├── created_at          (timestamp)
 └── updated_at          (timestamp)
 
 Verification
 ├── id                  (uuid, primary key)
-├── identifier          (string — email or user ID)
-├── value               (string — hashed token)
-├── expires_at          (timestamp)
+├── identifier          (string — email address)
+├── value               (string — hashed magic link token)
+├── expires_at          (timestamp — 15 minutes from creation)
 └── created_at          (timestamp)
 ```
 
@@ -351,16 +241,9 @@ Better Auth exposes a unified handler at `/api/auth/[...all]` in Next.js. These 
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/auth/sign-up/email` | Register with email + password |
-| POST | `/api/auth/sign-in/email` | Sign in with email + password |
-| GET | `/api/auth/sign-in/social?provider=google` | Initiate Google OAuth |
-| GET | `/api/auth/sign-in/social?provider=github` | Initiate GitHub OAuth |
-| GET | `/api/auth/callback/:provider` | OAuth callback handler |
+| POST | `/api/auth/magic-link/send` | Request a magic link for an email address |
+| GET | `/api/auth/magic-link/verify?token=` | Verify magic link token, create session |
 | POST | `/api/auth/sign-out` | Sign out current session |
-| POST | `/api/auth/forget-password` | Request password reset email |
-| POST | `/api/auth/reset-password` | Reset password with token |
-| GET | `/api/auth/verify-email?token=` | Verify email address |
-| POST | `/api/auth/send-verification-email` | Resend verification email |
 | GET | `/api/auth/get-session` | Get current session + user |
 | GET | `/api/auth/list-sessions` | List all active sessions for current user |
 | POST | `/api/auth/revoke-session` | Revoke a specific session |
@@ -372,12 +255,10 @@ Better Auth exposes a unified handler at `/api/auth/[...all]` in Next.js. These 
 
 | Screen | Route | Access |
 |--------|-------|--------|
-| Sign Up | `/sign-up` | Unauthenticated |
 | Sign In | `/sign-in` | Unauthenticated |
-| Forgot Password | `/forgot-password` | Unauthenticated |
-| Reset Password | `/reset-password?token=` | Unauthenticated |
-| Email Verification | `/verify-email?token=` | Unauthenticated |
-| Onboarding | `/onboarding` | Authenticated (new user) |
+| Magic Link Sent | `/sign-in?sent=true` | Unauthenticated (shown after requesting link) |
+| Magic Link Verify | `/api/auth/magic-link/verify?token=` | Unauthenticated (handled by Better Auth) |
+| Onboarding | `/onboarding` | Authenticated (new user only) |
 | Account Settings | `/settings/account` | Authenticated |
 | Session Management | `/settings/sessions` | Authenticated |
 
@@ -387,13 +268,13 @@ Better Auth exposes a unified handler at `/api/auth/[...all]` in Next.js. These 
 
 | Concern | Mitigation |
 |---------|-----------|
-| Brute force login | Rate limit: 5 attempts per 15 min per IP + email |
-| Password enumeration | Forgot password always shows the same message |
+| Magic link abuse | Rate limit: 5 requests per 15 min per email (Better Auth built-in) |
+| Email enumeration | Magic link request always shows the same response message |
 | Session hijacking | Database-backed sessions; token hashed in DB |
 | CSRF | Better Auth handles CSRF protection on all POST routes |
-| Token reuse | Reset + verification tokens are single-use, invalidated on use |
-| Password change | Revokes all sessions to force re-login on all devices |
-| Banned users | Sessions revoked immediately on ban |
+| Token reuse | Magic link tokens are single-use, invalidated immediately on use |
+| Token expiry | Magic links expire in 15 minutes |
+| Banned users | Sessions revoked immediately on ban; cannot request new magic link |
 | Impersonation | Logged in `PlatformAuditLog`; impersonated session marked with `impersonated_by` |
 | Account deletion | Requires email confirmation; workspace ownership must be transferred first |
 
@@ -403,7 +284,7 @@ Better Auth exposes a unified handler at `/api/auth/[...all]` in Next.js. These 
 
 ### Archive
 - User accounts cannot be archived — they are either active, banned, or deleted.
-- **Banned** users are the functional equivalent of a suspended/soft-disabled state — account exists but cannot authenticate.
+- **Banned** users are the functional equivalent of a suspended state — account exists but cannot authenticate.
 
 ### Soft Delete — User Account
 - User account deletion is a **hard delete** — no soft delete or tombstone on the User record.
@@ -414,10 +295,8 @@ Better Auth exposes a unified handler at `/api/auth/[...all]` in Next.js. These 
 
 | Token type | Expiry | Single-use | On expiry |
 |------------|--------|-----------|-----------|
-| Email verification | 24 hours | Yes — invalidated on use | Link shows "expired" error; user can request a new one |
-| Password reset | 1 hour | Yes — invalidated on use | Link shows "expired" error; user must request a new reset |
-| Session token | 7 days (30 days with Remember Me) | No — sliding expiry on each request | Session is invalidated; user redirected to sign-in |
-| OAuth state param | 10 minutes | Yes | OAuth flow fails; user retries |
+| Magic link | 15 minutes | Yes — invalidated on use | Link shows "expired" error; user requests a new one from `/sign-in` |
+| Session token | 7 days (sliding) | No — TTL resets on each request | Session is invalidated; user redirected to sign-in |
 
 ### Session Lifecycle
 - Sessions use **sliding expiry** — TTL resets on every authenticated request.
@@ -425,21 +304,20 @@ Better Auth exposes a unified handler at `/api/auth/[...all]` in Next.js. These 
   - User signs out (single session).
   - User revokes a session from settings.
   - User clicks "Sign out all devices".
-  - Password is changed (all sessions revoked immediately).
   - User is banned (all sessions revoked immediately by Admin Plugin).
   - Session TTL expires without activity.
 
 ### Recovery Period
 - **Banned user:** Recoverable — Admin can unban at any time. All user data is preserved during ban.
 - **Deleted user account:** No recovery. Hard delete is permanent and immediate.
-- **Expired token:** No recovery — user must request a new token (re-send verification email, re-initiate password reset).
-- **Expired session:** No recovery — user must sign in again.
+- **Expired magic link:** No recovery — user requests a new link from `/sign-in`.
+- **Expired session:** No recovery — user requests a new magic link to sign in again.
 
 ### Permanent Deletion Rules
 - On user account deletion, the following are permanently removed:
   - `User` record
   - All `Session` records for the user
-  - All `Account` records (OAuth links, credential record)
+  - All `Account` records
   - All `Verification` records for the user
   - All `WorkspaceMember` records (user removed from all workspaces)
   - All `SpaceMember` records
@@ -451,31 +329,30 @@ Better Auth exposes a unified handler at `/api/auth/[...all]` in Next.js. These 
   - Assignee references are set to `null` (unassigned)
   - Reporter reference is kept as the user ID (orphaned reference, shown as "Deleted User" in UI)
   - Comment `author_id` is kept (orphaned — shown as "Deleted User" in UI)
-- If the user was the **sole Owner** of a Workspace, deletion is blocked until ownership is transferred — the Workspace is not deleted automatically.
+- If the user was the **sole Owner** of a Workspace with other members, deletion is blocked until ownership is transferred.
+- If the user was the **sole Owner and sole member** of a Workspace, the workspace is auto-deleted along with the account after explicit confirmation.
 
 ---
 
 ## Business Rules
 
 1. Email addresses are unique across the platform — one account per email.
-2. OAuth accounts do not require email verification — the OAuth provider has already verified it.
-3. If a user signs up via email and later signs in via Google with the same email, the accounts are linked — not duplicated.
-4. A banned user's sessions are revoked immediately — they cannot re-authenticate until unbanned.
-5. Password reset invalidates all existing sessions — the user must log in again on all devices.
-6. Reset tokens and verification tokens are single-use and expire (1 hour for reset, 24 hours for verification).
-7. A user cannot delete their account if they are the sole Owner of any workspace — ownership must be transferred first.
-8. Verification email resends are rate-limited to 3 per hour to prevent email abuse.
-9. Forgot password always returns the same response message regardless of whether the email exists — prevents account enumeration.
-10. Sessions use sliding expiry — TTL is reset on each authenticated request, keeping active users logged in.
+2. Magic link is the only authentication method — no passwords, no OAuth providers.
+3. First magic link use for an unknown email auto-creates the account — sign up and sign in are the same flow.
+4. Magic link tokens are single-use and expire in 15 minutes — a used or expired link cannot be re-used.
+5. If a new magic link is requested while a previous one is still valid, the old token is invalidated.
+6. A banned user's sessions are revoked immediately — they cannot request a new magic link until unbanned.
+7. Magic link requests always return the same response message regardless of whether the email is registered — prevents account enumeration.
+8. A user cannot delete their account if they are the sole Owner of a workspace with other members — ownership must be transferred first.
+9. Sessions use sliding expiry — TTL is reset on each authenticated request, keeping active users logged in.
+10. Magic link requests are rate-limited to 5 per email per 15 minutes to prevent abuse.
 
 ---
 
 ## Out of Scope (MVP)
 
-- Two-factor authentication (2FA / TOTP)
-- Magic link sign in (passwordless email link)
-- SSO / SAML (enterprise identity providers)
-- Passkeys / WebAuthn
-- Workspace-level forced 2FA enforcement
-- Email address change (post-MVP — requires re-verification flow)
-- Account merge (multiple accounts with different emails)
+- Password-based authentication
+- OAuth (Google, GitHub, etc.) — can be added post-MVP if there is user demand
+- Two-factor authentication (2FA)
+- SSO / SAML
+- Account email change

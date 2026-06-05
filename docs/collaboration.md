@@ -281,12 +281,12 @@ Files uploaded directly to a task to share designs, documents, screenshots, or a
 
 - Uploader can delete their own attachment
 - Members with Full Access, Admin, Owner can delete any attachment
-- Deletion removes the DB record and the file from storage (S3 / Cloudflare R2)
+- Deletion removes the DB record and the file from storage (S3-compatible storage)
 - Deletion is recorded in the Activity Log
 
 ### Storage
 
-- Files stored in **S3 / Cloudflare R2**
+- Files stored in **S3-compatible storage**
 - Each file gets a unique, signed URL for access
 - URLs are not publicly accessible — require authenticated session to view
 

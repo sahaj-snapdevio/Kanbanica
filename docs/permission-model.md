@@ -89,7 +89,8 @@ Each user gets a Space Permission level when added to a Space. This controls eve
 
 | How user is added | Default Space Permission |
 |------------------|--------------------------|
-| Added explicitly by Full Access / Admin | Set by the person adding them |
+| Added explicitly by Full Access / Admin (Member role) | Set by the person adding them (Full Access / Edit / View) |
+| Added explicitly by Full Access / Admin (Guest role) | Set by the person adding them — **Edit or View only** (Full Access blocked) |
 | Public Space — workspace Member joins | View |
 | Admin added to a Space | Full Access |
 | Owner accessing any Space | Full Access (implicit, always) |
@@ -210,7 +211,9 @@ Guests are the most restricted role. They are designed for external collaborator
 | Other Spaces | Do not appear in sidebar — completely invisible |
 | Navigation | Can only navigate within their invited Spaces |
 | Invitation | Must be invited to a Space by a Full Access member, Admin, or Owner |
-| Space Permission | Gets whatever permission level they are assigned on invite (Full Access / Edit / View) |
+| Space Permission | **Maximum permission level is `Edit`** — Guests cannot be assigned `Full Access` on any Space |
+
+> **Why Guests cannot have Full Access:** Full Access includes `Manage Space Members (add, change permission, remove)`. A Guest cannot see the workspace member list, so they have no pool of users to add — creating a functional deadlock. More critically, a Guest with Full Access could invite other external users or remove internal members — a security privilege escalation risk. The server enforces this: any attempt to assign `full_access` to a `guest` role user is rejected with `403 Forbidden`.
 
 ---
 
@@ -252,6 +255,14 @@ function canPerformAction(user, action, entity):
 
   5. Check action against SpacePermission capability matrix:
        → allow or deny accordingly
+
+function canAssignSpacePermission(actor, targetUser, permission):
+
+  1. If targetUser.workspaceRole == GUEST and permission == FULL_ACCESS:
+       → deny with 403 — Guests cannot hold Full Access on any Space
+       → message: "Guests can only be assigned Edit or View access"
+
+  2. Otherwise proceed with normal permission checks
 ```
 
 All permission checks happen **server-side on every request**. The frontend hides UI elements based on permissions as a UX convenience only — the backend is the source of truth.

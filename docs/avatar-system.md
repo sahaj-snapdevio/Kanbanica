@@ -13,8 +13,7 @@ Every user and workspace in Teamority is represented visually with an avatar. Av
 | Priority | State | What is shown |
 |----------|-------|---------------|
 | 1st | Uploaded photo | The user's uploaded image, cropped to a circle |
-| 2nd | OAuth profile photo | Photo pulled from Google or GitHub on first OAuth login (stored in `User.image`) |
-| 3rd | Initials fallback | Generated from the user's name with a deterministic background color |
+| 2nd | Initials fallback | Generated from the user's name with a deterministic background color |
 
 The initials fallback is **always** available — it requires no upload and no external service.
 
@@ -208,20 +207,9 @@ Activity log entries and notifications triggered by the system (not by a specifi
 | Accepted formats | JPEG, PNG, WebP, GIF (static only — no animated GIFs) |
 | Max file size | 2 MB |
 | Min dimensions | 100×100 px |
-| Storage | Cloudflare R2 — same bucket as task attachments, under `/avatars/` prefix |
+| Storage | S3-compatible storage — same bucket as task attachments, under `/avatars/` prefix |
 | Processing | Resized server-side to max 256×256 px before storing — no oversized originals kept |
-| Old avatar | Previous avatar file is deleted from R2 when a new one is uploaded |
-
----
-
-## 10. OAuth photo handling
-
-When a user signs up via Google or GitHub:
-
-- Their profile photo URL is fetched from the OAuth provider and stored in `User.image`
-- The URL is stored as-is (provider-hosted) — not downloaded and re-hosted in R2
-- If the provider photo URL expires or becomes unavailable, the initials fallback is shown automatically (no error state)
-- User can always override by uploading their own photo in account settings — this sets `User.image` to the R2 URL and the provider URL is no longer used
+| Old avatar | Previous avatar file is deleted from S3 storage when a new one is uploaded |
 
 ---
 
@@ -233,12 +221,12 @@ No new tables needed — avatar data lives on existing models:
 User
 ├── ...
 ├── name      (string — used for initials generation)
-├── image     (string, nullable — R2 URL if uploaded, OAuth URL if from provider, null = use initials)
+├── image     (string, nullable — S3 URL if uploaded, null = use initials fallback)
 └── ...
 
 Workspace
 ├── ...
-├── logo_url  (string, nullable — R2 URL or null = use initials fallback)
+├── logo_url  (string, nullable — S3 URL or null = use initials fallback)
 ├── logo_emoji (string, nullable — single emoji character, used if set instead of logo_url)
 └── ...
 ```
@@ -278,8 +266,7 @@ Workspace
 3. The same color palette and hash function must be used on both client and server to ensure consistent rendering.
 4. Workspace avatars use a rounded square shape; user avatars use a full circle — this distinction is consistent everywhere.
 5. Uploaded avatars are resized server-side to max 256×256 px before storage — raw originals are never kept.
-6. Old avatar files are deleted from R2 when replaced — no orphaned files accumulate.
-7. OAuth profile photos are stored as provider URLs, not re-hosted — if the URL breaks, the initials fallback activates automatically.
+6. Old avatar files are deleted from S3 storage when replaced — no orphaned files accumulate.
 8. Greyed-out avatars (removed members) preserve the original color and initials — they are just rendered at 40% opacity.
 9. `+N` overflow chips use a neutral grey, not a palette color — they are not avatars, they are counters.
 10. Animated GIFs are not accepted for avatar upload — static images only.

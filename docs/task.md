@@ -176,9 +176,10 @@ Clicking a task opens a side panel (or full-page modal) showing all fields.
   - **Blocked by** — this task cannot start until the linked task is done
   - **Blocking** — this task is blocking the linked task
 - Dependencies are visible in the Task detail panel
-- Circular dependencies are not allowed (A blocks B blocks A)
+- Circular dependencies are **not allowed** (A blocks B blocks A) — enforced at the API level
+- When adding a dependency, the server runs a **depth-first search (DFS)** traversal of the existing dependency graph. If the new link would create a cycle, the request is rejected with `400 Bad Request` and the message: `"Adding this dependency would create a circular reference"`
 - Cross-List dependencies within the same Workspace are allowed
-- No automatic enforcement in MVP — dependencies are informational only (no hard block on status change)
+- Dependencies are **informational only** with respect to status changes — a task marked as "blocked by" an incomplete task can still be moved to Done. No hard block on status transitions.
 
 ---
 
@@ -202,7 +203,7 @@ Clicking a task opens a side panel (or full-page modal) showing all fields.
 - Images are previewed inline in the task detail panel
 - Non-image files show as a file card with name, size, and download link
 - File size limit: **10MB per file** (MVP)
-- Files are stored in S3 / Cloudflare R2
+- Files are stored in S3-compatible storage
 
 ---
 
@@ -539,8 +540,8 @@ TaskDescriptionSnapshot
 8. A View-only member who is assigned a task can still only view it, not edit it.
 9. If an assigned member loses workspace access after assignment, their `TaskAssignee` record is preserved but their avatar is shown greyed out — admins can clean up the stale assignment.
 10. Task creator and all assignees are automatically added as Watchers on creation.
-11. Circular dependencies (A blocked by B, B blocked by A) are not allowed.
-12. Dependencies are informational only in MVP — they do not hard-block status changes.
+11. Circular dependencies (A blocked by B, B blocked by A) are enforced server-side — `POST /api/tasks/:id/dependencies` runs a DFS traversal and returns `400 Bad Request` if the new link creates a cycle. The check applies regardless of dependency direction ("blocked by" or "blocking").
+12. Dependencies are informational with respect to status changes — they do not hard-block task status transitions. A "blocked" task can still be marked Done. The enforcement at rule 11 applies only to dependency creation, not to status changes.
 13. Deleting a Task permanently deletes all its Subtasks, Comments, Attachments, Checklists, and ActivityLog entries.
 14. Archiving a Task does not archive its Subtasks — they must be archived individually or will appear as orphaned subtasks.
 15. When a recurring Task is closed, the new recurrence copy is created immediately with reset status and unchecked checklists. The new copy gets its own new `seq_number`.
