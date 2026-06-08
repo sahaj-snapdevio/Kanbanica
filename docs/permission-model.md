@@ -7,7 +7,7 @@ Teamority uses a **two-level permission system**:
 1. **Workspace Role** — controls what a user can do at the workspace level
 2. **Space Permission** — controls what a user can do inside a specific Space
 
-Everything below a Space (Folders, Lists, Tasks, Subtasks) inherits from the Space Permission. There are no separate permission settings for Lists, Tasks, or Subtasks.
+Everything below a Space (Lists, Tasks, Subtasks) inherits from the Space Permission. There are no separate permission settings for Lists, Tasks, or Subtasks.
 
 This keeps the model simple to understand, easy to manage, and straightforward to implement.
 
@@ -17,7 +17,7 @@ This keeps the model simple to understand, easy to manage, and straightforward t
 
 ```
 Workspace Role          →  governs workspace-level actions (members, settings, spaces)
-  └── Space Permission  →  governs everything inside a Space (folders, lists, tasks)
+  └── Space Permission  →  governs everything inside a Space (lists, tasks)
         └── List        →  inherits Space Permission (no override)
               └── Task  →  inherits Space Permission (no override)
                     └── Subtask  →  inherits Space Permission (no override)
@@ -37,8 +37,8 @@ Every user in a Workspace has exactly one Workspace Role. The role controls work
 
 | Role | Description |
 |------|-------------|
-| **Owner** | Full control over the workspace. Can manage everything including billing, deleting the workspace, and transferring ownership. Only one Owner per workspace. |
-| **Admin** | Can manage all members, create and delete Spaces, and access all workspace settings. Cannot delete the workspace or access billing. |
+| **Owner** | Full control over the workspace. Can manage everything including deleting the workspace and transferring ownership. Only one Owner per workspace. |
+| **Admin** | Can manage all members, create and delete Spaces, and access all workspace settings. Cannot delete the workspace. |
 | **Member** | Standard user. Can work inside Spaces they are given access to. Cannot manage workspace-level settings. |
 | **Guest** | External collaborator. Can only access Spaces they are explicitly invited to. Invisible to them: all other Spaces, workspace settings, and member lists. |
 
@@ -75,14 +75,14 @@ Every user in a Workspace has exactly one Workspace Role. The role controls work
 
 ## Level 2 — Space Permissions
 
-Each user gets a Space Permission level when added to a Space. This controls everything they can do inside that Space — Folders, Lists, Tasks, Subtasks, Comments.
+Each user gets a Space Permission level when added to a Space. This controls everything they can do inside that Space — Lists, Tasks, Subtasks, Comments.
 
 ### Permission Levels
 
 | Permission | Description |
 |-----------|-------------|
-| **Full Access** | Complete control — create, edit, delete tasks, lists, folders. Manage Space members and settings. |
-| **Edit** | Can create and edit tasks, comments, subtasks. Cannot delete tasks or manage Space structure (lists, folders, members). |
+| **Full Access** | Complete control — create, edit, delete tasks and lists. Manage Space members and settings. |
+| **Edit** | Can create and edit tasks, comments, subtasks. Cannot delete tasks or manage Space structure (lists, members). |
 | **View** | Read-only. Can view all tasks and comment. Cannot create, edit, or delete anything. |
 
 ### Default Space Permission for new members
@@ -109,14 +109,11 @@ Each user gets a Space Permission level when added to a Space. This controls eve
 | Archive Space | ✅ | ❌ | ❌ |
 | Delete Space | ❌ (Admin+ only) | ❌ | ❌ |
 | Manage Space Members (add, change permission, remove) | ✅ | ❌ | ❌ |
-| Create Folder | ✅ | ❌ | ❌ |
-| Edit Folder | ✅ | ❌ | ❌ |
-| Archive / Delete Folder | ✅ | ❌ | ❌ |
 | Create List | ✅ | ❌ | ❌ |
 | Edit List (name, color, description) | ✅ | ❌ | ❌ |
 | Customize List statuses | ✅ | ❌ | ❌ |
 | Archive / Delete List | ✅ | ❌ | ❌ |
-| Move List to another Folder or Space | ✅ | ❌ | ❌ |
+| Move List to another Space | ✅ | ❌ | ❌ |
 | Duplicate List | ✅ | ❌ | ❌ |
 
 ### Task & Subtask Actions

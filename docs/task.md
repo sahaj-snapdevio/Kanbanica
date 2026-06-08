@@ -12,8 +12,7 @@ Every task has a **human-readable ID** scoped to the workspace (e.g. `#1`, `#42`
 ```
 Workspace
   └── Space
-        └── Folder (optional)
-              └── List
+        └── List
                     └── Task       ← you are here
                           └── Subtask
 ```
@@ -259,7 +258,7 @@ Each entry shows: **who** did it, **what** changed, and **when** (timestamp).
 
 - Every task has a unique URL
 - `Copy Link` option available from task detail header and task card context menu (`...`)
-- Link format: `/workspace/:workspaceSlug/task/:taskId`
+- Link format: `/[workspaceId]/task/[taskId]`
 - Pasting the link in a comment or description creates a clickable task reference
 
 ---
@@ -284,24 +283,7 @@ Each entry shows: **who** did it, **what** changed, and **when** (timestamp).
 
 ---
 
-### 19. Recurring Tasks
-
-- A task can be set to recur on a schedule
-- Recurrence options:
-  - Daily
-  - Weekly (pick day of week)
-  - Monthly (pick day of month)
-  - Custom interval
-- When a recurring task is closed, a new copy is automatically created with:
-  - Same title, description, assignees, priority, tags
-  - New due date calculated from the recurrence schedule
-  - Status reset to first `open` status
-  - Empty checklist items (unchecked)
-- Original closed task is kept in history
-
----
-
-### 20. Bulk Actions
+### 19. Bulk Actions
 
 Bulk actions allow users to apply changes to multiple tasks simultaneously from List View or My Tasks.
 
@@ -364,7 +346,6 @@ Task
 ├── order_index         (integer — position in List)
 ├── is_archived         (boolean, default: false)
 ├── archived_at         (timestamp, nullable)
-├── recurrence_rule     (string — rrule format, nullable)
 ├── created_at          (timestamp)
 └── updated_at          (timestamp)
 
@@ -508,7 +489,6 @@ TaskDescriptionSnapshot
 ### Recovery Period
 - **Archived Task:** Recoverable at any time — no expiry.
 - **Deleted Task:** No recovery. Data is permanently gone immediately.
-- **Recurring Task:** When a recurring task is closed, the original is kept in history — only a new copy is created. The original is never deleted automatically.
 
 ### Permanent Deletion Rules
 - **Full Access, Admin, and Owner** can permanently delete a Task.
@@ -516,7 +496,7 @@ TaskDescriptionSnapshot
 - On deletion, the following are permanently removed in cascade:
   - All Subtasks (and their own comments, attachments, checklists)
   - All Checklists and ChecklistItems
-  - All TaskAttachments (DB records + files deleted from S3/R2)
+  - All TaskAttachments (DB records + files deleted from S3-compatible storage)
   - All Comments — soft-deleted tombstones are also hard-deleted at this point
   - All ActivityLog entries
   - All TaskAssignee, TaskWatcher, TaskTag, TaskDependency records
@@ -544,8 +524,7 @@ TaskDescriptionSnapshot
 12. Dependencies are informational with respect to status changes — they do not hard-block task status transitions. A "blocked" task can still be marked Done. The enforcement at rule 11 applies only to dependency creation, not to status changes.
 13. Deleting a Task permanently deletes all its Subtasks, Comments, Attachments, Checklists, and ActivityLog entries.
 14. Archiving a Task does not archive its Subtasks — they must be archived individually or will appear as orphaned subtasks.
-15. When a recurring Task is closed, the new recurrence copy is created immediately with reset status and unchecked checklists. The new copy gets its own new `seq_number`.
-16. File attachments are stored externally (S3/R2) — deleting an attachment removes the DB record and the file from storage.
+15. File attachments are stored externally (S3-compatible storage) — deleting an attachment removes the DB record and the file from storage.
 17. Tags are Workspace-scoped — the same tag can appear across multiple Spaces and Lists.
 18. Bulk actions apply permission checks per task — tasks the user lacks permission for are silently skipped. The response reports how many succeeded and how many were skipped.
 19. Bulk delete requires an explicit confirmation modal showing the exact count — there is no undo.
@@ -555,7 +534,8 @@ TaskDescriptionSnapshot
 
 ## Out of Scope (MVP)
 
-- Custom Fields (Text, Number, Dropdown, Date, Checkbox, URL) — post-MVP
+- Custom Fields (Text, Number, Dropdown, Date, Checkbox, URL)
+- Recurring Tasks (daily / weekly / monthly / custom) — requires pg-boss cron patterns and DST/skip-weekend edge cases
 - Task Templates
 - Email-to-task (create task by sending an email)
 - AI-generated task descriptions

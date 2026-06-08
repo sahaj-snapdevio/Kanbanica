@@ -12,8 +12,7 @@ Sprints are optional. Teams that do not follow agile methodology can ignore them
 ```
 Workspace
   └── Space
-        └── Folder (optional)
-              └── List
+        └── List
                     └── Sprint (optional)   ← you are here
                           └── Task (assigned to sprint)
 ```

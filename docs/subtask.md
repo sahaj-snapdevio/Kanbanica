@@ -10,8 +10,7 @@ A Subtask is a child Task nested directly under a parent Task. It breaks large t
 ```
 Workspace
   └── Space
-        └── Folder (optional)
-              └── List
+        └── List
                     └── Task
                           └── Subtask    ← you are here
 ```
@@ -142,7 +141,7 @@ Subtasks share the same fields as Tasks:
 ### 9. Open Subtask as Full Page
 
 - Subtasks can be opened in their own full detail panel (same as a regular Task)
-- URL: `/workspace/:workspaceSlug/task/:subtaskId`
+- URL: `/[workspaceId]/task/[subtaskId]`
 - Breadcrumb in the panel shows: `List › Parent Task › Subtask Title`
 
 ---

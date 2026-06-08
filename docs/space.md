@@ -2,7 +2,7 @@
 
 ## Overview
 
-A Space is the second level in the Teamority hierarchy, sitting directly inside a Workspace. Spaces represent teams, departments, or major areas of work. Everything inside a Space — Folders, Lists, Tasks — inherits its permission model.
+A Space is the second level in the Teamority hierarchy, sitting directly inside a Workspace. Spaces represent teams, departments, or major areas of work. Everything inside a Space — Lists, Tasks — inherits its permission model.
 
 **Real-world analogy:** A Space = a team or department. e.g. `Engineering`, `Marketing`, `Design`, `HR`
 
@@ -10,9 +10,8 @@ A Space is the second level in the Teamority hierarchy, sitting directly inside 
 ```
 Workspace
   └── Space      ← you are here
-        └── Folder (optional)
-              └── List
-                    └── Task
+        └── List
+              └── Task
 ```
 
 ---
@@ -22,7 +21,7 @@ Workspace
 - As an Admin, I want to create a Space for each team so work stays organized and separated.
 - As an Admin, I want to make a Space private so only invited members can see it.
 - As an Admin, I want to invite specific members to a Space and control what they can do.
-- As a Member with Full Access, I want to create Lists and Folders inside my Space.
+- As a Member with Full Access, I want to create Lists inside my Space.
 - As a Member with Edit access, I want to create and update tasks without being able to delete structure.
 - As a Member with View access, I want to read task progress and comment without making changes.
 - As any member, I want to archive a Space instead of deleting it so history is preserved.
@@ -76,7 +75,7 @@ Workspace
 
 - **Who can delete:** Owner, Admin only
 - Permanently deletes the Space and all its contents:
-  - Folders, Lists, Tasks, Subtasks, Comments, Attachments
+  - Lists, Tasks, Subtasks, Comments, Attachments
 - Requires confirmation (type Space name to confirm)
 - Cannot be undone
 - Recommended to Archive instead of Delete in most cases
@@ -100,7 +99,7 @@ Each Space has its own member list with a permission level per user.
 
 **Permission Levels:**
 
-| Permission | Create Task | Edit Task | Delete Task | Create List/Folder | Delete List/Folder | Manage Space Members | Comment |
+| Permission | Create Task | Edit Task | Delete Task | Create List | Delete List | Manage Space Members | Comment |
 |------------|-------------|-----------|-------------|-------------------|-------------------|---------------------|---------|
 | Full Access | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
 | Edit | Yes | Yes | No | No | No | No | Yes |
@@ -230,7 +229,7 @@ SpaceMember
 - Only **Admin and Owner** can permanently delete a Space.
 - Requires confirmation (button click — no name-typing required, unlike Workspace).
 - On deletion, the following are permanently removed in cascade:
-  - All Folders and Lists inside the Space
+  - All Lists inside the Space
   - All Tasks and Subtasks inside those Lists
   - All Checklists, ChecklistItems, TaskAttachments (DB + S3/R2 files)
   - All Comments (including soft-deleted tombstones)

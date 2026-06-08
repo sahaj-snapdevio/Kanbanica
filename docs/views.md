@@ -92,7 +92,7 @@ The default view for every List. Tasks are displayed as rows with key fields vis
 Available from the List toolbar (`···` overflow menu → `Close All Tasks`):
 
 ```
-List toolbar:  [ List ][ Board ][ Calendar ]  [+ Add Task]  [ Filter ]  [ ··· ▾ ]
+List toolbar:  [ List ][ Board ]  [+ Add Task]  [ Filter ]  [ ··· ▾ ]
                                                                           └─ Close All Tasks
                                                                           └─ Archive All Closed Tasks
 ```
@@ -173,57 +173,7 @@ A Kanban board where tasks are displayed as cards in columns, one column per sta
 
 ---
 
-## 3. Calendar View
-
-Tasks are placed on a calendar grid based on their due date. Useful for seeing what is due when across the month or week.
-
-### Layout
-
-```
-◀ May 2026                                              June 2026 ▶
-┌─────┬─────┬─────┬─────┬─────┬─────┬─────┐
-│ Mon │ Tue │ Wed │ Thu │ Fri │ Sat │ Sun │
-├─────┼─────┼─────┼─────┼─────┼─────┼─────┤
-│     │     │  3  │  4  │  5  │  6  │  7  │
-│     │     │[T1] │[T2] │[T3] │     │     │
-├─────┼─────┼─────┼─────┼─────┼─────┼─────┤
-│  8  │  9  │ 10  │ 11  │ 12  │ 13  │ 14  │
-│     │[T4] │     │[T5] │     │     │     │
-└─────┴─────┴─────┴─────┴─────┴─────┴─────┘
-```
-
-### Features
-
-**Calendar modes:**
-- Monthly view (default) — full month grid
-- Weekly view — 7-day horizontal strip with more vertical space per day
-
-**Task placement:**
-- Tasks with a single due date appear on that day
-- Tasks with a date range (start + end) appear as a spanning bar across the date range
-- Tasks with no due date are listed in an `Unscheduled` sidebar panel on the right
-
-**Task card on calendar:**
-- Shows: title, priority color dot, assignee avatar
-- Click to open Task detail panel
-
-**Drag and drop:**
-- Drag a task card to a different day to change its due date
-- Dragging a range task adjusts the end date (start date stays fixed)
-
-**Quick create:**
-- Click on a day cell → opens quick create with that date pre-filled as due date
-
-**Overdue:**
-- Past days with unclosed tasks are highlighted
-
-**Filters:**
-- Assignee filter — show only tasks assigned to selected users
-- Priority filter — show only selected priorities
-
----
-
-## 4. My Tasks View
+## 3. My Tasks View
 
 A personal, workspace-wide view showing all tasks and subtasks assigned to the currently logged-in user, across all Spaces and Lists they have access to.
 
@@ -301,7 +251,7 @@ My Tasks
 Every List has a view switcher in the toolbar (top of the List page):
 
 ```
-[ List ] [ Board ] [ Calendar ]
+[ List ] [ Board ]
 ```
 
 - Clicking a view tab switches to that view
@@ -319,7 +269,7 @@ UserListViewPreference
 ├── id                  (uuid, primary key)
 ├── user_id             (foreign key → User)
 ├── list_id             (foreign key → List)
-├── view_type           (enum: list | board | calendar)
+├── view_type           (enum: list | board)
 ├── column_config       (json — visible columns and order for List View)
 ├── group_by            (string, nullable — grouping preference)
 ├── sort_by             (string, nullable)
@@ -342,7 +292,6 @@ UserMyTasksPreference
 |--------|----------|-------------|--------|
 | GET | `/api/lists/:listId/tasks?view=list` | Get tasks for List View (with sort/filter/group params) | Space member |
 | GET | `/api/lists/:listId/tasks?view=board` | Get tasks grouped by status for Board View | Space member |
-| GET | `/api/lists/:listId/tasks?view=calendar&month=2026-06` | Get tasks with due dates for Calendar View | Space member |
 | GET | `/api/me/tasks` | Get all tasks assigned to current user (My Tasks) | Authenticated user |
 | PATCH | `/api/me/list-preferences/:listId` | Save view preference for a List | Authenticated user |
 | PATCH | `/api/me/my-tasks-preferences` | Save My Tasks grouping/filter preference | Authenticated user |
@@ -359,7 +308,6 @@ UserMyTasksPreference
 |--------|-------|--------|
 | List View | `/space/:spaceId/list/:listId?view=list` | Space member |
 | Board View | `/space/:spaceId/list/:listId?view=board` | Space member |
-| Calendar View | `/space/:spaceId/list/:listId?view=calendar` | Space member |
 | My Tasks | `/my-tasks` | All workspace members |
 
 ---
@@ -373,10 +321,9 @@ UserMyTasksPreference
 5. Drag-and-drop reordering within a column in Board View is global — order is shared.
 6. My Tasks shows tasks across all Spaces the user has access to — if access is revoked from a Space, those tasks disappear from My Tasks immediately.
 7. Closed tasks are hidden by default in My Tasks — user can toggle `Show Completed` to see them.
-8. Calendar View only places tasks that have a due date — tasks without a due date appear in the Unscheduled panel.
-9. Column visibility and order in List View are per user — they are not shared with other members.
-10. View switcher is only available at the List level — My Tasks is a global view accessible from the sidebar.
-11. Bulk selection is only available in List View and My Tasks — not in Board View or Calendar View.
+8. Column visibility and order in List View are per user — they are not shared with other members.
+9. View switcher is only available at the List level — My Tasks is a global view accessible from the sidebar.
+10. Bulk selection is only available in List View and My Tasks — not in Board View.
 12. Bulk actions are applied server-side atomically per task — if one task fails a permission check, that task is skipped and the others still apply. The result message shows how many succeeded and how many were skipped.
 13. Each task in a bulk action generates its own Activity Log entry — bulk actions do not create a single grouped log.
 14. Bulk delete requires an explicit confirmation modal showing the exact count — no undo.
@@ -387,6 +334,7 @@ UserMyTasksPreference
 
 ## Out of Scope (MVP)
 
+- Calendar View — full spec preserved in [calendar-view.md](./calendar-view.md), planned for post-MVP
 - Gantt / Timeline View
 - Table / Spreadsheet View
 - Workload View (capacity per member)

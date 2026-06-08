@@ -255,12 +255,46 @@ Better Auth exposes a unified handler at `/api/auth/[...all]` in Next.js. These 
 
 | Screen | Route | Access |
 |--------|-------|--------|
-| Sign In | `/sign-in` | Unauthenticated |
+| Sign In | `/sign-in` | Unauthenticated — includes one-line explainer: *"We'll email you a secure link — no password needed."* |
 | Magic Link Sent | `/sign-in?sent=true` | Unauthenticated (shown after requesting link) |
 | Magic Link Verify | `/api/auth/magic-link/verify?token=` | Unauthenticated (handled by Better Auth) |
 | Onboarding | `/onboarding` | Authenticated (new user only) |
 | Account Settings | `/settings/account` | Authenticated |
 | Session Management | `/settings/sessions` | Authenticated |
+
+### Magic Link Sent Screen — UI Spec
+
+Shown immediately after the user clicks "Send Sign-In Link". Reduces abandonment during the email delivery wait.
+
+```
+┌─────────────────────────────────────────┐
+│                                         │
+│            ✉️  Check your email          │
+│                                         │
+│   We sent a sign-in link to             │
+│   jane@example.com                      │
+│                                         │
+│   ⠋  Waiting for you to click the link  │  ← animated spinner
+│   This usually takes under 30 seconds.  │
+│                                         │
+│   ────────────────────────────────────  │
+│                                         │
+│   Didn't get it?  [Resend email]        │
+│   Wrong email?    [Go back]             │
+│                                         │
+└─────────────────────────────────────────┘
+```
+
+| Element | Detail |
+|---------|--------|
+| Headline | `"Check your email"` |
+| Subtext | `"We sent a sign-in link to [email]"` — shows the exact email submitted |
+| Animated indicator | Spinner or pulsing dot next to `"Waiting for you to click the link"` |
+| Reassurance copy | `"This usually takes under 30 seconds."` |
+| Resend CTA | `"Resend email"` — triggers a new magic link request; disabled for 60s after each send to prevent spam; shows countdown: `"Resend in 45s"` |
+| Go back link | `"Wrong email? Go back"` — returns to `/sign-in` with the email field pre-filled |
+
+**Resend throttle:** The Resend button is disabled for 60 seconds after each send (client-side countdown). This is separate from the server-side rate limit of 5 requests per 15 minutes — if the server rate limit is hit, show: `"Too many attempts. Please wait a few minutes before trying again."`
 
 ---
 

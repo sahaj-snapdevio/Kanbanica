@@ -16,33 +16,72 @@ Build a project management platform that helps teams organize, collaborate, exec
 ```
 Workspace
   └── Space
-        └── Folder (Optional)
-              └── List
-                    └── Task
-                          └── Subtask
+        └── List
+              └── Task
+                    └── Subtask
 ```
+
+> **Folder is post-MVP.** Folders are an optional grouping layer between Space and List for teams with many Lists. Removed from MVP to reduce hierarchy depth — no team needs it on day 1. Will be reintroduced in a post-MVP phase.
 
 ---
 
 ## Table of Contents
 
-1. [Authentication](#1-authentication)
-2. [Workspace](#2-workspace)
-3. [Space](#3-space)
-4. [Folder](#4-folder-optional)
-5. [List](#5-list)
-6. [Task](#6-task)
-7. [Subtask](#7-subtask)
-8. [Sprint](#8-sprint-optional)
-9. [Views](#9-views)
-10. [Collaboration](#10-collaboration)
-11. [Search & Filters](#11-search--filters)
-12. [Notifications](#12-notifications)
-13. [Permission Model](#13-permission-model)
-14. [Admin Panel](#14-admin-panel)
-15. [Customer Support](#15-customer-support)
-16. [MVP Scope](#16-mvp-scope)
-17. [Tech Stack](#tech-stack-planned)
+1. [Onboarding Flow](#onboarding-flow)
+2. [Authentication](#1-authentication)
+3. [Workspace](#2-workspace)
+4. [Space](#3-space)
+5. [Folder (Post-MVP)](#4-folder-post-mvp)
+6. [List](#5-list)
+7. [Task](#6-task)
+8. [Subtask](#7-subtask)
+9. [Sprint](#8-sprint-optional)
+10. [Views](#9-views)
+11. [Collaboration](#10-collaboration)
+12. [Search & Filters](#11-search--filters)
+13. [Notifications](#12-notifications)
+14. [Permission Model](#13-permission-model)
+15. [Admin Panel](#14-admin-panel)
+16. [Customer Support](#15-customer-support)
+17. [MVP Scope](#16-mvp-scope)
+18. [Tech Stack](#tech-stack-planned)
+
+**Foundation docs:**
+- [Design System](docs/design-system.md) — colors, typography, spacing, components
+- [Database Schema](docs/database-schema.md) — consolidated Prisma schema
+- [Development Plan](docs/development-plan.md) — phase-by-phase build order
+- [CLAUDE.md](CLAUDE.md) — AI assistant context and project conventions
+
+---
+
+## Onboarding Flow
+
+New users are guided through a 2-step wizard after their first sign-in. Each step includes a short explainer so users understand what they're creating before they name it.
+
+**Step 1 — Create your Workspace**
+> *"Your Workspace is your company or team's home. Everything your team works on lives here."*
+- Input: Workspace name
+- Optional: Upload a logo or pick an emoji avatar
+
+**Step 2 — Create your first Space**
+
+A hierarchy hint is shown before the input so the user understands the structure:
+
+```
+Workspace  →  Space  →  List  →  Task
+ Acme Inc     Engineering   Backlog    Fix login bug
+```
+
+> *"A Space is where your team's work lives — like a department or project area. You can create more later."*
+- Input: Space name
+- Input: Color picker
+
+On completion:
+- A default List named **"List"** is auto-created inside the Space
+- A **demo welcome task** is auto-created inside the List: *"👋 Welcome to [Workspace Name] — click here to see how a task works"* — pre-filled with a short walkthrough so the user lands on something interactive, not a blank screen
+- User is redirected directly into their first List
+- A **Getting Started checklist** is shown below the demo task to guide next steps (invite teammates, create a real task, try Board view, etc.)
+- When the creator creates their first real task, the demo task is auto-deleted
 
 ---
 
@@ -52,12 +91,12 @@ User identity and access management.
 
 **Powered by:** [Better Auth](https://better-auth.com) with Admin Plugin
 
+**Auth method: Magic Link (passwordless)**
+User enters their email → receives a one-time sign-in link → clicks it → session created. No passwords. First use auto-creates the account.
+
 **Features:**
-- Sign up (Email + Password)
-- Sign in / Sign out
-- OAuth login (Google, GitHub)
-- Forgot password / Reset password
-- Email verification
+- Sign in / Sign up via magic link (same flow — account auto-created on first use)
+- Sign out
 - Session management (secure, database-backed sessions)
 - Multi-device login / session list
 - Ban / unban users (via Admin Plugin)
@@ -87,7 +126,7 @@ Top-level organization container. Every user belongs to at least one workspace.
 
 | Role | Description |
 |------|-------------|
-| Owner | Full control, billing, delete workspace |
+| Owner | Full control — delete workspace, manage all members and settings |
 | Admin | Manage members, spaces, settings |
 | Member | Create and manage own work |
 | Guest | Limited access to specific Spaces/Lists |
@@ -118,18 +157,9 @@ Logical grouping for teams or departments within a Workspace.
 
 ---
 
-## 4. Folder (Optional)
+## 4. Folder (Post-MVP)
 
-Organizes multiple Lists under a logical group within a Space.
-
-**Examples:** Mobile App, Website, Internal Tools
-
-**Features:**
-- Create Folder
-- Edit Folder (name, color)
-- Delete / Archive Folder
-- Move Lists in/out of Folder
-- Folder is optional — Lists can exist directly under a Space
+> **Removed from MVP.** Folders are an optional grouping layer between Space and List for teams with many Lists. No team needs this on day 1 — it adds hierarchy depth without day-1 value. Will be reintroduced in a post-MVP phase.
 
 ---
 
@@ -145,7 +175,7 @@ Primary container for Tasks. Equivalent to a project or board.
 - Delete / Archive List
 - List Status Customization (custom statuses per list)
 - Duplicate List
-- Move List (between Folders or Spaces)
+- Move List (to a different Space)
 - List-level sharing
 
 **Default Statuses:**
@@ -172,7 +202,6 @@ Core work item. Everything actionable lives here.
 | Reporter | Who created the task |
 | Due Date | Single date or date range (start + end) |
 | Time Estimate | Estimated hours |
-| Time Tracked | Logged time |
 | Tags / Labels | Custom multi-select tags |
 | Attachments | Files, images |
 | Comments | Thread of comments |
@@ -180,7 +209,6 @@ Core work item. Everything actionable lives here.
 | Dependencies | Blocked by / Blocking other tasks |
 | Parent Task | For subtasks |
 | Watchers | Users following the task |
-| Custom Fields | Text, Number, Dropdown, Date, Checkbox, URL |
 
 **Status (Default):**
 - Todo
@@ -207,8 +235,6 @@ Core work item. Everything actionable lives here.
 - Add checklists
 - Link dependencies (blocked by / blocking)
 - Activity timeline (full audit log)
-- Recurring Tasks (daily / weekly / monthly / custom)
-- Task Templates
 - Notifications on task updates
 
 ---
@@ -252,10 +278,10 @@ Multiple ways to visualize and interact with work.
 |------|-------------|
 | List View | Default line-by-line task list |
 | Board View | Kanban columns by status |
-| Calendar View | Tasks on a monthly/weekly calendar |
 | My Tasks | Personal view of all tasks assigned to me |
 
 **Post-MVP Views (future):**
+- Calendar View (spec in [calendar-view.md](docs/calendar-view.md))
 - Gantt / Timeline View
 - Table / Spreadsheet View
 - Workload View
@@ -274,7 +300,7 @@ Multiple ways to visualize and interact with work.
 
 **Activity Log:**
 - Full audit trail per task (who changed what, when)
-- Workspace-level activity feed
+- Space-level activity feed
 
 **File Attachments:**
 - Upload files to tasks (images, PDFs, docs)
@@ -290,8 +316,8 @@ Multiple ways to visualize and interact with work.
 ## 11. Search & Filters
 
 **Global Search:**
-- Search tasks, spaces, lists, members across the workspace
-- Search by title, description, tag, assignee
+- Search tasks, spaces, lists, members across the workspace by title (MVP)
+- Description search is post-MVP (requires generated tsvector column)
 
 **Filters (per List/View):**
 - Filter by Status
@@ -345,7 +371,6 @@ Controls what a user can do at the workspace level (settings, members, spaces).
 | Action | Owner | Admin | Member | Guest |
 |--------|-------|-------|--------|-------|
 | Delete Workspace | Yes | No | No | No |
-| Manage Billing | Yes | No | No | No |
 | Manage All Members | Yes | Yes | No | No |
 | Create / Delete Spaces | Yes | Yes | No | No |
 | Invite Members to Workspace | Yes | Yes | No | No |
@@ -358,7 +383,7 @@ Controls what a user can do at the workspace level (settings, members, spaces).
 
 ### Space Permissions
 
-Assigned per user per Space. Controls everything inside a Space (Folders, Lists, Tasks).
+Assigned per user per Space. Controls everything inside a Space (Lists, Tasks).
 
 | Action | Full Access | Edit | View |
 |--------|-------------|------|------|
@@ -369,9 +394,9 @@ Assigned per user per Space. Controls everything inside a Space (Folders, Lists,
 | Assign Task to others | Yes | Yes | No |
 | Comment on Task | Yes | Yes | Yes |
 | Delete Task | Yes | No | No |
-| Create List / Folder | Yes | No | No |
-| Edit List / Folder | Yes | No | No |
-| Delete List / Folder | Yes | No | No |
+| Create List | Yes | No | No |
+| Edit List | Yes | No | No |
+| Delete List | Yes | No | No |
 | Manage Space Members | Yes | No | No |
 
 > **View** users are read-only collaborators — they can follow progress and comment, but cannot modify anything.
@@ -471,21 +496,16 @@ Internal panel for us (operators) to manage the SaaS platform.
 - Track ticket status
 - Reply thread
 
-**Feature Requests:**
-- Submit a feature request
-- Vote on existing requests
-- Status (Under Review / Planned / Shipped / Declined)
-
 ---
 
 ## 16. MVP Scope
 
 ### Included in MVP
 
-- [x] Authentication (Email + Google OAuth)
+- [x] Authentication (Magic Link — passwordless)
 - [x] Workspace (create, invite, roles)
 - [x] Space (create, permissions, private/public)
-- [x] Folder (optional grouping)
+- [ ] Folder (post-MVP — see Excluded list below)
 - [x] List (custom statuses)
 - [x] Task (full fields, checklists, dependencies)
 - [x] Subtask
@@ -505,6 +525,10 @@ Internal panel for us (operators) to manage the SaaS platform.
 
 ### Excluded from MVP (Post-MVP)
 
+- [ ] Folder (grouping layer between Space and List — add when teams have too many Lists)
+- [ ] Custom Fields (Text, Number, Dropdown, Date, Checkbox, URL)
+- [ ] Recurring Tasks (daily / weekly / monthly / custom)
+- [ ] Task Templates
 - [ ] AI Features (Task Creation, Search, Summary, Suggestions)
 - [ ] Gantt / Timeline View
 - [ ] Workload View
@@ -519,6 +543,7 @@ Internal panel for us (operators) to manage the SaaS platform.
 - [ ] Mobile App (native iOS/Android)
 - [ ] Billing / Subscription (Stripe)
 - [ ] SSO / SAML
+- [ ] Time Tracked | Logged time |
 
 ---
 

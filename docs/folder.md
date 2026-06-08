@@ -1,5 +1,9 @@
 # Folder
 
+> **Post-MVP Feature.** Folder is not included in the initial MVP build. The MVP hierarchy is `Workspace → Space → List → Task → Subtask`. Folders will be introduced once teams are active and start accumulating enough Lists that grouping becomes necessary. See [improvement.md](./improvement.md) for the rationale.
+
+---
+
 ## Overview
 
 A Folder is an optional grouping layer inside a Space. It organizes multiple Lists under a single named container — useful when a Space has many Lists that logically belong together.
@@ -220,10 +224,20 @@ List (reference — belongs to Folder or Space directly)
 
 ---
 
-## Out of Scope (MVP)
+## Out of Scope (MVP and Post-MVP Phase 1)
 
 - Folder templates
 - Folder duplication / copy
 - Moving a Folder across Spaces
 - Folder-level permission override (separate from Space permission)
 - Folder-level analytics
+
+---
+
+## When to Build
+
+Introduce Folder when:
+- Beta users report that their Spaces have grown to 10+ Lists and the sidebar feels cluttered
+- Teams ask for a way to group related Lists by project or area
+
+Do not ship it earlier — no team needs it on day 1 and it adds navigation depth that confuses new users.

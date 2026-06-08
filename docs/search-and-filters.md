@@ -26,7 +26,7 @@ A fast, workspace-wide search accessible from anywhere in the app.
 
 | Type | Searchable fields |
 |------|------------------|
-| Tasks | Title, description content |
+| Tasks | Title |
 | Subtasks | Title |
 | Lists | Name |
 | Spaces | Name |
@@ -260,6 +260,7 @@ UserSearchHistory
 
 ## Out of Scope (MVP)
 
+- Search inside task descriptions (title-only in MVP; post-MVP will add description search with a "Search in descriptions" toggle — requires a generated `tsvector` column on the Task table)
 - Full-text search inside file attachments (e.g. searching inside a PDF)
 - Search inside comment bodies
 - Shared/team-level saved filters (visible to all members of a Space)

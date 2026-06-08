@@ -39,7 +39,7 @@ Phase 3  →  Authentication Pages
 Phase 4  →  Onboarding
 Phase 5  →  Workspace
 Phase 6  →  Space
-Phase 7  →  Folder
+Phase 7  →  Folder (Post-MVP — skipped in initial build)
 Phase 8  →  List
 Phase 9  →  Task
 Phase 10 →  Subtask
@@ -154,7 +154,7 @@ Phase 19 →  QA & Launch Prep
   - [ ] `WorkspaceMember`
   - [ ] `Space`
   - [ ] `SpaceMember`
-  - [ ] `Folder`
+  - [ ] `Folder` (post-MVP — skip for now)
   - [ ] `List`
   - [ ] `ListStatus`
   - [ ] `Task`
@@ -324,12 +324,24 @@ Phase 19 →  QA & Launch Prep
 
 **Onboarding flow:**
 - [ ] `/onboarding` route — protected, only accessible if user has no workspace
-- [ ] Step 1 UI: Create Workspace (name input + logo upload)
-- [ ] Step 2 UI: Create first Space (name input + color picker)
-- [ ] On Space creation: auto-create default List named `"List"` inside it
-- [ ] On completion: redirect to `/[workspaceSlug]/[spaceId]/list/[listId]`
 - [ ] If user already has a workspace: redirect away from `/onboarding` to their workspace
-- [ ] Workspace slug auto-generated from name (slugify) — ensure uniqueness
+- [ ] Step 1 UI: Create Workspace
+  - [ ] Explainer above input: *"Your Workspace is your company or team's home. Everything your team works on lives here."*
+  - [ ] Name input (required)
+  - [ ] Logo upload or emoji picker (optional)
+- [ ] Step 2 UI: Create first Space
+  - [ ] Hierarchy diagram shown above input: `Workspace → Space → List → Task` with example values (`Acme Inc → Engineering → Backlog → Fix login bug`)
+  - [ ] Explainer: *"A Space is where your team's work lives — like a department or project area. You can create more later."*
+  - [ ] Name input (required)
+  - [ ] Color picker
+- [ ] On Space creation: auto-create default List named `"List"` inside it
+- [ ] On List creation: auto-create one demo welcome task inside it
+  - [ ] Title: `"👋 Welcome to [Workspace Name] — click here to see how a task works"`
+  - [ ] Description: pre-filled walkthrough copy
+  - [ ] Assignee: workspace creator
+  - [ ] Tag: `demo` (used to identify and auto-delete when creator makes their first real task)
+- [ ] On completion: redirect to `/[workspaceId]/[spaceId]/list/[listId]`
+- [ ] Workspace slug auto-generated from name (slugify) — ensure uniqueness; slug is vanity only, routing uses workspace id
 - [ ] Create `UserOnboardingProgress` record for the workspace creator on workspace creation
 
 **Getting Started checklist (workspace creator only):**
@@ -351,7 +363,7 @@ Phase 19 →  QA & Launch Prep
 - [ ] Empty Sprint panel — no sprints created yet
 - [ ] My Tasks — no assigned tasks
 - [ ] Empty Space — no Lists
-- [ ] Empty Folder — no Lists
+- [ ] Empty Space — no Lists created yet (second empty state for when all lists are archived)
 - [ ] Notifications inbox — zero notifications
 - [ ] Search — no results (with recent searches)
 - [ ] Comments — no comments (merges into composer)
@@ -440,7 +452,9 @@ Phase 19 →  QA & Launch Prep
 
 ---
 
-## Phase 7 — Folder
+## Phase 7 — Folder (POST-MVP — SKIP)
+
+> **Do not implement this phase.** Folder is excluded from the MVP build. After completing Phase 6 (Space), go directly to Phase 8 (List). The `folder_id` field on the `List` model is nullable and stays `null` throughout MVP. See `docs/folder.md` for the full spec when you're ready to build it post-launch.
 
 **Goal:** Folders can be created inside Spaces to organize Lists.
 

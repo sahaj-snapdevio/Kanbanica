@@ -4,7 +4,7 @@
 
 A List is the primary container for Tasks. It represents a collection of work — a backlog, a project board, a bug tracker, or any grouping of tasks that belong together.
 
-Every task must live inside a List. A List lives inside a Space, optionally inside a Folder.
+Every task must live inside a List. A List lives directly inside a Space.
 
 **Real-world analogy:** A List = a project board or task queue. e.g. `Backlog`, `Sprint 12`, `Bug Reports`, `Feature Requests`, `Design Review`
 
@@ -12,9 +12,8 @@ Every task must live inside a List. A List lives inside a Space, optionally insi
 ```
 Workspace
   └── Space
-        └── Folder (optional)
-              └── List       ← you are here
-                    └── Task
+        └── List       ← you are here
+              └── Task
 ```
 
 ---
@@ -24,7 +23,7 @@ Workspace
 - As a Member with Full Access, I want to create a List inside my Space so I can group related tasks together.
 - As a Member, I want to customize task statuses per List so each List reflects its own workflow.
 - As a Member, I want to view tasks in List view or Board view depending on how I prefer to work.
-- As a Member with Full Access, I want to move a List to a different Folder or Space without losing any tasks.
+- As a Member with Full Access, I want to move a List to a different Space without losing any tasks.
 - As a Member with Full Access, I want to duplicate a List as a starting point for a similar project.
 - As an Admin, I want to archive a List when a project is completed so it stays accessible but out of the way.
 - As a Member, I want to filter and sort tasks inside a List to focus on what matters right now.
@@ -41,7 +40,7 @@ Workspace
   - Color (optional — pick from palette)
 - Optional fields:
   - Description (short text about what this List is for)
-  - Parent: choose a Folder or leave at Space root
+  - Parent Space (auto-set to current Space)
 - On creation:
   - Default statuses are automatically added (see [Default Statuses](#default-statuses))
   - User lands inside the new List, ready to add tasks
@@ -90,7 +89,7 @@ Workspace
   - Same statuses and their configuration
   - Same color and description
   - Tasks optionally included (user chooses: duplicate structure only, or include tasks too)
-- Duplicated List is placed in the same Folder / Space as the original
+- Duplicated List is placed in the same Space as the original
 - Useful for repeating project structures (e.g. monthly sprint template)
 
 ---
@@ -99,9 +98,7 @@ Workspace
 
 - **Who can move:** Members with **Full Access** on the Space, Admin, Owner
 - A List can be moved to:
-  - A different Folder within the same Space
-  - The root of the same Space (no Folder)
-  - A different Space entirely (within the same Workspace)
+  - A different Space within the same Workspace
 - Moving a List does not affect its Tasks, Statuses, or any task data
 - If moved to a different Space, the List inherits the destination Space's permission model
 
@@ -195,7 +192,7 @@ These can be customized after creation. They are not shared across Lists — eac
 List
 ├── id                  (uuid, primary key)
 ├── space_id            (foreign key → Space)
-├── folder_id           (foreign key → Folder, nullable — null means Space root)
+├── folder_id           (foreign key → Folder, nullable — post-MVP; null in MVP)
 ├── name                (string, required)
 ├── description         (text, nullable)
 ├── color               (string — hex color code, nullable)
@@ -230,7 +227,7 @@ ListStatus
 | PATCH | `/api/lists/:id/archive` | Archive List | Full Access / Admin+ |
 | PATCH | `/api/lists/:id/unarchive` | Unarchive List | Full Access / Admin+ |
 | POST | `/api/lists/:id/duplicate` | Duplicate List | Full Access / Admin+ |
-| PATCH | `/api/lists/:id/move` | Move List to another Folder or Space | Full Access / Admin+ |
+| PATCH | `/api/lists/:id/move` | Move List to another Space | Full Access / Admin+ |
 | PATCH | `/api/lists/:id/reorder` | Update sidebar order | Full Access / Admin+ |
 | GET | `/api/lists/:id/statuses` | Get all statuses for a List | Space member |
 | POST | `/api/lists/:id/statuses` | Add a new status | Full Access / Admin+ |
@@ -244,11 +241,11 @@ ListStatus
 
 | Screen | Description | Access |
 |--------|-------------|--------|
-| Sidebar — List items | Lists shown under Folder or Space root in left sidebar | All Space members |
+| Sidebar — List items | Lists shown directly under Space in left sidebar | All Space members |
 | List View | Tasks displayed as rows inside the List | All Space members |
 | Board View | Tasks as Kanban cards grouped by status | All Space members |
 | Calendar View | Tasks on calendar by due date | All Space members |
-| Create List modal | Triggered from sidebar `+` next to Folder or Space | Full Access / Admin+ |
+| Create List modal | Triggered from sidebar `+` next to Space | Full Access / Admin+ |
 | Edit List modal | Accessible from List header `...` menu | Full Access / Admin+ |
 | Status settings panel | Manage statuses for a List | Full Access / Admin+ |
 | Archive / Delete confirmation | Confirmation dialog before destructive actions | Full Access / Admin+ |
@@ -264,7 +261,7 @@ ListStatus
 - Can be unarchived at any time — **no time limit**.
 - Archiving a List does **not** archive its Tasks individually — Tasks remain in their current state inside the archived List.
 - When unarchived, the List and all its Tasks become immediately accessible again with their existing statuses.
-- If the parent Space or Folder is archived or deleted, the List follows the same fate.
+- If the parent Space is archived or deleted, the List follows the same fate.
 
 ### Soft Delete
 - List deletion is a **hard delete** — no soft delete or recovery period.
@@ -294,7 +291,7 @@ ListStatus
 ## Business Rules
 
 1. Every Task must belong to exactly one List.
-2. A List belongs to a Space and optionally to a Folder within that Space — never to both a Folder and another Folder.
+2. A List belongs to exactly one Space. Folder grouping is a post-MVP feature.
 3. Each List manages its own statuses independently — status changes in one List do not affect other Lists.
 4. Every List must have at least one status of type `closed` — required for task completion tracking.
 5. A status with assigned tasks cannot be deleted until all its tasks are moved to another status.

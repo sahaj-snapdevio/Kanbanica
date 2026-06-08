@@ -208,16 +208,64 @@ The following do NOT generate activity log entries — to avoid noise:
   - By List
 - Paginated — 50 entries per page
 
-### Workspace-level Activity Feed
+---
 
-- Route: `/settings/activity` (Admin / Owner only)
-- Shows all ActivityLog entries across all Spaces in the Workspace — last **30 days**
-- Same filters as Space-level feed, plus: filter by Space
-- Useful for Admins monitoring overall workspace usage and auditing member actions
+## 3. Watchers & Notification Pipeline
+
+Watchers are the mechanism that connects task activity to notification delivery. Every notification sent to "Watchers" in the notification triggers table flows through this system.
+
+### Who becomes a watcher
+
+| How | When |
+|-----|------|
+| Auto-added | Task creator is added as a watcher on task creation |
+| Auto-added | Any user assigned to the task is added as a watcher at the moment of assignment |
+| Manual | Any workspace member can click **Watch** on the task detail panel to opt in |
+| Removed | A watcher can remove themselves at any time via **Unwatch** |
+| Removed | Muting a task removes the user from Watchers and suppresses all future notifications for that task |
+
+### Events that notify watchers
+
+When any of the following events fire on a task, a notification is delivered to **all current watchers** (minus the actor — no self-notifications):
+
+| Event | Channels |
+|-------|----------|
+| Status changed | In-App + Email |
+| Priority changed | In-App only (default off) |
+| Due date set / changed / removed | In-App + Email |
+| Task completed (status → closed type) | In-App + Email |
+| Task moved to a different List | In-App only (default off) |
+| Task deleted | In-App only |
+| New comment posted | In-App + Email + Push |
+| Due date reminder (1 day before) | In-App + Email + Push |
+
+### Pipeline — how it works end to end
+
+```
+User action / system event
+        ↓
+ActivityLog entry created (immutable record)
+        ↓
+Notification service reads TaskWatcher table for the task
+        ↓
+Filters out: actor (no self-notify) + muted users + users who lost Space access
+        ↓
+For each remaining watcher → create Notification record
+        ↓
+Deliver via enabled channels (In-App / Email / Push)
+        per UserNotificationPreference for that trigger_type
+```
+
+### Rules
+
+- If a user is both an **assignee and a watcher**, they receive **one** notification — not two.
+- Muting a task removes the user from Watchers entirely — they receive nothing even if reassigned.
+- Watchers only receive events listed above — not every activity log event (e.g. checklist edits do not notify watchers).
+- Removing a user from a Space cancels all future watcher notifications for tasks in that Space.
 
 ---
 
-## 3. Mentions
+## 4. Mentions
 
 @mentions link a user directly in text, notify them instantly, and draw attention to what needs their input.
 
@@ -246,7 +294,7 @@ The following do NOT generate activity log entries — to avoid noise:
 
 ---
 
-## 4. File Attachments
+## 5. File Attachments
 
 Files uploaded directly to a task to share designs, documents, screenshots, or any supporting material.
 
@@ -295,6 +343,12 @@ Files uploaded directly to a task to share designs, documents, screenshots, or a
 ## Data Model
 
 ```
+TaskWatcher
+├── id                  (uuid, primary key)
+├── task_id             (foreign key → Task)
+├── user_id             (foreign key → User)
+└── created_at          (timestamp)
+
 Comment
 ├── id                  (uuid, primary key)
 ├── task_id             (foreign key → Task)
@@ -352,7 +406,6 @@ TaskAttachment
 | DELETE | `/api/comments/:id/reactions/:emoji` | Remove own emoji reaction | Reaction owner |
 | GET | `/api/tasks/:taskId/activity` | Get activity log for a task | Space member |
 | GET | `/api/spaces/:spaceId/activity` | Get Space-level activity feed | Space member |
-| GET | `/api/workspaces/:workspaceId/activity` | Get Workspace-level activity feed | Admin+ |
 | GET | `/api/tasks/:taskId/attachments` | Get all attachments for a task | Space member |
 | POST | `/api/tasks/:taskId/attachments` | Upload an attachment | Edit / Full Access / Admin+ |
 | DELETE | `/api/attachments/:id` | Delete an attachment | Uploader / Full Access / Admin+ |
@@ -367,7 +420,6 @@ TaskAttachment
 | Task detail — Activity section | Interleaved activity + comment feed | All Space members |
 | Task detail — Attachments section | File grid with preview and download | All Space members |
 | Space Activity Feed | `/space/:spaceId/activity` | Space members |
-| Workspace Activity Feed | `/settings/activity` | Admin+ |
 
 ---
 
@@ -424,12 +476,13 @@ TaskAttachment
 7. A user can only react once per emoji per comment — reacting again with the same emoji removes the reaction (toggle).
 8. Attachment files are stored externally (S3 / R2) — deleting the DB record must also delete the file from storage.
 9. Files attached inside a comment are associated with both the comment and the task — deleting the comment does not auto-delete its attachments.
-10. Space-level and Workspace-level activity feeds are read-only aggregated views — no actions can be taken from them.
+10. The Space-level activity feed is a read-only aggregated view — no actions can be taken from it.
 
 ---
 
 ## Out of Scope (MVP)
 
+- Workspace-level activity feed (aggregation across all Spaces — post-MVP)
 - Real-time collaborative editing of task description (simultaneous multi-user editing)
 - Comment drafts (auto-save unsent comment)
 - Direct messages between users (not tied to a task)

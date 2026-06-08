@@ -112,7 +112,7 @@ Clicking a user opens their detail page showing:
 **Impersonation notice:**
 - When impersonating, a red banner is shown at the top of the customer app: `"You are viewing as [user name]. Exit impersonation"`
 - All actions taken while impersonating are logged with `impersonated_by: admin_user_id`
-- Impersonating admins cannot change passwords, billing, or delete the workspace while in impersonation mode
+- Impersonating admins cannot change passwords or delete the workspace while in impersonation mode
 
 ---
 
@@ -161,7 +161,7 @@ Clicking a workspace opens its detail page:
 
 **Force Delete:**
 - Only available to platform admins
-- Deletes: all Spaces, Folders, Lists, Tasks, Subtasks, Comments, Attachments, Members, Sprints
+- Deletes: all Spaces, Lists, Tasks, Subtasks, Comments, Attachments, Members, Sprints
 - Sends an email to the workspace Owner notifying them of the deletion
 - Logged in platform audit log with admin user, reason (optional text field), and timestamp
 
@@ -182,7 +182,7 @@ View and respond to support tickets submitted by customers from within the app.
 
 **Filters:**
 - Status: Open / In Progress / Resolved / All
-- Category: Bug / Question / Feature Request / Billing
+- Category: Bug / Question
 - Date range: Created / Last updated
 
 **Quick stats at top:**
@@ -287,7 +287,7 @@ SupportTicket
 ├── submitted_by        (foreign key → User)
 ├── assigned_to         (foreign key → User — platform admin, nullable)
 ├── subject             (string, required)
-├── category            (enum: bug | question | feature_request | billing)
+├── category            (enum: bug | question)
 ├── status              (enum: open | in_progress | resolved)
 ├── created_at          (timestamp)
 └── updated_at          (timestamp)

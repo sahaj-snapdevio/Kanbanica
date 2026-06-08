@@ -88,7 +88,17 @@ When a List has no tasks (freshly created, or all tasks have been deleted/moved)
 
 ### For the workspace creator (first List)
 
-The Getting Started checklist (above) is shown instead of a plain empty state — it is more actionable.
+The first List is **never blank**. On onboarding completion, a single demo welcome task is auto-created inside it:
+
+- **Title:** `"👋 Welcome to [Workspace Name] — click here to see how a task works"`
+- **Description:** Pre-filled with a short walkthrough: *"This is a task. You can set a status, assign it to someone, add a due date, and leave comments. Try editing this task or create your own below."*
+- **Status:** First open status of the List
+- **Assignee:** The workspace creator (auto-assigned)
+- **Tag:** `demo` (so it can be easily identified and deleted)
+
+This gives the user something interactive to click on immediately — they learn by doing, not by reading a help article. The Getting Started checklist is shown below this task (not instead of it).
+
+**Clicking "Create your first task" in the checklist** auto-deletes the demo task and opens the inline quick-create so the user starts fresh with their own real task. If the user deletes the demo task manually, the checklist step is also marked complete.
 
 ### For all other empty Lists
 

@@ -30,6 +30,8 @@ Every event below creates a `Notification` record. Each trigger has:
 
 ### Task Notifications
 
+> **Watcher pipeline:** "Watchers" in the table below refers to the `TaskWatcher` list on each task. Task creator and all assignees are auto-added as watchers. Any workspace member can manually watch/unwatch. For the full pipeline (auto-add rules, event list, delivery flow), see [collaboration.md — Watchers & Notification Pipeline](./collaboration.md#3-watchers--notification-pipeline).
+
 | Trigger | Who gets notified | In-App | Email | Push | Configurable | Notification text |
 |---------|------------------|:------:|:-----:|:----:|:------------|------------------|
 | Task assigned to you | New assignee | ✅ | ✅ | ✅ | Yes | *"[Actor] assigned you to [Task title]"* |

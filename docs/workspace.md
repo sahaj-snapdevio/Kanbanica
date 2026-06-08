@@ -40,7 +40,7 @@ Workspace is the top-level container in Teamority. Every user belongs to at leas
 - Owner and Admin can edit:
   - Workspace Name
   - Workspace Logo / Avatar
-  - Workspace URL slug (unique identifier used in URLs)
+  - Workspace URL slug (vanity alias — changing it never breaks existing links)
 - Changes take effect immediately for all members
 
 ---
@@ -104,8 +104,8 @@ Accessible from **Workspace Settings → Members**
 
 | Role | Description |
 |------|-------------|
-| Owner | Full control — billing, delete workspace, manage all members and settings. Only one Owner per workspace. |
-| Admin | Manage members, create/delete spaces, access all settings. Cannot delete workspace or access billing. |
+| Owner | Full control — delete workspace, manage all members and settings. Only one Owner per workspace. |
+| Admin | Manage members, create/delete spaces, access all settings. Cannot delete workspace. |
 | Member | Standard user. Can work within spaces they have access to. Cannot manage workspace-level settings. |
 | Guest | External collaborator. Can only access Spaces they are explicitly invited to. No workspace-level visibility. |
 
@@ -163,7 +163,7 @@ Accessible by Owner and Admin only.
 Workspace
 ├── id                  (uuid, primary key)
 ├── name                (string, required)
-├── slug                (string, unique — used in URLs)
+├── slug                (string, unique — vanity alias for URLs; routing uses id internally)
 ├── logo_url            (string, nullable — R2 URL; takes priority over logo_emoji)
 ├── logo_emoji          (string, nullable — single emoji character; used if logo_url is null)
 ├── invite_link_token   (string, unique, nullable — null means link is disabled)
@@ -214,9 +214,9 @@ WorkspaceMember
 |--------|-------|--------|
 | Onboarding — Create Workspace | `/onboarding` | New user |
 | Workspace Switcher | Sidebar (global) | All members |
-| Workspace Settings — General | `/settings/general` | Admin+ |
-| Workspace Settings — Members | `/settings/members` | Admin+ |
-| Workspace Settings — Security | `/settings/security` | Owner only |
+| Workspace Settings — General | `/[workspaceId]/settings/general` | Admin+ |
+| Workspace Settings — Members | `/[workspaceId]/settings/members` | Admin+ |
+| Workspace Settings — Security | `/[workspaceId]/settings/security` | Owner only |
 | Accept Invite | `/invite/:token` | Invited user |
 
 ---
@@ -252,7 +252,7 @@ Workspace deletion is **not synchronous** — a large workspace can contain thou
 - Requires typing the Workspace name to confirm — prevents accidental deletion.
 - Workspace `status` is set to `deleting` on confirm — the background job then permanently removes in cascade:
   - All Spaces (public and private)
-  - All Folders, Lists, ListStatuses
+  - All Lists, ListStatuses
   - All Tasks, Subtasks, Checklists, ChecklistItems
   - All Comments (including soft-deleted comment tombstones)
   - All Attachments — **R2 files deleted before DB records**
@@ -276,7 +276,7 @@ Workspace deletion is **not synchronous** — a large workspace can contain thou
 5. A Guest cannot see any Space unless explicitly invited to it.
 6. Removing a member does not delete their created tasks — it only revokes access.
 7. Invite links default to granting the **Member** role.
-8. Workspace URL slug must be unique across the platform.
+8. Workspace URL slug must be unique across the platform — it is a vanity alias only. All routes use the workspace `id` internally, so renaming the slug never breaks existing links or bookmarks.
 
 ---
 
