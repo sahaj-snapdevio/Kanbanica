@@ -1,0 +1,1 @@
+ALTER TABLE "cubes" ADD CONSTRAINT "cubes_server_id_jailer_uid_uniq" UNIQUE("server_id","jailer_uid");

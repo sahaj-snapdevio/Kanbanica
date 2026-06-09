@@ -1,0 +1,1 @@
+ALTER TABLE "domain_mappings" ADD COLUMN "cloudflare_checked_at" timestamp with time zone;

@@ -1,0 +1,105 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Dokploy Swarm Settings — REQUIRED for zero-job-loss deploys.
+#
+# Long-running pg-boss handlers (cube.transfer, backup.redeploy,
+# snapshot.restore) can take 20–30 minutes. The defaults will SIGKILL them
+# mid-flight on every deploy.
+#
+# CANONICAL SOURCE: dokploy/worker-stack.yml in this repo. Paste it into
+#   Dokploy → <this service> → Advanced → Swarm Settings → Compose
+# (or apply each field via the Swarm Settings UI). The settings here MUST
+# match that file. See also: dokploy/README.md.
+#
+# 1. Stop Grace Period   = 2700000000000   (45 min, in nanoseconds — must
+#                                           exceed worst-case job duration.
+#                                           Keep ≥ 5m above the worker's
+#                                           WORKER_SHUTDOWN_TIMEOUT_MS in
+#                                           lib/worker/boss.ts.)
+# 2. Update Config       = order: stop-first, parallelism: 1
+#                                          (stop the old container, let it
+#                                           drain in-flight jobs and exit
+#                                           cleanly, THEN start the new one.
+#                                           Strictly one container ever
+#                                           processes jobs at a time. Newly
+#                                           queued jobs wait in Postgres
+#                                           during the gap — pg-boss
+#                                           persists every job, so nothing
+#                                           is lost. Trade-off: the new
+#                                           code's first job is delayed by
+#                                           however long the old container
+#                                           takes to drain (≤ stop_grace).
+#                                           If a hot patch must take over
+#                                           immediately, manually `docker
+#                                           service update --force` after
+#                                           cancelling the in-flight job.)
+# 3. Health Check        = test: ["CMD-SHELL", "pgrep -f 'scripts/worker.ts' || exit 1"]
+#                          interval: 30s,  timeout: 10s,
+#                          start_period: 120s (covers db:migrate boot time),
+#                          retries: 3
+# 4. Mode                = replicated, replicas: 1
+# 5. init: true          = run tini as PID 1 (forwards SIGTERM to the worker
+#                          and reaps zombie children spawned by the local
+#                          `docker` CLI during `pnpm build:images`).
+#
+# On SIGTERM: pg-boss stops polling for new jobs immediately, in-flight
+# handlers finish, then the container exits. With stop-first there is
+# never a second container polling the queue concurrently. See
+# scripts/worker.ts shutdown() and lib/worker/boss.ts stopWorker().
+#
+# SIGNAL DELIVERY — why the CMD uses `exec node`, not nested pnpm.
+# Docker delivers SIGTERM to PID 1 ONLY. pnpm does NOT reliably forward
+# signals to grandchild processes (pnpm#2653, pnpm#7374), so a CMD of
+# `pnpm worker:deploy` (→ sh → pnpm worker:start → tsx → node) leaves the
+# worker's process.on("SIGTERM") handler in scripts/worker.ts unreachable —
+# the graceful drain never runs and Docker SIGKILLs the worker mid-job after
+# the full grace period. The CMD below runs the (short-lived) migration, then
+# `exec`s Node so it REPLACES the shell and becomes the foreground process,
+# receiving SIGTERM directly. Combined with Swarm `init: true` (tini), the
+# graceful drain runs on every deploy. If you change the CMD, update the
+# health check's pgrep pattern to match the new process name.
+# ─────────────────────────────────────────────────────────────────────────────
+
+FROM node:22-slim
+
+# Install zstd (needed by `pnpm build:images` to compress rootfs files),
+# procps (provides `pgrep` — REQUIRED by the Swarm health check; node:22-slim
+# does NOT ship it, so without this the health check `pgrep -f scripts/worker.ts`
+# fails with exit 127 on every probe and Swarm kill-loops the container),
+# and the docker CLI as a static binary (talks to the host docker daemon via the
+# mounted /var/run/docker.sock — no docker daemon runs inside this container).
+# Architecture-aware so this works on both x86_64 and arm64 Dokploy hosts.
+ARG DOCKER_VERSION=29.5.2
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl zstd procps python3 make g++ \
+    && ARCH=$(dpkg --print-architecture) \
+    && case "$ARCH" in \
+         amd64) DOCKER_ARCH=x86_64 ;; \
+         arm64) DOCKER_ARCH=aarch64 ;; \
+         *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \
+       esac \
+    && curl -fsSL "https://download.docker.com/linux/static/stable/${DOCKER_ARCH}/docker-${DOCKER_VERSION}.tgz" -o /tmp/docker.tgz \
+    && tar xzf /tmp/docker.tgz -C /tmp \
+    && install -m 0755 /tmp/docker/docker /usr/local/bin/docker \
+    && rm -rf /tmp/docker /tmp/docker.tgz \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+WORKDIR /app
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
+
+COPY . .
+
+# The worker container is the single migration runner: it applies any pending
+# Drizzle migrations, then `exec`s the pg-boss worker so Node becomes the
+# foreground process and receives SIGTERM directly (see the SIGNAL DELIVERY
+# note in the header). Migrations run here at startup (not at build time)
+# because the database is only reachable at runtime. drizzle-kit's migrator is
+# idempotent, so a container restart with nothing pending is a safe no-op.
+#
+# `exec` matters: it replaces the shell with Node so there is no pnpm/sh layer
+# swallowing the signal. The health check greps for `scripts/worker.ts` to
+# match this exact process.
+CMD ["sh", "-c", "pnpm db:migrate && exec node --import tsx scripts/worker.ts"]

@@ -1,0 +1,3 @@
+ALTER TABLE "subscription_credit_grants" ADD COLUMN IF NOT EXISTS "provider_order_id" text;--> statement-breakpoint
+ALTER TABLE "subscription_credit_grants" ADD COLUMN IF NOT EXISTS "refunded_amount" numeric(12, 4) DEFAULT '0' NOT NULL;--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "subscription_credit_grants_provider_order_idx" ON "subscription_credit_grants" USING btree ("provider_order_id");

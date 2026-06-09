@@ -1,0 +1,1 @@
+ALTER TYPE "public"."server_setup_phase" ADD VALUE IF NOT EXISTS 'reboot' BEFORE 'verify';

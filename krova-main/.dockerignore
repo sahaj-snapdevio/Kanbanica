@@ -1,0 +1,14 @@
+node_modules
+.next
+.git
+.env
+.env.local
+.env*.local
+*.pem
+.DS_Store
+npm-debug.log*
+pnpm-debug.log*
+coverage
+# `setup/` is intentionally NOT excluded — `setup/images/build-all-images.sh`
+# is invoked by `pnpm build:images` from inside the worker container.
+# `setup/server/` is small (a few helper binaries) and harmless to ship.

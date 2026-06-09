@@ -1,0 +1,1 @@
+ALTER TYPE "public"."server_snapshot_phase" ADD VALUE 'bootstrap' BEFORE 'install';

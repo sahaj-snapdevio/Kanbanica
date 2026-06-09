@@ -1,0 +1,1 @@
+ALTER TABLE "platform_settings" ALTER COLUMN "payment_fee_percent" SET DEFAULT '0.07';

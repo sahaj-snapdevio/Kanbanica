@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "deploy_domains_deploy_domain_unique" ON "deploy_domains" USING btree ("deploy_id","domain");

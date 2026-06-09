@@ -1,0 +1,99 @@
+#!/usr/bin/env python3
+"""
+Krova Vsock Exec — host-side helper for communicating with the guest agent.
+
+Installed on each bare-metal server at /usr/local/bin/krova-vsock-exec.
+Called by the worker (via SSH) to send commands to the guest agent
+through Firecracker's vsock Unix Domain Socket.
+
+Usage:
+  krova-vsock-exec <vsock-uds-path> <json-command>
+
+Examples:
+  krova-vsock-exec /var/lib/krova/cubes/abc123/vsock.sock '{"cmd":"ping"}'
+  krova-vsock-exec /var/lib/krova/cubes/abc123/vsock.sock '{"cmd":"exec","payload":"..."}'
+
+The Firecracker vsock UDS protocol:
+  1. Connect to the Unix socket
+  2. Send "CONNECT <port>\n"
+  3. Receive "OK <port>\n"
+  4. Now the raw data stream is proxied to the guest's vsock listener
+
+Exit codes:
+  0 — success (response printed to stdout)
+  1 — connection or protocol error
+"""
+
+import json
+import socket
+import sys
+import time
+
+VSOCK_PORT = 52
+CONNECT_TIMEOUT = 10
+READ_TIMEOUT = 310  # Slightly longer than the agent's max command timeout
+
+
+def main():
+    if len(sys.argv) < 3:
+        print(f"Usage: {sys.argv[0]} <vsock-uds-path> <json-command>", file=sys.stderr)
+        sys.exit(1)
+
+    uds_path = sys.argv[1]
+    command = sys.argv[2]
+
+    # Connect to the Firecracker vsock UDS
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    sock.settimeout(CONNECT_TIMEOUT)
+
+    try:
+        sock.connect(uds_path)
+    except (OSError, ConnectionRefusedError) as e:
+        print(f"Failed to connect to {uds_path}: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        # Send CONNECT request to establish vsock tunnel to guest port 52
+        sock.sendall(f"CONNECT {VSOCK_PORT}\n".encode())
+
+        # Read the OK response
+        response = b""
+        while b"\n" not in response:
+            chunk = sock.recv(1024)
+            if not chunk:
+                print("Connection closed during CONNECT handshake", file=sys.stderr)
+                sys.exit(1)
+            response += chunk
+
+        response_line = response.split(b"\n")[0].decode("utf-8", errors="replace")
+        if not response_line.startswith("OK"):
+            print(f"CONNECT failed: {response_line}", file=sys.stderr)
+            sys.exit(1)
+
+        # Any data after the first newline is part of the proxied stream
+        remainder = response.split(b"\n", 1)[1] if b"\n" in response else b""
+
+        # Send the JSON command
+        sock.settimeout(READ_TIMEOUT)
+        sock.sendall((command + "\n").encode("utf-8"))
+
+        # Read the response (newline-terminated JSON)
+        data = remainder
+        while b"\n" not in data:
+            chunk = sock.recv(4096)
+            if not chunk:
+                break
+            data += chunk
+
+        result = data.decode("utf-8", errors="replace").strip()
+        print(result)
+
+    except socket.timeout:
+        print("Timed out waiting for response from guest agent", file=sys.stderr)
+        sys.exit(1)
+    finally:
+        sock.close()
+
+
+if __name__ == "__main__":
+    main()

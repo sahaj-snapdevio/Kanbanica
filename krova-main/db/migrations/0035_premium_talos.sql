@@ -1,0 +1,1 @@
+ALTER TABLE "spaces" ADD COLUMN IF NOT EXISTS "subscription_event_at" timestamp with time zone;

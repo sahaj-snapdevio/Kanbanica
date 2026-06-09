@@ -1,0 +1,2 @@
+DROP INDEX IF EXISTS "billing_events_space_id_idx";--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "billing_events_space_id_created_at_idx" ON "billing_events" USING btree ("space_id","created_at");

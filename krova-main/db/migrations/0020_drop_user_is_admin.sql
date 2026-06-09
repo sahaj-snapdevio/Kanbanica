@@ -1,0 +1,13 @@
+-- Remove the legacy `is_admin` boolean column. `role = 'admin'` is now the
+-- single source of truth for admin status (Better Auth admin plugin native).
+--
+-- DEPLOY ORDER: this migration removes a column that the previous code
+-- version wrote to. Per CLAUDE.md Rule 40, deploy the new code FIRST (no
+-- code reads or writes is_admin), then run pnpm db:migrate to drop the
+-- column. Reverse of the standard migrate-first ordering.
+--
+-- Safety:
+--  - PG 11+ DROP COLUMN on a NOT NULL DEFAULT-constant column with no
+--    dependent indexes/FKs is metadata-only and non-locking
+--  - IF EXISTS guard makes this idempotent (safe to re-run)
+ALTER TABLE "user" DROP COLUMN IF EXISTS "is_admin";

@@ -1,0 +1,1 @@
+ALTER TABLE "domain_mappings" ADD COLUMN IF NOT EXISTS "last_cache_purge_at" timestamp with time zone;

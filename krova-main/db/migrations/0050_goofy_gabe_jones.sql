@@ -1,0 +1,1 @@
+ALTER TABLE "cubes" ADD COLUMN IF NOT EXISTS "snapshot_repo_password_enc" text;

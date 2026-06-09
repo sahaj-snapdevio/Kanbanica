@@ -1,0 +1,78 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "extends": [
+    "ultracite/biome/core",
+    "ultracite/biome/next",
+    "ultracite/biome/react"
+  ],
+  "formatter": {
+    "indentStyle": "space",
+    "indentWidth": 2
+  },
+  "files": {
+    "includes": [
+      "**/*",
+      "!components/ui",
+      "!lib/utils.ts",
+      "!hooks/use-mobile.ts",
+      "!db/schema",
+      "!db/migrations",
+      "!.remember",
+      "!next-env.d.ts",
+      "!workers/**/worker-configuration.d.ts",
+      "!workers/**/.wrangler"
+    ]
+  },
+  "linter": {
+    "rules": {
+      "suspicious": {
+        "noExplicitAny": "error",
+        "noUnknownAtRules": "off",
+        "noConsole": "off",
+        "noBitwiseOperators": "off",
+        "noEmptyBlockStatements": "off",
+        "noGlobalIsNan": "off",
+        "noGlobalIsFinite": "off",
+        "useAwait": "off",
+        "noEvolvingTypes": "off",
+        "noImplicitAnyLet": "off"
+      },
+      "style": {
+        "noMagicNumbers": "off",
+        "noNestedTernary": "off",
+        "useConsistentTypeDefinitions": "off",
+        "noNonNullAssertion": "off",
+        "useNodejsImportProtocol": "off",
+        "useTemplate": "off",
+        "noParameterProperties": "off",
+        "noExportedImports": "off",
+        "useConsistentMemberAccessibility": "off",
+        "useConsistentArrayType": "off",
+        "useDefaultSwitchClause": "off",
+        "useAtIndex": "off"
+      },
+      "nursery": {
+        "noUnnecessaryConditions": "off",
+        "useSortedClasses": "off"
+      },
+      "complexity": {
+        "noExcessiveCognitiveComplexity": "off",
+        "useSimplifiedLogicExpression": "off",
+        "noVoid": "off",
+        "noUselessStringConcat": "off"
+      },
+      "a11y": {
+        "noSvgWithoutTitle": "off"
+      },
+      "correctness": {
+        "useUniqueElementIds": "off",
+        "useImageSize": "off"
+      },
+      "performance": {
+        "noBarrelFile": "off",
+        "useTopLevelRegex": "off",
+        "noNamespaceImport": "off"
+      }
+    }
+  }
+}

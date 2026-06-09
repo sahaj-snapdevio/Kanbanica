@@ -1,0 +1,1 @@
+ALTER TABLE "cubes" ADD COLUMN "error_recovery_attempts" integer DEFAULT 0 NOT NULL;

@@ -1,0 +1,1 @@
+ALTER TYPE "public"."cube_transfer_state" ADD VALUE 'cancelling';

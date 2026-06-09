@@ -1,0 +1,32 @@
+-- Phase 2 (cube IPv6): additive, transaction-safe column adds only.
+-- The three partial UNIQUE indexes and the legacy-host S=0 backfill are
+-- deliberately OUT-OF-BAND operator steps (see the commented block below):
+-- CREATE UNIQUE INDEX CONCURRENTLY cannot run inside a transaction, and
+-- drizzle's migrator wraps each migration file in one. Running the index
+-- builds here would error ("CREATE INDEX CONCURRENTLY cannot run inside a
+-- transaction block"). They are applied by an operator via psql AFTER the
+-- duplicate preflight (`pnpm cubes:check-dup-ips`) reports zero.
+ALTER TABLE "servers" ADD COLUMN IF NOT EXISTS "bridge_subnet" integer;--> statement-breakpoint
+ALTER TABLE "cubes" ADD COLUMN IF NOT EXISTS "internal_ipv6" text;
+
+-- ===========================================================================
+-- OPERATOR (out-of-band, in a maintenance window — NOT run by db:migrate):
+--
+-- 1. Set the legacy host's subnet to S=0 (reserved; never auto-issued because
+--    allocateBridgeSubnet uses MIN=1). Substitute the chosen busiest/oldest
+--    server id. If left unset, the first migrated host becomes S=0 elsewhere.
+--    -- OPERATOR: set legacy host id
+--    UPDATE servers SET bridge_subnet = 0 WHERE bridge_subnet IS NULL AND id = '<LEGACY_SERVER_ID>';
+--
+-- 2. Confirm no duplicate (server_id, internal_ip) pairs remain:
+--    pnpm cubes:check-dup-ips     # must report zero before building the index
+--
+-- 3. Build the partial unique indexes CONCURRENTLY (each in its own psql
+--    session, NOT inside a transaction):
+--    CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS "servers_bridge_subnet_unq"
+--      ON "servers" USING btree ("bridge_subnet") WHERE bridge_subnet IS NOT NULL;
+--    CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS "cubes_internal_ipv6_unq"
+--      ON "cubes" USING btree ("internal_ipv6") WHERE internal_ipv6 IS NOT NULL AND status <> 'deleted';
+--    CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS "cubes_server_id_internal_ip_unq"
+--      ON "cubes" USING btree ("server_id","internal_ip") WHERE internal_ip IS NOT NULL AND status <> 'deleted';
+-- ===========================================================================

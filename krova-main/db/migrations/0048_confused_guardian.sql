@@ -1,0 +1,1 @@
+DROP TABLE "user_ssh_keys" CASCADE;

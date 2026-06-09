@@ -1,0 +1,1 @@
+ALTER TABLE "cube_snapshots" DROP COLUMN "is_automatic";

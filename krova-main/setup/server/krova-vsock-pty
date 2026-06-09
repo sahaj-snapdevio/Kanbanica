@@ -1,0 +1,198 @@
+#!/usr/bin/env python3
+"""
+Krova Vsock PTY — host-side bidirectional bridge for interactive shells.
+
+Installed on each bare-metal server at /usr/local/bin/krova-vsock-pty.
+Called by the worker over SSH to open a PTY session inside a cube. After
+the JSON handshake, this process becomes a transparent byte pump between
+its own stdin/stdout (the SSH channel) and the vsock connection to the
+in-guest agent.
+
+Wire protocol:
+  1. Connect to the Firecracker vsock UDS at <vsock-uds-path>.
+  2. Send "CONNECT 52\n", read "OK <port>\n".
+  3. Send {"cmd":"pty","cols":N,"rows":N}\n to the guest agent.
+  4. Read the agent's {"status":"ok"}\n response and forward it on stdout
+     verbatim (the worker uses it to verify the handshake succeeded).
+  5. Enter raw byte-pump mode:
+       stdin  → vsock     (worker's framed stdin / resize frames)
+       vsock  → stdout    (agent's framed stdout / exit frames)
+     Framing is end-to-end between the worker (TypeScript) and the guest
+     agent (Python). This helper is intentionally framing-blind so the
+     wire format can evolve without rolling a new helper to every host.
+
+Usage:
+  krova-vsock-pty <vsock-uds-path> <cols> <rows>
+
+Exit codes:
+  0 — peer disconnected cleanly
+  1 — connection / handshake error
+"""
+
+import json
+import os
+import select
+import socket
+import sys
+
+VSOCK_PORT = 52
+HANDSHAKE_TIMEOUT = 10
+PUMP_CHUNK = 65536
+
+
+def main():
+    if len(sys.argv) < 4:
+        print(
+            f"Usage: {sys.argv[0]} <vsock-uds-path> <cols> <rows>", file=sys.stderr
+        )
+        sys.exit(1)
+
+    uds_path = sys.argv[1]
+    try:
+        cols = int(sys.argv[2])
+        rows = int(sys.argv[3])
+    except ValueError:
+        print("cols/rows must be integers", file=sys.stderr)
+        sys.exit(1)
+
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    sock.settimeout(HANDSHAKE_TIMEOUT)
+
+    try:
+        sock.connect(uds_path)
+    except (OSError, ConnectionRefusedError) as e:
+        print(f"Failed to connect to {uds_path}: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        # Step 1: Firecracker vsock CONNECT handshake
+        sock.sendall(f"CONNECT {VSOCK_PORT}\n".encode())
+        response = b""
+        while b"\n" not in response:
+            chunk = sock.recv(1024)
+            if not chunk:
+                print("Connection closed during CONNECT handshake", file=sys.stderr)
+                sys.exit(1)
+            response += chunk
+        first_line = response.split(b"\n", 1)[0].decode("utf-8", errors="replace")
+        if not first_line.startswith("OK"):
+            print(f"CONNECT refused: {first_line}", file=sys.stderr)
+            sys.exit(1)
+        remainder = response.split(b"\n", 1)[1] if b"\n" in response else b""
+
+        # Step 2: send the pty open request
+        req = json.dumps({"cmd": "pty", "cols": cols, "rows": rows})
+        sock.sendall((req + "\n").encode("utf-8"))
+
+        # Step 3: read the guest agent's response line, forward it to stdout.
+        # Use any bytes left over from the CONNECT phase as the start of the
+        # response stream (rare in practice — Firecracker usually sends OK\n
+        # alone — but correct to keep them).
+        ack = remainder
+        while b"\n" not in ack:
+            chunk = sock.recv(1024)
+            if not chunk:
+                print("Connection closed during pty handshake", file=sys.stderr)
+                sys.exit(1)
+            ack += chunk
+        ack_line, _, tail = ack.partition(b"\n")
+        sys.stdout.buffer.write(ack_line + b"\n")
+        sys.stdout.buffer.flush()
+        # Anything past the newline is the first chunk of framed traffic.
+        leftover = tail
+
+        # Verify the agent accepted the pty request before entering pump mode
+        try:
+            ack_obj = json.loads(ack_line.decode("utf-8").strip())
+            if ack_obj.get("status") != "ok":
+                # The line is already on stdout for the worker to inspect.
+                # Exit non-zero so the worker treats this as a handshake error.
+                sys.exit(1)
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            sys.exit(1)
+
+    except socket.timeout:
+        print("Timed out during handshake", file=sys.stderr)
+        sys.exit(1)
+
+    # Step 4: byte-pump mode. Make everything non-blocking so we never
+    # wedge on a one-sided slow stream.
+    sock.setblocking(False)
+    stdin_fd = sys.stdin.buffer.fileno()
+    stdout_fd = sys.stdout.buffer.fileno()
+    os.set_blocking(stdin_fd, False)
+
+    # Flush any pending vsock bytes that arrived past the ack-line newline
+    if leftover:
+        try:
+            os.write(stdout_fd, leftover)
+        except OSError:
+            sys.exit(1)
+
+    while True:
+        try:
+            ready, _, _ = select.select([stdin_fd, sock], [], [], 30.0)
+        except (OSError, ValueError):
+            break
+
+        if not ready:
+            # Idle — keep polling. Idle timeout enforcement happens upstream
+            # at the worker bridge (so the policy lives in one place).
+            continue
+
+        if stdin_fd in ready:
+            try:
+                chunk = os.read(stdin_fd, PUMP_CHUNK)
+            except BlockingIOError:
+                chunk = b""
+            except OSError:
+                break
+            if chunk == b"":
+                # stdin EOF — worker closed the channel
+                break
+            # sock is non-blocking (line above), so a large stdin paste can fill
+            # the vsock send buffer and make sendall() raise BlockingIOError —
+            # a subclass of OSError that the old `except OSError: break` treated
+            # as fatal, TEARING THE SESSION on a big paste. Send in a loop,
+            # waiting for writability on backpressure; a genuine error
+            # (EPIPE/closed) still breaks.
+            sent_total = 0
+            send_failed = False
+            while sent_total < len(chunk):
+                try:
+                    n = sock.send(chunk[sent_total:])
+                    if n == 0:
+                        send_failed = True
+                        break
+                    sent_total += n
+                except BlockingIOError:
+                    select.select([], [sock], [], 30.0)
+                except OSError:
+                    send_failed = True
+                    break
+            if send_failed:
+                break
+
+        if sock in ready:
+            try:
+                chunk = sock.recv(PUMP_CHUNK)
+            except BlockingIOError:
+                chunk = b""
+            except OSError:
+                break
+            if not chunk:
+                # vsock EOF — agent / shell exited
+                break
+            try:
+                os.write(stdout_fd, chunk)
+            except OSError:
+                break
+
+    try:
+        sock.close()
+    except OSError:
+        pass
+
+
+if __name__ == "__main__":
+    main()

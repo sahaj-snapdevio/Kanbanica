@@ -1,0 +1,66 @@
+# Backend Architecture: Processes, Workers, Routes, Service Layer
+
+> On-demand detail extracted from CLAUDE.md. CLAUDE.md keeps only a short summary + a pointer to this file; the full reference lives here.
+
+### Two-Process Model
+
+The app runs as two processes sharing the same PostgreSQL database and codebase:
+
+1. **Next.js** — serves the web UI and API routes
+2. **pg-boss Worker** (`scripts/worker.ts`) — processes background jobs (Cube provisioning, SSH operations, billing, email)
+
+All SSH/infrastructure operations go through the worker via pg-boss jobs — never directly from Next.js routes. This is a critical architectural invariant.
+
+### Worker Scaling
+
+**The pg-boss worker container is safe to scale to multiple replicas in Dokploy.** pg-boss claims jobs via Postgres `FOR UPDATE SKIP LOCKED` — it is physically impossible for two replicas to process the same job row. Cron-scheduled jobs (every `boss.schedule()` registration in [lib/worker/boss.ts](lib/worker/boss.ts)) are dispatched via pg-boss's internal `SEND_IT` queue with `singletonSeconds: 60` dedup, so multiple replicas trying to dispatch the same tick within a 60-second window collapse to one insert. Singleton-keyed enqueues (e.g. `server.reboot-recovery` keyed on server id at [cube-state-sync.ts:167](lib/worker/handlers/cube-state-sync.ts#L167)) collapse to one job across the entire fleet. Each replica catches SIGTERM independently — Dokploy rolling restart works correctly.
+
+**All recurring queues use `policy: "exclusive"` so a slow tick can NEVER overlap the next one.** Without it, a `billing.hourly` run that takes 90 minutes would race the next 1pm tick on a second worker — two workers processing the same recurring job in parallel, potentially double-charging. pg-boss's scheduler auto-inserts each tick with `singletonKey = "${queueName}__"`; the `exclusive` policy then enforces "at most one in-flight per queue" via the unique index. The next tick is REJECTED at enqueue while the previous is `active`; the tick AFTER fires normally. Idempotent recurring handlers self-heal on the next interval — accept the occasional skipped tick rather than risk parallel execution. **Any new `boss.schedule()` registration MUST come with a `policy: "exclusive"` entry in [ensure-queues.ts](lib/worker/ensure-queues.ts) — see the rule comment block at the top of that file.**
+
+**`localConcurrency` policy: 1 for every queue EXCEPT `cube.terminal-bridge`.** Every `boss.work()` call uses the pg-boss v12 default `localConcurrency: 1`, meaning each replica processes one job of each type at a time. Never inflate it to get more concurrency — use more replicas instead. Rationale: a crash or memory leak in one replica's process can corrupt all parallel jobs in that process; spreading work across replicas isolates failures. With `localConcurrency: 1`, total concurrent jobs of any type = N_replicas (and never multiplied by per-process parallelism). (pg-boss v12 renamed this option from `teamSize` to `localConcurrency` — same semantics.)
+
+**The one exception is `cube.terminal-bridge`** ([boss.ts](lib/worker/boss.ts)), which runs at `localConcurrency: 50`. Each terminal bridge is long-lived (up to 4h hard timeout), interactive, customer-facing, and fully isolated per-session — its own SSH client, its own Pusher subscriber, its own PTY stream, no cross-bridge state inside the worker process. With the default `1`, a single in-flight bridge would block every other customer's terminal across the entire fleet for hours; queued sessions would show "Connected" in the browser (their Pusher presence-channel auth succeeds independently) but no shell output, and eventually tear down with `browser_did_not_join_within_30s` once they finally got a slot — by then the customer-side subscription is stale. Scale by adding worker replicas if a single replica saturates 50 concurrent terminals.
+
+**Postgres `max_connections` requirement: 200.** Each worker replica opens ~30 connections: 20 from the postgres-js pool at [lib/db.ts:15](lib/db.ts#L15) (`max: 20`) + ~10 from pg-boss's internal pool. Add Next.js (~30) + Dokploy console + dev tools. For up to 5 replicas, set Postgres `max_connections = 200` in the Dokploy Postgres service config and restart it BEFORE scaling beyond 2 replicas — otherwise replicas will fail to start with "too many clients already" errors. Verify with `SELECT setting FROM pg_settings WHERE name = 'max_connections';`.
+
+**Handler idempotency requirement.** pg-boss guarantees _at-least-once_ delivery, NOT exactly-once. A handler can fire twice for the same job row if (a) the worker dies after the external side effect succeeded but before pg-boss marks the job `completed`, (b) `expireInSeconds` fires while the handler is still running, or (c) the handler throws after the external side effect happened. Any handler that mutates state outside its own database row — sending an email, calling Cloudflare/Polar/EmailIt APIs, running iptables, uploading to S3, POSTing to customer webhooks — MUST be idempotent. The canonical patterns:
+
+1. **Atomic state transition on a status-bearing row.** Snapshot and backup handlers do `UPDATE … SET status='creating' WHERE id=? AND status='pending' RETURNING …`. A retry finds the row already `creating` and short-circuits. See [snapshot-create.ts:52-66](lib/worker/handlers/snapshot-create.ts#L52-L66) and [backup-create.ts:119-130](lib/worker/handlers/backup-create.ts#L119-L130).
+2. **Dedicated outbox table for handlers with no natural status-bearing row.** [`email_outbox`](db/schema/email-outbox.ts) (added in migration 0049) is the reference implementation. `enqueueEmail()` inserts a `queued` row, the worker atomically transitions `queued → sending → sent`, EmailIt's `Idempotency-Key` (24-hour dedup window) gives second-layer protection at the provider, and the `email.outbox-reap` cron sweeps stuck `sending` rows to `failed` after 10 minutes. **Never resend a stuck row — log + reap to `failed` and let an operator decide.**
+3. **Provider-side idempotency keys.** When the external API supports it, pass the outbox/job id as the dedup key. EmailIt `Idempotency-Key` (≤256 chars, alphanumeric + dash + underscore — UUIDs work). Polar `eventId` parameter on meter ingest (see [polar-meter-reconcile.ts](lib/worker/handlers/polar-meter-reconcile.ts)). Outbound webhook deliveries pass `X-Krova-Delivery: <deliveryId>` so customers can dedupe on their side ([outbound-webhook-deliver.ts:104](lib/worker/handlers/outbound-webhook-deliver.ts#L104)).
+4. **Check-then-act for non-idempotent OS commands.** `iptables -A` appends a duplicate rule on retry; `iptables -D` errors when the rule is missing. The wrappers `idempotentIptablesAdd` and `idempotentIptablesDelete` in [lib/ssh/network.ts](lib/ssh/network.ts) gate `-A`/`-D` with `-C` (check) so the operation is idempotent. Any new iptables manipulation MUST use these wrappers — never write a bare `-A`/`-D` SSH command.
+
+**`retryLimit` policy.** Most queues use pg-boss's `retryLimit > 0` with `retryDelay`. `EMAIL_SEND` is the exception: its handler owns retry decisions via the `email_outbox.attempt_count` column and explicitly re-enqueues a fresh pg-boss job on transient failure, so `retryLimit: 0` is set in [ensure-queues.ts](lib/worker/ensure-queues.ts). Any future handler that uses an outbox-style row-state machine should follow the same pattern (handler owns retries) rather than pg-boss `retryLimit` (queue owns retries) — mixing the two creates races where pg-boss re-fires jobs that the row state machine already resolved.
+
+### Route Groups (app/)
+
+- `(auth)/` — public auth pages (login, signup); shared `AuthForm` component with magic link + Google OAuth
+- `(dashboard)/` — protected customer dashboard, scoped by `[spaceId]` dynamic segment
+- `(landing)/` — public landing page
+- `(orbit)/` — admin interface (requires `isAdmin` on user record)
+- `actions/` — server actions for mutations
+- `api/` — REST API routes
+
+### Service Layer (lib/)
+
+- `lib/auth.ts`, `lib/auth-core.ts` — Better Auth + shared auth-query logic
+- `lib/db.ts` — Drizzle ORM instance
+- `lib/env.ts` — Zod-validated environment variables (app fails fast on invalid env)
+- `lib/encrypt.ts` — `encryptValue()`, `decryptValue()` (AES-256-GCM + PBKDF2, default key = `APP_SECRET`), `Secret<T>` wrapper that redacts from logs/JSON
+- `lib/audit.ts` — `audit()`, `auditBatch()` — fire-and-forget audit logging, never throws
+- `lib/billing.ts`, `lib/cost.ts`, `lib/credit-check.ts` — single source of truth for billing math
+- `lib/plan/` — plan-tier enforcement: `limits.ts` (pure allow/deny guards — `assertCanCreateCube`, `assertCanWakeCube`, `assertCanInviteMember`, `assertCanKeepBackup`, `assertCanAddDomain`, `assertCubeWithinSize`, plus `checkSpaceFitsPlan` — the downgrade gate), `usage.ts` (the DB usage counts + `acquireSpaceLock` advisory lock + `getSpacePlan`), and `reconcile.ts` (`reconcileSpaceCubeCount` — sleeps Cubes over a lower tier's concurrent cap after a downgrade/cancel). Callers count, then guard, inside a per-space locked transaction.
+- `lib/billing/` — billing flows: `topup-checkout.ts` (`computeTopupCents` surcharge gross-up + row-before-checkout creation), `apply-topup.ts` (`applyCreditTopup` — the single credit-apply path shared by Orbit grants, top-ups, and plan credit, runs inside the caller's transaction), `apply-paid-topup.ts` (`applyPaidTopup` — the idempotent `pending→paid` flip used by the Polar webhook and the reconcile cron), `subscription-handler.ts` (the webhook-authoritative subscription lifecycle — applied per-space-locked with an `occurredAt` staleness guard), `apply-plan-credit.ts` (`applyPlanCredit` — period-idempotent + cooldown-gated included-credit grant), `reconcile-subscription.ts` (the dropped-webhook backstop, run by the `subscription.reconcile` cron), `overage.ts` (the postpaid overage cascade — `computeOverageCascade` pure math, `applyOverageCascadeTx` writes the space counters + `overage_charge` ledger row inside the worker's tx, `reportOverageEventNow` / `reportUnreportedOverageBatch` ingest the events into Polar's meter with the `polar.meter-reconcile` cron as a retry backstop)
+- `lib/payments/` — provider-agnostic payment surface: `types.ts` (the `PaymentProvider` interface — top-up checkout, subscription checkout/change/cancel, subscription lookup, `verifyWebhook`), `index.ts` (`getPaymentProvider()` selector), `polar/` (the Polar implementation). Nothing outside `lib/payments/` imports a payment-provider SDK directly.
+- `lib/api/auth-helpers.ts` — `requireSession()`, `requireAdmin()`, `requireSpaceMember()`, `requirePermission()`, `requireCubeAccess()` (used by API routes)
+- `lib/actions/auth-helpers.ts` — `getActionSession()`, `requireActionMembershipAndPermission()`, `requireActionCubeAccess()` (used by server actions)
+- `lib/server/` — server allocation, port allocation, phased setup orchestration
+- `lib/ssh/` — SSH connection, command exec, Firecracker, Caddy, vsock, encryption
+- `lib/cloudflare/` — Cloudflare API v4 client: DNS record CRUD (`dns.ts`) and Custom Hostname CRUD (`custom-hostnames.ts`) used for customer custom-domain routing via Cloudflare for SaaS
+- `lib/emailit/` — EmailIt API v2 client: `client.ts` (shared authed request wrapper), `emails.ts` (transactional `POST /emails` — used by `lib/email/index.ts`), `contacts.ts` (contact CRUD), `sync-contact.ts` (`syncUserToEmailit()` / `syncAllUsers()` — builds marketing custom fields from DB state)
+- `lib/cube-resize/` — `validate.ts` (pure validation against `config/platform.ts` ranges + virtio-mem slot alignment), `enqueue.ts` (shared API helper used by customer + admin resize routes)
+- `lib/cube-transfer/` — `snapshot-helpers.ts` (compress + upload core, shared by `snapshot.create` so the host-side zstd compression and rclone multipart upload pipeline lives in one place)
+- `lib/status-display.ts` — single source of truth for every status-to-display mapping (filter dropdown options, shadcn Badge variant, full Tailwind class string per enum value). Drives the cube/snapshot/credit-purchase/domain/subscription/server/server-setup-phase/billing-event/Cloudflare-hostname/generic-resource status displays across both customer dashboard and Orbit admin. Each enum derives at runtime from its source pgEnum's `.enumValues` (snapshot/credit-purchase/domain/server/server-setup-phase/billing-event) — adding a new status value means editing only the pgEnum + the per-enum table here. The two free-form text columns (`spaces.subscriptionStatus` mirroring Polar's status string + Cloudflare hostname status) declare their own value list since they aren't pgEnums.
+- `lib/webhook-events.ts` — single source for outbound webhook event names. Exports `WEBHOOK_EVENTS` (the labeled `{value, label}[]` for the customer subscription form) + `WEBHOOK_EVENT_VALUES` (the tuple `z.enum()` needs in `outbound-webhooks.ts`). Lives outside `app/actions/outbound-webhooks.ts` because that file has `"use server"` and Next.js 16 strictly forbids non-async-function exports from `"use server"` files (runtime error: "A 'use server' file can only export async functions, found object").
+- `lib/worker/` — pg-boss job types, enqueue, handlers, monitor
+

@@ -1,0 +1,53 @@
+# Krova
+
+> Krova is a self-service cloud platform that runs each app inside its own hardware-isolated Linux virtual machine (a "Cube") on dedicated bare-metal servers. Every Cube boots its own kernel — never a shared kernel like a container — runs inside a per-cube sandbox, and has no public IP of its own. Web traffic is served through Cloudflare's edge (TLS + DDoS protection), you get full root SSH, and you're billed by the minute at less than half the price of AWS Lightsail, DigitalOcean, Vultr, and Linode (up to ~69% lower on larger sizes).
+
+A Cube is a Firecracker microVM — the same isolation technology behind AWS Lambda. It has its own Linux kernel, a hardware-enforced (KVM) boundary from every other Cube, and a per-cube jailer sandbox (its own unprivileged user, chroot, and PID namespace), so even a hypervisor escape lands in an isolated sandbox rather than as root on the host. Unlike a typical VPS, a Cube has no public IP of its own: nothing inbound is reachable unless you explicitly map a port, every mapping is IP-allowlistable behind a stateful default-deny firewall, and custom-domain web traffic is proxied through Cloudflare for SaaS — so your origin is never exposed directly. Every Cube runs on dedicated bare-metal servers with ECC RAM, mirrored enterprise NVMe SSDs (RAID 1), a 10 Gbps host network with 100 TB of upstream traffic included per server per month, and provider-grade plus Cloudflare DDoS protection. There are no VPCs, security groups, or IAM policies to configure — create a Cube (in the dashboard or via the API), get an SSH connection, and you are running.
+
+Sign-up grants free starting credit, no credit card required. Rates are quoted per hour but billed by the minute — run a Cube for 5 minutes and you pay for 5 minutes. Sleeping a Cube preserves memory and disk state and stops compute (vCPU + RAM) billing immediately; only the disk it occupies on the host keeps billing, at the same per-GB rate. Waking takes under a second. Every GB of RAM and disk is reserved 1:1 with the host — no overselling, no thin provisioning. Snapshots use content-addressed deduplication (Restic). Plans are credit-based with optional postpaid overage; per-resource rates apply to running Cubes regardless of plan tier.
+
+## Pricing
+
+- Free starting credit on every new account, no card required
+- Per-hour usage, billed by the minute: $0.001/hr per vCPU · $0.0025/hr per GB RAM · $0.00005/hr per GB disk. Every GB of RAM and disk is billed 1:1 with the host — no free tier, no overselling. Volume tiers discount larger Cubes (up to 20% off at 9+ vCPU).
+- Example: 1 vCPU + 2 GB RAM + 20 GB disk ≈ $0.007/hr (~$5/month running 24/7)
+- Plans: Trial (free) · Starter · Pro · Business — each grants monthly credit and lifts feature caps
+- Up to ~69% cheaper than an equivalent AWS Lightsail / DigitalOcean / Vultr / Linode instance; less than half the price on every comparable size
+
+## Security & isolation
+
+- Own kernel per Cube — never a shared kernel; a kernel bug in one Cube can't reach another
+- Per-cube jailer sandbox (unprivileged uid, chroot, PID namespace) — escape lands in a sandbox, not host root
+- Hardware-enforced KVM boundary + most-restrictive seccomp filters; cross-VM memory-dedup side channels disabled
+- No public IP on the Cube; only ports you explicitly open are reachable, each IP-allowlistable
+- Custom-domain web traffic proxied through Cloudflare (TLS, hidden origin, always-on L3/4/7 DDoS protection)
+
+## Core capabilities
+
+- Full root SSH access — your key baked in at creation, no restrictions on installed software
+- Custom domains routed through Cloudflare for SaaS — automatic HTTPS, no cert management
+- TCP port forwarding with per-mapping IP whitelists
+- Live snapshots and pre-deletion backups, plus `.cube` archive import / export
+- Cube cloning from any snapshot, with optional disk resize
+- Teams (Spaces) with granular per-Cube access control and per-Space credit balances
+- Sleep / wake to stop compute billing on demand, with auto-sleep on zero balance
+- Browser-based xterm.js terminal for any Cube, no local SSH client required
+- REST API (v1) with scoped API-key auth — create and manage as many Cubes as you need, plus snapshots, domains, port mappings, webhooks; OpenAPI spec at /api/v1/openapi.json
+
+## Pages
+
+- [Home](https://krova.cloud/): Product overview, security, pricing, FAQ
+- [API Reference](https://krova.cloud/docs/api): REST API v1 documentation
+- [Sign up](https://krova.cloud/signup): Create a free account
+- [Log in](https://krova.cloud/login): Existing account sign-in
+
+## Legal
+
+- [Terms of Service](https://krova.cloud/terms)
+- [Privacy Policy](https://krova.cloud/privacy)
+- [Acceptable Use Policy](https://krova.cloud/aup)
+- [Cookie Policy](https://krova.cloud/cookies)
+
+## Contact
+
+- Support: support@krova.cloud

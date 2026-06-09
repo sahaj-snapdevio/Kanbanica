@@ -1,0 +1,64 @@
+name: CI
+
+# Runs the full test gate on every pull request (and on manual dispatch).
+# Mirrors what `pnpm test:all` runs locally: lint + typecheck, then the three
+# test stages (unit, migration-chain smoke, DB-backed
+# integration). The integration + migration stages spin their OWN throwaway
+# postgres:18 containers, so the runner just needs Docker — which the GitHub
+# `ubuntu-latest` image provides out of the box. No real secrets are needed:
+# `.env.unit` is committed (dummy values) and integration uses the committed
+# `.env.test.example` (email + all third-party network calls are stubbed; only
+# the throwaway DB is real).
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+# Least-privilege: CI only needs to read the repo.
+permissions:
+  contents: read
+
+# A newer push to the same PR cancels the in-progress run (saves CI minutes).
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: lint · typecheck · test:all
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      # pnpm must be installed BEFORE setup-node so its `cache: pnpm` works.
+      # action-setup@v6 supports pnpm 11 and reads the version from the
+      # `packageManager` field in package.json (pnpm@11.5.0).
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint (biome)
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      # Integration stage reads .env.test; the real one is gitignored, so seed
+      # it from the committed template (dummy/stubbed values are sufficient).
+      - name: Seed test env
+        run: cp .env.test.example .env.test
+
+      # unit + migrations + integration, aggregated.
+      # Docker is already available on ubuntu-latest for the postgres stages.
+      - name: Run full test suite
+        run: pnpm test:all

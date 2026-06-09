@@ -1,0 +1,69 @@
+# Dokploy / Docker Swarm settings for the krova-cloud worker service.
+#
+# This is the SINGLE SOURCE OF TRUTH for the worker's Swarm `deploy:` block.
+# Apply it in Dokploy → <worker service> → Advanced → Swarm Settings
+# (Dokploy lets you paste a partial compose `deploy:` block, or set each
+# field via the UI; either way, match this file).
+#
+# Why these settings exist — see Dockerfile.worker header for full context.
+# The short version:
+#   - replicas: 1  — pg-boss is safe with N workers but our deploys must
+#                     never split work between a stale and a fresh container.
+#                     Strictly one worker at a time.
+#   - order: stop-first — drain the old before starting the new. Newly
+#                     enqueued jobs wait in Postgres during the gap (pg-boss
+#                     persists every job); they pick up instantly when the
+#                     new container is healthy.
+#   - stop_grace_period: 45m — must exceed worst-case in-flight job duration
+#                     (cube.transfer / backup.redeploy / snapshot.restore can
+#                     run 20–30 min). Keep ≥ 5m above WORKER_SHUTDOWN_TIMEOUT_MS
+#                     in lib/worker/boss.ts so pg-boss finishes cleanly before
+#                     SIGKILL.
+#   - healthcheck — pgrep on `scripts/worker.ts` so Swarm only routes the
+#                     service as "healthy" once the ACTUAL worker process is up
+#                     (not during `db:migrate`). start_period covers the migrate
+#                     step which runs before pg-boss boots.
+#   - init: true   — run tini as PID 1. Docker delivers SIGTERM to PID 1 only;
+#                     tini forwards it to the worker and reaps zombie children
+#                     (the local `docker` CLI spawned by `pnpm build:images`).
+#                     The Dockerfile CMD `exec`s Node so it is the foreground
+#                     process — without that, pnpm/sh would swallow the signal
+#                     and the graceful drain in scripts/worker.ts would never
+#                     run (pnpm#2653, pnpm#7374). See Dockerfile.worker header.
+#
+# Copy/paste target — the `deploy:` and `healthcheck:` blocks below. Do not
+# rename the service; if Dokploy uses a different service name, only the
+# nested fields matter.
+
+services:
+  worker:
+    # Image and env are managed by Dokploy from the rest of the project.
+    # Leave them out here — Dokploy merges this file with its own config.
+    init: true
+    stop_grace_period: 45m
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'scripts/worker.ts' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 3
+    deploy:
+      mode: replicated
+      replicas: 1
+      update_config:
+        order: stop-first
+        parallelism: 1
+        failure_action: rollback
+        # Must exceed healthcheck.start_period (120s) so at least one real
+        # health check runs inside the rollback window — otherwise Swarm
+        # declares the deploy "converged" before the worker is verified and a
+        # crash-on-boot (bad migration, env error) never triggers rollback.
+        monitor: 180s
+      rollback_config:
+        order: stop-first
+        parallelism: 1
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s

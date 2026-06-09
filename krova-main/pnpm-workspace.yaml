@@ -1,0 +1,41 @@
+packages:
+  - '.'
+allowBuilds:
+  cpu-features: true
+  esbuild: true
+  msw: true
+  sharp: true
+  ssh2: true
+  unrs-resolver: true
+  "@embedded-postgres/darwin-x64": true
+  "@embedded-postgres/darwin-arm64": true
+  "@embedded-postgres/linux-x64": true
+  "@embedded-postgres/linux-arm64": true
+  "@embedded-postgres/linux-arm": true
+  "@embedded-postgres/linux-ia32": true
+  "@embedded-postgres/linux-ppc64": true
+  "@embedded-postgres/windows-x64": true
+  '@datadog/pprof': true
+  protobufjs: true
+minimumReleaseAgeExclude:
+  - '@types/node@25.9.1'
+  - '@types/react@19.2.15'
+  - '@hookform/resolvers@5.4.0'
+  - react-email@6.3.0
+  - shadcn@4.8.0
+  - '@aws-sdk/client-s3@3.1053.0'
+  - '@aws-sdk/s3-request-presigner@3.1053.0'
+  - date-fns@4.3.0
+  - react-hook-form@7.76.1
+  - react-resizable-panels@4.11.2
+  - ultracite@7.8.0
+  - '@better-auth/core@1.6.13'
+  - '@better-auth/drizzle-adapter@1.6.13'
+  - '@better-auth/kysely-adapter@1.6.13'
+  - '@better-auth/memory-adapter@1.6.13'
+  - '@better-auth/mongo-adapter@1.6.13'
+  - '@better-auth/prisma-adapter@1.6.13'
+  - '@better-auth/telemetry@1.6.13'
+  - better-auth@1.6.13
+  - tsx@4.22.4
+  - concurrently@10.0.3

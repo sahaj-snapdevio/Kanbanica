@@ -1,0 +1,527 @@
+#!/usr/bin/env python3
+"""
+Krova Guest Agent — runs inside every Cube microVM.
+
+Listens on a vsock port for commands from the host platform.
+This is the ONLY management channel — no SSH keys or management
+services are stored inside the VM for platform use.
+
+The customer controls SSH on port 22 with their own keys.
+Platform operations (key inject/remove, docker, etc.) go through this agent.
+
+Protocol:
+  Host connects via Firecracker's vsock UDS → sends CONNECT 52
+  Then sends a JSON command terminated by newline.
+  Agent processes the command and returns a JSON response + newline.
+
+Commands:
+  {"cmd":"ping"}
+    → {"status":"ok"}
+
+  {"cmd":"exec","payload":"<base64-encoded-shell-command>"}
+    → {"status":"ok","exitCode":N,"stdout":"<base64>","stderr":"<base64>"}
+
+  {"cmd":"metrics"}
+    → {"status":"ok",
+       "uptime_sec":N,
+       "load_avg_1m":F, "load_avg_5m":F, "load_avg_15m":F,
+       "cpu_user_pct":F, "cpu_system_pct":F, "cpu_idle_pct":F,
+       "mem_total_kb":N, "mem_used_kb":N, "mem_available_kb":N,
+       "disk_total_bytes":N, "disk_used_bytes":N, "disk_avail_bytes":N}
+
+  {"cmd":"pty","cols":N,"rows":N,"shell":"/bin/bash","env":{...}}
+    → {"status":"ok"}                  (immediately, then connection switches
+                                        to framed binary mode below)
+    Framed bidirectional protocol after handshake:
+      [1 byte type][4 byte BE length][N bytes payload]
+      0x01 stdin  (host → guest)  raw keystrokes
+      0x02 stdout (guest → host)  raw PTY output
+      0x03 resize (host → guest)  JSON {"cols":N,"rows":M}
+      0x04 exit   (guest → host)  JSON {"exitCode":N}, then close
+
+Installed as a systemd service: krova-agent.service
+Protected by a watchdog timer: krova-agent-watchdog.timer
+"""
+
+import base64
+import fcntl
+import json
+import os
+import pty
+import select
+import signal
+import socket
+import struct
+import subprocess
+import sys
+import termios
+import threading
+import time
+import traceback
+
+VSOCK_PORT = 52
+TIMEOUT = 300  # Max command execution time in seconds
+CPU_SAMPLE_INTERVAL_SEC = 0.1  # delta window for /proc/stat CPU sampling
+
+# PTY frame protocol (binary, after the initial JSON handshake).
+FRAME_TYPE_STDIN = 0x01
+FRAME_TYPE_STDOUT = 0x02
+FRAME_TYPE_RESIZE = 0x03
+FRAME_TYPE_EXIT = 0x04
+FRAME_HEADER = struct.Struct(">BI")  # [1 byte type, 4 byte BE uint32 length]
+PTY_READ_CHUNK = 65536
+PTY_MAX_STDIN_FRAME = 4 * 1024 * 1024  # hard ceiling per stdin frame
+
+
+def _read_proc_loadavg():
+    with open("/proc/loadavg", "r") as f:
+        parts = f.read().split()
+    return float(parts[0]), float(parts[1]), float(parts[2])
+
+
+def _read_proc_uptime():
+    with open("/proc/uptime", "r") as f:
+        return float(f.read().split()[0])
+
+
+def _read_proc_stat_cpu():
+    # Sum of user, nice, system, idle, iowait, irq, softirq, steal — fields 1..8
+    with open("/proc/stat", "r") as f:
+        line = f.readline()
+    fields = line.split()[1:]
+    nums = [int(x) for x in fields[:8]]
+    user = nums[0] + nums[1]  # user + nice
+    system = nums[2] + nums[5] + nums[6] + nums[7]  # system + irq + softirq + steal
+    idle = nums[3] + nums[4]  # idle + iowait
+    total = user + system + idle
+    return user, system, idle, total
+
+
+def _sample_cpu_pct():
+    u1, s1, i1, t1 = _read_proc_stat_cpu()
+    time.sleep(CPU_SAMPLE_INTERVAL_SEC)
+    u2, s2, i2, t2 = _read_proc_stat_cpu()
+    dt = t2 - t1
+    if dt <= 0:
+        return 0.0, 0.0, 100.0
+    return (
+        round((u2 - u1) * 100.0 / dt, 2),
+        round((s2 - s1) * 100.0 / dt, 2),
+        round((i2 - i1) * 100.0 / dt, 2),
+    )
+
+
+def _read_proc_meminfo():
+    info = {}
+    with open("/proc/meminfo", "r") as f:
+        for line in f:
+            key, _, rest = line.partition(":")
+            value = rest.strip().split()
+            if value:
+                # All values are in kB
+                info[key] = int(value[0])
+    total = info.get("MemTotal", 0)
+    available = info.get("MemAvailable", info.get("MemFree", 0))
+    used = max(0, total - available)
+    return total, used, available
+
+
+def _read_rootfs_disk():
+    st = os.statvfs("/")
+    total = st.f_blocks * st.f_frsize
+    avail = st.f_bavail * st.f_frsize
+    # used = blocks reserved for non-root + non-bavail. Match `df`'s view:
+    # used = (total blocks − free blocks) for the non-root reservation.
+    free = st.f_bfree * st.f_frsize
+    used = total - free
+    return total, used, avail
+
+
+def collect_metrics():
+    load1, load5, load15 = _read_proc_loadavg()
+    uptime = _read_proc_uptime()
+    cpu_user, cpu_system, cpu_idle = _sample_cpu_pct()
+    mem_total, mem_used, mem_avail = _read_proc_meminfo()
+    disk_total, disk_used, disk_avail = _read_rootfs_disk()
+    return {
+        "status": "ok",
+        "uptime_sec": int(uptime),
+        "load_avg_1m": load1,
+        "load_avg_5m": load5,
+        "load_avg_15m": load15,
+        "cpu_user_pct": cpu_user,
+        "cpu_system_pct": cpu_system,
+        "cpu_idle_pct": cpu_idle,
+        "mem_total_kb": mem_total,
+        "mem_used_kb": mem_used,
+        "mem_available_kb": mem_avail,
+        "disk_total_bytes": disk_total,
+        "disk_used_bytes": disk_used,
+        "disk_avail_bytes": disk_avail,
+    }
+
+
+def _send_frame(conn, frame_type, payload):
+    """Write a single framed message to conn. payload is bytes.
+
+    The PTY session puts conn in non-blocking mode, so a heavy stdout burst
+    (cat a large file, build logs) can fill the vsock send buffer and make a
+    naive sendall() raise BlockingIOError — which the caller's `except OSError`
+    would treat as fatal and TEAR THE SESSION. Instead, send the whole frame in
+    a loop, treating BlockingIOError as backpressure: select-for-write until the
+    socket drains, then continue. A genuinely dead peer raises a non-EAGAIN
+    OSError (EPIPE/ECONNRESET) which still propagates to the caller. Safe on a
+    blocking conn too (send() never raises BlockingIOError there)."""
+    data = FRAME_HEADER.pack(frame_type, len(payload)) + payload
+    total = 0
+    while total < len(data):
+        try:
+            sent = conn.send(data[total:])
+            if sent == 0:
+                raise OSError("vsock connection closed during send")
+            total += sent
+        except BlockingIOError:
+            # send buffer full — wait until writable (backpressure), then retry.
+            select.select([], [conn], [], 1.0)
+
+
+def _set_pty_size(master_fd, cols, rows):
+    """Apply window size to the PTY master via TIOCSWINSZ."""
+    # struct winsize: ws_row, ws_col, ws_xpixel, ws_ypixel
+    fcntl.ioctl(
+        master_fd,
+        termios.TIOCSWINSZ,
+        struct.pack("HHHH", int(rows), int(cols), 0, 0),
+    )
+
+
+def handle_pty(conn, req):
+    """
+    Run an interactive shell hooked to a PTY, bridged to the vsock
+    connection in framed binary mode. Hijacks the connection until the
+    child exits or the peer disconnects.
+    """
+    cols = int(req.get("cols", 80))
+    rows = int(req.get("rows", 24))
+    shell = req.get("shell", "/bin/bash")
+    extra_env = req.get("env") or {}
+    if not isinstance(extra_env, dict):
+        extra_env = {}
+
+    try:
+        pid, master_fd = pty.fork()
+    except OSError as e:
+        conn.sendall(
+            (json.dumps({"status": "error", "message": f"pty.fork failed: {e}"}) + "\n").encode()
+        )
+        return
+
+    if pid == 0:
+        # Child: clean env, then exec the login shell. pty.fork already
+        # set up stdin/stdout/stderr from the slave end + made us session
+        # leader, so no manual dup2 dance.
+        env = {
+            "TERM": "xterm-256color",
+            "HOME": "/root",
+            "USER": "root",
+            "LOGNAME": "root",
+            "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+            "SHELL": shell,
+            "LANG": os.environ.get("LANG", "C.UTF-8"),
+        }
+        for k, v in extra_env.items():
+            # Refuse to inject anything that looks like an explicit override of
+            # PATH or LD_PRELOAD-style names — keeps customer-side surprises
+            # localized to env they typed for themselves.
+            if (
+                isinstance(k, str)
+                and isinstance(v, str)
+                and 0 < len(k) <= 256
+                and len(v) <= 4096
+            ):
+                env[k] = v
+
+        # chdir to HOME before exec so bash's default `\w` prompt expansion
+        # renders as `~` instead of the literal `/` (the child inherits the
+        # agent's systemd cwd, which is `/`). This matches what sshd does
+        # for an interactive login session and is what customers expect
+        # when they open a terminal — `root@host:~#` not `root@host:/#`.
+        # Best-effort: if HOME is missing or unreadable, fall through and
+        # let bash start in whatever cwd it inherited.
+        try:
+            os.chdir(env.get("HOME", "/root"))
+        except OSError:
+            pass
+
+        # Confirm to the parent + peer that we're ready BEFORE exec — once
+        # exec runs we lose the chance to send any structured JSON.
+        # (This `sys.stdout` is the PTY slave; the parent sees it as PTY
+        # output which it forwards as a stdout frame.)
+        try:
+            os.execvpe(shell, [shell, "-il"], env)
+        except FileNotFoundError:
+            sys.stderr.write(f"shell not found: {shell}\n")
+            os._exit(127)
+        except Exception as e:
+            sys.stderr.write(f"exec failed: {e}\n")
+            os._exit(1)
+        # NOTREACHED
+        return
+
+    # Parent: apply initial size, ack the handshake, then enter framed mode.
+    try:
+        _set_pty_size(master_fd, cols, rows)
+    except OSError:
+        pass
+
+    conn.sendall(b'{"status":"ok"}\n')
+
+    conn.setblocking(False)
+    # PTY master must be non-blocking so we never wedge on a long read
+    flags = fcntl.fcntl(master_fd, fcntl.F_GETFL)
+    fcntl.fcntl(master_fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+
+    inbound = bytearray()
+    exit_code = None
+
+    try:
+        while True:
+            try:
+                ready, _, _ = select.select([conn, master_fd], [], [], 1.0)
+            except (OSError, ValueError):
+                break
+
+            if conn in ready:
+                # Distinguish "would block" (BlockingIOError, retry next tick)
+                # from "peer closed" (recv returned b""). Coalescing both into
+                # an empty chunk loses the EOF signal and the loop would hang
+                # until the PTY side eventually closes.
+                got_chunk = None
+                try:
+                    got_chunk = conn.recv(PTY_READ_CHUNK)
+                except BlockingIOError:
+                    got_chunk = None  # spurious wake-up — retry next select
+                except OSError:
+                    break
+                if got_chunk == b"":
+                    # peer (host helper) closed
+                    break
+                chunk = got_chunk
+                if chunk:
+                    inbound.extend(chunk)
+                    # Parse any complete frames out of the buffer
+                    while True:
+                        if len(inbound) < FRAME_HEADER.size:
+                            break
+                        ftype, flen = FRAME_HEADER.unpack(
+                            inbound[: FRAME_HEADER.size]
+                        )
+                        if flen > PTY_MAX_STDIN_FRAME:
+                            # Defensive — never trust the wire to bound payload
+                            inbound.clear()
+                            break
+                        if len(inbound) < FRAME_HEADER.size + flen:
+                            break
+                        payload = bytes(
+                            inbound[
+                                FRAME_HEADER.size : FRAME_HEADER.size + flen
+                            ]
+                        )
+                        del inbound[: FRAME_HEADER.size + flen]
+
+                        if ftype == FRAME_TYPE_STDIN:
+                            try:
+                                os.write(master_fd, payload)
+                            except OSError:
+                                # PTY closed (child died) — exit poll loop
+                                ftype = None
+                                break
+                        elif ftype == FRAME_TYPE_RESIZE:
+                            try:
+                                req = json.loads(payload.decode("utf-8"))
+                                _set_pty_size(
+                                    master_fd,
+                                    int(req.get("cols", cols)),
+                                    int(req.get("rows", rows)),
+                                )
+                            except (ValueError, OSError):
+                                pass
+                        # Unknown frame types are silently ignored
+
+            if master_fd in ready:
+                try:
+                    chunk = os.read(master_fd, PTY_READ_CHUNK)
+                except (BlockingIOError, OSError):
+                    chunk = b""
+                if not chunk:
+                    # PTY EOF — child exited
+                    break
+                try:
+                    _send_frame(conn, FRAME_TYPE_STDOUT, chunk)
+                except OSError:
+                    break
+
+            # Reap the child if it has already exited (non-blocking)
+            if exit_code is None:
+                try:
+                    waited_pid, status = os.waitpid(pid, os.WNOHANG)
+                except ChildProcessError:
+                    waited_pid = pid
+                    status = 0
+                if waited_pid == pid:
+                    if os.WIFEXITED(status):
+                        exit_code = os.WEXITSTATUS(status)
+                    elif os.WIFSIGNALED(status):
+                        exit_code = 128 + os.WTERMSIG(status)
+                    else:
+                        exit_code = 0
+                    # Drain one final read in case stdout is still buffered
+                    try:
+                        leftover = os.read(master_fd, PTY_READ_CHUNK)
+                        if leftover:
+                            _send_frame(conn, FRAME_TYPE_STDOUT, leftover)
+                    except (BlockingIOError, OSError):
+                        pass
+                    break
+    finally:
+        try:
+            os.close(master_fd)
+        except OSError:
+            pass
+        if exit_code is None:
+            # Connection dropped before the child died — SIGHUP it so the
+            # shell tears down its descendant processes.
+            try:
+                os.kill(pid, signal.SIGHUP)
+            except ProcessLookupError:
+                pass
+            try:
+                os.waitpid(pid, 0)
+            except ChildProcessError:
+                pass
+
+        try:
+            _send_frame(
+                conn,
+                FRAME_TYPE_EXIT,
+                json.dumps({"exitCode": exit_code if exit_code is not None else -1}).encode(),
+            )
+        except OSError:
+            pass
+
+
+def handle_connection(conn):
+    """Handle a single vsock connection from the host."""
+    conn.settimeout(TIMEOUT + 10)
+
+    # Read the JSON command (newline-terminated)
+    data = b""
+    while b"\n" not in data:
+        chunk = conn.recv(4096)
+        if not chunk:
+            return
+        data += chunk
+        if len(data) > 1024 * 1024:  # 1MB limit
+            conn.sendall(b'{"status":"error","message":"request too large"}\n')
+            return
+
+    try:
+        req = json.loads(data.decode("utf-8").strip())
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        conn.sendall(b'{"status":"error","message":"invalid json"}\n')
+        return
+
+    cmd = req.get("cmd", "")
+
+    if cmd == "ping":
+        conn.sendall(b'{"status":"ok"}\n')
+
+    elif cmd == "pty":
+        handle_pty(conn, req)
+
+    elif cmd == "metrics":
+        try:
+            resp = collect_metrics()
+        except Exception as e:
+            resp = {"status": "error", "message": f"metrics failed: {e}"}
+        conn.sendall((json.dumps(resp) + "\n").encode("utf-8"))
+
+    elif cmd == "exec":
+        payload_b64 = req.get("payload", "")
+        try:
+            shell_cmd = base64.b64decode(payload_b64).decode("utf-8")
+        except Exception:
+            conn.sendall(b'{"status":"error","message":"invalid base64 payload"}\n')
+            return
+
+        timeout = req.get("timeout", TIMEOUT)
+        try:
+            result = subprocess.run(
+                ["/bin/sh", "-c", shell_cmd],
+                capture_output=True,
+                timeout=timeout,
+            )
+            resp = {
+                "status": "ok",
+                "exitCode": result.returncode,
+                "stdout": base64.b64encode(result.stdout).decode("ascii"),
+                "stderr": base64.b64encode(result.stderr).decode("ascii"),
+            }
+        except subprocess.TimeoutExpired:
+            resp = {"status": "error", "message": f"command timed out after {timeout}s"}
+        except Exception as e:
+            resp = {"status": "error", "message": str(e)}
+
+        conn.sendall((json.dumps(resp) + "\n").encode("utf-8"))
+
+    else:
+        conn.sendall(
+            json.dumps({"status": "error", "message": f"unknown command: {cmd}"}).encode("utf-8")
+            + b"\n"
+        )
+
+
+def main():
+    # Ignore SIGPIPE to avoid crashing on broken connections
+    signal.signal(signal.SIGPIPE, signal.SIG_IGN)
+
+    # Create vsock listener
+    # AF_VSOCK = 40, VMADDR_CID_ANY = 0xFFFFFFFF (-1 unsigned)
+    try:
+        sock = socket.socket(socket.AF_VSOCK, socket.SOCK_STREAM)
+    except (AttributeError, OSError) as e:
+        print(f"krova-agent: failed to create vsock socket: {e}", file=sys.stderr)
+        print("krova-agent: vsock kernel module may not be loaded", file=sys.stderr)
+        sys.exit(1)
+
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.bind((socket.VMADDR_CID_ANY, VSOCK_PORT))
+    sock.listen(5)
+
+    print(f"krova-agent: listening on vsock port {VSOCK_PORT}", file=sys.stderr)
+
+    def _run_connection(conn):
+        try:
+            handle_connection(conn)
+        except Exception:
+            traceback.print_exc()
+        finally:
+            try:
+                conn.close()
+            except OSError:
+                pass
+
+    while True:
+        try:
+            conn, addr = sock.accept()
+        except OSError:
+            continue
+
+        # One thread per connection so a long-lived PTY session doesn't
+        # block concurrent ping / exec / metrics traffic. daemon=True
+        # means the threads don't keep the process alive at shutdown.
+        threading.Thread(target=_run_connection, args=(conn,), daemon=True).start()
+
+
+if __name__ == "__main__":
+    main()
