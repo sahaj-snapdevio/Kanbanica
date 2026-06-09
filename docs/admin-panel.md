@@ -403,6 +403,69 @@ All admin endpoints are prefixed with `/api/admin/` and require `is_platform_adm
 
 ---
 
+## Implementation Notes
+
+### Impersonation Cleanup Job (Security-Critical)
+
+Impersonation sessions auto-expire after 1 hour. This must be enforced by a background job -- the 1-hour rule has no effect without it.
+
+```typescript
+// src/lib/worker/job-types.ts
+JOB_NAMES.IMPERSONATION_CLEANUP = "impersonation.cleanup"
+QUEUE_OPTIONS[JOB_NAMES.IMPERSONATION_CLEANUP] = {
+  retryLimit: 2,
+}
+```
+
+**Cron schedule:** every 5 minutes
+
+```typescript
+// scripts/worker.ts
+await boss.schedule(JOB_NAMES.IMPERSONATION_CLEANUP, '*/5 * * * *', {})
+```
+
+**Handler:**
+
+```typescript
+// src/lib/worker/handlers/impersonation-cleanup.ts
+
+export async function handleImpersonationCleanup() {
+  const cutoff = new Date(Date.now() - 60 * 60 * 1000)  // 1 hour ago
+
+  // Better Auth stores impersonation sessions with impersonatedBy set.
+  // Delete any impersonation session older than 1 hour.
+  const expired = await db.session.findMany({
+    where: {
+      impersonatedBy: { not: null },
+      createdAt: { lt: cutoff }
+    },
+    select: { id: true, impersonatedBy: true, userId: true }
+  })
+
+  if (expired.length === 0) return
+
+  await db.session.deleteMany({
+    where: { id: { in: expired.map(s => s.id) } }
+  })
+
+  // Audit log each expired session
+  await db.platformAuditLog.createMany({
+    data: expired.map(s => ({
+      action: 'impersonation_expired',
+      actorId: s.impersonatedBy!,
+      targetUserId: s.userId,
+      meta: { reason: 'auto_expired_1h' }
+    }))
+  })
+}
+```
+
+**Idempotency:** safe to run multiple times -- `deleteMany` on already-deleted sessions is a no-op.
+
+**Note on `impersonatedBy` field:** Better Auth's Admin Plugin adds this field to the Session model. Confirm the exact field name against the installed version of `better-auth` -- it may be `impersonatorId` depending on the plugin version. Check `node_modules/better-auth` types at setup time.
+
+---
+
 ## Out of Scope (MVP)
 
 - Role-based access within the Admin Panel (e.g. Support agent vs regular admin)

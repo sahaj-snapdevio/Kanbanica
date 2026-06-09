@@ -383,6 +383,119 @@ Shown immediately after the user clicks "Send Sign-In Link". Reduces abandonment
 
 ---
 
+## Implementation Notes
+
+### Auth Pattern -- API Routes
+
+Every `/api/` route handler must authenticate at the top before any business logic. Use a shared helper so the pattern is never inlined differently across routes:
+
+```typescript
+// src/lib/api/auth-helpers.ts
+
+import { auth } from '@/lib/auth'
+import { headers } from 'next/headers'
+import { NextResponse } from 'next/server'
+
+export async function getSessionOrUnauthorized() {
+  const session = await auth.api.getSession({ headers: await headers() })
+  if (!session) {
+    return { session: null, response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
+  }
+  return { session, response: null }
+}
+```
+
+Usage in every API route:
+
+```typescript
+// src/app/api/tasks/[taskId]/route.ts
+
+export async function GET(req: Request, { params }: { params: { taskId: string } }) {
+  const { session, response } = await getSessionOrUnauthorized()
+  if (response) return response  // 401 early return
+
+  // Permission check after session check
+  const canAccess = await checkSpacePermission(session.user.id, params.taskId)
+  if (!canAccess) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  // Business logic here
+}
+```
+
+Rules:
+- Session missing -> `401 Unauthorized`
+- Session present but insufficient permission -> `403 Forbidden`
+- Never expose internal error messages -- always `{ error: string }` with a generic message
+
+### Auth Pattern -- Server Actions
+
+Server actions use the same `auth.api.getSession()` call but return `{ error: string }` instead of a `NextResponse`:
+
+```typescript
+// src/server/tasks.ts
+
+export async function updateTaskStatus(taskId: string, statusId: string) {
+  // 1. Auth check -- always first
+  const session = await auth.api.getSession({ headers: await headers() })
+  if (!session) return { error: 'Unauthorized' }
+
+  // 2. Permission check
+  const allowed = await requireSpaceMembershipAndPermission(session.user.id, taskId, 'EDIT')
+  if (!allowed) return { error: 'Forbidden' }
+
+  // 3. Business logic inside try/catch
+  try {
+    await db.task.update({ where: { id: taskId }, data: { statusId } })
+    return { success: true }
+  } catch (err) {
+    console.error('updateTaskStatus failed', { taskId, statusId, err })
+    return { error: 'Something went wrong' }
+  }
+}
+```
+
+Rules:
+- `auth.api.getSession()` is always the first line -- never deeper in the function
+- Permission check is always the second step -- before any DB read that is not needed for the check itself
+- All server actions return `{ error: string }` on failure -- never throw to the client
+- The inner `console.error` logs the real error; the outer return shows a safe generic message
+- Never return raw Prisma errors or stack traces -- they leak schema details
+
+### `requireSpaceMembershipAndPermission` Helper
+
+Centralises the two-level permission check (workspace role + space permission) so it is never inlined differently across actions:
+
+```typescript
+// src/lib/permissions.ts
+
+export async function requireSpaceMembershipAndPermission(
+  userId: string,
+  spaceId: string,
+  requiredPermission: 'VIEW' | 'COMMENT' | 'EDIT' | 'FULL_ACCESS'
+): Promise<boolean> {
+  const member = await db.spaceMember.findFirst({
+    where: { userId, spaceId },
+    include: { workspaceMember: true }
+  })
+
+  if (!member) return false
+
+  // Workspace Owner and Admin bypass space-level checks
+  if (['OWNER', 'ADMIN'].includes(member.workspaceMember.role)) return true
+
+  return hasPermissionLevel(member.permission, requiredPermission)
+}
+
+function hasPermissionLevel(actual: string, required: string): boolean {
+  const order = ['VIEW', 'COMMENT', 'EDIT', 'FULL_ACCESS']
+  return order.indexOf(actual) >= order.indexOf(required)
+}
+```
+
+See [permission-model.md](./permission-model.md) for the full permission matrix.
+
+---
+
 ## Out of Scope (MVP)
 
 - Password-based authentication

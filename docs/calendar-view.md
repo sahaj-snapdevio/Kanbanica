@@ -1,120 +1,157 @@
 # Calendar View
 
-> **⚠️ Post-MVP — Not included in the initial launch.**
->
-> Calendar View is deferred to a post-MVP release. The implementation cost (date grid rendering, drag-to-reschedule, date range display, responsive month/week toggle) is high relative to day-1 adoption. Less than 15% of users open a calendar view in their first week. For MVP, due-date sorting and overdue highlighting in List View covers the most critical scheduling needs.
->
-> This document preserves the full spec so it can be built in a later phase without re-designing from scratch.
+## Goal
+
+Provide a date-grid visualization of tasks within a List, allowing users to see task due dates spatially and drag tasks to reschedule them.
+
+**This feature is post-MVP and must not be implemented in Phases 0-18.**
 
 ---
 
-## Overview
+## Existing Scope (Post-MVP Only)
 
-Tasks are placed on a calendar grid based on their due date. Useful for seeing what is due when across the month or week.
+This entire document is a planning artifact for a future phase. Calendar View will be introduced after the core task management system (Phases 1-18) is stable and adopted.
 
-**Access:** Via the view switcher in the List toolbar — `[ List ][ Board ][ Calendar ]`
-
----
-
-## Layout
-
-```
-◀ May 2026                                              June 2026 ▶
-┌─────┬─────┬─────┬─────┬─────┬─────┬─────┐
-│ Mon │ Tue │ Wed │ Thu │ Fri │ Sat │ Sun │
-├─────┼─────┼─────┼─────┼─────┼─────┼─────┤
-│     │     │  3  │  4  │  5  │  6  │  7  │
-│     │     │[T1] │[T2] │[T3] │     │     │
-├─────┼─────┼─────┼─────┼─────┼─────┼─────┤
-│  8  │  9  │ 10  │ 11  │ 12  │ 13  │ 14  │
-│     │[T4] │     │[T5] │     │     │     │
-└─────┴─────┴─────┴─────┴─────┴─────┴─────┘
-```
+**DO NOT build any part of this feature until the Development Plan explicitly lists it in a numbered phase.**
 
 ---
 
-## Features
+## User Flow
 
-**Calendar modes:**
-- Monthly view (default) — full month grid
-- Weekly view — 7-day horizontal strip with more vertical space per day
-
-**Task placement:**
-- Tasks with a single due date appear on that day
-- Tasks with a date range (start + end) appear as a spanning bar across the date range
-- Tasks with no due date are listed in an `Unscheduled` sidebar panel on the right
-
-**Task card on calendar:**
-- Shows: title, priority color dot, assignee avatar
-- Click to open Task detail panel
-
-**Drag and drop:**
-- Drag a task card to a different day to change its due date
-- Dragging a range task adjusts the end date (start date stays fixed)
-
-**Quick create:**
-- Click on a day cell → opens quick create with that date pre-filled as due date
-
-**Overdue:**
-- Past days with unclosed tasks are highlighted
-
-**Filters:**
-- Assignee filter — show only tasks assigned to selected users
-- Priority filter — show only selected priorities
+1. User opens a List -> clicks "Calendar" in the view switcher (alongside List/Board)
+2. Calendar renders in monthly view by default; weekly toggle available
+3. Each task with a `dueDateEnd` appears as a chip on its due date
+4. Tasks without a due date appear in an "Unscheduled" sidebar on the right
+5. User drags a task chip to a new date -> `dueDateEnd` is updated via `PATCH /api/tasks/:id`
+6. User drags a task from the Unscheduled sidebar to the grid -> sets `dueDateEnd`
+7. Clicking a task chip opens the Task detail panel (same as List/Board view)
+8. Calendar respects all existing task filters (assignee, priority, status)
 
 ---
 
-## Data Model
+## Technical Design
 
-View preference stored in the existing `UserListViewPreference` table — no new table needed.
+### SSR Safety (Critical)
 
-```
-UserListViewPreference
-├── view_type   (enum: list | board | calendar)  ← add "calendar" value when shipping
-└── ...
+dnd-kit accesses the browser's `window` object on import and will crash Next.js App Router's server-side render. The entire Calendar component and all dnd-kit imports MUST use dynamic import:
+
+```typescript
+// src/app/(app)/[workspaceId]/[spaceId]/list/[listId]/calendar/page.tsx
+import dynamic from 'next/dynamic'
+
+const CalendarView = dynamic(
+  () => import('@/components/calendar/calendar-view'),
+  { ssr: false }
+)
 ```
 
----
+This same pattern is required for Board View. Both views must never be imported directly in a server component.
 
-## API Endpoints
+### Date Handling
 
-| Method | Endpoint | Description | Access |
-|--------|----------|-------------|--------|
-| GET | `/api/lists/:listId/tasks?view=calendar&month=2026-06` | Get tasks with due dates for Calendar View | Space member |
+- All dates stored in UTC (`DateTime` Prisma type -> PostgreSQL `TIMESTAMP WITH TIME ZONE`)
+- Calendar grid renders in the user's local timezone using `Intl.DateTimeFormat`
+- Use `date-fns` for grid generation (month/week date arithmetic)
+- Drag-to-reschedule sends the target date in ISO format; client must convert local date -> UTC before sending
+- Never store timezone in the task -- always UTC, always convert on display
 
----
+### Timezone Edge Cases
 
-## UI Screens
+- A task due "June 10" for a user in UTC-5 is stored as `2026-06-10T05:00:00Z`
+- On render, convert stored UTC back to local date for grid placement
+- If the user changes their system timezone, task dates shift visually (expected behavior)
 
-| Screen | Route | Access |
-|--------|-------|--------|
-| Calendar View | `/space/:spaceId/list/:listId?view=calendar` | Space member |
+### Library Choice
 
----
-
-## Business Rules
-
-1. Calendar View only places tasks that have a due date — tasks without a due date appear in the Unscheduled panel on the right.
-2. Drag-and-drop on the calendar changes the task's actual due date for everyone — it is not a personal view-only change.
-3. View preference is per user per List — switching to calendar does not affect other members' views.
-4. Filters applied in other views carry over when switching to Calendar View on the same List.
-5. Bulk selection is not available in Calendar View — use List View for bulk operations.
+- Build a lightweight custom grid with `date-fns` -- avoid `react-big-calendar` for monthly/weekly-only views (carries significant bundle weight)
+- Use dnd-kit (`@dnd-kit/core`, `@dnd-kit/sortable`) for drag-and-drop
 
 ---
 
-## Implementation Notes (for when this is built)
+## Folder Mapping
 
-- **Date grid rendering:** Use a calendar library (e.g. `react-big-calendar` or custom grid with CSS Grid) rather than building from scratch. Month grid + week strip are different layout modes.
-- **Date range tasks:** Require CSS spanning logic across day cells — test edge cases at month boundaries.
-- **Drag-and-drop:** dnd-kit (already in the stack) supports calendar drop zones. Each day cell is a droppable target.
-- **Timezone handling:** All dates stored as UTC. Display in user's local timezone via `Intl.DateTimeFormat`. Test DST transitions.
-- **Responsive layout:** Monthly grid collapses poorly on mobile — weekly view should be the default on mobile viewports.
-- **Performance:** Only fetch tasks whose due date falls within the visible month range — `?month=2026-06` query param, not all tasks.
+```
+src/
+  app/(app)/[workspaceId]/[spaceId]/list/[listId]/
+    calendar/
+      page.tsx                 <- dynamic import wrapper only (ssr: false)
+  components/
+    calendar/
+      calendar-view.tsx        <- main component (loaded client-side only)
+      calendar-grid.tsx        <- month/week grid
+      calendar-task-chip.tsx   <- task pill on date cell
+      unscheduled-sidebar.tsx
+      use-calendar-dnd.ts      <- dnd-kit drag logic
+```
 
 ---
 
-## Out of Scope (even when Calendar View is built)
+## API
 
-- Cross-list calendar (multiple lists overlaid on one calendar) — post-calendar-MVP
-- iCal export / Google Calendar sync
-- Recurring task visualization on calendar
+No new API endpoints. Calendar View reuses existing task endpoints:
+
+- `GET /api/lists/:id/tasks` -- with `view=calendar` query param to include tasks without `dueDateEnd` in unscheduled list
+- `PATCH /api/tasks/:id` -- to update `dueDateEnd` on drag
+
+---
+
+## Database
+
+No new tables. Calendar View reads and writes `Task.dueDateEnd` (and optionally `Task.dueDateStart` for date-range tasks).
+
+`UserListViewPreference.view` will include `calendar` as a valid value when this feature is built. Until then the column only accepts `list` and `board`.
+
+---
+
+## Events
+
+No new activity log events. Dragging to reschedule triggers the existing `task.due_date_changed` event in `ActivityLog`.
+
+---
+
+## Background Jobs
+
+None.
+
+---
+
+## Dependencies
+
+- `Task.dueDateEnd` (nullable) -- already in schema
+- `UserListViewPreference` table -- must be implemented first (Phase 12)
+- dnd-kit (`@dnd-kit/core`, `@dnd-kit/sortable`) -- add to `package.json` when this phase begins
+- `date-fns` -- already in `package.json`
+
+---
+
+## Edge Cases
+
+| Scenario | Handling |
+|----------|---------|
+| Task with `dueDateStart` and `dueDateEnd` on different days | Render as multi-day span chip across cells |
+| Task with only `dueDateStart` | Show on start date; no end indicator |
+| Task with no due date at all | Place in unscheduled sidebar |
+| Month with 5+ weeks | Grid must accommodate 6-row months |
+| Dragging to past date | Allow -- no validation on date direction |
+| 100+ tasks on one date | Show first 3 chips + overflow count; click overflow to expand |
+
+---
+
+## Acceptance Criteria
+
+*(Preliminary -- to be finalised when the phase is scheduled.)*
+
+- [ ] Calendar renders all tasks with `dueDateEnd` on the correct date cell
+- [ ] Dragging a task chip to a new cell updates `dueDateEnd` with optimistic update
+- [ ] Dragging from unscheduled sidebar sets `dueDateEnd`
+- [ ] Calendar respects active list filters
+- [ ] Weekly/monthly toggle persists to `UserListViewPreference`
+- [ ] No SSR crash from dnd-kit (all calendar components wrapped in `dynamic({ ssr: false })`)
+
+---
+
+## Implementation Notes
+
+- Do not begin until `UserListViewPreference` is in the schema and Board View is working
+- The `dynamic({ ssr: false })` wrapper is non-negotiable; add a code comment to prevent future removal
+- When building, add `calendar` to the `UserListViewPreference.view` enum at the same time as the component

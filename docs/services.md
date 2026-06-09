@@ -1,196 +1,422 @@
-# Services & Infrastructure
+# Services
 
-This document lists every external service or infrastructure component Teamority needs. The "decision" column reflects the confirmed choices.
+## Goal
 
----
-
-## 1. Database
-
-**What it does:** Primary relational data store. Stores all workspaces, users, tasks, comments, permissions, background job state (pg-boss uses the same DB).
-
-| Decision | PostgreSQL |
-|----------|------------|
-
-**Notes:**
-- Prisma ORM sits on top — the database engine just needs to be PostgreSQL-compatible
-- pg-boss (background jobs) also uses PostgreSQL — no separate database needed
-- Hosted options: **Neon** (serverless, generous free tier), **Supabase** (Postgres + extras), **Railway**, **Render**, **Fly.io**, self-hosted on VPS
+Document every infrastructure service Teamority depends on, the decision rationale, required configuration, startup behavior, and local development setup. This is the operational reference for Phase 0 setup and production deployment.
 
 ---
 
-## 2. File Storage
+## Existing Scope
 
-**What it does:** Stores all user-uploaded files — task attachments, workspace logos, user avatars.
-
-| Decision | S3-compatible (provider TBD) |
-|----------|------------------------------|
-
-**Notes:**
-- Code uses the AWS S3 SDK — any S3-compatible provider works without code changes
-- Good options: **Cloudflare R2** (no egress fees), **Backblaze B2** (cheap), **MinIO** (self-hosted, free), **AWS S3**
-- All file operations follow the rule: delete from storage before deleting the DB record
-- Avatar uploads resize to 256×256 before storage (server-side)
-- Environment variables: `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_BUCKET_NAME`, `S3_REGION`
+12 infrastructure services covering database, storage, auth, email, background jobs, web push, and hosting.
 
 ---
 
-## 3. Authentication
+## Service Inventory
 
-**What it does:** Handles sign-in via magic link (passwordless), sessions, email verification, and the Admin Plugin for platform admin features.
+### 1. PostgreSQL
 
-| Decision | Better Auth + Admin Plugin |
-|----------|---------------------------|
+**Role:** Primary relational database for all application data.
 
-**Notes:**
-- Better Auth is open-source and self-hosted — no per-user pricing
-- **Magic link** = user enters their email → receives a one-time sign-in link → clicks it → session created. No passwords, no OAuth apps to configure
-- First-time magic link use auto-creates the account (sign up = sign in, same flow)
-- Admin Plugin provides user ban, impersonation, and platform-level user management
-- Sessions stored in the database — no Redis needed
+**Decision:** Industry-standard, mature, strong Prisma support, excellent full-text search capabilities for future use, `jsonb` for Tiptap content storage.
 
----
+**ORM:** All DB access via `src/lib/db.ts` Prisma singleton. Never use raw SQL unless Prisma cannot express the query. No second DB client.
 
-## 4. Email Sending
+**Required env vars:**
+```
+DATABASE_URL=postgresql://user:password@host:5432/teamority
+```
 
-**What it does:** Sends all transactional emails — magic link sign-in, workspace invites, notification digests, account deletion confirmation.
+**Local dev setup:**
+```bash
+# Option A: Docker
+docker run --name teamority-db \
+  -e POSTGRES_PASSWORD=dev \
+  -e POSTGRES_DB=teamority \
+  -p 5432:5432 -d postgres:16
 
-| Decision | SMTP via Nodemailer |
-|----------|---------------------|
+# Option B: local Postgres
+createdb teamority
 
-**Notes:**
-- Any SMTP provider works: **Gmail** (dev/testing), **Mailgun**, **Postmark**, **Amazon SES**, **Brevo**, or a self-hosted mail server
-- Nodemailer is the Node.js standard library for SMTP — no vendor SDK, no lock-in
-- Needs a sending domain with SPF, DKIM, DMARC DNS records configured for deliverability
-- Environment variables: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`
-- Email templates needed: magic link, welcome, workspace invite, deletion confirmation, notification digest
+# Apply schema
+npx prisma migrate dev --name init
 
----
+# Apply Better Auth tables (separately -- do NOT include in Prisma migrations)
+npx better-auth migrate
+```
 
-## 5. Cache / Rate Limiting
+**Connection pool:** Prisma's default pool. For serverless deployments, add `connection_limit=5&pool_timeout=20` to the connection string.
 
-**What it does:** Rate limiting on auth endpoints to prevent brute-force attacks.
-
-| Decision | Skipped for MVP — Better Auth built-in |
-|----------|-----------------------------------------|
-
-**Notes:**
-- Better Auth's built-in rate limiting covers the magic link abuse case (too many requests per email/IP)
-- Sessions are stored in the database — no cache layer needed
-- Redis can be added post-MVP if DB query caching becomes a performance need
+**Startup behavior:** Application fails to start if `DATABASE_URL` is missing or unreachable (validated in `src/lib/env.ts`).
 
 ---
 
-## 6. Background Jobs
+### 2. S3-Compatible Storage (Cloudflare R2)
 
-**What it does:** Runs deferred and scheduled tasks — workspace cascade deletion, sprint auto-close, recurring task creation, notification digest emails, notification TTL cleanup, expired invite cleanup.
+**Role:** File storage for task attachments, workspace/user avatars, and all user-uploaded content.
 
-| Decision | pg-boss |
+**Decision:** Cloudflare R2 has no egress fees (vs AWS S3), S3-compatible API, integrates with `@aws-sdk/client-s3`.
+
+**Required env vars:**
+```
+R2_ACCOUNT_ID=your-cloudflare-account-id
+R2_ACCESS_KEY_ID=your-r2-access-key
+R2_SECRET_ACCESS_KEY=your-r2-secret-key
+R2_BUCKET_NAME=teamority-uploads
+R2_PUBLIC_URL=https://pub-xxxx.r2.dev
+```
+
+**R2 key naming convention:**
+```
+avatars/users/{userId}.jpg
+avatars/workspaces/{workspaceId}.jpg
+attachments/{workspaceId}/{taskId}/{attachmentId}/{filename}
+```
+
+**Upload pipeline (presigned URL flow):**
+1. Client requests `POST /api/upload/presigned-url` with `{ filename, mimeType, size }`
+2. Server validates size (max 10MB), MIME type (allowed list), and user permissions
+3. Server generates presigned PUT URL (15-minute expiry) via `@aws-sdk/s3-request-presigner`
+4. Client uploads directly to R2 using the presigned URL
+5. Client calls `POST /api/upload/confirm` with the S3 key
+6. Server creates the DB record (e.g., `TaskAttachment`)
+
+**Critical ordering rule:** When deleting a file, always delete the R2 object BEFORE deleting the DB record. An orphaned R2 file cannot be automatically recovered. A failed R2 delete must block the DB delete (return error to caller, do not proceed).
+
+**Local dev:** Use Cloudflare R2 free tier, or MinIO as a local substitute:
+```bash
+docker run -p 9000:9000 -p 9001:9001 \
+  minio/minio server /data --console-address ":9001"
+```
+
+---
+
+### 3. Better Auth
+
+**Role:** Authentication provider handling magic-link sign-in, session management, and platform admin capabilities.
+
+**Decision:** Native Next.js support, magic link out of the box, Admin Plugin for impersonation, no password complexity to manage, database-backed sessions.
+
+**Required env vars:**
+```
+BETTER_AUTH_SECRET=your-32-char-secret-here
+BETTER_AUTH_URL=https://app.teamority.com
+```
+
+**Auth tables:** Managed exclusively by `npx better-auth migrate`. Never include `User`, `Session`, `Account`, or `Verification` tables in Prisma migrations. Do not run `prisma migrate dev` for these tables.
+
+**Session check pattern (server-side):**
+```typescript
+import { auth } from '@/lib/auth'
+import { headers } from 'next/headers'
+
+const session = await auth.api.getSession({ headers: await headers() })
+if (!session) return { error: 'Unauthorized' }
+```
+
+**Session TTL:** 7-day sliding window. Sessions auto-extend on each request. Magic link tokens expire after 15 minutes.
+
+**Startup behavior:** `BETTER_AUTH_SECRET` is validated at startup. Missing secret causes a startup error.
+
+---
+
+### 4. SMTP / Nodemailer
+
+**Role:** Transactional email delivery for magic links, workspace invites, notifications, and daily digest.
+
+**Decision:** Nodemailer is the simplest SMTP client for Node.js. No vendor lock-in. Any SMTP provider works (Postmark, Resend, Gmail SMTP in dev only).
+
+**Required env vars:**
+```
+SMTP_HOST=smtp.postmarkapp.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your-api-token
+SMTP_PASS=your-api-token
+SMTP_FROM=noreply@teamority.com
+```
+
+**Email templates:** All templates are React Email components in `src/lib/email/`. Never use raw HTML strings.
+
+**Deliverability (required before launch):**
+- Add SPF record: `v=spf1 include:your-smtp-provider.com ~all`
+- Add DKIM via your SMTP provider's dashboard
+- Add DMARC record: `v=DMARC1; p=quarantine; rua=mailto:dmarc@teamority.com`
+- Verify with mail-tester.com -- target score 10/10
+- DNS propagation takes 24-48 hours; do this before launch, not on launch day
+
+**Rate limits:** Gmail SMTP is 500/day (dev only). Do not use Gmail SMTP in production.
+
+**Startup behavior:** SMTP env vars validated at startup. Missing vars cause a startup failure.
+
+---
+
+### 5. pg-boss (Background Jobs)
+
+**Role:** Persistent job queue backed by PostgreSQL. Used for workspace deletion, sprint auto-close, notification cleanup, daily digest emails, and support ticket auto-close.
+
+**Decision:** Uses the existing PostgreSQL connection -- no additional infrastructure (no Redis, no separate message broker). Jobs survive process restarts because they are stored in the DB.
+
+**Required env vars:** Same `DATABASE_URL` as the application.
+
+**Two-process architecture:**
+```
+Process 1: Next.js (web)    -- enqueues jobs via src/lib/worker/enqueue.ts
+Process 2: Worker           -- scripts/worker.ts, runs pg-boss handlers
+```
+
+Both processes run simultaneously in development:
+```json
+// package.json scripts
+"dev": "concurrently -n next,worker -c blue,yellow \"next dev --turbopack\" \"tsx --watch scripts/worker.ts\""
+```
+
+**Job registry:** All job names defined in `src/lib/worker/job-types.ts` as a `JOB_NAMES` const. Every `JOB_NAMES` entry MUST have a corresponding entry in `QUEUE_OPTIONS` (compile-time guard prevents missing queue definitions).
+
+**Job handler rules:**
+- All handlers must be idempotent (safe to retry on failure)
+- Check DB state (claim current status) before performing side effects
+- Write a lifecycle log entry at start and end of each handler
+- Never throw from a handler without pg-boss being able to mark the job failed
+
+**Teamority job inventory:**
+
+| Job Name | Trigger | Schedule | Purpose |
+|----------|---------|----------|---------|
+| `workspace.delete` | API (202 response) | On-demand | Cascade delete workspace and all contents |
+| `sprint.auto-close` | pg-boss cron | Every 15 min | Auto-close sprints past their `endDate` |
+| `notification.cleanup` | pg-boss cron | Daily 01:00 UTC | Delete notifications older than 90 days |
+| `notification.digest` | pg-boss cron | Every 30 min | Send digest emails for users whose `digestTime` window has arrived |
+| `support.ticket-auto-close` | pg-boss cron | Daily 02:00 UTC | Close tickets with 14 days of inactivity |
+
+---
+
+### 6. No Cache / Redis (MVP)
+
+**Decision:** Redis adds operational complexity. At MVP scale, PostgreSQL query performance is sufficient. All data is fetched fresh from the DB on each request.
+
+**Post-MVP:** Redis can be added for session caching and notification fan-out if performance requires it. Better Auth supports Redis-backed session caching.
+
+---
+
+### 7. Web Push (VAPID)
+
+**Role:** Browser push notifications for task assignments, comments, and @mentions when the user is not actively using the app.
+
+**Decision:** Web Push API with VAPID keys -- no third-party push service. Free, no vendor dependency, works in all modern browsers.
+
+**Required env vars:**
+```
+VAPID_PUBLIC_KEY=BFc...   (starts with B)
+VAPID_PRIVATE_KEY=...
+VAPID_SUBJECT=mailto:push@teamority.com
+```
+
+**Key generation:**
+```bash
+npx web-push generate-vapid-keys
+```
+
+**Browser support:** Chrome, Firefox, Edge (full support). Safari 16+ (partial). iOS Safari 16.4+ (supported only in installed PWA, not mobile browser tab).
+
+**Subscription flow:**
+1. User grants notification permission in browser
+2. Client calls `pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: VAPID_PUBLIC_KEY })`
+3. Client POSTs subscription (endpoint, p256dh, auth) to `POST /api/push/subscribe`
+4. Server stores in `PushSubscription` table
+5. On trigger event, server sends notification via `webpush.sendNotification()` from a pg-boss job
+
+**Key rotation warning:** If VAPID keys are changed, all stored `PushSubscription` records become invalid. Push sends will receive HTTP 410 Gone. The handler must delete the `PushSubscription` record on 410 to prevent repeated failed sends.
+
+**Startup behavior:** VAPID env vars are optional. Push notifications are silently disabled if not configured (graceful degradation).
+
+---
+
+### 8. Hosting (TBD)
+
+**Decision:** Not yet decided. Candidates: Vercel, Railway, Fly.io, or VPS.
+
+**Requirements for any hosting choice:**
+- Must support two separate processes (Next.js + pg-boss worker)
+- Must support environment variables
+- Must allow a managed or external PostgreSQL connection
+- Worker process (`scripts/worker.ts`) must run continuously -- not on a serverless function timeout
+
+**Vercel note:** Vercel does not natively support long-running background processes. The pg-boss worker must run on a separate service (Railway worker, Fly machine, or EC2 instance) if Vercel is used for Next.js.
+
+---
+
+## Environment Variable Reference
+
+Complete list of required and optional env vars. Validated at startup by `src/lib/env.ts` using Zod.
+
+```bash
+# Required -- app fails to start if missing
+DATABASE_URL
+BETTER_AUTH_SECRET
+BETTER_AUTH_URL
+SMTP_HOST
+SMTP_PORT
+SMTP_USER
+SMTP_PASS
+SMTP_FROM
+R2_ACCOUNT_ID
+R2_ACCESS_KEY_ID
+R2_SECRET_ACCESS_KEY
+R2_BUCKET_NAME
+R2_PUBLIC_URL
+
+# Optional -- app degrades gracefully if missing
+VAPID_PUBLIC_KEY
+VAPID_PRIVATE_KEY
+VAPID_SUBJECT
+NEXT_PUBLIC_GTM_CONTAINER_ID
+NEXT_PUBLIC_APP_URL
+```
+
+---
+
+## Startup / Teardown Order
+
+**Startup:**
+1. Validate all env vars (`src/lib/env.ts`) -- fail fast with clear error messages
+2. Prisma client initializes (lazy singleton in `src/lib/db.ts`)
+3. Better Auth initializes (lazy)
+4. pg-boss worker starts (`scripts/worker.ts`): calls `boss.start()`, registers all handlers and cron jobs
+
+**Teardown (SIGTERM):**
+1. pg-boss: `boss.stop()` -- drains in-flight jobs gracefully
+2. Prisma: `prisma.$disconnect()`
+3. Next.js: default graceful shutdown
+
+**Health check endpoint:** `GET /api/health` -- returns `{ ok: true, db: 'connected' }` after a `prisma.$queryRaw\`SELECT 1\`` check. Used by load balancer / container orchestrator.
+
+---
+
+## `enqueueJob` -- Singleton Implementation
+
+PgBoss must only be initialised once per process. Use a mutex-guarded lazy singleton so concurrent enqueue calls during startup do not create multiple PgBoss instances:
+
+```typescript
+// src/lib/worker/enqueue.ts
+
+import PgBoss from 'pg-boss'
+import { env } from '@/lib/env'
+import { QUEUE_OPTIONS, JOB_NAMES, type JobPayloadMap } from './job-types'
+
+let boss: PgBoss | null = null
+let initPromise: Promise<PgBoss> | null = null
+
+async function getBoss(): Promise<PgBoss> {
+  if (boss) return boss
+  if (initPromise) return initPromise  // already initialising -- wait for it
+
+  initPromise = (async () => {
+    const instance = new PgBoss(env.DATABASE_URL)
+    await instance.start()
+    boss = instance
+    return instance
+  })()
+
+  return initPromise
+}
+
+export async function enqueueJob<K extends keyof JobPayloadMap>(
+  name: K,
+  payload: JobPayloadMap[K],
+  options?: PgBoss.SendOptions
+): Promise<string | null> {
+  const b = await getBoss()
+  const queueOpts = QUEUE_OPTIONS[name] ?? {}
+  return b.send(name, payload, { ...queueOpts, ...options })
+}
+```
+
+**Why the mutex pattern:** In Next.js, multiple concurrent requests during a cold start can each call `enqueueJob` before the first `getBoss()` resolves. Without the `initPromise` guard, each call creates and starts a separate PgBoss instance, causing duplicate job processing and connection leaks.
+
+**Worker process** (`scripts/worker.ts`) initialises PgBoss directly and calls `boss.work()` -- it does not go through `enqueueJob`. The singleton above is for the Next.js process only.
+
+## Folder Mapping
+
+```
+src/
+  lib/
+    db.ts               <- Prisma singleton
+    auth.ts             <- Better Auth server instance
+    env.ts              <- Zod env validation (validated at startup)
+    storage.ts          <- R2/S3 client + upload helpers
+    permissions.ts      <- requireSpaceMembershipAndPermission, hasPermissionLevel
+    email/              <- React Email templates + Nodemailer sender
+    api/
+      auth-helpers.ts   <- getSessionOrUnauthorized (shared API route helper)
+    worker/
+      enqueue.ts        <- enqueueJob() + PgBoss singleton (mutex-guarded)
+      job-types.ts      <- JOB_NAMES const + payload types + QUEUE_OPTIONS
+      handlers/         <- one file per job handler
+scripts/
+  worker.ts             <- worker entrypoint (process 2)
+  seed-plans.ts         <- optional dev seeding
+```
+
+---
+
+## Edge Cases
+
+| Scenario | Handling |
 |----------|---------|
-
-**Notes:**
-- pg-boss is a job queue backed entirely by PostgreSQL — no separate Redis or queue service needed
-- Uses the same database as the rest of the app — one less infrastructure dependency
-- Supports scheduled jobs (cron-style), delayed jobs, retries, and job visibility
-- Job worker runs as a long-lived process alongside the app (or as a separate worker process)
-- Key jobs: workspace deletion cascade, sprint auto-close, recurring task copy, digest email, notification cleanup, expired invite purge
-
----
-
-## 7. Hosting / Deployment
-
-**What it does:** Hosts the Next.js application (frontend + API routes + Server Actions) and the pg-boss worker.
-
-| Decision | TBD |
-|----------|-----|
-
-**Notes:**
-- Since deployment is not fixed, the app must not rely on Vercel-specific features (no Vercel Cron, no Vercel KV)
-- pg-boss worker needs a persistent process — this rules out pure serverless (Vercel functions are stateless). Worker should run as a separate always-on process
-- Good options: **Railway** (easy, supports multiple services), **Fly.io** (Docker-based, cheap), **Render**, self-hosted VPS (Hetzner + Coolify/Dokku)
-- For local dev: `next dev` + a separate `node worker.ts` process
+| pg-boss worker crashes mid-job | pg-boss marks job as `failed`; retry policy per job (default 3 retries); all handlers must be idempotent |
+| Database unreachable at startup | App exits with error; env validation passes but Prisma connection fails; health check returns 503 |
+| R2 bucket unreachable during upload | Return 503 to client; do not create DB record; user retries |
+| VAPID keys changed after subscriptions stored | Existing `PushSubscription` records become invalid; handle HTTP 410 by deleting the subscription |
+| SMTP provider rate limit hit | Email enqueued as pg-boss job; retries with exponential backoff; after max retries, log to error monitoring |
+| Worker not running | Jobs queue up in pg-boss tables safely; nothing is lost; worker drains queue on restart |
 
 ---
 
-## 8. OAuth Providers
+## Acceptance Criteria
 
-**What it does:** Social login via Google or GitHub.
-
-| Decision | **Removed — using magic link instead** |
-|----------|-----------------------------------------|
-
-**Notes:**
-- Magic link covers the same "no password" UX goal without needing OAuth app credentials on every deployment
-- OAuth can be added post-MVP if there is user demand
-
----
-
-## 9. Real-Time / WebSockets
-
-**What it does:** Pushes live updates to connected clients without page refresh.
-
-| Decision | Post-MVP — not needed for launch |
-|----------|----------------------------------|
-
-**Notes:**
-- MVP uses optimistic UI + React Query refetch-on-focus — good enough for launch
-- When ready: **SSE (Server-Sent Events)** is the simplest (no library, server→client only), **Soketi** is self-hosted and Pusher-compatible for bi-directional needs
+- [ ] `pnpm dev` starts both Next.js and the worker process without errors
+- [ ] `GET /api/health` returns `{ ok: true }` after successful DB connection
+- [ ] Magic link email is sent successfully (requires SMTP configuration)
+- [ ] Task attachment upload succeeds via presigned URL flow (requires R2 configuration)
+- [ ] Workspace deletion enqueues a pg-boss job and returns HTTP 202
+- [ ] pg-boss job completes and workspace is fully deleted from the DB
+- [ ] All required env vars validated at startup with clear error messages on missing vars
+- [ ] `npx prisma migrate dev` and `npx better-auth migrate` run without conflicts
 
 ---
 
-## 10. Error Monitoring
+## Local Dev Setup (Complete)
 
-**What it does:** Captures runtime errors and exceptions in production.
+```bash
+# 1. Clone and install
+git clone https://github.com/org/teamority
+cd teamority
+pnpm install
 
-| Decision | TBD — configure before launch |
-|----------|-------------------------------|
+# 2. Create .env.local
+cp .env.example .env.local
+# Edit .env.local with your local values
 
-**Notes:**
-- **Sentry** has a free tier and broad Next.js support
-- **Glitchtip** is self-hostable and Sentry-SDK-compatible — good for open-source deployments
-- Either can be added in the final QA phase without touching application code
+# 3. Start PostgreSQL (Docker)
+docker run --name teamority-db \
+  -e POSTGRES_PASSWORD=dev \
+  -e POSTGRES_DB=teamority \
+  -p 5432:5432 -d postgres:16
 
----
+# 4. Apply Prisma schema
+npx prisma migrate dev --name init
 
-## 11. Analytics
+# 5. Apply Better Auth tables
+npx better-auth migrate
 
-**What it does:** Tracks product usage and user behavior.
+# 6. Seed plans (optional, for pricing page)
+npx tsx scripts/seed-plans.ts
 
-| Decision | Skip for MVP |
-|----------|--------------|
+# 7. Generate VAPID keys (optional, for push notifications)
+npx web-push generate-vapid-keys
+# Add output to .env.local
 
-**Notes:**
-- Admin panel already shows basic platform stats (user/workspace counts) from the DB
-- **PostHog** (self-hostable, open-source) or **Plausible** (privacy-first) are good post-MVP options
-
----
-
-## 12. Browser Push Notifications
-
-**What it does:** Sends push notifications to the user's browser even when the app is closed.
-
-| Decision | Web Push API (native — no vendor) |
-|----------|-----------------------------------|
-
-**Notes:**
-- No third-party service needed — uses the browser's built-in Web Push standard
-- Requires a VAPID key pair (generated once, stored in env vars: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`)
-- `PushSubscription` objects stored in DB per device
-
----
-
-## Summary Table
-
-| # | Category | Decision | Status |
-|---|----------|----------|--------|
-| 1 | Database | PostgreSQL | ✅ Decided — choose hosted provider |
-| 2 | File Storage | S3-compatible | ✅ Decided — choose provider (R2 / B2 / MinIO) |
-| 3 | Authentication | Better Auth + Magic Link | ✅ Decided |
-| 4 | Email Sending | SMTP / Nodemailer | ✅ Decided — choose SMTP provider |
-| 5 | Cache / Rate Limiting | Skipped for MVP | ✅ Decided |
-| 6 | Background Jobs | pg-boss | ✅ Decided |
-| 7 | Hosting / Deployment | TBD | ⏳ Pending |
-| 8 | OAuth Providers | Removed (magic link instead) | ✅ Decided |
-| 9 | Real-Time / WebSockets | Post-MVP | ✅ Decided |
-| 10 | Error Monitoring | TBD (Sentry / Glitchtip) | ⏳ Pending — configure before launch |
-| 11 | Analytics | Skip for MVP | ✅ Decided |
-| 12 | Browser Push Notifications | Web Push API (native) | ✅ Decided |
+# 8. Start Next.js + worker concurrently
+pnpm dev
+```

@@ -1,218 +1,279 @@
 # Keyboard Shortcuts
 
-## Overview
+## Goal
 
-Teamority supports keyboard shortcuts for common actions to let power users work without reaching for the mouse. Shortcuts are **context-aware** — they only fire when the user is not typing inside a text input, rich text editor, or modal form field.
-
-**Platform notation:**
-- `Ctrl` = Windows / Linux
-- `Cmd` = Mac
-- Shortcuts listed as `Ctrl/Cmd` work on both platforms
+Provide a consistent, discoverable keyboard shortcut system across the application that speeds up power-user workflows without conflicting with browser defaults or OS shortcuts.
 
 ---
 
-## Global Shortcuts
+## Existing Scope (MVP)
 
-Available on every page in the app.
+- Global shortcuts (available everywhere in the app)
+- Navigation shortcuts (sequential key combos, e.g. G -> H)
+- List View shortcuts (row navigation, inline edit)
+- Task Detail shortcuts (field picker triggers)
+- Rich Text shortcuts (Tiptap formatting -- native, not reimplemented)
+- Shortcut reference modal (`?` key)
+- No user-customizable shortcuts in MVP
+
+---
+
+## User Flow
+
+1. User presses `?` anywhere in the app -> Shortcut Reference modal opens
+2. Modal lists all shortcuts grouped by context (Global, Navigation, List View, Task Detail, Rich Text)
+3. User presses `Ctrl+K` -> Command Palette opens (global search)
+4. User is in List View, presses `Arrow Down` -> focus moves to next task row
+5. User presses `E` on a focused row -> inline title edit activates
+6. User presses `Esc` -> edit cancelled; focus returns to row
+7. User presses `C` -> New Task sheet opens for current list
+
+---
+
+## Technical Design
+
+### Architecture: `useKeyboardShortcuts` Hook
+
+All keyboard shortcut registration should be centralized in a single React hook to prevent duplicate listeners and make registration/deregistration declarative.
+
+```typescript
+// src/hooks/use-keyboard-shortcuts.ts
+
+type ShortcutHandler = (event: KeyboardEvent) => void
+
+interface ShortcutDefinition {
+  key: string           // e.g. "k", "ArrowDown", "?"
+  ctrlOrMeta?: boolean  // true = Ctrl on Windows/Linux, Cmd on Mac
+  shift?: boolean
+  alt?: boolean
+  description: string   // shown in shortcut modal
+  group: ShortcutGroup
+  handler: ShortcutHandler
+  /**
+   * When true, handler fires even if an input/textarea is focused.
+   * Default: false. Set true only for Esc and Ctrl+K.
+   */
+  allowInInput?: boolean
+}
+
+type ShortcutGroup = 'global' | 'navigation' | 'list' | 'task' | 'richtext'
+
+export function useKeyboardShortcuts(shortcuts: ShortcutDefinition[]): void
+```
+
+**Implementation rules:**
+- Single `window.addEventListener('keydown', handler, { capture: true })` per hook instance
+- On unmount, call `removeEventListener` -- prevents memory leaks on route change
+- Suppress handler if `event.target` is `INPUT`, `TEXTAREA`, `SELECT`, or `[contenteditable]` unless `allowInInput: true`
+- Use `event.metaKey || event.ctrlKey` for cross-platform Ctrl/Cmd handling
+
+### Shortcut Registry for the Modal
+
+The `?` modal needs to know all currently-active shortcuts. Use a Zustand store:
+
+```typescript
+// src/store/shortcut-registry.ts
+
+interface ShortcutRegistry {
+  shortcuts: ShortcutDefinition[]
+  register: (shortcuts: ShortcutDefinition[]) => void
+  unregister: (keys: string[]) => void
+}
+```
+
+`useKeyboardShortcuts` registers shortcuts on mount and unregisters on unmount -- the modal always reflects what is currently active.
+
+### Sequential Shortcuts (G -> H Navigation)
+
+Sequential shortcuts (press G, then H within 500ms) require a small state machine:
+
+```typescript
+// src/hooks/use-sequential-shortcuts.ts
+
+interface SequentialShortcut {
+  sequence: [string, string]  // first key, second key
+  description: string
+  group: ShortcutGroup
+  handler: () => void
+}
+
+export function useSequentialShortcuts(shortcuts: SequentialShortcut[]): void
+```
+
+State: `lastKey: string | null`, `lastKeyTime: number`. On keydown: if `lastKey === sequence[0]` and `Date.now() - lastKeyTime < 500`, fire handler. Reset after firing or after 500ms timeout.
+
+### Browser Conflict Handling
+
+| Shortcut | Browser Default | Resolution |
+|----------|----------------|-----------|
+| `Ctrl+K` | Chrome address bar focus | Call `event.preventDefault()` before opening palette |
+| `Ctrl+B` | Chrome bookmark | Acceptable conflict -- Tiptap bold only fires inside the editor |
+| `Ctrl+F` | Browser find | Do NOT override; use a separate in-app shortcut |
+| `?` | No browser default | Safe to use globally |
+| `G` (sequential) | No conflict | Safe; only fires outside inputs |
+
+### Per-Route Registration Pattern
+
+Register context-specific shortcuts inside the relevant page or component:
+
+```typescript
+// src/app/(app)/[workspaceId]/[spaceId]/list/[listId]/page.tsx
+
+export default function ListPage() {
+  useKeyboardShortcuts([
+    {
+      key: 'c',
+      description: 'Create new task',
+      group: 'list',
+      handler: () => openNewTaskSheet(),
+    },
+    {
+      key: 'ArrowDown',
+      description: 'Move focus to next task',
+      group: 'list',
+      handler: () => focusNextRow(),
+    },
+  ])
+}
+```
+
+Global shortcuts (`Ctrl+K`, `?`) are registered in the root authenticated layout so they are always active.
+
+---
+
+## Shortcut Reference
+
+### Global
 
 | Shortcut | Action |
 |----------|--------|
-| `Ctrl/Cmd + K` | Open global search / command palette |
-| `C` | Create a new task (opens quick-create in the current List, or full create modal if not in a List) |
-| `?` | Open keyboard shortcuts reference panel (this list, in-app) |
-| `Esc` | Close any open modal, panel, or dropdown |
+| `Ctrl+K` | Open Command Palette / Global Search |
+| `C` | Create new task (uses current list context) |
+| `?` | Open Keyboard Shortcuts reference modal |
+| `Esc` | Close modal / cancel action / deselect |
 
----
-
-## Navigation Shortcuts
+### Navigation (Sequential)
 
 | Shortcut | Action |
 |----------|--------|
 | `G` then `H` | Go to Home / My Tasks |
-| `G` then `S` | Go to Search results page |
-| `G` then `N` | Go to Notifications inbox |
+| `G` then `S` | Go to Space list |
+| `G` then `N` | Go to Notifications |
 
-> **Sequential shortcuts** (`G` then `H`): press `G` first — a 1-second window opens for the second key. If the second key is not pressed within 1 second, the sequence resets silently.
-
----
-
-## List View Shortcuts
-
-Active when the user is viewing a List in List View and no input is focused.
+### List View
 
 | Shortcut | Action |
 |----------|--------|
-| `C` | Create a new task (inline quick-create at bottom of list) |
-| `↑` / `↓` | Move focus to the previous / next task row |
-| `Enter` | Open the focused task's detail panel |
-| `E` | Edit the focused task's title inline |
-| `Esc` | Close task detail panel / cancel inline edit |
-| `Space` | Toggle checkbox (select / deselect focused task for bulk actions) |
-| `Shift + ↑` / `Shift + ↓` | Extend bulk selection up / down |
-| `Backspace` / `Delete` | Delete focused task (requires confirmation modal — shortcut does not bypass it) |
+| `Arrow Up` / `Arrow Down` | Move focus between task rows |
+| `Enter` | Open focused task detail |
+| `E` | Inline edit focused task title |
+| `Space` | Toggle task status (cycle through statuses) |
+| `Shift+A` | Bulk-select all visible tasks |
 
----
-
-## Task Detail Panel Shortcuts
-
-Active when the task detail panel is open and focus is not inside a text field.
+### Task Detail
 
 | Shortcut | Action |
 |----------|--------|
-| `Esc` | Close the task detail panel |
-| `E` | Focus the title field for editing |
-| `Ctrl/Cmd + Enter` | Save current field edit and return focus to the panel |
-| `Ctrl/Cmd + Shift + ,` | Change priority — cycles: None → Low → Medium → High → Urgent → None |
 | `A` | Open assignee picker |
 | `D` | Open due date picker |
-| `L` | Open tag (label) picker |
-| `Ctrl/Cmd + /` | Open the shortcuts reference panel |
+| `L` | Open label/tag picker |
 
----
-
-## Rich Text Editor Shortcuts (Description & Comments)
-
-Standard formatting shortcuts inside any Tiptap rich text field.
+### Rich Text (Tiptap -- active when editor is focused)
 
 | Shortcut | Action |
 |----------|--------|
-| `Ctrl/Cmd + B` | Bold |
-| `Ctrl/Cmd + I` | Italic |
-| `Ctrl/Cmd + U` | Underline |
-| `Ctrl/Cmd + Shift + X` | Strikethrough |
-| `Ctrl/Cmd + E` | Inline code |
-| `Ctrl/Cmd + Shift + C` | Code block |
-| `Ctrl/Cmd + K` | Insert / edit link |
-| `Ctrl/Cmd + Z` | Undo |
-| `Ctrl/Cmd + Shift + Z` | Redo |
-| `Tab` | Indent list item |
-| `Shift + Tab` | Outdent list item |
-| `Ctrl/Cmd + Enter` | Submit comment (when in comment composer) |
-| `Esc` | Cancel / blur the editor (does not save — confirmation if content is unsaved) |
-
-> `Ctrl/Cmd + K` inside the editor opens the **link dialog**, not global search. Global search is suppressed when a rich text editor is focused.
+| `Ctrl+B` | Bold |
+| `Ctrl+I` | Italic |
+| `Ctrl+U` | Underline |
+| `Ctrl+Shift+S` | Strikethrough |
+| `Ctrl+Z` | Undo |
+| `Ctrl+Shift+Z` | Redo |
+| `Ctrl+Shift+7` | Ordered list |
+| `Ctrl+Shift+8` | Unordered list |
+| `Ctrl+Shift+C` | Code block |
+| `Ctrl+Shift+B` | Blockquote |
 
 ---
 
-## Board View Shortcuts
+## Folder Mapping
 
-Active when viewing a List in Board View.
-
-| Shortcut | Action |
-|----------|--------|
-| `C` | Create a new task (opens quick-create in the first column) |
-| `Enter` | Open the focused card's detail panel |
-| `Esc` | Close task detail panel |
-
-> Arrow key navigation between cards is **not** supported in MVP — Board View cards are not keyboard-focusable beyond `Tab` order.
-
----
-
-## Modal & Dropdown Shortcuts
-
-| Shortcut | Action |
-|----------|--------|
-| `Esc` | Close the modal or dropdown |
-| `Enter` | Confirm / submit (when a confirm button is focused) |
-| `↑` / `↓` | Move between options in a dropdown list |
-| `Tab` | Move focus to the next field in a form |
-| `Shift + Tab` | Move focus to the previous field |
+```
+src/
+  hooks/
+    use-keyboard-shortcuts.ts    <- core registration hook
+    use-sequential-shortcuts.ts  <- G->H sequential handling
+  store/
+    shortcut-registry.ts         <- Zustand store for modal listing
+  components/
+    common/
+      shortcut-modal.tsx         <- ? key modal showing all shortcuts
+      shortcut-badge.tsx         <- <ShortcutBadge keys={['Ctrl', 'K']} />
+```
 
 ---
 
-## Global Search Palette Shortcuts
+## API
 
-Active when the search palette (`Ctrl/Cmd + K`) is open.
+No API endpoints. Keyboard shortcuts are entirely client-side.
 
-| Shortcut | Action |
-|----------|--------|
-| `↑` / `↓` | Move between results |
-| `Enter` | Open the selected result |
-| `Esc` | Close the palette |
-| `Ctrl/Cmd + K` | Close the palette (toggle) |
+---
+
+## Database
+
+No database tables. Shortcuts are not user-customizable in MVP. No persistence required.
+
+---
+
+## Events
+
+No activity log events for shortcut usage.
+
+---
+
+## Background Jobs
+
+None.
+
+---
+
+## Dependencies
+
+- Zustand (`src/store/shortcut-registry.ts`) for modal shortcut listing
+- Tiptap (rich text shortcuts are Tiptap-native; do not reimplement them)
+- `useKeyboardShortcuts` must be implemented before any shortcut feature is built
+
+---
+
+## Edge Cases
+
+| Scenario | Handling |
+|----------|---------|
+| User is typing in a task title input and presses `C` | Suppress -- `allowInInput: false` by default |
+| User opens `?` modal while inside Tiptap editor | Tiptap captures `?` for input first; `?` shortcut must have `allowInInput: false` so it only fires outside rich text |
+| Multiple `useKeyboardShortcuts` instances for same key | Last-registered wins; global shortcuts registered at layout level avoid duplicates |
+| Mac: Cmd vs Ctrl | Use `event.metaKey || event.ctrlKey` in all checks; display as Cmd symbol on Mac, `Ctrl` on Windows |
+| Browser extension intercepts `Ctrl+K` | Cannot fix; document known conflicts in the `?` modal |
+
+---
+
+## Acceptance Criteria
+
+- [ ] `?` opens a modal listing all currently-registered shortcuts grouped by context
+- [ ] `Ctrl+K` opens the command palette and suppresses the browser address bar behavior
+- [ ] Arrow keys navigate task rows in List View without scrolling the page
+- [ ] `E` activates inline task title edit on the focused row
+- [ ] `Esc` closes any open modal or cancels inline edit
+- [ ] `G` then `H` navigates to My Tasks within 500ms window
+- [ ] No shortcut fires when focus is inside a text input (except Esc and Ctrl+K)
+- [ ] Rich text shortcuts are functional in the Tiptap task description editor
+- [ ] `<ShortcutBadge />` renders correctly on both Mac and Windows (Cmd vs Ctrl)
 
 ---
 
 ## Implementation Notes
 
-### Conflict prevention rules
-
-| Situation | Behavior |
-|-----------|----------|
-| User is typing in any `<input>`, `<textarea>`, or `contenteditable` | All single-key shortcuts (`C`, `E`, `A`, etc.) are suppressed — only modifier shortcuts (`Ctrl/Cmd + ...`) remain active |
-| A modal is open | Navigation and List View shortcuts are suppressed — only modal-specific shortcuts apply |
-| Rich text editor is focused | `Ctrl/Cmd + K` opens the link dialog (Tiptap default), not global search |
-| User is on the Landing Page (unauthenticated) | No app shortcuts active |
-
-### Browser conflicts
-
-| Shortcut | Browser default | Resolution |
-|----------|----------------|------------|
-| `Ctrl/Cmd + K` | Chrome: focus URL bar | `event.preventDefault()` called on `keydown` — must be registered on `window` with `{ capture: true }` to intercept before Chrome handles it |
-| `Ctrl/Cmd + B` | Chrome: open Bookmarks bar | Suppressed only when a rich text editor is focused — `event.preventDefault()` is called inside the Tiptap keydown handler |
-| `Backspace` / `Delete` | Browser back navigation (on some browsers when no input focused) | `event.preventDefault()` called when a task row is focused in List View |
-
-### Implementation pattern (Next.js App Router)
-
-```ts
-// Global shortcut handler — attach once in a root client component
-useEffect(() => {
-  const handler = (e: KeyboardEvent) => {
-    const inInput = ['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)
-      || (e.target as HTMLElement).isContentEditable
-
-    // Ctrl/Cmd+K — always intercept, even in inputs
-    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-      e.preventDefault()
-      openSearchPalette()
-      return
-    }
-
-    // Single-key shortcuts — suppress when typing
-    if (inInput) return
-
-    if (e.key === 'c' && !e.ctrlKey && !e.metaKey) {
-      e.preventDefault()
-      openCreateTask()
-    }
-    if (e.key === '?') {
-      e.preventDefault()
-      openShortcutsPanel()
-    }
-    if (e.key === 'Escape') {
-      closeTopModal()
-    }
-  }
-
-  window.addEventListener('keydown', handler, { capture: true })
-  return () => window.removeEventListener('keydown', handler, { capture: true })
-}, [])
-```
-
-### `?` Shortcuts Panel (in-app)
-
-- Pressing `?` anywhere opens a modal showing this shortcuts reference grouped by section
-- Also accessible from the sidebar footer: `Help → Keyboard Shortcuts`
-- The panel itself closes with `Esc` or clicking outside
-
----
-
-## Business Rules
-
-1. Single-key shortcuts (`C`, `E`, `A`, `D`, `L`) are suppressed whenever the user's cursor is inside any `<input>`, `<textarea>`, or `contenteditable` element.
-2. `Ctrl/Cmd + K` is always intercepted — even when an input is focused — using `{ capture: true }` on the `keydown` event listener.
-3. Shortcuts do not bypass confirmation dialogs — `Delete` / `Backspace` on a task always shows the confirmation modal before deleting.
-4. Sequential shortcuts (`G` then `H`) have a 1-second window for the second key — no visual indicator is shown in MVP.
-5. `Esc` always closes the topmost open layer first (panel → modal → dropdown → nothing). It does not close multiple layers at once.
-6. `Ctrl/Cmd + Enter` inside a comment composer submits the comment. Inside a task title edit, it saves and blurs the field.
-7. `Ctrl/Cmd + K` inside a focused Tiptap editor opens the link dialog — global search is not triggered.
-8. Keyboard shortcuts are disabled on all public / unauthenticated pages (landing page, sign-in, sign-up, etc.).
-
----
-
-## Out of Scope (MVP)
-
-- Custom / remappable keyboard shortcuts
-- Vim-style navigation (`j` / `k` for up / down) — conflicts with typing in inputs without complex mode detection
-- Shortcut chords beyond 2-key sequences
-- Keyboard shortcut analytics (tracking which shortcuts are used most)
+- Implement `useKeyboardShortcuts` and `useSequentialShortcuts` first; all other shortcut features depend on them
+- Register global shortcuts in `src/app/(app)/layout.tsx` (authenticated root layout)
+- Register view-specific shortcuts in the relevant page component; they auto-unregister on unmount via the hook's `removeEventListener`
+- Tiptap rich text shortcuts should NOT be reimplemented -- Tiptap handles them natively. Inject them into the shortcut registry from the Tiptap component's `onCreate` callback so they appear in the `?` modal
+- `<ShortcutBadge />` should detect the OS via `navigator.platform` and render Cmd symbol or `Ctrl` accordingly

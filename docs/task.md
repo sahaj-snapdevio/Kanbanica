@@ -532,6 +532,157 @@ TaskDescriptionSnapshot
 
 ---
 
+## Implementation Notes
+
+### `taskSeq` Atomic Increment
+
+`seq_number` must be assigned inside the task creation transaction using a row-locking update to prevent duplicates under concurrent requests:
+
+```typescript
+// Inside db.$transaction(async (tx) => { ... })
+const [{ task_seq }] = await tx.$queryRaw<[{ task_seq: number }]>`
+  UPDATE "Workspace"
+  SET task_seq = task_seq + 1
+  WHERE id = ${workspaceId}
+  RETURNING task_seq
+`
+// Assign task_seq as the new task's seqNumber
+```
+
+Never use `findUnique` + `update` as two separate calls -- that pattern produces duplicate seq numbers under load.
+
+### Dependency Cycle Detection (DFS)
+
+On `POST /api/tasks/:id/dependencies`, run a DFS traversal before inserting:
+
+```typescript
+// src/lib/tasks/check-dependency-cycle.ts
+
+async function wouldCreateCycle(
+  taskId: string,
+  newDependsOnId: string
+): Promise<boolean> {
+  // BFS/DFS: starting from newDependsOnId, follow its dependencies upward.
+  // If we ever reach taskId, adding this edge creates a cycle.
+  const visited = new Set<string>()
+  const queue = [newDependsOnId]
+
+  while (queue.length > 0) {
+    const current = queue.shift()!
+    if (current === taskId) return true
+    if (visited.has(current)) continue
+    visited.add(current)
+
+    const deps = await db.taskDependency.findMany({
+      where: { taskId: current },
+      select: { dependsOnTaskId: true }
+    })
+    queue.push(...deps.map(d => d.dependsOnTaskId))
+  }
+
+  return false
+}
+```
+
+Call this before `db.taskDependency.create()`. Return `400 Bad Request` with `{ error: "Adding this dependency would create a circular reference" }` if it returns `true`.
+
+For large dependency graphs, replace the above with a recursive CTE (more efficient, single DB round-trip):
+
+```sql
+WITH RECURSIVE dep_chain AS (
+  SELECT depends_on_task_id AS task_id
+  FROM "TaskDependency"
+  WHERE task_id = $newDependsOnId  -- start from the proposed dependency target
+
+  UNION ALL
+
+  SELECT td.depends_on_task_id
+  FROM "TaskDependency" td
+  JOIN dep_chain dc ON dc.task_id = td.task_id
+)
+SELECT 1 FROM dep_chain WHERE task_id = $taskId LIMIT 1
+```
+
+If the CTE returns a row, a cycle would be created.
+
+### `TaskDescriptionSnapshot` -- Always Use Upsert
+
+The `TaskDescriptionSnapshot` table has a `UNIQUE` constraint on `taskId`. Always use Prisma `upsert`, never `create`:
+
+```typescript
+await db.taskDescriptionSnapshot.upsert({
+  where: { taskId },
+  create: {
+    taskId,
+    content: previousContent,   // content BEFORE the current edit
+    savedBy: actorId,
+    savedAt: new Date(),
+  },
+  update: {
+    content: previousContent,
+    savedBy: actorId,
+    savedAt: new Date(),
+  }
+})
+```
+
+A `create` on the second save will throw `P2002 Unique constraint failed`. The upsert pattern is required.
+
+### Full-Text Search Limitation
+
+`Task.description` is stored as Tiptap JSON in a `jsonb` column. PostgreSQL's `@@to_tsquery` operator does not work directly on `jsonb` values.
+
+**At MVP (Phases 1-11):** Global search queries `title` only. Description search is not available.
+
+**Post-MVP (Phase 11+):** Add a generated column to extract plain text:
+```prisma
+// In schema.prisma -- add after description field
+description_text String? // GENERATED ALWAYS AS (description->>'text') STORED
+```
+This requires a raw migration (Prisma does not support generated columns natively). Once added, index it:
+```sql
+CREATE INDEX task_description_text_fts ON "Task" USING GIN (to_tsvector('english', description_text));
+```
+
+Do not implement or imply full-task-content search in MVP. All search results are title-based only.
+
+### Folder Mapping
+
+```
+src/
+  app/api/
+    lists/[listId]/tasks/route.ts         <- GET (list), POST (create)
+    tasks/
+      bulk/route.ts                       <- POST (bulk actions)
+      [id]/
+        route.ts                          <- GET, PATCH, DELETE
+        archive/route.ts                  <- PATCH
+        unarchive/route.ts                <- PATCH
+        duplicate/route.ts                <- POST
+        move/route.ts                     <- PATCH
+        assignees/route.ts                <- POST, DELETE
+        watchers/route.ts                 <- POST, DELETE
+        attachments/route.ts              <- POST, GET
+        attachments/[attachmentId]/route.ts  <- DELETE
+        checklists/route.ts               <- POST
+        checklists/[checklistId]/route.ts <- PATCH, DELETE
+        dependencies/route.ts             <- POST (with cycle check)
+        dependencies/[depId]/route.ts     <- DELETE
+        time-logs/route.ts                <- POST
+        subtasks/route.ts                 <- POST, GET
+        activity/route.ts                 <- GET
+        description-snapshot/
+          route.ts                        <- GET
+          restore/route.ts                <- POST
+  lib/
+    tasks/
+      tasks.ts                 <- createTask, updateTask, deleteTask
+      check-dependency-cycle.ts
+      get-subtask-progress.ts
+      get-subtask-progress-batch.ts
+      create-subtask.ts
+```
+
 ## Out of Scope (MVP)
 
 - Custom Fields (Text, Number, Dropdown, Date, Checkbox, URL)

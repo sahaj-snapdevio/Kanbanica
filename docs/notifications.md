@@ -428,3 +428,202 @@ PushSubscription
 - In-app notification sounds
 - Scheduled / snooze notifications ("remind me about this in 2 hours")
 - Read receipts on comments
+
+---
+
+## Implementation Notes
+
+### VAPID Setup (Required for Push)
+
+Generate VAPID keys once and store in env vars:
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+Add to `.env.local`:
+```
+VAPID_PUBLIC_KEY=BFc...     # starts with B, ~88 chars
+VAPID_PRIVATE_KEY=...       # ~43 chars
+VAPID_SUBJECT=mailto:push@teamority.com
+```
+
+These are **optional** env vars -- if missing, push notifications are silently disabled (graceful degradation). Add to `src/lib/env.ts` Zod schema as optional:
+
+```typescript
+vapidPublicKey: z.string().optional(),
+vapidPrivateKey: z.string().optional(),
+vapidSubject: z.string().optional(),
+```
+
+**VAPID key rotation warning:** If VAPID keys are ever rotated (e.g. a key leak), all stored `PushSubscription` records become invalid. WebPush will return HTTP 410 Gone. The push handler must delete the subscription on 410:
+
+```typescript
+try {
+  await webpush.sendNotification(subscription, payload)
+} catch (err) {
+  if (err.statusCode === 410) {
+    // Subscription is expired/invalid -- delete it
+    await db.pushSubscription.delete({ where: { id: subscriptionId } })
+  }
+}
+```
+
+### Daily Digest Job Architecture
+
+`UserEmailPreference.digestTime` is a per-user HH:MM delivery time (e.g. "08:00"). A single daily cron cannot honor arbitrary per-user delivery times.
+
+**Architecture:** A 30-minute batch cron runs continuously. On each tick it finds users whose digest window has just arrived and fans out per-user digest jobs.
+
+```typescript
+// JOB_NAMES.NOTIFICATION_DIGEST_SCAN = "notification.digest-scan"
+// Schedule: every 30 minutes
+// This job finds eligible users and enqueues per-user digest jobs
+
+// JOB_NAMES.NOTIFICATION_DIGEST_SEND = "notification.digest-send"
+// Enqueued per user by the scan job
+interface NotificationDigestSendPayload {
+  userId: string
+  windowStart: string   // ISO -- start of the 24h window to aggregate
+  windowEnd: string     // ISO -- end of the window (= now)
+}
+```
+
+**Scan handler logic** (`src/lib/worker/handlers/notification-digest-scan.ts`):
+```typescript
+// Find users whose digestTime falls within the last 30-minute window
+const now = new Date()
+const windowStart = new Date(now.getTime() - 30 * 60 * 1000)
+
+// Convert digestTime (HH:MM) + digestTimezone to a UTC timestamp for today
+// If that UTC timestamp falls in [windowStart, now], enqueue a digest for that user
+const eligibleUsers = await db.userEmailPreference.findMany({
+  where: { deliveryMode: 'DIGEST' }
+})
+
+for (const pref of eligibleUsers) {
+  const digestUtc = toUtcDateTime(pref.digestTime, pref.digestTimezone, now)
+  if (digestUtc >= windowStart && digestUtc <= now) {
+    await enqueueJob(JOB_NAMES.NOTIFICATION_DIGEST_SEND, {
+      userId: pref.userId,
+      windowStart: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(),
+      windowEnd: now.toISOString(),
+    }, { singletonKey: `digest:${pref.userId}:${now.toDateString()}` })
+    // singletonKey prevents duplicate digests if the scan runs twice in the same window
+  }
+}
+```
+
+**Digest send handler** (`src/lib/worker/handlers/notification-digest-send.ts`):
+1. Query unread `Notification` records for `userId` where `createdAt` between `windowStart` and `windowEnd`
+2. If zero notifications -- skip (do not send an empty digest email)
+3. Group by entity / trigger type
+4. Send email via `src/lib/email/notification-digest.tsx`
+5. Do NOT mark notifications as read -- that is the user's action
+
+### Notification Cleanup Job
+
+```typescript
+JOB_NAMES.NOTIFICATION_CLEANUP = "notification.cleanup"
+
+// Schedule: daily at 01:00 UTC
+// Handler: DELETE FROM Notification WHERE created_at < NOW() - INTERVAL '90 days'
+// Batch deletions to avoid long-running transactions (1000 rows per batch)
+```
+
+### Due Date Reminder Jobs
+
+Due date reminders are fired by a cron that checks for tasks with upcoming due dates:
+
+```typescript
+JOB_NAMES.DUE_DATE_REMINDER = "notification.due-date-reminder"
+// Schedule: every hour
+// Handler: find tasks where due_date_end = CURRENT_DATE + 1 (1-day reminder)
+//          AND no existing reminder Notification for that task+trigger_type
+```
+
+**Idempotency:** Before creating a reminder notification, check if one already exists:
+```typescript
+const existing = await db.notification.findFirst({
+  where: {
+    entityId: taskId,
+    triggerType: 'due_date_reminder_1day',
+    createdAt: { gte: startOfToday() }
+  }
+})
+if (existing) return  // already sent today
+```
+
+### ActivityLog vs Notification Separation
+
+These are two distinct write paths:
+
+| | ActivityLog | Notification |
+|--|------------|-------------|
+| Purpose | Immutable audit trail | Actionable user alert |
+| Written by | `writeActivityLog()` (fire-and-forget) | `createNotification()` (fire-and-forget) |
+| Deleted | Only when parent Task deleted | After 90 days or on dismiss |
+| Reads | Task detail timeline | Notification panel |
+
+Never merge these two writes into one call. They serve different purposes and have different retention rules.
+
+### Notification Creation Pattern
+
+```typescript
+// src/lib/notifications/create-notification.ts
+
+export function createNotifications(
+  recipients: string[],        // userIds
+  actorId: string,
+  trigger: NotificationTrigger,
+  entity: { type: string; id: string },
+  workspaceId: string
+): void {
+  // Fire-and-forget -- never block the mutation response
+  const eligibleRecipients = recipients.filter(id => id !== actorId)
+  if (eligibleRecipients.length === 0) return
+
+  db.notification.createMany({
+    data: eligibleRecipients.map(recipientId => ({
+      workspaceId,
+      recipientId,
+      actorId,
+      triggerType: trigger.type,
+      entityType: entity.type,
+      entityId: entity.id,
+      title: trigger.title(actorId, entity),
+      expiresAt: addDays(new Date(), 90),
+    }))
+  }).catch(err => {
+    console.error('Notification creation failed', { trigger, err })
+  })
+}
+```
+
+### Folder Mapping
+
+```
+src/
+  lib/
+    notifications/
+      create-notification.ts    <- createNotifications (fire-and-forget)
+      push.ts                   <- sendPushNotification with 410 handler
+    email/
+      notification-digest.tsx   <- React Email template for digest
+      notification-instant.tsx  <- React Email template for instant
+  lib/worker/handlers/
+    notification-digest-scan.ts
+    notification-digest-send.ts
+    notification-cleanup.ts
+    due-date-reminder.ts
+  app/api/me/
+    notifications/route.ts
+    notifications/[id]/read/route.ts
+    notifications/read-all/route.ts
+    notification-preferences/route.ts
+    email-preferences/route.ts
+    push-subscriptions/route.ts
+    push-subscriptions/[id]/route.ts
+    muted/route.ts
+    muted/[entityType]/[entityId]/route.ts
+```

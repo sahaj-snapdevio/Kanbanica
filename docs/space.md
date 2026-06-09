@@ -257,6 +257,87 @@ SpaceMember
 
 ---
 
+## Implementation Notes
+
+### Required Prisma Index on SpaceMember
+
+Every Private Space query filters by `(spaceId, userId)`. Without an index, this becomes a full table scan as SpaceMember grows:
+
+```prisma
+model SpaceMember {
+  // ...
+  @@unique([spaceId, userId])   // one record per user per space
+  @@index([userId, workspaceId]) // for "all spaces this user can access" lookup
+}
+```
+
+The `@@unique` on `(spaceId, userId)` doubles as an index and enforces no duplicate memberships. The `@@index` on `(userId, workspaceId)` -- via a join through Space -- makes `getAccessibleSpaceIds` fast.
+
+### `getAccessibleSpaceIds` -- The Core Privacy Enforcement Query
+
+This function is called by search, My Tasks, notification scoping, and any cross-space query. It must be defined once and used everywhere -- never inlined differently per feature.
+
+```typescript
+// src/lib/permissions.ts
+
+export async function getAccessibleSpaceIds(
+  userId: string,
+  workspaceId: string
+): Promise<string[]> {
+  // Owner and Admin can access all spaces
+  const member = await db.workspaceMember.findUnique({
+    where: { workspaceId_userId: { workspaceId, userId } }
+  })
+  if (!member) return []
+  if (['OWNER', 'ADMIN'].includes(member.role)) {
+    const all = await db.space.findMany({
+      where: { workspaceId, isArchived: false },
+      select: { id: true }
+    })
+    return all.map(s => s.id)
+  }
+
+  // Members: public spaces + private spaces they are explicitly in
+  const spaces = await db.space.findMany({
+    where: {
+      workspaceId,
+      isArchived: false,
+      OR: [
+        { isPrivate: false },                                    // all public spaces
+        { members: { some: { userId } } }                       // private spaces user is in
+      ]
+    },
+    select: { id: true }
+  })
+  return spaces.map(s => s.id)
+}
+```
+
+**Guests** have no implicit access to any space. For guests, the `isPrivate: false` branch still applies BUT a separate guest check is needed -- public spaces default to View for Members, but Guests only see spaces they are explicitly added to:
+
+```typescript
+  // For guests: only spaces they are explicitly a member of
+  if (member.role === 'GUEST') {
+    const memberships = await db.spaceMember.findMany({
+      where: { userId, space: { workspaceId, isArchived: false } },
+      select: { spaceId: true }
+    })
+    return memberships.map(m => m.spaceId)
+  }
+```
+
+### Public -> Private Toggle Enforcement
+
+When `isPrivate` is toggled on a Space, no SpaceMember records are deleted. Access is enforced purely at query time via `getAccessibleSpaceIds`. Non-members simply stop receiving the space in their results immediately -- no data migration needed.
+
+```typescript
+// PATCH /api/spaces/:id -- visibility toggle
+await db.space.update({ where: { id: spaceId }, data: { isPrivate: true } })
+// No SpaceMember cleanup needed -- query layer handles exclusion automatically
+```
+
+---
+
 ## Out of Scope (MVP)
 
 - Space-level templates (pre-built Spaces with Lists and tasks)

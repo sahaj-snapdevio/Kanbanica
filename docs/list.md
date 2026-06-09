@@ -305,6 +305,283 @@ ListStatus
 
 ---
 
+## Implementation Notes
+
+### Required Prisma Indexes
+
+```prisma
+model List {
+  // ...
+  @@index([spaceId])
+  @@index([spaceId, isArchived])   // sidebar query filters by both
+}
+
+model ListStatus {
+  // ...
+  @@index([listId])                // status lookup is always by listId
+}
+```
+
+### `order_index` -- Gap Strategy and Rebalancing
+
+Lists are ordered in the sidebar per Space. `order_index` uses an integer gap strategy:
+
+- **Initial gap:** 1000 between adjacent items (first item = 1000, second = 2000, etc.)
+- **Insert between:** midpoint of the two neighbours -- `Math.floor((prev + next) / 2)`
+- **Append to end:** `max(order_index) + 1000`
+- **Rebalance trigger:** when a new midpoint equals an existing `order_index` (gap = 0), rewrite all `order_index` values for that Space in a single transaction with gap 1000
+
+```typescript
+// src/lib/order-index.ts
+export async function getNextOrderIndex(spaceId: string): Promise<number> {
+  const last = await db.list.findFirst({
+    where: { spaceId, isArchived: false },
+    orderBy: { orderIndex: 'desc' },
+    select: { orderIndex: true }
+  })
+  return (last?.orderIndex ?? 0) + 1000
+}
+
+export async function rebalanceListOrder(tx: PrismaTransaction, spaceId: string) {
+  const lists = await tx.list.findMany({
+    where: { spaceId },
+    orderBy: { orderIndex: 'asc' },
+    select: { id: true }
+  })
+  await Promise.all(
+    lists.map((l, i) => tx.list.update({ where: { id: l.id }, data: { orderIndex: (i + 1) * 1000 } }))
+  )
+}
+```
+
+Same gap strategy applies to `ListStatus.orderIndex` within a List.
+
+### `createList` -- Transaction with Default Statuses
+
+Create the List and its default statuses atomically. If status creation fails, the List must not exist.
+
+```typescript
+// src/server/list.ts
+
+const DEFAULT_STATUSES = [
+  { name: 'Todo',        color: '#9CA3AF', type: 'open',   orderIndex: 1000 },
+  { name: 'In Progress', color: '#3B82F6', type: 'active', orderIndex: 2000 },
+  { name: 'Review',      color: '#8B5CF6', type: 'active', orderIndex: 3000 },
+  { name: 'Done',        color: '#22C55E', type: 'closed', orderIndex: 4000 },
+]
+
+export async function createList(spaceId: string, data: CreateListInput, userId: string) {
+  const orderIndex = await getNextOrderIndex(spaceId)
+
+  return db.$transaction(async (tx) => {
+    const list = await tx.list.create({
+      data: { spaceId, orderIndex, createdBy: userId, ...data }
+    })
+
+    await tx.listStatus.createMany({
+      data: DEFAULT_STATUSES.map(s => ({ ...s, listId: list.id }))
+    })
+
+    return list
+  })
+}
+```
+
+### `deleteList` -- R2 Before DB Cascade
+
+CLAUDE.md rule: never delete the DB record before the R2 file. For list deletion, collect all attachment keys first, delete from R2 in batches, then let Prisma cascade handle the DB.
+
+```typescript
+export async function deleteList(listId: string) {
+  // 1. Collect all R2 attachment keys for this list
+  const attachments = await db.taskAttachment.findMany({
+    where: { task: { listId } },
+    select: { id: true, r2Key: true }
+  })
+
+  // 2. Delete from R2 in batches of 50
+  for (let i = 0; i < attachments.length; i += 50) {
+    const batch = attachments.slice(i, i + 50)
+    await Promise.all(batch.map(a => deleteFromR2(a.r2Key)))
+  }
+
+  // 3. Now delete the DB record -- Prisma cascade removes everything else
+  await db.list.delete({ where: { id: listId } })
+}
+```
+
+If R2 deletion fails, abort and return 503 -- do not proceed to DB delete. Orphaned R2 files are unrecoverable.
+
+### `duplicateList` -- Transaction Spec
+
+Duplicate copies structure only by default. Tasks are optional (user opts in).
+
+```typescript
+export async function duplicateList(
+  sourceListId: string,
+  userId: string,
+  includeTasks: boolean
+) {
+  const source = await db.list.findUniqueOrThrow({
+    where: { id: sourceListId },
+    include: { statuses: true, tasks: includeTasks ? { where: { isArchived: false } } : false }
+  })
+
+  const orderIndex = await getNextOrderIndex(source.spaceId)
+
+  return db.$transaction(async (tx) => {
+    // 1. Create new List
+    const newList = await tx.list.create({
+      data: {
+        spaceId: source.spaceId,
+        name: `Copy of ${source.name}`,
+        color: source.color,
+        description: source.description,
+        orderIndex,
+        createdBy: userId,
+      }
+    })
+
+    // 2. Copy statuses -- preserve orderIndex and type; generate new IDs
+    const statusIdMap = new Map<string, string>()
+    for (const s of source.statuses) {
+      const newStatus = await tx.listStatus.create({
+        data: { listId: newList.id, name: s.name, color: s.color, type: s.type, orderIndex: s.orderIndex }
+      })
+      statusIdMap.set(s.id, newStatus.id)
+    }
+
+    // 3. Copy tasks (structure only -- no assignees, due dates, comments, attachments)
+    if (includeTasks && source.tasks) {
+      for (const task of source.tasks) {
+        const mappedStatusId = statusIdMap.get(task.statusId) ?? newList.statuses[0].id
+        await tx.task.create({
+          data: {
+            listId: newList.id,
+            statusId: mappedStatusId,
+            title: task.title,
+            priority: task.priority,
+            orderIndex: task.orderIndex,
+            createdBy: userId,
+            // assignees, dueDate, description NOT copied
+          }
+        })
+      }
+    }
+
+    return newList
+  })
+}
+```
+
+> **`taskSeq` note:** duplicated tasks get new IDs and new `taskSeq` numbers from the workspace counter -- they are not copies of the original task numbers.
+
+### `moveList` -- Permission Check and Space Switch
+
+Moving a List to a different Space requires the user to have Full Access on BOTH the source and destination Space.
+
+```typescript
+export async function moveList(listId: string, targetSpaceId: string, userId: string) {
+  // Permission check on destination must happen before the update
+  const [list, targetSpace] = await Promise.all([
+    db.list.findUniqueOrThrow({ where: { id: listId } }),
+    db.space.findUniqueOrThrow({ where: { id: targetSpaceId } })
+  ])
+
+  // Verify user has Full Access on destination space (same workspace)
+  if (list.spaceId === targetSpaceId) return  // no-op
+
+  const orderIndex = await getNextOrderIndex(targetSpaceId)
+
+  await db.list.update({
+    where: { id: listId },
+    data: { spaceId: targetSpaceId, orderIndex }
+  })
+  // Statuses, tasks, and all nested data remain unchanged -- only spaceId moves
+}
+```
+
+After the move, the List inherits the destination Space's permission model -- members of the source Space who are not members of the destination Space will lose access.
+
+### Status Deletion Guard -- Must Be Inside a Transaction
+
+The "tasks must be reassigned before delete" check is vulnerable to a race condition if done as a pre-check. Do it atomically:
+
+```typescript
+export async function deleteListStatus(listId: string, statusId: string) {
+  return db.$transaction(async (tx) => {
+    // Check inside transaction to prevent TOCTOU race
+    const taskCount = await tx.task.count({
+      where: { statusId, isArchived: false }
+    })
+    if (taskCount > 0) {
+      throw new Error(`TASKS_EXIST:${taskCount}`)
+    }
+
+    // Ensure at least one closed status will remain
+    const status = await tx.listStatus.findUniqueOrThrow({ where: { id: statusId } })
+    if (status.type === 'closed') {
+      const remainingClosed = await tx.listStatus.count({
+        where: { listId, type: 'closed', id: { not: statusId } }
+      })
+      if (remainingClosed === 0) {
+        throw new Error('LAST_CLOSED_STATUS')
+      }
+    }
+
+    await tx.listStatus.delete({ where: { id: statusId } })
+  })
+}
+```
+
+Return `422` with `{ error: "Reassign or delete the X tasks using this status before removing it." }` when `TASKS_EXIST`, and `{ error: "A list must have at least one closed status." }` when `LAST_CLOSED_STATUS`.
+
+### Board View Column Order
+
+Board View columns are the List's statuses in `ListStatus.orderIndex` order -- there is no separate board column order. Reordering statuses (via `PATCH /api/lists/:id/statuses/reorder`) also reorders Board columns.
+
+### `reorderStatuses` -- Bulk Update
+
+Reorder accepts an ordered array of status IDs and reassigns `orderIndex` with gap 1000:
+
+```typescript
+export async function reorderStatuses(listId: string, orderedIds: string[]) {
+  return db.$transaction(
+    orderedIds.map((id, i) =>
+      db.listStatus.update({ where: { id, listId }, data: { orderIndex: (i + 1) * 1000 } })
+    )
+  )
+}
+```
+
+### Folder Mapping
+
+```
+src/
+  server/
+    list.ts               <- createList, deleteList, duplicateList, moveList
+    list-status.ts        <- createStatus, updateStatus, deleteListStatus, reorderStatuses
+  lib/
+    order-index.ts        <- getNextOrderIndex, rebalanceListOrder (shared with tasks)
+  app/api/
+    spaces/[spaceId]/
+      lists/route.ts      <- GET (list), POST (create)
+    lists/[id]/
+      route.ts            <- GET, PATCH, DELETE
+      archive/route.ts    <- PATCH
+      unarchive/route.ts  <- PATCH
+      duplicate/route.ts  <- POST
+      move/route.ts       <- PATCH
+      reorder/route.ts    <- PATCH
+      statuses/
+        route.ts          <- GET, POST
+        reorder/route.ts  <- PATCH
+        [statusId]/
+          route.ts        <- PATCH, DELETE
+```
+
+---
+
 ## Out of Scope (MVP)
 
 - List templates (pre-built Lists with predefined statuses and tasks)

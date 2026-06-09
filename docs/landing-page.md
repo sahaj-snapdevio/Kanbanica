@@ -1,443 +1,245 @@
 # Landing Page
 
-## Overview
+## Goal
 
-The landing page is the public-facing marketing site for Teamority. It is the first thing a visitor sees — its job is to communicate the product's value, build trust, and convert visitors into sign-ups.
-
-**URL:** `/`
-**Access:** Public — no authentication required
-**Tech:** Built within Next.js (same codebase, separate layout from the app)
+A public marketing site that converts visitors into sign-ups. It communicates Teamority's value proposition, shows pricing, and drives users to the magic-link sign-up flow. It must be fast (LCP < 2.5s), SEO-indexed, and analytics-instrumented from day 1.
 
 ---
 
-## Page Sections (in order)
+## Existing Scope (MVP)
 
-1. [Navigation Bar](#1-navigation-bar)
-2. [Hero Section](#2-hero-section)
-3. [Social Proof Bar](#3-social-proof-bar)
-4. [Features Section](#4-features-section)
-5. [How It Works](#5-how-it-works)
-6. [Views Showcase](#6-views-showcase)
-7. [Testimonials](#7-testimonials)
-8. [FAQ Section](#8-faq-section)
-9. [Final CTA Banner](#9-final-cta-banner)
-10. [Footer](#10-footer)
+- Sections: Nav, Hero, Features, Social Proof, Pricing, FAQ, CTA, Footer
+- SEO meta tags (OG, Twitter Card, canonical)
+- Analytics event tracking (page view, CTA clicks)
+- Legal pages: Privacy Policy, Terms of Service, Cookie Policy
+- No blog in MVP
+- No multi-language in MVP
 
 ---
 
-## 1. Navigation Bar
+## User Flow
 
-Sticky top navigation bar — stays visible while scrolling.
-
-### Layout
-
-```
-[Logo + Teamority]          Features  Help      [Sign In]  [Get Started →]
-```
-
-### Elements
-
-| Element | Description |
-|---------|-------------|
-| Logo | Teamority logo + wordmark — links to `/` |
-| Features | Anchor link → scrolls to Features section |
-| Help | Links to `/help` (Help Center) |
-| Sign In | Link to `/sign-in` |
-| Get Started | Primary CTA button → `/sign-up` |
-
-### Behavior
-
-- **Transparent** background at top of page, transitions to a solid white / dark background with a shadow after scrolling 60px
-- On mobile: collapses into a hamburger menu (`☰`)
-- Mobile menu shows: Features, Help, Sign In, Get Started
+1. Visitor lands on `/` -> sees Nav + Hero with primary CTA "Get Started Free"
+2. Visitor scrolls through Features -> Social Proof -> Pricing
+3. Visitor clicks "Get Started Free" or any primary CTA -> navigated to `/sign-in`
+4. `/sign-in` shows the magic link form (see authentication.md)
+5. Visitor clicks "Privacy Policy" or "Terms of Service" in footer -> `/privacy`, `/terms`
 
 ---
 
-## 2. Hero Section
+## Technical Design
 
-The most important section. Communicates the product in one glance.
+### Routing
 
-### Layout
-
-```
-┌──────────────────────────────────────────────────────┐
-│                                                      │
-│   Organize work. Ship faster. Together.              │
-│                                                      │
-│   Teamority brings your team's tasks, sprints,       │
-│   and projects into one place — without the          │
-│   complexity.                                        │
-│                                                      │
-│   [Get Started for Free]   [See how it works →]     │
-│                                                      │
-│   ✅ Free forever   ✅ No credit card required       │
-│                                                      │
-│   ┌────────────────────────────────────────────┐    │
-│   │         App Screenshot / Demo GIF          │    │
-│   │         (Board View or Task Panel)         │    │
-│   └────────────────────────────────────────────┘    │
-│                                                      │
-└──────────────────────────────────────────────────────┘
-```
-
-### Content
-
-| Element | Content |
-|---------|---------|
-| Headline | `"Organize work. Ship faster. Together."` |
-| Subheadline | `"Teamority brings your team's tasks, sprints, and projects into one place — without the complexity."` |
-| Primary CTA | `"Get Started for Free"` → `/sign-up` |
-| Secondary CTA | `"See how it works →"` → anchors to How It Works section |
-| Trust nudge | `"✅ Free forever  ✅ No credit card required"` |
-| Hero visual | App screenshot or animated GIF showing Board View or the Task detail panel |
-
-### Design notes
-
-- Headline is the largest text on the page (H1)
-- Primary CTA is filled button (brand color)
-- Secondary CTA is ghost / text button
-- Hero visual should show real UI — not abstract illustrations
-
----
-
-## 3. Social Proof Bar
-
-A simple trust bar below the hero showing logos or numbers.
-
-### Layout
+The landing page and legal pages live in the `(marketing)` route group to isolate them from the authenticated app layout:
 
 ```
-──────────────────────────────────────────────────────
-   Trusted by teams at                [Logo] [Logo] [Logo] [Logo] [Logo]
-──────────────────────────────────────────────────────
+src/app/
+  (marketing)/              <- public marketing layout (no auth check)
+    layout.tsx              <- Nav + Footer; no sidebar; no session check
+    page.tsx                <- Landing page (/)
+    pricing/page.tsx        <- Standalone pricing page (optional)
+    privacy/page.tsx        <- Privacy Policy
+    terms/page.tsx          <- Terms of Service
+    cookies/page.tsx        <- Cookie Policy
+  (auth)/                   <- sign-in, onboarding (unauthenticated)
+  (app)/                    <- authenticated app
 ```
 
-**OR (if no customer logos yet — early stage):**
+The `(marketing)` group has no session check -- it is fully public. This is enforced by keeping it outside the `(app)` route group.
 
-```
-──────────────────────────────────────────────────────
-        500+ teams already using Teamority
-   ★★★★★  "Exactly what we needed"   ★★★★★
-──────────────────────────────────────────────────────
-```
+### Rendering Strategy
 
-- Use whichever version is appropriate at launch
-- Keep it minimal — one row, no borders
+All landing page routes use **Static Site Generation (SSG)**. Add `export const dynamic = 'force-static'` in each page for maximum CDN cache hit rate.
 
----
+Exception: the Pricing section reads plan data from the database. Use ISR with a 1-hour revalidation so pricing changes propagate without a full redeploy:
 
-## 4. Features Section
+```typescript
+// src/app/(marketing)/page.tsx
+export const revalidate = 3600
 
-Highlights the core features of the product in digestible chunks.
-
-### Layout
-
-```
-         Everything your team needs to move fast
-
-┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-│  📋 Tasks    │  │  🏃 Sprints  │  │  👁 Views    │
-│              │  │              │  │              │
-│ Create, pri- │  │ Time-box your│  │ List, Board, │
-│ oritize, and │  │ work into    │  │ or Calendar  │
-│ track tasks  │  │ focused iter-│  │ — your choice│
-│ with full    │  │ ations with  │  │              │
-│ detail       │  │ story points │  │              │
-└──────────────┘  └──────────────┘  └──────────────┘
-
-┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-│  💬 Comments │  │  🔔 Notifs   │  │  🔍 Search   │
-│              │  │              │  │              │
-│ Threaded     │  │ Stay informed│  │ Find anything│
-│ comments,    │  │ without the  │  │ instantly    │
-│ mentions,    │  │ noise — you  │  │ across your  │
-│ reactions    │  │ control what │  │ entire work- │
-│ on every task│  │ matters      │  │ space        │
-└──────────────┘  └──────────────┘  └──────────────┘
+async function getPricingData() {
+  return prisma.plan.findMany({
+    where: { isActive: true },
+    include: { limits: true, bullets: true },
+    orderBy: { orderIndex: 'asc' },
+  })
+}
 ```
 
-### Feature cards (6 cards)
+### SEO
 
-| Icon | Title | Description |
-|------|-------|-------------|
-| 📋 | Tasks & Subtasks | Create, prioritize, and track work with rich fields — assignees, due dates, priorities, checklists, dependencies, and more. |
-| 🏃 | Sprints | Time-box work into focused iterations. Set goals, assign story points, track progress, and close sprints cleanly. |
-| 👁 | Multiple Views | See your work your way — List, Board (Kanban), or Calendar. Switch anytime, your preference is saved. |
-| 💬 | Collaboration | Threaded comments, @mentions, emoji reactions, and a full activity timeline on every task. |
-| 🔔 | Smart Notifications | Stay informed about what matters — configure per-event, per-space, or mute entirely. |
-| 🔍 | Powerful Search | Find any task, list, or member instantly across your entire workspace with `Ctrl+K`. |
+Every page must export `metadata` from Next.js:
 
----
-
-## 5. How It Works
-
-A simple step-by-step walkthrough showing how a team gets started.
-
-### Layout
-
-```
-        Get your team up and running in minutes
-
-Step 1          Step 2          Step 3          Step 4
-   │               │               │               │
-[Create        [Invite         [Organize        [Start
-Workspace]      Team]           Work]            Working]
-   │               │               │               │
-Create your    Invite team-    Create Spaces,   Create tasks,
-workspace in   mates by email  Lists, and set   assign people,
-30 seconds     or link         up your structure set due dates
+```typescript
+// src/app/(marketing)/page.tsx
+export const metadata: Metadata = {
+  title: 'Teamority -- Project Management for Modern Teams',
+  description: 'Organize work across Workspaces, Spaces, and Lists...',
+  openGraph: {
+    title: 'Teamority',
+    description: '...',
+    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Teamority',
+    images: ['/og-image.png'],
+  },
+  alternates: {
+    canonical: 'https://teamority.com',
+  },
+}
 ```
 
-### Steps
+Static assets required: `/public/og-image.png` (1200x630), `/public/favicon.ico`, `/public/apple-touch-icon.png` (180x180).
 
-| Step | Title | Description |
-|------|-------|-------------|
-| 1 | Create Workspace | Sign up and create your workspace in under 30 seconds. No setup required. |
-| 2 | Invite Your Team | Invite teammates by email or share an invite link. They join instantly. |
-| 3 | Organize Your Work | Create Spaces for each team, Lists for projects, and Tasks for every piece of work. |
-| 4 | Start Working | Assign tasks, set priorities and due dates, and watch progress in real time. |
+### Analytics
 
-- Each step has a small illustration or icon
-- Connected with a horizontal line / arrow on desktop, vertical on mobile
+Use the `analytics` package (wraps Google Tag Manager or another provider). Analytics is optional -- if `NEXT_PUBLIC_GTM_CONTAINER_ID` is not set, all `analytics.track()` calls are no-ops.
 
----
+```typescript
+// src/components/marketing/cta-button.tsx
+import { useAnalytics } from 'use-analytics'
 
-## 6. Views Showcase
-
-A visually prominent section showing the three views with an interactive tab switcher.
-
-### Layout
-
-```
-        See your work the way you want
-
-[List View]  [Board View]  [Calendar View]      ← tab switcher
-
-┌─────────────────────────────────────────────────┐
-│                                                 │
-│          App screenshot for selected view       │
-│                                                 │
-└─────────────────────────────────────────────────┘
-
-List View: Tasks as rows with inline fields — sort, filter, and edit without leaving the view.
+export function CtaButton({ label, location }: { label: string; location: string }) {
+  const { track } = useAnalytics()
+  return (
+    <Button
+      onClick={() => {
+        track('cta_clicked', { label, location })
+        router.push('/sign-in')
+      }}
+    >
+      {label}
+    </Button>
+  )
+}
 ```
 
-### Tabs
+**Required analytics events:**
 
-| Tab | Screenshot shows | Caption |
-|-----|-----------------|---------|
-| List View | Task list with columns (status, assignee, due date, priority) | `"Tasks as rows with inline fields — sort, filter, and edit without leaving the view."` |
-| Board View | Kanban columns with task cards | `"Drag tasks between columns to update status instantly. Perfect for sprint planning."` |
-| Calendar View | Monthly calendar with tasks on due dates | `"See what's due when. Drag tasks to reschedule directly from the calendar."` |
+| Event | Properties | Trigger |
+|-------|-----------|---------|
+| `page_view` | `page: '/'` | Auto via GTM page view trigger |
+| `cta_clicked` | `label, location` | All primary CTA button clicks |
+| `pricing_plan_viewed` | `plan: 'free' \| 'pro' \| 'business'` | User focuses on a pricing card |
+| `faq_expanded` | `question: string` | FAQ accordion item opens |
+| `sign_up_started` | -- | User reaches `/sign-in` from landing page |
 
-- Active tab is highlighted
-- Switching tabs swaps the screenshot with a smooth fade or slide transition
-- On mobile: show all three screenshots stacked vertically instead of tabs
-
----
-
-## 7. Testimonials
-
-Social proof from real users. Shown as cards.
-
-### Layout
-
-```
-        What teams are saying
-
-┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
-│ ★★★★★            │  │ ★★★★★            │  │ ★★★★★            │
-│                  │  │                  │  │                  │
-│ "We replaced     │  │ "Sprint planning  │  │ "The permission  │
-│ three tools with │  │ in Teamority     │  │ model is exactly │
-│ Teamority. Best  │  │ finally makes    │  │ what we needed   │
-│ decision we made"│  │ sense."          │  │ for client work."│
-│                  │  │                  │  │                  │
-│ [Avatar]         │  │ [Avatar]         │  │ [Avatar]         │
-│ John D.          │  │ Sarah M.         │  │ Alex K.          │
-│ Engineering Lead │  │ Product Manager  │  │ Freelancer       │
-└──────────────────┘  └──────────────────┘  └──────────────────┘
-```
-
-- 3 testimonial cards on desktop, carousel on mobile
-- Each card: star rating, quote, avatar, name, role
-- Testimonial content is static (hardcoded) for MVP — managed via Admin Panel post-MVP
-
----
-
-## 8. FAQ Section
-
-General product FAQs.
-
-### Layout
-
-Accordion — click to expand each question.
-
-### Questions (MVP)
-
-| Question | Answer summary |
-|----------|---------------|
-| What is Teamority? | A project management tool for teams of all sizes |
-| How is Teamority different from ClickUp / Asana? | Simpler by design, faster to get started, no feature bloat |
-| What is Teamority? | A project management tool for teams of all sizes |
-| How is Teamority different from ClickUp / Asana? | Simpler by design, faster to get started, open source |
-| Is Teamority free? | Yes — Teamority is fully free and open source |
-| Is my data secure? | Yes — data is encrypted at rest and in transit |
-| Can I self-host Teamority? | Yes — it is open source and can be self-hosted |
-| Can I import data from another tool? | Not yet — import is on the roadmap |
-| Do you have a mobile app? | Not yet — the web app is mobile-friendly and works in all mobile browsers |
-
-- Accordion style — one open at a time
-- Content managed from Admin Panel → Help Center FAQ section post-MVP (static for MVP)
-
----
-
-## 9. Final CTA Banner
-
-A strong closing call to action before the footer.
-
-### Layout
-
-```
-┌──────────────────────────────────────────────────────┐
-│                                                      │
-│      Ready to bring your team together?              │
-│                                                      │
-│   Start for free — no credit card required.          │
-│                                                      │
-│              [Get Started for Free →]                │
-│                                                      │
-└──────────────────────────────────────────────────────┘
-```
-
-| Element | Content |
-|---------|---------|
-| Headline | `"Ready to bring your team together?"` |
-| Subtext | `"Free and open source — get started in minutes."` |
-| CTA Button | `"Get Started →"` → `/sign-up` |
-
-- Full-width section with a brand color background
-- High contrast button (white on brand color)
-
----
-
-## 10. Footer
-
-### Layout
-
-```
-[Logo + Teamority]
-
-Product          Company          Support          Legal
-Features         About            Help Center      Privacy Policy
-GitHub           Blog             Contact Us       Terms of Service
-Changelog        Careers          Status           Cookie Policy
-
-© 2026 Teamority. All rights reserved.     [Twitter] [GitHub] [LinkedIn]
-```
-
-### Footer links
-
-**Product:**
-- Features → `/#features`
-- GitHub → link to GitHub repository
-- Changelog → `/changelog` (post-MVP)
-
-**Company:**
-- About → `/about` (post-MVP — static page for MVP)
-- Blog → `/blog` (post-MVP)
-- Careers → `/careers` (post-MVP)
-
-**Support:**
-- Help Center → `/help`
-- Contact Us → `/support/tickets/new`
-- Status → external status page (post-MVP)
-
-**Legal:**
-- Privacy Policy → `/privacy`
-- Terms of Service → `/terms`
-- Cookie Policy → `/cookies`
-
-**Social icons:** Twitter / X, GitHub, LinkedIn — link to official accounts
-
----
-
-## Additional Pages (linked from landing page)
-
-| Page | Route | Description |
-|------|-------|-------------|
-| Privacy Policy | `/privacy` | Legal — data handling and privacy |
-| Terms of Service | `/terms` | Legal — usage terms |
-| Cookie Policy | `/cookies` | Legal — cookie usage |
-| About | `/about` | Company story (static, simple for MVP) |
-| Help Center | `/help` | Knowledge base (see [Customer Support](./customer-support.md)) |
-
-> Privacy, Terms, and Cookie pages are **required at launch** — no legal pages = cannot go live.
-
----
-
-## SEO
-
-| Tag | Value |
-|-----|-------|
-| `<title>` | `Teamority — Project Management for Modern Teams` |
-| `meta description` | `"Organize tasks, run sprints, and collaborate in one place. Simple, fast, and built for teams of all sizes. Free to get started."` |
-| `og:title` | `Teamority — Project Management for Modern Teams` |
-| `og:description` | Same as meta description |
-| `og:image` | Hero screenshot or branded OG image (1200×630px) |
-| `og:url` | `https://teamority.com` |
-| Canonical | `https://teamority.com` |
-| Structured data | `Organization` schema + `SoftwareApplication` schema |
-
----
-
-## Analytics Events (to track on landing page)
-
-| Event | Trigger |
-|-------|---------|
-| `page_view` | Landing page loaded |
-| `cta_click_hero` | Hero "Get Started" button clicked |
-| `cta_click_nav` | Nav "Get Started" button clicked |
-| `cta_click_final` | Final CTA banner button clicked |
-| `view_tab_switch` | Views showcase tab switched |
-| `faq_expand` | FAQ accordion item opened |
-| `sign_in_click` | "Sign In" link clicked |
-
----
-
-## Performance Requirements
+### Performance Targets
 
 | Metric | Target |
 |--------|--------|
-| Largest Contentful Paint (LCP) | < 2.5s |
-| First Input Delay (FID) | < 100ms |
-| Cumulative Layout Shift (CLS) | < 0.1 |
-| Time to First Byte (TTFB) | < 600ms |
-| Lighthouse score | 90+ (Performance, Accessibility, SEO) |
+| LCP (Largest Contentful Paint) | < 2.5s on 4G throttled |
+| CLS (Cumulative Layout Shift) | < 0.1 |
+| INP | < 200ms |
+| Lighthouse Performance | >= 90 |
+| Lighthouse SEO | 100 |
+| Lighthouse Accessibility | >= 95 |
 
-- Hero image / GIF must be optimized (Next.js `<Image>` component with `priority` flag)
-- All fonts preloaded
-- No blocking third-party scripts on initial paint
-
----
-
-## Business Rules
-
-1. The landing page must be fully accessible to unauthenticated users — no auth check on any landing page route.
-2. If a logged-in user visits `/`, redirect them to `/` of their last active workspace (skip the landing page).
-3. Legal pages (`/privacy`, `/terms`, `/cookies`) must be live before public launch.
-4. All CTA buttons track analytics events — event fires before navigation (not after).
+To hit LCP < 2.5s:
+- Hero image (if any) must use `<Image priority />` from `next/image`
+- No above-the-fold JavaScript bundles except the layout
+- Pricing data fetched server-side (ISR) -- no client-side fetch on load
 
 ---
 
-## Out of Scope (MVP)
+## Folder Mapping
 
-- Blog (`/blog`)
-- Changelog page (`/changelog`)
-- Status page
-- Careers page
-- Affiliate / referral program page
-- Interactive product demo (embedded sandbox)
-- A/B testing on CTAs
-- Live chat widget on landing page
-- Localization / multi-language
+```
+src/
+  app/
+    (marketing)/
+      layout.tsx              <- Nav + Footer shell
+      page.tsx                <- / (landing page)
+      pricing/page.tsx
+      privacy/page.tsx        <- static TSX content
+      terms/page.tsx
+      cookies/page.tsx
+  components/
+    marketing/
+      nav.tsx                 <- public navigation
+      hero.tsx
+      features.tsx
+      social-proof.tsx
+      pricing-section.tsx     <- reads Plan data from ISR fetch
+      faq.tsx
+      footer.tsx
+      cta-button.tsx          <- analytics-instrumented CTA
+```
+
+---
+
+## API
+
+No API endpoints required. Pricing data is fetched server-side during ISR.
+
+---
+
+## Database
+
+No new tables. Landing page reads from:
+- `Plan` (active plans, ordered by `orderIndex`)
+- `PlanLimit` (limits per plan)
+- `PlanBullet` (marketing copy bullets per plan)
+
+All reads are read-only and cached via ISR.
+
+---
+
+## Events
+
+No activity log or audit log events. Frontend analytics events only (see Analytics section above).
+
+---
+
+## Background Jobs
+
+None.
+
+---
+
+## Dependencies
+
+- `NEXT_PUBLIC_APP_URL` env var (canonical URL and OG images)
+- `NEXT_PUBLIC_GTM_CONTAINER_ID` env var (optional; analytics)
+- `next/image` for optimized images
+
+---
+
+## Edge Cases
+
+| Scenario | Handling |
+|----------|---------|
+| No active plans in DB | Pricing section shows fallback static copy until plans are seeded |
+| ISR revalidation fails | Serve stale pricing data; do not block page render |
+| Authenticated user visits `/` | Do not redirect; show landing page normally (fully public) |
+| Legal page content needs updating | Edit TSX directly; no CMS in MVP |
+| OG image missing from `/public` | Use text-based OG meta fallback; add image to pre-launch checklist |
+
+---
+
+## Acceptance Criteria
+
+- [ ] Landing page renders fully at `/` with all 8 sections (Nav through Footer)
+- [ ] Pricing section shows plan names, prices, and feature bullets from the database
+- [ ] Primary CTA buttons navigate to `/sign-in`
+- [ ] `cta_clicked` analytics event fires on every CTA click
+- [ ] `/privacy`, `/terms`, `/cookies` render with appropriate legal content
+- [ ] Lighthouse Performance score >= 90 (tested on production build)
+- [ ] Lighthouse SEO score = 100
+- [ ] OG/Twitter Card meta tags present on all pages (verified with og:debugger)
+- [ ] No sign-in required to view any marketing page
+
+---
+
+## Implementation Notes
+
+- Build the `(marketing)/layout.tsx` in Phase 0 alongside the app layout -- it shares the font and global CSS but has no auth wrapper
+- Legal page content can be hardcoded TSX in MVP -- no CMS, no MDX required
+- The `(marketing)` route group prefix must NOT appear in URLs -- verify Next.js route group parentheses are used correctly
+- `export const revalidate = 3600` on the landing page ensures pricing stays fresh without manual redeploys
+- Add `robots.ts` and `sitemap.ts` at the app root to include marketing + legal pages; exclude `/api/**` and `/(app)/**`
+- Email deliverability setup (SPF, DKIM, DMARC) must be completed before the landing page launches publicly -- magic link sign-up depends on email delivery, and DNS propagation takes 24-48 hours

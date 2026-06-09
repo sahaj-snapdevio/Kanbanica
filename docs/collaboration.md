@@ -384,10 +384,13 @@ TaskAttachment
 ├── comment_id          (foreign key → Comment, nullable — set if attached inside a comment)
 ├── uploaded_by         (foreign key → User)
 ├── file_name           (string)
-├── file_url            (string — S3 / R2 storage URL)
+├── r2_key              (string — R2 object key, e.g. attachments/{workspaceId}/{taskId}/{uuid}/{filename})
 ├── file_size           (integer — bytes)
 ├── mime_type           (string)
 └── created_at          (timestamp)
+
+> Store `r2_key` (the object key), NOT a full URL. Full URLs break if the R2 bucket domain changes.
+> Generate presigned GET URLs on demand when serving the file -- never store them.
 ```
 
 ---
@@ -482,7 +485,7 @@ TaskAttachment
 
 ## Out of Scope (MVP)
 
-- Workspace-level activity feed (aggregation across all Spaces — post-MVP)
+- Workspace-level activity feed (aggregation across all Spaces -- post-MVP)
 - Real-time collaborative editing of task description (simultaneous multi-user editing)
 - Comment drafts (auto-save unsent comment)
 - Direct messages between users (not tied to a task)
@@ -490,3 +493,220 @@ TaskAttachment
 - Comment search within a task
 - Pinning important comments
 - Workspace-level announcement channel
+
+---
+
+## Implementation Notes
+
+### File Attachment Upload Pipeline (Presigned URL Flow)
+
+Attachments are uploaded directly to R2 from the browser -- the server never proxies file bytes. This keeps the Next.js server load minimal and avoids the 4.5 MB Vercel body limit.
+
+**Step-by-step flow:**
+
+```
+1. Client -> POST /api/tasks/:taskId/attachments/upload-url
+   Body: { filename: "mockup.png", mimeType: "image/png", fileSize: 2048000 }
+
+2. Server validates:
+   - User has Edit+ permission on the task's Space
+   - fileSize <= plan.maxFileSizeMb * 1024 * 1024
+   - mimeType in ALLOWED_MIME_TYPES list
+   - Workspace storage usage + fileSize <= plan.maxStorageMb * 1024 * 1024
+
+3. Server generates presigned PUT URL:
+   import { PutObjectCommand } from '@aws-sdk/client-s3'
+   import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+
+   const key = `attachments/${workspaceId}/${taskId}/${attachmentId}/${filename}`
+   const url = await getSignedUrl(r2Client, new PutObjectCommand({
+     Bucket: env.R2_BUCKET_NAME,
+     Key: key,
+     ContentType: mimeType,
+     ContentLength: fileSize,
+   }), { expiresIn: 900 })  // 15-minute expiry
+
+   Server returns: { uploadUrl, key, attachmentId }
+
+4. Client -> PUT <uploadUrl>
+   Body: the raw file bytes
+   Headers: Content-Type: <mimeType>
+
+5. Client -> POST /api/tasks/:taskId/attachments/confirm
+   Body: { key, filename, fileSize, mimeType }
+
+6. Server:
+   - Creates TaskAttachment record: { taskId, r2Key: key, fileName: filename, fileSize, mimeType, uploadedBy }
+   - Writes ActivityLog: attachment_uploaded
+   - Returns the TaskAttachment object with a fresh presigned GET URL for immediate display
+```
+
+**Why this split:** If the server created the DB record before upload (step 6 before step 4), a failed upload would leave a DB record pointing to a non-existent R2 object. The confirm endpoint only creates the DB record after the client confirms the upload succeeded.
+
+**R2 key format:**
+```
+attachments/{workspaceId}/{taskId}/{uuid}/{originalFilename}
+```
+
+Use a fresh `uuid` in each key to prevent filename collisions (two uploads of "screenshot.png" get different keys).
+
+**Allowed MIME types:**
+```typescript
+// src/lib/storage/allowed-types.ts
+export const ALLOWED_MIME_TYPES = [
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',  // docx
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',        // xlsx
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation', // pptx
+  'text/plain', 'text/csv',
+  'application/zip',
+]
+```
+
+All other MIME types are accepted but rendered as a generic file card (no type restriction in MVP -- only the list above gets a specific icon).
+
+### Attachment Delete Ordering (Critical)
+
+When deleting an attachment, always delete the R2 object BEFORE the DB record:
+
+```typescript
+// src/lib/collaboration/delete-attachment.ts
+
+async function deleteAttachment(attachmentId: string, actorId: string) {
+  const attachment = await db.taskAttachment.findUniqueOrThrow({
+    where: { id: attachmentId }
+  })
+
+  // 1. Delete from R2 first -- use r2Key directly (never parse a URL)
+  try {
+    await r2Client.send(new DeleteObjectCommand({
+      Bucket: env.R2_BUCKET_NAME,
+      Key: attachment.r2Key,
+    }))
+  } catch (err) {
+    // R2 delete failed -- do NOT delete DB record
+    console.error('R2 delete failed for attachment', attachmentId, err)
+    throw new ServiceUnavailableError('Failed to delete file from storage')
+  }
+
+  // 2. Only delete DB record if R2 delete succeeded
+  await db.taskAttachment.delete({ where: { id: attachmentId } })
+
+  // 3. Write ActivityLog
+  await writeActivityLog(attachment.taskId, actorId, 'attachment_deleted', {
+    file_name: attachment.fileName
+  })
+}
+```
+
+### Serving Attachments -- Presigned GET URLs
+
+Since `r2Key` is stored (not a URL), generate a presigned GET URL on demand when the client needs to display or download a file:
+
+```typescript
+// src/lib/storage/r2-client.ts
+import { GetObjectCommand } from '@aws-sdk/client-s3'
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+
+export async function getAttachmentUrl(r2Key: string): Promise<string> {
+  return getSignedUrl(r2Client, new GetObjectCommand({
+    Bucket: env.R2_BUCKET_NAME,
+    Key: r2Key,
+  }), { expiresIn: 3600 })  // 1-hour expiry
+}
+```
+
+Call this when serializing `TaskAttachment` records in `GET /api/tasks/:taskId/attachments` -- add a transient `url` field to each record in the response. Do not persist this URL.
+
+```typescript
+const attachments = await db.taskAttachment.findMany({ where: { taskId } })
+return Promise.all(
+  attachments.map(async (a) => ({
+    ...a,
+    url: await getAttachmentUrl(a.r2Key),
+  }))
+)
+```
+
+### Comment Delete Logic (Soft vs Hard)
+
+The check for replies must happen inside a transaction to prevent a race condition where a reply is posted concurrently with the parent delete:
+
+```typescript
+// src/lib/collaboration/delete-comment.ts
+
+async function deleteComment(commentId: string, actorId: string) {
+  return db.$transaction(async (tx) => {
+    const comment = await tx.comment.findUniqueOrThrow({ where: { id: commentId } })
+
+    const replyCount = await tx.comment.count({
+      where: { parentCommentId: commentId, isDeleted: false }
+    })
+
+    if (replyCount > 0) {
+      // Soft delete: keep record, clear body, mark deleted
+      await tx.comment.update({
+        where: { id: commentId },
+        data: { body: null, isDeleted: true }
+      })
+    } else {
+      // Hard delete: no replies, no tombstone needed
+      await tx.comment.delete({ where: { id: commentId } })
+    }
+  })
+}
+```
+
+### ActivityLog Write Pattern (Fire-and-Forget)
+
+`ActivityLog` writes should never block the main mutation response. Wrap in fire-and-forget:
+
+```typescript
+// src/lib/activity-log.ts
+
+export function writeActivityLog(
+  taskId: string,
+  userId: string,
+  eventType: string,
+  meta: Record<string, unknown> = {}
+): void {
+  db.activityLog.create({
+    data: { taskId, userId, eventType, meta }
+  }).catch(err => {
+    console.error('ActivityLog write failed', { taskId, eventType, err })
+    // Never throw -- activity log failure must not break the mutation
+  })
+}
+```
+
+### Folder Mapping
+
+```
+src/
+  app/api/
+    tasks/[taskId]/
+      comments/route.ts               <- GET (list), POST (create)
+      attachments/route.ts            <- GET (list)
+      attachments/upload-url/route.ts <- POST (get presigned URL)
+      attachments/confirm/route.ts    <- POST (create DB record after upload)
+      activity/route.ts               <- GET
+      watchers/route.ts               <- POST, DELETE
+    comments/[id]/
+      route.ts                        <- PATCH (edit), DELETE
+      resolve/route.ts                <- POST
+      unresolve/route.ts              <- POST
+      reactions/route.ts              <- POST
+      reactions/[emoji]/route.ts      <- DELETE
+    attachments/[id]/route.ts         <- DELETE
+    spaces/[spaceId]/activity/route.ts
+  lib/
+    collaboration/
+      comments.ts           <- createComment, editComment, deleteComment
+      reactions.ts          <- addReaction, removeReaction
+      attachments.ts        <- requestPresignedUrl, confirmAttachment, deleteAttachment
+    activity-log.ts         <- writeActivityLog (fire-and-forget)
+  lib/storage/
+    r2-client.ts            <- @aws-sdk/client-s3 singleton
+    allowed-types.ts        <- ALLOWED_MIME_TYPES
+```

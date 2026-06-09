@@ -226,6 +226,19 @@ The sidebar is collapsible. Users can toggle it open or closed. State persists i
 - Border radius: `rounded-lg`
 - Shadow: `shadow-lg`
 
+#### Sheet vs Dialog vs AlertDialog -- When to Use Which
+
+| Component | Use for | Example |
+|-----------|---------|---------|
+| `<Dialog>` | Focused input forms; content that fits in a centred modal | Create List, Create Sprint, Invite Member |
+| `<Sheet>` | Contextual detail panels that slide in from the side; complex content the user may want open alongside the main view | Task detail panel, Space settings |
+| `<AlertDialog>` | Destructive confirmations only -- actions that cannot be undone | Delete List, Delete Task, Archive All |
+
+**Rules:**
+- Never use `<Dialog>` for destructive confirmations -- always `<AlertDialog>`. It has a built-in accessible cancel/confirm pattern and correct focus management.
+- Never use `<Sheet>` for simple forms -- use `<Dialog>`. Sheets imply persistent side context, not a quick input.
+- `<AlertDialog>` must always have two explicit buttons: a clearly labelled destructive action (`"Delete List"`, not `"OK"`) and a cancel button. Never a single-button confirm.
+
 ---
 
 ## Icons
@@ -275,6 +288,63 @@ Position: Bottom-right. Duration: 4 seconds.
 MVP is **desktop-first**. Mobile is post-MVP. Do not spend time on mobile layouts.
 
 Minimum supported viewport: **1024px** (laptop).
+
+---
+
+## `<LocalDate />` Component (Critical -- Build First)
+
+All timestamps in the UI must be rendered through `<LocalDate />`. Do NOT use `new Date().toLocaleDateString()`, `date-fns` format calls, or any date formatting directly in JSX.
+
+**Why:** Next.js App Router server-renders components on the server (UTC timezone). The client has a different local timezone. Any date formatted on the server and hydrated on the client will produce a React hydration mismatch error (`Hydration failed because the server rendered HTML didn't match the client`). This error appears on every screen that shows a timestamp.
+
+```typescript
+// src/components/ui/local-date.tsx
+'use client'
+
+import { format, formatDistanceToNow, isThisYear } from 'date-fns'
+
+interface LocalDateProps {
+  date: string | Date
+  // 'relative' -> "2 hours ago" with exact date on hover
+  // 'date'     -> "Jun 15" or "Jun 15, 2024" (includes year if not current year)
+  // 'datetime' -> "Jun 15, 2:30 PM"
+  format?: 'relative' | 'date' | 'datetime'
+  className?: string
+}
+
+export function LocalDate({ date, format: fmt = 'relative', className }: LocalDateProps) {
+  const d = typeof date === 'string' ? new Date(date) : date
+  const exact = format(d, 'MMM d, yyyy h:mm a')
+
+  let display: string
+  if (fmt === 'relative') {
+    display = formatDistanceToNow(d, { addSuffix: true })
+  } else if (fmt === 'date') {
+    display = isThisYear(d) ? format(d, 'MMM d') : format(d, 'MMM d, yyyy')
+  } else {
+    display = format(d, 'MMM d, h:mm a')
+  }
+
+  return (
+    <time dateTime={d.toISOString()} title={exact} className={className}>
+      {display}
+    </time>
+  )
+}
+```
+
+Usage:
+
+```tsx
+// Always use LocalDate for any date/time display
+<LocalDate date={task.createdAt} />                    // "2 hours ago"
+<LocalDate date={task.dueDate} format="date" />        // "Jun 15"
+<LocalDate date={comment.createdAt} format="datetime" /> // "Jun 15, 2:30 PM"
+```
+
+**`'use client'` is non-negotiable** -- this component accesses the browser's local timezone. Removing it causes the hydration error the component exists to prevent.
+
+Build this before building any component that displays a timestamp (task detail panel, activity log, comments, notifications). That is Phase 4 at the latest.
 
 ---
 

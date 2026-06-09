@@ -250,9 +250,189 @@ Task
 
 ## Out of Scope (MVP)
 
-- Nested subtasks (subtasks of subtasks — more than one level deep)
+- Nested subtasks (subtasks of subtasks -- more than one level deep)
 - Moving a subtask to a different parent task
 - Subtask-level dependencies
 - Subtask-level checklists
 - Bulk create subtasks
 - Converting a subtask into a top-level task
+
+---
+
+## Implementation Notes
+
+### Required Schema Index
+
+Add this index to the `Task` model in `prisma/schema.prisma`:
+
+```prisma
+model Task {
+  // ... existing fields ...
+  @@index([parentTaskId])   // required for progress rollup and subtask list queries
+  @@index([listId, parentTaskId])  // for filtering subtasks within a list
+}
+```
+
+Without `@@index([parentTaskId])`, the progress rollup query runs a full table scan for every task card rendered in List View -- an N+1 problem at scale.
+
+### Progress Rollup Query
+
+Compute on the fly. Do NOT cache per task -- the count is small and the index makes it fast. Called when rendering a task card or task detail panel:
+
+```typescript
+// src/lib/tasks/get-subtask-progress.ts
+
+async function getSubtaskProgress(parentTaskId: string) {
+  // Single query: count total and closed subtasks
+  const result = await db.$queryRaw<[{ total: bigint; closed: bigint }]>`
+    SELECT
+      COUNT(*)                                      AS total,
+      COUNT(*) FILTER (
+        WHERE ls.type = 'CLOSED' AND t.is_archived = false
+      )                                             AS closed
+    FROM "Task" t
+    JOIN "ListStatus" ls ON ls.id = t.status_id
+    WHERE t.parent_task_id = ${parentTaskId}
+      AND t.is_archived = false
+  `
+
+  const total = Number(result[0].total)
+  const closed = Number(result[0].closed)
+
+  return {
+    total,
+    closed,
+    percent: total === 0 ? 0 : Math.round((closed / total) * 100),
+    label: `${closed}/${total}`,   // shown on task card, e.g. "2/5"
+  }
+}
+```
+
+**Why exclude archived subtasks:** Business rule 11 (see above) states archived subtasks do not count in the progress rollup. The `is_archived = false` filter enforces this.
+
+**Avoid N+1 in List View:** When loading a full list of tasks, do NOT call `getSubtaskProgress` per task. Instead, batch-fetch progress for all parent task IDs in one query:
+
+```typescript
+// src/lib/tasks/get-subtask-progress-batch.ts
+
+async function getSubtaskProgressBatch(
+  parentTaskIds: string[]
+): Promise<Record<string, { total: number; closed: number; percent: number }>> {
+  if (parentTaskIds.length === 0) return {}
+
+  const rows = await db.$queryRaw<
+    Array<{ parent_task_id: string; total: bigint; closed: bigint }>
+  >`
+    SELECT
+      t.parent_task_id,
+      COUNT(*)                                             AS total,
+      COUNT(*) FILTER (WHERE ls.type = 'CLOSED')          AS closed
+    FROM "Task" t
+    JOIN "ListStatus" ls ON ls.id = t.status_id
+    WHERE t.parent_task_id = ANY(${parentTaskIds}::uuid[])
+      AND t.is_archived = false
+    GROUP BY t.parent_task_id
+  `
+
+  return Object.fromEntries(
+    rows.map(r => [
+      r.parent_task_id,
+      {
+        total: Number(r.total),
+        closed: Number(r.closed),
+        percent: Number(r.total) === 0 ? 0 : Math.round(Number(r.closed) / Number(r.total) * 100),
+      }
+    ])
+  )
+}
+```
+
+Call this once per list-load and attach progress to each task object before returning the response.
+
+### Create Subtask
+
+Creating a subtask follows the same code path as creating a regular task, with two additional steps:
+1. Set `parentTaskId` on the new `Task` record
+2. Inherit `listId` from the parent task (do not accept `listId` from the client for subtasks -- always copy from parent)
+
+```typescript
+// src/lib/tasks/create-subtask.ts
+
+async function createSubtask(parentTaskId: string, data: CreateSubtaskInput, actorId: string) {
+  const parent = await db.task.findUniqueOrThrow({
+    where: { id: parentTaskId },
+    select: { listId: true, workspaceId: true }
+  })
+
+  // Guard: cannot nest subtasks
+  if (parent.parentTaskId !== null) {
+    throw new BadRequestError('Subtasks cannot be nested more than one level deep')
+  }
+
+  return db.$transaction(async (tx) => {
+    // Increment workspace taskSeq atomically
+    const [{ task_seq }] = await tx.$queryRaw<[{ task_seq: number }]>`
+      UPDATE "Workspace" SET task_seq = task_seq + 1
+      WHERE id = ${parent.workspaceId}
+      RETURNING task_seq
+    `
+
+    const subtask = await tx.task.create({
+      data: {
+        ...data,
+        listId: parent.listId,      // always inherited
+        parentTaskId,
+        seqNumber: task_seq,
+      }
+    })
+
+    // Write ActivityLog on parent task
+    await tx.activityLog.create({
+      data: {
+        taskId: parentTaskId,
+        userId: actorId,
+        eventType: 'subtask_created',
+        meta: { subtask_id: subtask.id, subtask_title: subtask.title }
+      }
+    })
+
+    return subtask
+  })
+}
+```
+
+### Checklist Item -> Subtask Conversion
+
+```typescript
+// src/lib/tasks/convert-checklist-item.ts
+
+async function convertChecklistItemToSubtask(
+  checklistItemId: string,
+  actorId: string
+) {
+  return db.$transaction(async (tx) => {
+    const item = await tx.checklistItem.findUniqueOrThrow({
+      where: { id: checklistItemId },
+      include: { checklist: { include: { task: true } } }
+    })
+
+    const parentTask = item.checklist.task
+    const defaultStatus = await tx.listStatus.findFirstOrThrow({
+      where: { listId: parentTask.listId, type: 'OPEN' },
+      orderBy: { orderIndex: 'asc' }
+    })
+
+    // Create subtask
+    const subtask = await createSubtask(
+      parentTask.id,
+      { title: item.title, statusId: defaultStatus.id },
+      actorId
+    )
+
+    // Delete the checklist item
+    await tx.checklistItem.delete({ where: { id: checklistItemId } })
+
+    return subtask
+  })
+}
+```

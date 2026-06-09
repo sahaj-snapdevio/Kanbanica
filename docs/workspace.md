@@ -287,3 +287,111 @@ Workspace deletion is **not synchronous** — a large workspace can contain thou
 - SSO / SAML
 - Audit log export
 - Custom domain for workspace
+
+---
+
+## Implementation Notes
+
+### Async Deletion Job Spec
+
+The `DELETE /api/workspaces/:id` handler must:
+1. Verify requester is the workspace Owner
+2. Require confirmation token (workspace name match) in the request body
+3. Set `workspace.status = 'deleting'` inside a DB transaction
+4. Enqueue the deletion job **inside the same transaction** (so job payload is consistent with DB state)
+5. Return `202 Accepted` with `{ status: "deleting" }`
+
+```typescript
+// src/lib/worker/job-types.ts
+JOB_NAMES.WORKSPACE_DELETE = "workspace.delete"
+
+interface WorkspaceDeletePayload {
+  workspaceId: string
+  requestedBy: string   // userId of the Owner who triggered it
+  requestedAt: string   // ISO timestamp
+}
+```
+
+**Queue options for this job:**
+```typescript
+QUEUE_OPTIONS[JOB_NAMES.WORKSPACE_DELETE] = {
+  retryLimit: 3,
+  retryDelay: 60,       // seconds between retries
+  retryBackoff: true,
+  singletonKey: (payload) => payload.workspaceId,  // prevents duplicate jobs
+}
+```
+
+**Handler** (`src/lib/worker/handlers/workspace-delete.ts`):
+1. Fetch workspace by `workspaceId` -- if `status !== 'deleting'`, log warning and return (idempotency guard)
+2. Delete R2 files first (attachments, avatars) in batches of 50 using `@aws-sdk/client-s3` `DeleteObjectsCommand`
+3. Delete DB records in dependency order inside `db.$transaction()`:
+   - `TaskAttachment`, `TaskTimeLog`, `TaskWatcher`, `TaskAssignee`, `TaskTag`, `TaskDependency`
+   - `ChecklistItem`, `Checklist`
+   - `Comment`, `CommentReaction`
+   - `ActivityLog`, `Notification`
+   - `Task` (all, including subtasks -- cascade handles child order)
+   - `ListStatus`, `List`
+   - `SpaceMember`, `Space`
+   - `WorkspaceMember`, `SavedFilter`, `UserListViewPreference`
+   - `Sprint`, `TaskSprint`
+   - `Workspace` (last)
+4. Write `PlatformAuditLog` entry: `{ action: 'workspace.deleted', workspaceId, actorId: requestedBy }`
+5. Send confirmation email to Owner via `src/lib/email/workspace-deleted.tsx`
+
+**Why R2 before DB:** If the job crashes after R2 deletes but before DB deletes, the DB still has references and the job can be retried (R2 keys that no longer exist will return 404, which is safe to ignore on retry). If DB deletes first and R2 crashes, files are permanently orphaned.
+
+### `taskSeq` Atomic Increment
+
+When creating a Task, increment `Workspace.taskSeq` atomically inside the task creation transaction:
+
+```typescript
+// Inside db.$transaction()
+const workspace = await tx.$executeRaw`
+  UPDATE "Workspace"
+  SET task_seq = task_seq + 1
+  WHERE id = ${workspaceId}
+  RETURNING task_seq
+`
+// Use returned task_seq as the new task's seq_number
+```
+
+Never read `task_seq` and then write `task_seq + 1` as two separate operations -- this causes duplicate numbers under concurrent task creation.
+
+### Invite Token Lifecycle
+
+- `invite_token` on `WorkspaceMember` is a `uuid` generated at invite time
+- On accept: clear `invite_token`, set `user_id`, set `status = active`, set `joined_at`
+- On expiry check: `invite_expires_at < NOW()` -- expired tokens are rejected at accept time
+- On cancel: hard-delete the `WorkspaceMember` record (invite was never accepted)
+- Never reuse tokens -- generate a fresh uuid on every re-invite
+
+### Folder Mapping
+
+```
+src/
+  app/
+    (app)/[workspaceId]/
+      settings/
+        general/page.tsx      <- name, logo, slug
+        members/page.tsx      <- members + pending invites
+        security/page.tsx     <- invite link management
+    api/
+      workspaces/
+        route.ts              <- POST (create), GET (list)
+        [id]/
+          route.ts            <- GET, PATCH, DELETE
+          members/
+            route.ts          <- GET (list), POST (invite)
+            [userId]/route.ts <- PATCH (role), DELETE (remove)
+          invite-link/route.ts <- POST (generate), DELETE (disable)
+          transfer/route.ts   <- POST (ownership transfer)
+  lib/
+    workspaces/
+      workspaces.ts           <- createWorkspace, deleteWorkspace, inviteMember, etc.
+  lib/worker/handlers/
+    workspace-delete.ts
+  lib/email/
+    workspace-invite.tsx
+    workspace-deleted.tsx
+```

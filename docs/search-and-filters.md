@@ -258,6 +258,312 @@ UserSearchHistory
 
 ---
 
+## Implementation Notes
+
+### FTS Scope -- Title Only at MVP (Critical)
+
+Task `description` is stored as `jsonb` (Tiptap JSON). PostgreSQL `@@to_tsquery` and `tsvector` do not work on `jsonb` columns without a generated column extracting the text first. **Do NOT attempt to search description at MVP** -- it will either error or silently return no matches.
+
+Global search queries **`title` and `name` fields only**. The Out of Scope section documents the post-MVP path (generated `tsvector` column + GIN index).
+
+### Global Search Query
+
+```typescript
+// src/server/search.ts
+
+export async function globalSearch(
+  query: string,
+  workspaceId: string,
+  userId: string
+) {
+  if (query.length < 2) return { tasks: [], lists: [], spaces: [], members: [] }
+
+  // Scope all results to spaces the user can access
+  const accessibleSpaceIds = await getAccessibleSpaceIds(userId, workspaceId)
+
+  const [tasks, lists, spaces, members] = await Promise.all([
+    db.task.findMany({
+      where: {
+        isArchived: false,
+        parentTaskId: null,
+        list: {
+          isArchived: false,
+          space: { id: { in: accessibleSpaceIds } }
+        },
+        title: { contains: query, mode: 'insensitive' }
+      },
+      include: {
+        status: true,
+        list: { include: { space: true } },
+        assignees: { include: { user: true } }
+      },
+      take: 10,
+      orderBy: { updatedAt: 'desc' }
+    }),
+
+    db.list.findMany({
+      where: {
+        isArchived: false,
+        spaceId: { in: accessibleSpaceIds },
+        name: { contains: query, mode: 'insensitive' }
+      },
+      include: { space: true },
+      take: 10
+    }),
+
+    db.space.findMany({
+      where: {
+        workspaceId,
+        id: { in: accessibleSpaceIds },
+        name: { contains: query, mode: 'insensitive' }
+      },
+      take: 10
+    }),
+
+    db.workspaceMember.findMany({
+      where: {
+        workspaceId,
+        user: {
+          OR: [
+            { name: { contains: query, mode: 'insensitive' } },
+            { email: { contains: query, mode: 'insensitive' } }
+          ]
+        }
+      },
+      include: { user: true },
+      take: 10
+    })
+  ])
+
+  return { tasks, lists, spaces, members }
+}
+```
+
+`contains` with `mode: 'insensitive'` maps to `ILIKE '%query%'` in PostgreSQL. This is sufficient for MVP. Post-MVP: replace with `search` mode + a GIN index for performance at scale.
+
+### Search History -- Upsert and Trim
+
+Track recent visits in `UserSearchHistory`. Upsert on `(userId, workspaceId, entityType, entityId)` to avoid duplicate rows, then trim to the last 20 entries per user per workspace:
+
+```typescript
+// src/server/search.ts
+
+export async function recordSearchVisit(
+  userId: string,
+  workspaceId: string,
+  entityType: 'task' | 'list' | 'space' | 'member',
+  entityId: string
+) {
+  await db.userSearchHistory.upsert({
+    where: { userId_workspaceId_entityType_entityId: { userId, workspaceId, entityType, entityId } },
+    create: { userId, workspaceId, entityType, entityId, visitedAt: new Date() },
+    update: { visitedAt: new Date() }
+  })
+
+  // Keep only the 20 most recent entries per user per workspace
+  const oldest = await db.userSearchHistory.findMany({
+    where: { userId, workspaceId },
+    orderBy: { visitedAt: 'desc' },
+    skip: 20,
+    select: { id: true }
+  })
+  if (oldest.length > 0) {
+    await db.userSearchHistory.deleteMany({
+      where: { id: { in: oldest.map(r => r.id) } }
+    })
+  }
+}
+```
+
+Add a unique index to `UserSearchHistory` for the upsert to work:
+
+```prisma
+model UserSearchHistory {
+  // ...
+  @@unique([userId, workspaceId, entityType, entityId])
+  @@index([userId, workspaceId, visitedAt])  // for ORDER BY visitedAt DESC
+}
+```
+
+### Filter-to-Prisma Query Builder
+
+`GET /api/lists/:listId/tasks` accepts filter params and must translate them into a Prisma `where` clause. Build it incrementally:
+
+```typescript
+// src/server/task-filters.ts
+
+interface FilterParams {
+  status?: string[]       // status IDs
+  priority?: string[]     // 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT' | 'NONE'
+  assignee?: string[]     // user IDs; 'unassigned' is a special sentinel
+  due?: string            // 'overdue' | 'today' | 'this_week' | 'this_month' | 'no_due_date'
+  dueDateFrom?: string    // ISO date string (custom range)
+  dueDateTo?: string
+  tags?: string[]         // tag IDs
+  createdBy?: string[]
+  createdFrom?: string
+  createdTo?: string
+  sort?: string
+  dir?: 'asc' | 'desc'
+}
+
+export function buildTaskWhere(listId: string, params: FilterParams) {
+  const where: Prisma.TaskWhereInput = {
+    listId,
+    isArchived: false,
+    parentTaskId: null,
+  }
+
+  if (params.status?.length) {
+    where.statusId = { in: params.status }
+  }
+
+  if (params.priority?.length) {
+    where.priority = { in: params.priority as Priority[] }
+  }
+
+  if (params.assignee?.length) {
+    const hasUnassigned = params.assignee.includes('unassigned')
+    const userIds = params.assignee.filter(a => a !== 'unassigned')
+
+    if (hasUnassigned && userIds.length > 0) {
+      where.OR = [
+        { assignees: { none: {} } },
+        { assignees: { some: { userId: { in: userIds } } } }
+      ]
+    } else if (hasUnassigned) {
+      where.assignees = { none: {} }
+    } else {
+      where.assignees = { some: { userId: { in: userIds } } }
+    }
+  }
+
+  if (params.due) {
+    const now = new Date()
+    switch (params.due) {
+      case 'overdue':
+        where.dueDateEnd = { lt: now }
+        where.status = { type: { not: 'CLOSED' } }
+        break
+      case 'today':
+        where.dueDateEnd = { gte: startOfDay(now), lte: endOfDay(now) }
+        break
+      case 'this_week':
+        where.dueDateEnd = { gte: startOfWeek(now), lte: endOfWeek(now) }
+        break
+      case 'this_month':
+        where.dueDateEnd = { gte: startOfMonth(now), lte: endOfMonth(now) }
+        break
+      case 'no_due_date':
+        where.dueDateEnd = null
+        break
+    }
+  }
+
+  if (params.dueDateFrom || params.dueDateTo) {
+    where.dueDateEnd = {
+      ...(params.dueDateFrom ? { gte: new Date(params.dueDateFrom) } : {}),
+      ...(params.dueDateTo   ? { lte: new Date(params.dueDateTo)   } : {}),
+    }
+  }
+
+  if (params.tags?.length) {
+    where.tags = { some: { tagId: { in: params.tags } } }
+  }
+
+  if (params.createdBy?.length) {
+    where.createdBy = { in: params.createdBy }
+  }
+
+  if (params.createdFrom || params.createdTo) {
+    where.createdAt = {
+      ...(params.createdFrom ? { gte: new Date(params.createdFrom) } : {}),
+      ...(params.createdTo   ? { lte: new Date(params.createdTo)   } : {}),
+    }
+  }
+
+  return where
+}
+
+export function buildTaskOrderBy(sort?: string, dir: 'asc' | 'desc' = 'asc') {
+  const d = dir
+  switch (sort) {
+    case 'due_date':    return { dueDateEnd: d }
+    case 'priority':    return { priority: d }
+    case 'assignee':    return { assignees: { _count: d } }
+    case 'created_at':  return { createdAt: d }
+    case 'updated_at':  return { updatedAt: d }
+    default:            return { orderIndex: 'asc' as const }  // manual sort
+  }
+}
+```
+
+### Saved Filter Limit -- Server-Side Check
+
+The 10-per-user-per-List limit must be enforced server-side (not just frontend):
+
+```typescript
+// POST /api/lists/:listId/saved-filters handler
+
+const count = await db.savedFilter.count({ where: { userId, listId } })
+if (count >= 10) {
+  return NextResponse.json(
+    { error: 'Saved filter limit reached (10 per list). Delete one to save a new filter.' },
+    { status: 422 }
+  )
+}
+```
+
+### Debounce -- Client Hook
+
+```typescript
+// src/hooks/use-debounced-search.ts
+
+export function useDebouncedSearch(delay = 300) {
+  const [query, setQuery] = useState('')
+  const [debouncedQuery, setDebouncedQuery] = useState('')
+
+  useEffect(() => {
+    if (query.length < 2) { setDebouncedQuery(''); return }
+    const timer = setTimeout(() => setDebouncedQuery(query), delay)
+    return () => clearTimeout(timer)
+  }, [query, delay])
+
+  return { query, setQuery, debouncedQuery }
+}
+```
+
+Use `debouncedQuery` as the SWR key -- SWR will re-fetch only when it changes:
+
+```typescript
+const { data } = useSWR(
+  debouncedQuery ? `/api/workspaces/${workspaceId}/search?q=${debouncedQuery}` : null
+)
+```
+
+### Folder Mapping
+
+```
+src/
+  server/
+    search.ts              <- globalSearch, recordSearchVisit
+    task-filters.ts        <- buildTaskWhere, buildTaskOrderBy
+  hooks/
+    use-debounced-search.ts
+  app/api/
+    workspaces/[workspaceId]/
+      search/route.ts      <- GET (?q=)
+      search/recent/route.ts <- GET
+    lists/[listId]/
+      tasks/route.ts       <- GET (uses buildTaskWhere + buildTaskOrderBy)
+      saved-filters/route.ts <- GET, POST
+    saved-filters/[id]/route.ts <- PATCH (rename), DELETE
+    me/
+      tasks/route.ts       <- GET (My Tasks with filters)
+```
+
+---
+
 ## Out of Scope (MVP)
 
 - Search inside task descriptions (title-only in MVP; post-MVP will add description search with a "Search in descriptions" toggle — requires a generated `tsvector` column on the Task table)

@@ -58,80 +58,190 @@ Phase 19 →  QA & Launch Prep
 
 ## Phase 0 — Project Setup
 
-**Goal:** Working Next.js project with all tools configured, connected to the database, and deployable.
+**Goal:** Working Next.js project with all tools installed, all singletons created, infrastructure wired up, and both the Next.js and worker processes running.
 
-### Tasks
+**Reference docs:** [services.md](./services.md), [authentication.md](./authentication.md), [design-system.md](./design-system.md)
 
-- [ ] Init Next.js 15 project with TypeScript and App Router
+> Do not write any feature code until every task in this phase is complete. The singletons and patterns built here are used by every phase that follows.
+
+### Step 1 — Scaffold
+
+- [ ] Init Next.js 15 project
   ```bash
   npx create-next-app@latest teamority --typescript --tailwind --app --src-dir
+  cd teamority
   ```
-- [ ] Install and configure Tailwind CSS
-- [ ] Install and configure shadcn/ui
+- [ ] Install shadcn/ui
   ```bash
   npx shadcn@latest init
   ```
-- [ ] Set up folder structure:
+- [ ] Install all dependencies in one pass
+  ```bash
+  pnpm add prisma @prisma/client better-auth @aws-sdk/client-s3 @aws-sdk/s3-request-presigner \
+    nodemailer pg-boss zod \
+    @tiptap/react @tiptap/starter-kit \
+    zustand swr \
+    date-fns sharp \
+    lucide-react
+  pnpm add -D @types/nodemailer tsx concurrently
+  ```
+- [ ] Set up route groups in `src/app/`:
+  ```
+  src/app/
+  (marketing)/        <- public pages (landing, about)
+      layout.tsx      <- no sidebar, no auth
+  (auth)/             <- sign-in, onboarding
+      layout.tsx      <- minimal layout
+  (app)/              <- authenticated app
+      layout.tsx      <- sidebar + auth guard
+  admin/              <- platform admin panel
+      layout.tsx      <- admin auth guard
+  ```
+- [ ] Set up full folder structure:
   ```
   src/
-  ├── app/              ← Next.js App Router pages
-  ├── components/       ← shared UI components
-  │   ├── ui/           ← shadcn components
-  │   └── common/       ← shared custom components
-  ├── lib/              ← utility functions, db client, auth client
-  ├── hooks/            ← custom React hooks
-  ├── store/            ← Zustand stores
-  ├── types/            ← TypeScript types and interfaces
-  └── server/           ← server actions and API route handlers
+    app/
+    components/
+      ui/             <- shadcn primitives
+      common/         <- shared app components
+    lib/
+      api/            <- auth-helpers.ts
+      worker/         <- enqueue.ts, job-types.ts, handlers/
+    server/           <- server actions (one file per feature)
+    hooks/
+    store/            <- Zustand stores
+    types/
   ```
-- [ ] Install Prisma and set up PostgreSQL connection
-  ```bash
-  npm install prisma @prisma/client
-  npx prisma init
-  ```
-- [ ] Configure `.env` file:
-  ```
-  DATABASE_URL=
-  BETTER_AUTH_SECRET=
-  BETTER_AUTH_URL=
-  SMTP_HOST=
-  SMTP_PORT=
-  SMTP_USER=
-  SMTP_PASSWORD=
-  SMTP_FROM=
-  S3_ENDPOINT=
-  S3_ACCESS_KEY_ID=
-  S3_SECRET_ACCESS_KEY=
-  S3_BUCKET_NAME=
-  S3_REGION=
-  ```
-- [ ] Install Better Auth
-  ```bash
-  npm install better-auth
-  ```
-- [ ] Install Nodemailer for SMTP email
-  ```bash
-  npm install nodemailer @types/nodemailer
-  ```
-- [ ] Install pg-boss for background jobs
-  ```bash
-  npm install pg-boss
-  ```
-- [ ] Install Tiptap for rich text
-  ```bash
-  npm install @tiptap/react @tiptap/starter-kit
-  ```
-- [ ] Install Zustand and SWR
-  ```bash
-  npm install zustand swr
-  ```
-- [ ] Set up ESLint + Prettier config
-- [ ] Set up git repository and initial commit
-- [ ] Confirm dev server runs: `npm run dev`
 
-**Done when:** `npm run dev` runs without errors and the default Next.js page loads.
+### Step 2 — Environment
+
+- [ ] Copy `.env.example` to `.env.local` and fill local values:
+  ```
+  # Database
+  DATABASE_URL=postgresql://postgres:dev@localhost:5432/teamority
+
+  # Better Auth
+  BETTER_AUTH_SECRET=                    # 32+ char random string
+  BETTER_AUTH_URL=http://localhost:3000
+
+  # SMTP (use Mailtrap or similar for local dev)
+  SMTP_HOST=
+  SMTP_PORT=587
+  SMTP_SECURE=false
+  SMTP_USER=
+  SMTP_PASS=
+  SMTP_FROM=noreply@teamority.com
+
+  # Cloudflare R2 (or local MinIO for dev)
+  R2_ENDPOINT=
+  R2_ACCESS_KEY_ID=
+  R2_SECRET_ACCESS_KEY=
+  R2_BUCKET_NAME=teamority-dev
+  R2_PUBLIC_URL=
+
+  # App
+  NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+  # Web Push (optional in dev)
+  VAPID_PUBLIC_KEY=
+  VAPID_PRIVATE_KEY=
+  VAPID_SUBJECT=mailto:admin@teamority.com
+  ```
+- [ ] Create `src/lib/env.ts` -- Zod validation, fail fast on startup
+  ```typescript
+  import { z } from 'zod'
+  const schema = z.object({
+    DATABASE_URL: z.string().min(1),
+    BETTER_AUTH_SECRET: z.string().min(32),
+    BETTER_AUTH_URL: z.string().url(),
+    SMTP_HOST: z.string().min(1),
+    SMTP_PORT: z.coerce.number(),
+    SMTP_SECURE: z.coerce.boolean().default(false),
+    SMTP_USER: z.string().min(1),
+    SMTP_PASS: z.string().min(1),
+    SMTP_FROM: z.string().email(),
+    R2_ENDPOINT: z.string().url(),
+    R2_ACCESS_KEY_ID: z.string().min(1),
+    R2_SECRET_ACCESS_KEY: z.string().min(1),
+    R2_BUCKET_NAME: z.string().min(1),
+    R2_PUBLIC_URL: z.string().url(),
+    NEXT_PUBLIC_APP_URL: z.string().url(),
+    VAPID_PUBLIC_KEY: z.string().optional(),
+    VAPID_PRIVATE_KEY: z.string().optional(),
+    VAPID_SUBJECT: z.string().optional(),
+  })
+  export const env = schema.parse(process.env)
+  ```
+
+### Step 3 — Core Singletons (build in this order)
+
+- [ ] `src/lib/db.ts` -- Prisma singleton
+  ```typescript
+  import { PrismaClient } from '@prisma/client'
+  const globalForPrisma = globalThis as unknown as { prisma: PrismaClient }
+  export const db = globalForPrisma.prisma ?? new PrismaClient()
+  if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db
+  ```
+- [ ] `src/lib/auth.ts` -- Better Auth server instance (see [authentication.md](./authentication.md))
+- [ ] `src/lib/storage.ts` -- R2 client singleton + `getAttachmentUrl(r2Key)` + `deleteFromR2(r2Key)` helpers (see [services.md](./services.md))
+- [ ] `src/lib/email/` -- Nodemailer transporter singleton + send helper
+
+### Step 4 — Worker Infrastructure
+
+> Build this before any feature that uses async jobs. Jobs queue safely even with zero handlers registered.
+
+- [ ] `src/lib/worker/job-types.ts` -- empty registry to start
+  ```typescript
+  export const JOB_NAMES = {} as const
+  export type JobPayloadMap = Record<string, never>
+  export const QUEUE_OPTIONS: Record<string, object> = {}
+  ```
+- [ ] `src/lib/worker/enqueue.ts` -- mutex-guarded PgBoss singleton (see [services.md](./services.md))
+- [ ] `scripts/worker.ts` -- worker entrypoint (imports handlers, calls `boss.work()`)
+- [ ] Update `package.json` scripts:
+  ```json
+  {
+    "scripts": {
+      "dev": "concurrently \"next dev\" \"tsx --watch scripts/worker.ts\"",
+      "worker": "tsx scripts/worker.ts"
+    }
+  }
+  ```
+- [ ] Confirm both processes start with `pnpm dev` with no errors
+
+### Step 5 — Permissions and Auth Helpers
+
+- [ ] `src/lib/permissions.ts` -- `getAccessibleSpaceIds`, `requireSpaceMembershipAndPermission`, `hasPermissionLevel` (see [permission-model.md](./permission-model.md), [space.md](./space.md))
+- [ ] `src/lib/api/auth-helpers.ts` -- `getSessionOrUnauthorized()` (see [authentication.md](./authentication.md))
+- [ ] `src/lib/activity-log.ts` -- `writeActivityLog()` fire-and-forget (see [collaboration.md](./collaboration.md))
+
+### Step 6 — Shared UI Primitives
+
+- [ ] `src/components/ui/local-date.tsx` -- `<LocalDate />` with `relative`, `date`, `datetime` formats (see [design-system.md](./design-system.md))
+- [ ] `GET /api/health` route returning `{ ok: true, db: 'connected' }` after `db.$queryRaw` SELECT 1
+
+### Step 7 — Database
+
+- [ ] Start PostgreSQL locally:
+  ```bash
+  docker run --name teamority-db -e POSTGRES_PASSWORD=dev -e POSTGRES_DB=teamority -p 5432:5432 -d postgres:16
+  ```
+- [ ] `npx prisma init`
+- [ ] Write full Prisma schema -- do in Phase 1 (see [database-schema.md](./database-schema.md))
+- [ ] `npx prisma migrate dev --name init`
+- [ ] `npx better-auth migrate`
+
+### Definition of Done
+
+- [ ] `pnpm dev` starts Next.js (port 3000) and the worker with no errors
+- [ ] `GET /api/health` returns `{ ok: true, db: 'connected' }`
+- [ ] `src/lib/env.ts` throws a descriptive error if any required env var is missing
+- [ ] All singletons exist: `db.ts`, `auth.ts`, `storage.ts`, `permissions.ts`, `enqueue.ts`
+- [ ] `<LocalDate />` renders correctly in a test page
+- [ ] No feature code written yet -- infrastructure only
 
 ---
+
 
 ## Phase 1 — Database Schema
 

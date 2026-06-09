@@ -273,6 +273,83 @@ Workspace
 
 ---
 
+## Implementation Notes
+
+### Server-Side Resize -- Use `sharp`
+
+`sharp` is the standard Node.js image processing library. It uses native `libvips` bindings and is significantly faster than alternatives (`jimp`, `canvas`).
+
+```typescript
+// src/lib/avatars/upload-avatar.ts
+import sharp from 'sharp'
+
+export async function processAndUploadAvatar(
+  file: Buffer,
+  mimeType: string,
+  userId: string
+): Promise<string> {
+  // Resize to max 256x256, convert to WebP for storage efficiency
+  const processed = await sharp(file)
+    .resize(256, 256, { fit: 'cover', position: 'centre' })
+    .webp({ quality: 85 })
+    .toBuffer()
+
+  const key = `avatars/users/${userId}.webp`
+
+  await r2Client.send(new PutObjectCommand({
+    Bucket: env.R2_BUCKET_NAME,
+    Key: key,
+    Body: processed,
+    ContentType: 'image/webp',
+  }))
+
+  return key  // store r2Key, not a URL -- generate presigned GET URL on demand
+}
+```
+
+**Why `sharp`:** Handles JPEG, PNG, WebP, GIF input; outputs WebP at ~30% smaller file size than JPEG at equivalent quality; non-blocking (uses libuv worker threads).
+
+**`sharp` requires native binaries** -- must be installed in the same OS/arch as the deployment target. In Docker, install on the target image. With Vercel, `sharp` is supported natively.
+
+### R2 Key Convention for Avatars
+
+```
+avatars/users/{userId}.webp         <- user avatar (always overwritten on re-upload)
+avatars/workspaces/{workspaceId}.webp  <- workspace logo
+```
+
+Avatars overwrite the same key on re-upload -- no uuid suffix needed (unlike task attachments). This means:
+- Old file is automatically replaced in R2
+- No orphaned files accumulate
+- DB record stores `r2Key` (e.g. `avatars/users/abc-123.webp`), NOT a full URL
+
+### Delete Ordering on Avatar Replace
+
+When a user uploads a new avatar:
+1. Upload new file to R2 (same key -- overwrites the old one atomically)
+2. Update `User.image` in DB with the new `r2Key` (or a presigned URL generated on demand)
+
+No explicit delete step needed -- R2 overwrites the key. This is the one case where the R2-before-DB delete rule does not apply because no delete occurs.
+
+When a user removes their avatar (reverts to initials):
+1. Delete the R2 object first
+2. Set `User.image = null` in DB only after R2 delete succeeds
+
+### Serving Avatar URLs
+
+Store `r2Key` in the DB, not a full URL. Generate a presigned GET URL on demand when serialising user/workspace objects in API responses:
+
+```typescript
+// Add to user serialisation
+const avatarUrl = user.image
+  ? await getAttachmentUrl(user.image)  // reuse the same helper from collaboration.ts
+  : null
+```
+
+Presigned URL expiry: 1 hour (same as attachments).
+
+---
+
 ## Out of Scope (MVP)
 
 - Avatar frames or decorations

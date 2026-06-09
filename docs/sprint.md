@@ -323,3 +323,334 @@ TaskSprint
 - Sprint retrospective notes
 - Auto-scheduling tasks into sprints
 - Cross-List sprints
+
+---
+
+## Implementation Notes
+
+### Auto-Close Job Spec
+
+```typescript
+// src/lib/worker/job-types.ts
+JOB_NAMES.SPRINT_AUTO_CLOSE = "sprint.auto-close"
+
+interface SprintAutoClosePayload {
+  // Empty -- the handler queries all eligible sprints itself
+  // Do not pass sprintId -- a cron job handles all eligible sprints in one run
+}
+
+QUEUE_OPTIONS[JOB_NAMES.SPRINT_AUTO_CLOSE] = {
+  retryLimit: 2,
+}
+```
+
+**Cron schedule** (register in `scripts/worker.ts`):
+```typescript
+await boss.schedule(JOB_NAMES.SPRINT_AUTO_CLOSE, '*/15 * * * *', {})
+// Runs every 15 minutes
+```
+
+**Handler** (`src/lib/worker/handlers/sprint-auto-close.ts`):
+1. Query all sprints eligible for auto-close:
+   ```sql
+   SELECT s.* FROM Sprint s
+   WHERE s.status = 'ACTIVE'
+     AND s.end_date < CURRENT_DATE
+     AND s.auto_close_on_next = true
+   ```
+2. For each eligible sprint, run the close transaction (see below)
+3. If `auto_create_next = true`, create the next sprint (status: PLANNED, start_date = closed sprint end_date + 1 day, same duration)
+4. Write `ActivityLog` entry per affected sprint
+
+**Idempotency guard:** At the start of the handler, re-fetch each sprint inside the transaction and check `status = 'ACTIVE'` before acting. If another process already closed it, skip silently.
+
+### Close Sprint Transaction Spec
+
+All three incomplete-task strategies must be handled inside a single `db.$transaction()`:
+
+```typescript
+// src/lib/sprints/close-sprint.ts
+
+async function closeSprint(
+  sprintId: string,
+  strategy: 'move_to_backlog' | 'move_to_next_sprint' | 'leave_as_is',
+  targetSprintId?: string,  // required when strategy = 'move_to_next_sprint'
+  actorId: string,
+) {
+  return db.$transaction(async (tx) => {
+    // 1. Lock and re-fetch sprint -- idempotency guard
+    const sprint = await tx.sprint.findUniqueOrThrow({ where: { id: sprintId } })
+    if (sprint.status !== 'ACTIVE') throw new Error('Sprint is not active')
+
+    // 2. Find incomplete tasks (status type != 'CLOSED')
+    const incompleteTasks = await tx.taskSprint.findMany({
+      where: {
+        sprintId,
+        task: { status: { type: { not: 'CLOSED' } } }
+      },
+      include: { task: true }
+    })
+
+    // 3. Apply strategy
+    if (strategy === 'move_to_backlog') {
+      await tx.taskSprint.deleteMany({
+        where: { sprintId, taskId: { in: incompleteTasks.map(t => t.taskId) } }
+      })
+    } else if (strategy === 'move_to_next_sprint') {
+      if (!targetSprintId) throw new Error('targetSprintId required for move_to_next_sprint')
+      // Verify target sprint exists and is PLANNED
+      const target = await tx.sprint.findUniqueOrThrow({ where: { id: targetSprintId } })
+      if (target.status !== 'PLANNED') throw new Error('Target sprint must be PLANNED')
+      // Move: delete from current, insert into target
+      await tx.taskSprint.deleteMany({
+        where: { sprintId, taskId: { in: incompleteTasks.map(t => t.taskId) } }
+      })
+      await tx.taskSprint.createMany({
+        data: incompleteTasks.map(t => ({
+          taskId: t.taskId,
+          sprintId: targetSprintId,
+          // story_points preserved from original TaskSprint
+          storyPoints: t.storyPoints,
+        }))
+      })
+    }
+    // 'leave_as_is' -- no TaskSprint changes, tasks stay linked to closed sprint for history
+
+    // 4. Close the sprint
+    await tx.sprint.update({
+      where: { id: sprintId },
+      data: { status: 'CLOSED', closedAt: new Date() }
+    })
+
+    // 5. Write ActivityLog entries
+    // One entry per sprint close action + one per task affected
+  })
+}
+```
+
+**Fallback for `move_to_next_sprint` when no PLANNED sprint exists:**
+```typescript
+// If no targetSprintId and strategy = move_to_next_sprint, fall back to move_to_backlog
+// Log a warning to ActivityLog: "Sprint auto-closed — no planned sprint found, incomplete tasks moved to backlog"
+```
+
+### Sprint Progress Query
+
+Compute progress on the fly -- do not cache. Called when rendering the Sprint panel:
+
+```typescript
+// src/lib/sprints/get-sprint-progress.ts
+
+async function getSprintProgress(sprintId: string) {
+  const tasks = await db.taskSprint.findMany({
+    where: { sprintId },
+    include: {
+      task: {
+        include: { status: true }
+      }
+    }
+  })
+
+  const total = tasks.length
+  const closed = tasks.filter(t => t.task.status.type === 'CLOSED').length
+  const totalPoints = tasks.reduce((sum, t) => sum + (t.storyPoints ?? 0), 0)
+  const closedPoints = tasks
+    .filter(t => t.task.status.type === 'CLOSED')
+    .reduce((sum, t) => sum + (t.storyPoints ?? 0), 0)
+
+  return {
+    total,
+    closed,
+    completionPercent: total === 0 ? 0 : Math.round((closed / total) * 100),
+    totalPoints,
+    closedPoints,
+  }
+}
+```
+
+Add `@@index([sprintId])` on `TaskSprint` to make this query fast as sprint task counts grow.
+
+### One Active Sprint Enforcement
+
+Before starting a sprint, check inside a transaction:
+```typescript
+const existing = await tx.sprint.findFirst({
+  where: { listId, status: 'ACTIVE' }
+})
+if (existing) throw new ConflictError('A sprint is already active in this list')
+```
+
+This check must be inside the transaction that also sets `status = 'ACTIVE'` to prevent a race condition where two sprints are started simultaneously.
+
+### `startSprint` -- Transaction Spec
+
+```typescript
+export async function startSprint(sprintId: string, actorId: string) {
+  return db.$transaction(async (tx) => {
+    const sprint = await tx.sprint.findUniqueOrThrow({ where: { id: sprintId } })
+    if (sprint.status !== 'PLANNED') throw new Error('Only a PLANNED sprint can be started')
+
+    // One-active enforcement inside the transaction (not a pre-check)
+    const activeExists = await tx.sprint.findFirst({
+      where: { listId: sprint.listId, status: 'ACTIVE' }
+    })
+    if (activeExists) throw new ConflictError('A sprint is already active in this list')
+
+    await tx.sprint.update({
+      where: { id: sprintId },
+      data: { status: 'ACTIVE', startedAt: new Date() }
+    })
+  })
+
+  // Fire-and-forget: notify all members with tasks in this sprint
+  void notifySprintStarted(sprintId, actorId)
+}
+```
+
+### `deleteSprint` -- Guard Inside Transaction
+
+Active and Closed sprints cannot be deleted. The status check must be inside the transaction:
+
+```typescript
+export async function deleteSprint(sprintId: string) {
+  return db.$transaction(async (tx) => {
+    const sprint = await tx.sprint.findUniqueOrThrow({ where: { id: sprintId } })
+    if (sprint.status !== 'PLANNED') {
+      throw new ForbiddenError('Only PLANNED sprints can be deleted')
+    }
+
+    // Remove TaskSprint records first (tasks themselves are unaffected)
+    await tx.taskSprint.deleteMany({ where: { sprintId } })
+    await tx.sprint.delete({ where: { id: sprintId } })
+  })
+}
+```
+
+### `addTaskToSprint` -- Uniqueness Enforcement
+
+A task can only be in one non-closed sprint at a time. This cannot be enforced with a DB unique index alone because a task may have historical `TaskSprint` records from closed sprints. Enforce at the application layer:
+
+```typescript
+export async function addTaskToSprint(
+  taskId: string,
+  sprintId: string,
+  storyPoints?: number
+) {
+  return db.$transaction(async (tx) => {
+    // Check for existing assignment in any PLANNED or ACTIVE sprint
+    const existing = await tx.taskSprint.findFirst({
+      where: {
+        taskId,
+        sprint: { status: { in: ['PLANNED', 'ACTIVE'] } }
+      }
+    })
+    if (existing) throw new ConflictError('Task is already assigned to an active or planned sprint')
+
+    await tx.taskSprint.create({
+      data: { taskId, sprintId, storyPoints: storyPoints ?? null }
+    })
+  })
+}
+```
+
+Return `409 Conflict` with `{ error: "Task is already in an active sprint. Remove it first." }`.
+
+### Backlog Query -- Tasks Not in Any Active Sprint
+
+"Backlog" = tasks in the List that have no `TaskSprint` record linking them to a PLANNED or ACTIVE sprint.
+
+```typescript
+export async function getBacklog(listId: string) {
+  // Tasks where no TaskSprint exists for a non-closed sprint
+  return db.task.findMany({
+    where: {
+      listId,
+      isArchived: false,
+      parentTaskId: null,  // top-level tasks only; subtasks are not sprint-assignable
+      NOT: {
+        taskSprints: {
+          some: {
+            sprint: { status: { in: ['PLANNED', 'ACTIVE'] } }
+          }
+        }
+      }
+    },
+    orderBy: { orderIndex: 'asc' }
+  })
+}
+```
+
+### `mark-all-done` -- Step 1 of Close Sprint Modal
+
+Marks all incomplete tasks in the sprint as the List's first `closed`-type status. Must be atomic.
+
+```typescript
+export async function markAllSprintTasksDone(sprintId: string, actorId: string) {
+  return db.$transaction(async (tx) => {
+    const sprint = await tx.sprint.findUniqueOrThrow({
+      where: { id: sprintId },
+      include: { list: { include: { statuses: { where: { type: 'CLOSED' }, orderBy: { orderIndex: 'asc' }, take: 1 } } } }
+    })
+
+    const closedStatus = sprint.list.statuses[0]
+    if (!closedStatus) throw new Error('List has no closed status')
+
+    // Find all incomplete tasks (status type != CLOSED)
+    const incomplete = await tx.taskSprint.findMany({
+      where: { sprintId, task: { status: { type: { not: 'CLOSED' } } } },
+      select: { taskId: true }
+    })
+
+    if (incomplete.length === 0) return { affected: 0 }
+
+    await tx.task.updateMany({
+      where: { id: { in: incomplete.map(t => t.taskId) } },
+      data: { statusId: closedStatus.id }
+    })
+
+    // ActivityLog entry per task -- fire-and-forget outside transaction
+    return { affected: incomplete.length }
+  })
+}
+```
+
+ActivityLog message per task: `"[User] marked task as Done via sprint close"` — written fire-and-forget after the transaction completes.
+
+### Auto-Create Next Sprint -- Name Increment
+
+When `auto_create_next = true` and the sprint closes, a new PLANNED sprint is created. The name is derived by incrementing the trailing number in the current sprint name:
+
+```typescript
+function incrementSprintName(name: string): string {
+  // "Sprint 1" -> "Sprint 2", "Sprint 12" -> "Sprint 13"
+  // "Q3 Week 2" -> "Q3 Week 3"
+  // "My Sprint" -> "My Sprint 2" (no trailing number: append 2)
+  const match = name.match(/^(.*?)(\d+)$/)
+  if (match) return `${match[1]}${parseInt(match[2], 10) + 1}`
+  return `${name} 2`
+}
+```
+
+New sprint: `status = PLANNED`, `startDate = closedSprint.endDate + 1 day`, `durationWeeks = closedSprint.durationWeeks`, `autoCreateNext = closedSprint.autoCreateNext`, `autoCloseOnNext = closedSprint.autoCloseOnNext`, `autoIncompleteStrategy = closedSprint.autoIncompleteStrategy`.
+
+### Folder Mapping
+
+```
+src/
+  app/api/
+    lists/[listId]/
+      sprints/route.ts          <- POST (create sprint), GET (list sprints)
+      backlog/route.ts          <- GET (tasks not in any active sprint)
+    sprints/[id]/
+      route.ts                  <- GET, PATCH, DELETE
+      start/route.ts            <- POST
+      close/route.ts            <- POST (body: { strategy, targetSprintId? })
+      mark-all-done/route.ts    <- POST (step 1 of close modal)
+      tasks/route.ts            <- POST (add task)
+      tasks/[taskId]/route.ts   <- DELETE (remove task), PATCH (story points)
+  server/
+    sprint.ts                   <- createSprint, startSprint, deleteSprint, addTaskToSprint, markAllSprintTasksDone, closeSprint, getBacklog
+    sprint-progress.ts          <- getSprintProgress
+  lib/worker/handlers/
+    sprint-auto-close.ts
+```
