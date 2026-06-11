@@ -111,6 +111,7 @@ src/
 | Notifications | `docs/notifications.md` |
 | Search & Filters | `docs/search-and-filters.md` |
 | Permissions | `docs/permission-model.md` |
+| Settings | `docs/settings.md` |
 | Admin Panel | `docs/admin-panel.md` |
 | Empty States | `docs/empty-states.md` |
 | Design System | `docs/design-system.md` |

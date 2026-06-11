@@ -374,7 +374,7 @@ Phase 19 →  QA & Launch Prep
 
 **Goal:** Users can sign up, sign in, sign out, verify email, and reset password. Magic link passwordless login works.
 
-**Reference doc:** [authentication.md](./authentication.md)
+**Reference doc:** [authentication.md](./authentication.md), [settings.md](./settings.md) (section 1.1 + 1.2)
 
 ### Tasks
 
@@ -490,7 +490,7 @@ Phase 19 →  QA & Launch Prep
 
 **Goal:** Full workspace management — create, edit, switch, invite members, manage roles.
 
-**Reference doc:** [workspace.md](./workspace.md)
+**Reference doc:** [workspace.md](./workspace.md), [settings.md](./settings.md) (sections 2 + 4)
 
 ### Tasks
 
@@ -510,11 +510,13 @@ Phase 19 →  QA & Launch Prep
 
 **UI:**
 - [ ] Workspace switcher (sidebar top-left) — shows all user workspaces
-- [ ] `/settings/general` — edit name, logo, slug
-- [ ] `/settings/members` — member list, invite, change role, remove
-- [ ] `/settings/security` — invite link management
+- [ ] `/[workspaceId]/settings/general` — edit name, logo, slug
+- [ ] `/[workspaceId]/settings/members` — member list, invite, change role, remove
+- [ ] `/[workspaceId]/settings/security` — invite link management
 - [ ] Danger zone: Delete workspace with confirmation modal
 - [ ] Transfer ownership modal
+- [ ] **Sidebar bottom — Workspace Settings icon** (`Settings` from Lucide): links to `/[workspaceId]/settings/general`; visible to Owner and Admin only (hidden for Member/Guest)
+- [ ] **Sidebar bottom — User profile row**: avatar + name; clicking opens a popover with links to `/settings/account`, `/settings/sessions`, `/settings/notifications`, and a Sign Out action (see [design-system.md](./design-system.md) Sidebar Bottom Bar section)
 
 **Permission checks:**
 - [ ] Only Owner can delete workspace or transfer ownership
@@ -528,7 +530,7 @@ Phase 19 →  QA & Launch Prep
 
 **Goal:** Spaces can be created, edited, archived, with members and permissions managed.
 
-**Reference doc:** [space.md](./space.md)
+**Reference doc:** [space.md](./space.md), [settings.md](./settings.md) (section 3)
 
 ### Tasks
 

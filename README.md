@@ -520,6 +520,7 @@ Internal panel for us (operators) to manage the SaaS platform.
 - [x] In-app Notifications
 - [x] Email Notifications
 - [x] Permission Model
+- [x] Settings (Workspace Settings + Personal Account Settings)
 - [x] Admin Panel (basic)
 - [x] Support Tickets
 

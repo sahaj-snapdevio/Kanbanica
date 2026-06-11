@@ -197,6 +197,32 @@ The sidebar is collapsible. Users can toggle it open or closed. State persists i
 - Section labels (closed): hidden
 - Not resizable by drag in MVP — toggle only
 
+#### Sidebar Bottom Bar
+
+Two fixed items are pinned at the very bottom of the sidebar, above the collapse toggle, separated from the main nav by a `border-t border-border`:
+
+| Item | Icon | Behaviour | Visible to |
+|------|------|-----------|------------|
+| **Workspace Settings** | `Settings` (Lucide) | Navigates to `/[workspaceId]/settings/general` | Owner and Admin only — hidden for Member/Guest |
+| **User profile row** | User avatar (`w-6 h-6`) + name (truncated, open state only) | Opens a popover anchored to the row | All roles |
+
+**User profile popover** (opens upward, `min-w-[200px]`):
+
+```
+[Avatar]  Full Name
+          email@example.com
+──────────────────────────
+Profile & Account      →  /settings/account
+Sessions               →  /settings/sessions
+Notifications          →  /settings/notifications
+──────────────────────────
+Sign out
+```
+
+- Popover uses `<Popover>` (shadcn) anchored to the bottom of the sidebar
+- "Sign out" triggers Better Auth `signOut()` then redirects to `/sign-in`
+- In collapsed (icon-only) mode: only the avatar is shown; tooltip on hover reads the user's full name
+
 ---
 
 ### Avatars
