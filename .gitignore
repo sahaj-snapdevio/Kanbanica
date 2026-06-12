@@ -21,3 +21,5 @@ build/
 
 # drizzle
 db/migrations/meta/
+
+/lib/generated/prisma
