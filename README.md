@@ -1,4 +1,4 @@
-# Teamority — Project Management SaaS (ClickUp-style)
+﻿# Kanbanica — Project Management SaaS (ClickUp-style)
 
 ## Product Vision
 
@@ -15,10 +15,10 @@ Build a project management platform that helps teams organize, collaborate, exec
 
 ```
 Workspace
-  └── Space
-        └── List
-              └── Task
-                    └── Subtask
+  L-- Space
+        L-- List
+              L-- Task
+                    L-- Subtask
 ```
 
 > **Folder is post-MVP.** Folders are an optional grouping layer between Space and List for teams with many Lists. Removed from MVP to reduce hierarchy depth — no team needs it on day 1. Will be reintroduced in a post-MVP phase.
@@ -68,7 +68,7 @@ New users are guided through a 2-step wizard after their first sign-in. Each ste
 A hierarchy hint is shown before the input so the user understands the structure:
 
 ```
-Workspace  →  Space  →  List  →  Task
+Workspace  ->  Space  ->  List  ->  Task
  Acme Inc     Engineering   Backlog    Fix login bug
 ```
 
@@ -78,7 +78,7 @@ Workspace  →  Space  →  List  →  Task
 
 On completion:
 - A default List named **"List"** is auto-created inside the Space
-- A **demo welcome task** is auto-created inside the List: *"👋 Welcome to [Workspace Name] — click here to see how a task works"* — pre-filled with a short walkthrough so the user lands on something interactive, not a blank screen
+- A **demo welcome task** is auto-created inside the List: *"ðŸ‘‹ Welcome to [Workspace Name] — click here to see how a task works"* — pre-filled with a short walkthrough so the user lands on something interactive, not a blank screen
 - User is redirected directly into their first List
 - A **Getting Started checklist** is shown below the demo task to guide next steps (invite teammates, create a real task, try Board view, etc.)
 - When the creator creates their first real task, the demo task is auto-deleted
@@ -92,7 +92,7 @@ User identity and access management.
 **Powered by:** [Better Auth](https://better-auth.com) with Admin Plugin
 
 **Auth method: Magic Link (passwordless)**
-User enters their email → receives a one-time sign-in link → clicks it → session created. No passwords. First use auto-creates the account.
+User enters their email -> receives a one-time sign-in link -> clicks it -> session created. No passwords. First use auto-creates the account.
 
 **Features:**
 - Sign in / Sign up via magic link (same flow — account auto-created on first use)
@@ -408,9 +408,9 @@ Assigned per user per Space. Controls everything inside a Space (Lists, Tasks).
 The **Workspace Role** controls workspace-level actions. The **Space Permission** controls everything inside a Space. When a user is added to a Space, they are given a Space Permission level regardless of their Workspace Role.
 
 **Examples:**
-- A **Member** with **Full Access** on Engineering Space → can create, edit, delete tasks and lists in that space
-- A **Member** with **View** on Marketing Space → can only read and comment in Marketing, even though they are a Member
-- A **Guest** invited to Design Space with **Edit** → can create and edit tasks in Design Space only, nothing else visible
+- A **Member** with **Full Access** on Engineering Space -> can create, edit, delete tasks and lists in that space
+- A **Member** with **View** on Marketing Space -> can only read and comment in Marketing, even though they are a Member
+- A **Guest** invited to Design Space with **Edit** -> can create and edit tasks in Design Space only, nothing else visible
 - An **Admin** always gets **Full Access** on all Spaces they are added to by default
 
 ---

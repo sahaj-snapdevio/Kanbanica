@@ -1,13 +1,13 @@
-# Authentication
+﻿# Authentication
 
 ## Overview
 
-Authentication handles user identity — who you are, how you prove it, and how your session is maintained across devices. Teamority uses **Better Auth** with the **Admin Plugin** as the authentication library, integrated directly into Next.js.
+Authentication handles user identity — who you are, how you prove it, and how your session is maintained across devices. Kanbanica uses **Better Auth** with the **Admin Plugin** as the authentication library, integrated directly into Next.js.
 
 **Powered by:** [Better Auth](https://better-auth.com)
 
 **Auth method: Magic Link (passwordless)**
-- User enters their email address → receives a one-time sign-in link → clicks it → session created
+- User enters their email address -> receives a one-time sign-in link -> clicks it -> session created
 - No passwords to remember or manage
 - First-time use automatically creates an account (sign up and sign in are the same flow)
 
@@ -23,7 +23,7 @@ Authentication handles user identity — who you are, how you prove it, and how 
 
 | Flow | Description |
 |------|-------------|
-| Sign In / Sign Up | User enters email → receives magic link → clicks link → session created (account auto-created on first use) |
+| Sign In / Sign Up | User enters email -> receives magic link -> clicks link -> session created (account auto-created on first use) |
 | Email Verification | Email is considered verified on first successful magic link use |
 | Sign Out | End the current session |
 | Session Management | View and revoke active sessions across devices |
@@ -39,7 +39,7 @@ Authentication handles user identity — who you are, how you prove it, and how 
 3. Clicks `"Send Sign-In Link"`
 4. Always shows: `"If this email is valid, a sign-in link has been sent."` — same message regardless of whether the email exists (prevents account enumeration)
 5. Better Auth sends a magic link email via SMTP
-6. User clicks the link → `GET /api/auth/magic-link/verify?token=:token`
+6. User clicks the link -> `GET /api/auth/magic-link/verify?token=:token`
 7. Better Auth validates the token:
    - **New user** (email not in DB): account is auto-created, user is redirected to `/onboarding`
    - **Existing user**: session is created, user is redirected to the app (last active workspace or workspace switcher)
@@ -71,7 +71,7 @@ When a magic link is used and no account exists for that email:
 
 ### Single device sign out
 
-- Click avatar → `"Sign Out"`
+- Click avatar -> `"Sign Out"`
 - Current session is destroyed
 - User is redirected to `/sign-in`
 
@@ -125,7 +125,7 @@ Available at `/settings/account`
 
 - Update Full Name
 - Update Avatar:
-  - Upload a photo (JPEG, PNG, WebP — max 2MB, min 100×100px)
+  - Upload a photo (JPEG, PNG, WebP — max 2MB, min 100Ã—100px)
   - If no photo is uploaded: initials fallback is shown automatically — first + last initial of the user's name, on a deterministic background color derived from the user's `id`
   - See [avatar-system.md](./avatar-system.md) for the full avatar spec (sizes, color palette, stacking, greyed-out state, workspace avatars)
 - Email address (read-only — cannot be changed in MVP)
@@ -172,15 +172,15 @@ After a new user successfully authenticates for the first time, they go through 
 
 ```
 Step 1: Create Workspace
-  └── Enter workspace name + upload logo (optional)
+  L-- Enter workspace name + upload logo (optional)
 
 Step 2: Create first Space
-  └── Enter Space name + pick color
-  └── Default List named "List" is auto-created inside the Space
+  L-- Enter Space name + pick color
+  L-- Default List named "List" is auto-created inside the Space
 
-Step 3: Done → land inside the first List
-  └── Getting Started checklist is shown pinned above the empty task list
-  └── Checklist guides: create task → invite teammate → set due date → try Board view
+Step 3: Done -> land inside the first List
+  L-- Getting Started checklist is shown pinned above the empty task list
+  L-- Checklist guides: create task -> invite teammate -> set due date -> try Board view
 ```
 
 Returning users skip onboarding and go directly to their last active workspace.
@@ -195,42 +195,42 @@ Better Auth manages most of the auth-related tables. The core tables it creates:
 
 ```
 User
-├── id                  (uuid, primary key)
-├── name                (string)
-├── email               (string, unique)
-├── email_verified      (boolean, default: false — set to true on first magic link use)
-├── image               (string — avatar URL, nullable)
-├── is_platform_admin   (boolean, default: false)  ← custom field added by us
-├── banned              (boolean, default: false)   ← managed by Admin Plugin
-├── banned_reason       (string, nullable)          ← managed by Admin Plugin
-├── created_at          (timestamp)
-└── updated_at          (timestamp)
++-- id                  (uuid, primary key)
++-- name                (string)
++-- email               (string, unique)
++-- email_verified      (boolean, default: false — set to true on first magic link use)
++-- image               (string — avatar URL, nullable)
++-- is_platform_admin   (boolean, default: false)  <- custom field added by us
++-- banned              (boolean, default: false)   <- managed by Admin Plugin
++-- banned_reason       (string, nullable)          <- managed by Admin Plugin
++-- created_at          (timestamp)
+L-- updated_at          (timestamp)
 
 Session
-├── id                  (uuid, primary key)
-├── user_id             (foreign key → User)
-├── token               (string, unique — hashed session token)
-├── expires_at          (timestamp)
-├── ip_address          (string, nullable)
-├── user_agent          (string, nullable)
-├── impersonated_by     (uuid, nullable)            ← set during admin impersonation
-├── created_at          (timestamp)
-└── updated_at          (timestamp)
++-- id                  (uuid, primary key)
++-- user_id             (foreign key -> User)
++-- token               (string, unique — hashed session token)
++-- expires_at          (timestamp)
++-- ip_address          (string, nullable)
++-- user_agent          (string, nullable)
++-- impersonated_by     (uuid, nullable)            <- set during admin impersonation
++-- created_at          (timestamp)
+L-- updated_at          (timestamp)
 
 Account
-├── id                  (uuid, primary key)
-├── user_id             (foreign key → User)
-├── provider            (string — "magic-link")
-├── provider_account_id (string — the user's email)
-├── created_at          (timestamp)
-└── updated_at          (timestamp)
++-- id                  (uuid, primary key)
++-- user_id             (foreign key -> User)
++-- provider            (string — "magic-link")
++-- provider_account_id (string — the user's email)
++-- created_at          (timestamp)
+L-- updated_at          (timestamp)
 
 Verification
-├── id                  (uuid, primary key)
-├── identifier          (string — email address)
-├── value               (string — hashed magic link token)
-├── expires_at          (timestamp — 15 minutes from creation)
-└── created_at          (timestamp)
++-- id                  (uuid, primary key)
++-- identifier          (string — email address)
++-- value               (string — hashed magic link token)
++-- expires_at          (timestamp — 15 minutes from creation)
+L-- created_at          (timestamp)
 ```
 
 ---
@@ -267,22 +267,22 @@ Better Auth exposes a unified handler at `/api/auth/[...all]` in Next.js. These 
 Shown immediately after the user clicks "Send Sign-In Link". Reduces abandonment during the email delivery wait.
 
 ```
-┌─────────────────────────────────────────┐
-│                                         │
-│            ✉️  Check your email          │
-│                                         │
-│   We sent a sign-in link to             │
-│   jane@example.com                      │
-│                                         │
-│   ⠋  Waiting for you to click the link  │  ← animated spinner
-│   This usually takes under 30 seconds.  │
-│                                         │
-│   ────────────────────────────────────  │
-│                                         │
-│   Didn't get it?  [Resend email]        │
-│   Wrong email?    [Go back]             │
-│                                         │
-└─────────────────────────────────────────┘
++-----------------------------------------+
+|                                         |
+|            (email)  Check your email          |
+|                                         |
+|   We sent a sign-in link to             |
+|   jane@example.com                      |
+|                                         |
+|   (~)  Waiting for you to click the link  |  <- animated spinner
+|   This usually takes under 30 seconds.  |
+|                                         |
+|   ------------------------------------  |
+|                                         |
+|   Didn't get it?  [Resend email]        |
+|   Wrong email?    [Go back]             |
+|                                         |
+L-----------------------------------------+
 ```
 
 | Element | Detail |

@@ -1,8 +1,8 @@
-# Teamority — Claude Code Context
+﻿# Kanbanica — Claude Code Context
 
 ## What this project is
 
-Teamority is a project management SaaS (ClickUp-style). Teams use it to organize work in Workspaces, Spaces, Lists, and Tasks.
+Kanbanica is a project management SaaS (ClickUp-style). Teams use it to organize work in Workspaces, Spaces, Lists, and Tasks.
 
 Full product specs live in `docs/`. Read the relevant doc before implementing any feature.
 
@@ -31,23 +31,23 @@ Full product specs live in `docs/`. Read the relevant doc before implementing an
 
 ```
 src/
-├── app/                   ← Next.js App Router
-│   ├── (auth)/            ← sign-in, onboarding (unauthenticated layout)
-│   ├── (app)/             ← main app (authenticated layout)
-│   │   └── [workspaceId]/ ← workspace-scoped routes
-│   ├── api/               ← API route handlers
-│   └── admin/             ← platform admin panel
-├── components/
-│   ├── ui/                ← shadcn/ui primitives
-│   └── common/            ← shared app components
-├── lib/
-│   ├── db.ts              ← Prisma client singleton
-│   ├── auth.ts            ← Better Auth server instance
-│   └── utils.ts           ← shared utilities
-├── hooks/                 ← custom React hooks
-├── store/                 ← Zustand stores
-├── types/                 ← TypeScript types and interfaces
-└── server/                ← server actions
++-- app/                   <- Next.js App Router
+|   +-- (auth)/            <- sign-in, onboarding (unauthenticated layout)
+|   +-- (app)/             <- main app (authenticated layout)
+|   |   L-- [workspaceId]/ <- workspace-scoped routes
+|   +-- api/               <- API route handlers
+|   L-- admin/             <- platform admin panel
++-- components/
+|   +-- ui/                <- shadcn/ui primitives
+|   L-- common/            <- shared app components
++-- lib/
+|   +-- db.ts              <- Prisma client singleton
+|   +-- auth.ts            <- Better Auth server instance
+|   L-- utils.ts           <- shared utilities
++-- hooks/                 <- custom React hooks
++-- store/                 <- Zustand stores
++-- types/                 <- TypeScript types and interfaces
+L-- server/                <- server actions
 ```
 
 ---

@@ -1,8 +1,8 @@
-# Permission Model
+﻿# Permission Model
 
 ## Overview
 
-Teamority uses a **two-level permission system**:
+Kanbanica uses a **two-level permission system**:
 
 1. **Workspace Role** — controls what a user can do at the workspace level
 2. **Space Permission** — controls what a user can do inside a specific Space
@@ -16,11 +16,11 @@ This keeps the model simple to understand, easy to manage, and straightforward t
 ## Permission Hierarchy
 
 ```
-Workspace Role          →  governs workspace-level actions (members, settings, spaces)
-  └── Space Permission  →  governs everything inside a Space (lists, tasks)
-        └── List        →  inherits Space Permission (no override)
-              └── Task  →  inherits Space Permission (no override)
-                    └── Subtask  →  inherits Space Permission (no override)
+Workspace Role          ->  governs workspace-level actions (members, settings, spaces)
+  L-- Space Permission  ->  governs everything inside a Space (lists, tasks)
+        L-- List        ->  inherits Space Permission (no override)
+              L-- Task  ->  inherits Space Permission (no override)
+                    L-- Subtask  ->  inherits Space Permission (no override)
 ```
 
 **Key rule:** A user's effective permission on a task = their Space Permission on the Space that contains that task.
@@ -46,27 +46,27 @@ Every user in a Workspace has exactly one Workspace Role. The role controls work
 
 | Action | Owner | Admin | Member | Guest |
 |--------|:-----:|:-----:|:------:|:-----:|
-| Delete Workspace | ✅ | ❌ | ❌ | ❌ |
-| Transfer Ownership | ✅ | ❌ | ❌ | ❌ |
-| Manage Billing | ✅ | ❌ | ❌ | ❌ |
-| View Workspace Settings | ✅ | ✅ | ❌ | ❌ |
-| Invite Members to Workspace | ✅ | ✅ | ❌ | ❌ |
-| Manage All Members (view, change role, remove) | ✅ | ✅ | ❌ | ❌ |
-| Create Space | ✅ | ✅ | ❌ | ❌ |
-| Delete Space | ✅ | ✅ | ❌ | ❌ |
-| View All Public Spaces | ✅ | ✅ | ✅ | ❌ |
-| View Private Spaces (all) | ✅ | ✅ | ❌ | ❌ |
-| Access Spaces they are invited to | ✅ | ✅ | ✅ | ✅ |
-| View member list of workspace | ✅ | ✅ | ✅ | ❌ |
+| Delete Workspace | [x] | [ ] | [ ] | [ ] |
+| Transfer Ownership | [x] | [ ] | [ ] | [ ] |
+| Manage Billing | [x] | [ ] | [ ] | [ ] |
+| View Workspace Settings | [x] | [x] | [ ] | [ ] |
+| Invite Members to Workspace | [x] | [x] | [ ] | [ ] |
+| Manage All Members (view, change role, remove) | [x] | [x] | [ ] | [ ] |
+| Create Space | [x] | [x] | [ ] | [ ] |
+| Delete Space | [x] | [x] | [ ] | [ ] |
+| View All Public Spaces | [x] | [x] | [x] | [ ] |
+| View Private Spaces (all) | [x] | [x] | [ ] | [ ] |
+| Access Spaces they are invited to | [x] | [x] | [x] | [x] |
+| View member list of workspace | [x] | [x] | [x] | [ ] |
 
 ### Role change rules
 
 | Who can change | Owner | Admin | Member | Guest |
 |----------------|-------|-------|--------|-------|
-| **Owner** | Transfer only (becomes Admin after) | ✅ | ✅ | ✅ |
-| **Admin** | ❌ | ❌ | ✅ | ✅ |
-| **Member** | ❌ | ❌ | ❌ | ❌ |
-| **Guest** | ❌ | ❌ | ❌ | ❌ |
+| **Owner** | Transfer only (becomes Admin after) | [x] | [x] | [x] |
+| **Admin** | [ ] | [ ] | [x] | [x] |
+| **Member** | [ ] | [ ] | [ ] | [ ] |
+| **Guest** | [ ] | [ ] | [ ] | [ ] |
 
 - There must always be exactly one Owner — ownership cannot be removed, only transferred
 - An Owner cannot be demoted directly — they must first transfer ownership to another user
@@ -103,71 +103,71 @@ Each user gets a Space Permission level when added to a Space. This controls eve
 
 | Action | Full Access | Edit | View |
 |--------|:-----------:|:----:|:----:|
-| View Space content (lists, tasks) | ✅ | ✅ | ✅ |
-| Edit Space settings (name, color, icon) | ✅ | ❌ | ❌ |
-| Change Space visibility (public ↔ private) | ✅ | ❌ | ❌ |
-| Archive Space | ✅ | ❌ | ❌ |
-| Delete Space | ❌ (Admin+ only) | ❌ | ❌ |
-| Manage Space Members (add, change permission, remove) | ✅ | ❌ | ❌ |
-| Create List | ✅ | ❌ | ❌ |
-| Edit List (name, color, description) | ✅ | ❌ | ❌ |
-| Customize List statuses | ✅ | ❌ | ❌ |
-| Archive / Delete List | ✅ | ❌ | ❌ |
-| Move List to another Space | ✅ | ❌ | ❌ |
-| Duplicate List | ✅ | ❌ | ❌ |
+| View Space content (lists, tasks) | [x] | [x] | [x] |
+| Edit Space settings (name, color, icon) | [x] | [ ] | [ ] |
+| Change Space visibility (public <-> private) | [x] | [ ] | [ ] |
+| Archive Space | [x] | [ ] | [ ] |
+| Delete Space | [ ] (Admin+ only) | [ ] | [ ] |
+| Manage Space Members (add, change permission, remove) | [x] | [ ] | [ ] |
+| Create List | [x] | [ ] | [ ] |
+| Edit List (name, color, description) | [x] | [ ] | [ ] |
+| Customize List statuses | [x] | [ ] | [ ] |
+| Archive / Delete List | [x] | [ ] | [ ] |
+| Move List to another Space | [x] | [ ] | [ ] |
+| Duplicate List | [x] | [ ] | [ ] |
 
 ### Task & Subtask Actions
 
 | Action | Full Access | Edit | View |
 |--------|:-----------:|:----:|:----:|
-| View tasks and subtasks | ✅ | ✅ | ✅ |
-| Create Task | ✅ | ✅ | ❌ |
-| Edit Task title & description | ✅ | ✅ | ❌ |
-| Change Task status | ✅ | ✅ | ❌ |
-| Set / change Task priority | ✅ | ✅ | ❌ |
-| Assign / unassign users on a Task | ✅ | ✅ | ❌ |
-| Set / change Due Date | ✅ | ✅ | ❌ |
-| Add / edit Tags | ✅ | ✅ | ❌ |
-| Add / manage Checklists | ✅ | ✅ | ❌ |
-| Upload Attachments | ✅ | ✅ | ❌ |
-| Delete own Attachment | ✅ | ✅ | ❌ |
-| Delete others' Attachment | ✅ | ❌ | ❌ |
-| Add / remove Dependencies | ✅ | ✅ | ❌ |
-| Create Subtask | ✅ | ✅ | ❌ |
-| Log time on Task | ✅ | ✅ | ❌ |
-| Archive Task | ✅ | ❌ | ❌ |
-| Delete Task | ✅ | ❌ | ❌ |
-| Move Task to another List | ✅ | ❌ | ❌ |
-| Duplicate Task | ✅ | ✅ | ❌ |
-| Copy Task link | ✅ | ✅ | ✅ |
+| View tasks and subtasks | [x] | [x] | [x] |
+| Create Task | [x] | [x] | [ ] |
+| Edit Task title & description | [x] | [x] | [ ] |
+| Change Task status | [x] | [x] | [ ] |
+| Set / change Task priority | [x] | [x] | [ ] |
+| Assign / unassign users on a Task | [x] | [x] | [ ] |
+| Set / change Due Date | [x] | [x] | [ ] |
+| Add / edit Tags | [x] | [x] | [ ] |
+| Add / manage Checklists | [x] | [x] | [ ] |
+| Upload Attachments | [x] | [x] | [ ] |
+| Delete own Attachment | [x] | [x] | [ ] |
+| Delete others' Attachment | [x] | [ ] | [ ] |
+| Add / remove Dependencies | [x] | [x] | [ ] |
+| Create Subtask | [x] | [x] | [ ] |
+| Log time on Task | [x] | [x] | [ ] |
+| Archive Task | [x] | [ ] | [ ] |
+| Delete Task | [x] | [ ] | [ ] |
+| Move Task to another List | [x] | [ ] | [ ] |
+| Duplicate Task | [x] | [x] | [ ] |
+| Copy Task link | [x] | [x] | [x] |
 
 ### Collaboration Actions
 
 | Action | Full Access | Edit | View |
 |--------|:-----------:|:----:|:----:|
-| View comments and activity | ✅ | ✅ | ✅ |
-| Post a comment | ✅ | ✅ | ✅ |
-| Reply to a comment | ✅ | ✅ | ✅ |
-| Edit own comment | ✅ | ✅ | ✅ |
-| Delete own comment | ✅ | ✅ | ✅ |
-| Delete others' comment | ✅ | ❌ | ❌ |
-| Resolve / unresolve a comment thread | ✅ | ✅ | ❌ |
-| Add emoji reaction | ✅ | ✅ | ✅ |
-| @mention users | ✅ | ✅ | ✅ |
-| Watch / unwatch a Task | ✅ | ✅ | ✅ |
+| View comments and activity | [x] | [x] | [x] |
+| Post a comment | [x] | [x] | [x] |
+| Reply to a comment | [x] | [x] | [x] |
+| Edit own comment | [x] | [x] | [x] |
+| Delete own comment | [x] | [x] | [x] |
+| Delete others' comment | [x] | [ ] | [ ] |
+| Resolve / unresolve a comment thread | [x] | [x] | [ ] |
+| Add emoji reaction | [x] | [x] | [x] |
+| @mention users | [x] | [x] | [x] |
+| Watch / unwatch a Task | [x] | [x] | [x] |
 
 ### Sprint Actions
 
 | Action | Full Access | Edit | View |
 |--------|:-----------:|:----:|:----:|
-| View Sprints and Sprint progress | ✅ | ✅ | ✅ |
-| Create Sprint | ✅ | ❌ | ❌ |
-| Edit Sprint (name, goal, end date) | ✅ | ❌ | ❌ |
-| Start Sprint | ✅ | ❌ | ❌ |
-| Close Sprint | ✅ | ❌ | ❌ |
-| Add / remove Tasks from Sprint | ✅ | ✅ | ❌ |
-| Set Story Points | ✅ | ✅ | ❌ |
-| Delete Planned Sprint | ✅ | ❌ | ❌ |
+| View Sprints and Sprint progress | [x] | [x] | [x] |
+| Create Sprint | [x] | [ ] | [ ] |
+| Edit Sprint (name, goal, end date) | [x] | [ ] | [ ] |
+| Start Sprint | [x] | [ ] | [ ] |
+| Close Sprint | [x] | [ ] | [ ] |
+| Add / remove Tasks from Sprint | [x] | [x] | [ ] |
+| Set Story Points | [x] | [x] | [ ] |
+| Delete Planned Sprint | [x] | [ ] | [ ] |
 
 ---
 
@@ -178,9 +178,9 @@ A user's final capability on any item is determined by combining their Workspace
 ### Resolution order (highest wins)
 
 ```
-1. Owner          → always Full Access everywhere, no Space Permission needed
-2. Admin          → always Full Access everywhere, no Space Permission needed
-3. Space Permission (Full Access / Edit / View) → applies for Member and Guest
+1. Owner          -> always Full Access everywhere, no Space Permission needed
+2. Admin          -> always Full Access everywhere, no Space Permission needed
+3. Space Permission (Full Access / Edit / View) -> applies for Member and Guest
 ```
 
 ### Practical examples
@@ -227,8 +227,8 @@ Private Spaces add an extra visibility layer on top of Space Permissions.
 | Guest — explicitly invited | Yes |
 | Guest — not invited | No |
 
-- Changing a Space from **Public → Private** immediately removes it from the sidebar of all Members who are not explicitly listed as Space members
-- Changing a Space from **Private → Public** makes it visible to all workspace Members with default **View** permission
+- Changing a Space from **Public -> Private** immediately removes it from the sidebar of all Members who are not explicitly listed as Space members
+- Changing a Space from **Private -> Public** makes it visible to all workspace Members with default **View** permission
 
 ---
 
@@ -240,24 +240,24 @@ When checking permissions server-side on every API request:
 function canPerformAction(user, action, entity):
 
   1. If user.workspaceRole == OWNER or ADMIN:
-       → allow (Full Access everywhere)
+       -> allow (Full Access everywhere)
 
   2. Get user's SpacePermission for the Space that contains entity
 
   3. If no SpacePermission found (user not a member of that Space):
-       → deny
+       -> deny
 
   4. If Space is Private and user has no SpacePermission:
-       → deny (do not reveal the Space exists)
+       -> deny (do not reveal the Space exists)
 
   5. Check action against SpacePermission capability matrix:
-       → allow or deny accordingly
+       -> allow or deny accordingly
 
 function canAssignSpacePermission(actor, targetUser, permission):
 
   1. If targetUser.workspaceRole == GUEST and permission == FULL_ACCESS:
-       → deny with 403 — Guests cannot hold Full Access on any Space
-       → message: "Guests can only be assigned Edit or View access"
+       -> deny with 403 — Guests cannot hold Full Access on any Space
+       -> message: "Guests can only be assigned Edit or View access"
 
   2. Otherwise proceed with normal permission checks
 ```
@@ -286,16 +286,16 @@ Never push authorization logic into middleware -- it runs on every request witho
 
 ```
 WorkspaceMember
-├── workspace_id        (foreign key → Workspace)
-├── user_id             (foreign key → User)
-├── role                (enum: owner | admin | member | guest)
-└── ...
++-- workspace_id        (foreign key -> Workspace)
++-- user_id             (foreign key -> User)
++-- role                (enum: owner | admin | member | guest)
+L-- ...
 
 SpaceMember
-├── space_id            (foreign key → Space)
-├── user_id             (foreign key → User)
-├── permission          (enum: full_access | edit | view)
-└── ...
++-- space_id            (foreign key -> Space)
++-- user_id             (foreign key -> User)
++-- permission          (enum: full_access | edit | view)
+L-- ...
 ```
 
 > Only two tables drive the entire permission system. No separate permission tables for List, Task, or Subtask.

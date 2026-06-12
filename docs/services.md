@@ -1,8 +1,8 @@
-# Services
+﻿# Services
 
 ## Goal
 
-Document every infrastructure service Teamority depends on, the decision rationale, required configuration, startup behavior, and local development setup. This is the operational reference for Phase 0 setup and production deployment.
+Document every infrastructure service Kanbanica depends on, the decision rationale, required configuration, startup behavior, and local development setup. This is the operational reference for Phase 0 setup and production deployment.
 
 ---
 
@@ -24,19 +24,19 @@ Document every infrastructure service Teamority depends on, the decision rationa
 
 **Required env vars:**
 ```
-DATABASE_URL=postgresql://user:password@host:5432/teamority
+DATABASE_URL=postgresql://user:password@host:5432/Kanbanica
 ```
 
 **Local dev setup:**
 ```bash
 # Option A: Docker
-docker run --name teamority-db \
+docker run --name Kanbanica-db \
   -e POSTGRES_PASSWORD=dev \
-  -e POSTGRES_DB=teamority \
+  -e POSTGRES_DB=Kanbanica \
   -p 5432:5432 -d postgres:16
 
 # Option B: local Postgres
-createdb teamority
+createdb Kanbanica
 
 # Apply schema
 npx prisma migrate dev --name init
@@ -62,7 +62,7 @@ npx better-auth migrate
 R2_ACCOUNT_ID=your-cloudflare-account-id
 R2_ACCESS_KEY_ID=your-r2-access-key
 R2_SECRET_ACCESS_KEY=your-r2-secret-key
-R2_BUCKET_NAME=teamority-uploads
+R2_BUCKET_NAME=Kanbanica-uploads
 R2_PUBLIC_URL=https://pub-xxxx.r2.dev
 ```
 
@@ -100,7 +100,7 @@ docker run -p 9000:9000 -p 9001:9001 \
 **Required env vars:**
 ```
 BETTER_AUTH_SECRET=your-32-char-secret-here
-BETTER_AUTH_URL=https://app.teamority.com
+BETTER_AUTH_URL=https://app.Kanbanica.com
 ```
 
 **Auth tables:** Managed exclusively by `npx better-auth migrate`. Never include `User`, `Session`, `Account`, or `Verification` tables in Prisma migrations. Do not run `prisma migrate dev` for these tables.
@@ -133,7 +133,7 @@ SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_USER=your-api-token
 SMTP_PASS=your-api-token
-SMTP_FROM=noreply@teamority.com
+SMTP_FROM=noreply@Kanbanica.com
 ```
 
 **Email templates:** All templates are React Email components in `src/lib/email/`. Never use raw HTML strings.
@@ -141,7 +141,7 @@ SMTP_FROM=noreply@teamority.com
 **Deliverability (required before launch):**
 - Add SPF record: `v=spf1 include:your-smtp-provider.com ~all`
 - Add DKIM via your SMTP provider's dashboard
-- Add DMARC record: `v=DMARC1; p=quarantine; rua=mailto:dmarc@teamority.com`
+- Add DMARC record: `v=DMARC1; p=quarantine; rua=mailto:dmarc@Kanbanica.com`
 - Verify with mail-tester.com -- target score 10/10
 - DNS propagation takes 24-48 hours; do this before launch, not on launch day
 
@@ -179,7 +179,7 @@ Both processes run simultaneously in development:
 - Write a lifecycle log entry at start and end of each handler
 - Never throw from a handler without pg-boss being able to mark the job failed
 
-**Teamority job inventory:**
+**Kanbanica job inventory:**
 
 | Job Name | Trigger | Schedule | Purpose |
 |----------|---------|----------|---------|
@@ -209,7 +209,7 @@ Both processes run simultaneously in development:
 ```
 VAPID_PUBLIC_KEY=BFc...   (starts with B)
 VAPID_PRIVATE_KEY=...
-VAPID_SUBJECT=mailto:push@teamority.com
+VAPID_SUBJECT=mailto:push@Kanbanica.com
 ```
 
 **Key generation:**
@@ -390,8 +390,8 @@ scripts/
 
 ```bash
 # 1. Clone and install
-git clone https://github.com/org/teamority
-cd teamority
+git clone https://github.com/org/Kanbanica
+cd Kanbanica
 pnpm install
 
 # 2. Create .env.local
@@ -399,9 +399,9 @@ cp .env.example .env.local
 # Edit .env.local with your local values
 
 # 3. Start PostgreSQL (Docker)
-docker run --name teamority-db \
+docker run --name Kanbanica-db \
   -e POSTGRES_PASSWORD=dev \
-  -e POSTGRES_DB=teamority \
+  -e POSTGRES_DB=Kanbanica \
   -p 5432:5432 -d postgres:16
 
 # 4. Apply Prisma schema

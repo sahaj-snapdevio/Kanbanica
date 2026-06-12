@@ -1,8 +1,8 @@
-# Landing Page
+﻿# Landing Page
 
 ## Goal
 
-A public marketing site that converts visitors into sign-ups. It communicates Teamority's value proposition, shows pricing, and drives users to the magic-link sign-up flow. It must be fast (LCP < 2.5s), SEO-indexed, and analytics-instrumented from day 1.
+A public marketing site that converts visitors into sign-ups. It communicates Kanbanica's value proposition, shows pricing, and drives users to the magic-link sign-up flow. It must be fast (LCP < 2.5s), SEO-indexed, and analytics-instrumented from day 1.
 
 ---
 
@@ -74,21 +74,21 @@ Every page must export `metadata` from Next.js:
 ```typescript
 // src/app/(marketing)/page.tsx
 export const metadata: Metadata = {
-  title: 'Teamority -- Project Management for Modern Teams',
+  title: 'Kanbanica -- Project Management for Modern Teams',
   description: 'Organize work across Workspaces, Spaces, and Lists...',
   openGraph: {
-    title: 'Teamority',
+    title: 'Kanbanica',
     description: '...',
     images: [{ url: '/og-image.png', width: 1200, height: 630 }],
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Teamority',
+    title: 'Kanbanica',
     images: ['/og-image.png'],
   },
   alternates: {
-    canonical: 'https://teamority.com',
+    canonical: 'https://Kanbanica.com',
   },
 }
 ```

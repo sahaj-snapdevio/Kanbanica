@@ -1,17 +1,17 @@
-# Space
+﻿# Space
 
 ## Overview
 
-A Space is the second level in the Teamority hierarchy, sitting directly inside a Workspace. Spaces represent teams, departments, or major areas of work. Everything inside a Space — Lists, Tasks — inherits its permission model.
+A Space is the second level in the Kanbanica hierarchy, sitting directly inside a Workspace. Spaces represent teams, departments, or major areas of work. Everything inside a Space — Lists, Tasks — inherits its permission model.
 
 **Real-world analogy:** A Space = a team or department. e.g. `Engineering`, `Marketing`, `Design`, `HR`
 
 **Hierarchy position:**
 ```
 Workspace
-  └── Space      ← you are here
-        └── List
-              └── Task
+  L-- Space      <- you are here
+        L-- List
+              L-- Task
 ```
 
 ---
@@ -54,9 +54,9 @@ Workspace
   - Name
   - Color
   - Icon / Emoji
-  - Visibility (Public ↔ Private)
-- Changing visibility from Private → Public makes the Space visible to all workspace Members with default **View** access
-- Changing from Public → Private removes access for members not explicitly listed
+  - Visibility (Public <-> Private)
+- Changing visibility from Private -> Public makes the Space visible to all workspace Members with default **View** access
+- Changing from Public -> Private removes access for members not explicitly listed
 
 ---
 
@@ -153,25 +153,25 @@ Settings are per-user, per-Space. Does not affect other members.
 
 ```
 Space
-├── id                  (uuid, primary key)
-├── workspace_id        (foreign key → Workspace)
-├── name                (string, required)
-├── color               (string — hex color code)
-├── icon                (string — emoji or icon identifier, nullable)
-├── is_private          (boolean, default: false)
-├── is_archived         (boolean, default: false)
-├── archived_at         (timestamp, nullable)
-├── created_by          (user_id, foreign key)
-├── created_at          (timestamp)
-└── updated_at          (timestamp)
++-- id                  (uuid, primary key)
++-- workspace_id        (foreign key -> Workspace)
++-- name                (string, required)
++-- color               (string — hex color code)
++-- icon                (string — emoji or icon identifier, nullable)
++-- is_private          (boolean, default: false)
++-- is_archived         (boolean, default: false)
++-- archived_at         (timestamp, nullable)
++-- created_by          (user_id, foreign key)
++-- created_at          (timestamp)
+L-- updated_at          (timestamp)
 
 SpaceMember
-├── id                  (uuid, primary key)
-├── space_id            (foreign key → Space)
-├── user_id             (foreign key → User)
-├── permission          (enum: full_access | edit | view)
-├── added_by            (user_id, foreign key)
-└── created_at          (timestamp)
++-- id                  (uuid, primary key)
++-- space_id            (foreign key -> Space)
++-- user_id             (foreign key -> User)
++-- permission          (enum: full_access | edit | view)
++-- added_by            (user_id, foreign key)
+L-- created_at          (timestamp)
 ```
 
 ---

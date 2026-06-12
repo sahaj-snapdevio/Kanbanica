@@ -1,8 +1,8 @@
-# Task
+﻿# Task
 
 ## Overview
 
-A Task is the core unit of work in Teamority. Everything actionable lives inside a Task. A Task always belongs to a List, inherits the Space's permission model, and can have Subtasks nested inside it.
+A Task is the core unit of work in Kanbanica. Everything actionable lives inside a Task. A Task always belongs to a List, inherits the Space's permission model, and can have Subtasks nested inside it.
 
 Every task has a **human-readable ID** scoped to the workspace (e.g. `#1`, `#42`, `#103`). This ID is permanent, never reused, and is the primary way users reference tasks in conversation, comments, and external tools.
 
@@ -11,10 +11,10 @@ Every task has a **human-readable ID** scoped to the workspace (e.g. `#1`, `#42`
 **Hierarchy position:**
 ```
 Workspace
-  └── Space
-        └── List
-                    └── Task       ← you are here
-                          └── Subtask
+  L-- Space
+        L-- List
+                    L-- Task       <- you are here
+                          L-- Subtask
 ```
 
 ---
@@ -73,7 +73,7 @@ Workspace
 ### 1. Create Task
 
 - **Who can create:** Members with **Edit** or **Full Access** on the Space, Admin, Owner
-- **Quick create:** Click `+ Add Task` inside a List → type title → press Enter → task is created instantly
+- **Quick create:** Click `+ Add Task` inside a List -> type title -> press Enter -> task is created instantly
 - **Full create:** Open task detail panel to fill all fields before saving
 - On creation:
   - Status defaults to the first `open` status in the List (e.g. "Todo")
@@ -105,9 +105,9 @@ Clicking a task opens a side panel (or full-page modal) showing all fields.
 
 ### 4. Change Status
 
-- Click the status pill on the task → select from the List's statuses
+- Click the status pill on the task -> select from the List's statuses
 - Status change triggers a notification to Assignees and Watchers
-- When status type changes to `closed` → task is marked as complete
+- When status type changes to `closed` -> task is marked as complete
 - Completing a task does not archive or hide it — it stays in the List
 
 ---
@@ -151,7 +151,7 @@ Clicking a task opens a side panel (or full-page modal) showing all fields.
 
 - Workspace-scoped tags (shared across all Spaces in the Workspace)
 - A task can have multiple tags
-- Tags can be created inline when editing a task (type a new tag name → create)
+- Tags can be created inline when editing a task (type a new tag name -> create)
 - Tags are used for filtering across Lists
 
 ---
@@ -212,9 +212,9 @@ Every change to a task is recorded and displayed chronologically at the bottom o
 
 **Tracked events:**
 - Task created
-- Title changed (old → new)
-- Status changed (old → new)
-- Priority changed (old → new)
+- Title changed (old -> new)
+- Status changed (old -> new)
+- Priority changed (old -> new)
 - Assignee added / removed
 - Due date set / changed / removed
 - Description updated
@@ -288,14 +288,14 @@ Each entry shows: **who** did it, **what** changed, and **when** (timestamp).
 Bulk actions allow users to apply changes to multiple tasks simultaneously from List View or My Tasks.
 
 **Triggering bulk mode:**
-- Hover over any task row → a checkbox appears on the left
-- Check the checkbox → bulk mode activates, all row checkboxes become visible
-- `Shift+Click` another checkbox → selects all tasks in range
-- Header checkbox → selects / deselects all visible tasks (filtered set only)
+- Hover over any task row -> a checkbox appears on the left
+- Check the checkbox -> bulk mode activates, all row checkboxes become visible
+- `Shift+Click` another checkbox -> selects all tasks in range
+- Header checkbox -> selects / deselects all visible tasks (filtered set only)
 
 **Bulk Action Bar** (fixed at bottom of screen while in bulk mode):
 ```
-[✓ 5 selected]  [Assign]  [Status]  [Priority]  [Move]  [Archive]  [Delete]  [✕ Clear]
+[[x] 5 selected]  [Assign]  [Status]  [Priority]  [Move]  [Archive]  [Delete]  [[x] Clear]
 ```
 
 **Available actions and their behavior:**
@@ -331,94 +331,94 @@ Response includes `{ succeeded: 3, skipped: 1, skipped_ids: ["uuid"] }` — task
 
 ```
 Task
-├── id                  (uuid, primary key)
-├── seq_number          (integer — human-readable task number, e.g. 42 → shown as #42)
-├── list_id             (foreign key → List)
-├── parent_task_id      (foreign key → Task, nullable — null means top-level task)
-├── title               (string, required)
-├── description         (jsonb — Tiptap rich text JSON, nullable)
-├── status_id           (foreign key → ListStatus)
-├── priority            (enum: none | low | medium | high | urgent, default: none)
-├── reporter_id         (foreign key → User)
-├── due_date_start      (date, nullable)
-├── due_date_end        (date, nullable)
-├── time_estimate       (integer — minutes, nullable)
-├── order_index         (integer — position in List)
-├── is_archived         (boolean, default: false)
-├── archived_at         (timestamp, nullable)
-├── created_at          (timestamp)
-└── updated_at          (timestamp)
++-- id                  (uuid, primary key)
++-- seq_number          (integer — human-readable task number, e.g. 42 -> shown as #42)
++-- list_id             (foreign key -> List)
++-- parent_task_id      (foreign key -> Task, nullable — null means top-level task)
++-- title               (string, required)
++-- description         (jsonb — Tiptap rich text JSON, nullable)
++-- status_id           (foreign key -> ListStatus)
++-- priority            (enum: none | low | medium | high | urgent, default: none)
++-- reporter_id         (foreign key -> User)
++-- due_date_start      (date, nullable)
++-- due_date_end        (date, nullable)
++-- time_estimate       (integer — minutes, nullable)
++-- order_index         (integer — position in List)
++-- is_archived         (boolean, default: false)
++-- archived_at         (timestamp, nullable)
++-- created_at          (timestamp)
+L-- updated_at          (timestamp)
 
 TaskAssignee
-├── task_id             (foreign key → Task)
-└── user_id             (foreign key → User)
++-- task_id             (foreign key -> Task)
+L-- user_id             (foreign key -> User)
 
 TaskWatcher
-├── task_id             (foreign key → Task)
-└── user_id             (foreign key → User)
++-- task_id             (foreign key -> Task)
+L-- user_id             (foreign key -> User)
 
 TaskTag
-├── task_id             (foreign key → Task)
-└── tag_id              (foreign key → Tag)
++-- task_id             (foreign key -> Task)
+L-- tag_id              (foreign key -> Tag)
 
 Tag
-├── id                  (uuid, primary key)
-├── workspace_id        (foreign key → Workspace)
-├── name                (string)
-└── color               (string — hex color code)
++-- id                  (uuid, primary key)
++-- workspace_id        (foreign key -> Workspace)
++-- name                (string)
+L-- color               (string — hex color code)
 
 TaskDependency
-├── id                  (uuid, primary key)
-├── task_id             (foreign key → Task — the task that is blocked)
-└── depends_on_task_id  (foreign key → Task — the task that must be done first)
++-- id                  (uuid, primary key)
++-- task_id             (foreign key -> Task — the task that is blocked)
+L-- depends_on_task_id  (foreign key -> Task — the task that must be done first)
 
 Checklist
-├── id                  (uuid, primary key)
-├── task_id             (foreign key → Task)
-├── name                (string)
-└── order_index         (integer)
++-- id                  (uuid, primary key)
++-- task_id             (foreign key -> Task)
++-- name                (string)
+L-- order_index         (integer)
 
 ChecklistItem
-├── id                  (uuid, primary key)
-├── checklist_id        (foreign key → Checklist)
-├── title               (string)
-├── is_checked          (boolean, default: false)
-├── assignee_id         (foreign key → User, nullable)
-├── due_date            (date, nullable)
-└── order_index         (integer)
++-- id                  (uuid, primary key)
++-- checklist_id        (foreign key -> Checklist)
++-- title               (string)
++-- is_checked          (boolean, default: false)
++-- assignee_id         (foreign key -> User, nullable)
++-- due_date            (date, nullable)
+L-- order_index         (integer)
 
 TaskAttachment
-├── id                  (uuid, primary key)
-├── task_id             (foreign key → Task)
-├── uploaded_by         (foreign key → User)
-├── file_name           (string)
-├── file_url            (string — S3 / R2 URL)
-├── file_size           (integer — bytes)
-├── mime_type           (string)
-└── created_at          (timestamp)
++-- id                  (uuid, primary key)
++-- task_id             (foreign key -> Task)
++-- uploaded_by         (foreign key -> User)
++-- file_name           (string)
++-- file_url            (string — S3 / R2 URL)
++-- file_size           (integer — bytes)
++-- mime_type           (string)
+L-- created_at          (timestamp)
 
 TaskTimeLog
-├── id                  (uuid, primary key)
-├── task_id             (foreign key → Task)
-├── user_id             (foreign key → User)
-├── duration            (integer — minutes)
-├── logged_at           (date)
-└── created_at          (timestamp)
++-- id                  (uuid, primary key)
++-- task_id             (foreign key -> Task)
++-- user_id             (foreign key -> User)
++-- duration            (integer — minutes)
++-- logged_at           (date)
+L-- created_at          (timestamp)
 
 ActivityLog
-├── id                  (uuid, primary key)
-├── task_id             (foreign key → Task)
-├── user_id             (foreign key → User)
-├── event_type          (string — e.g. status_changed, assignee_added, comment_added)
-├── meta                (json — { from, to, value } depending on event type)
-└── created_at          (timestamp)
++-- id                  (uuid, primary key)
++-- task_id             (foreign key -> Task)
++-- user_id             (foreign key -> User)
++-- event_type          (string — e.g. status_changed, assignee_added, comment_added)
++-- meta                (json — { from, to, value } depending on event type)
+L-- created_at          (timestamp)
 
 TaskDescriptionSnapshot
-├── id                  (uuid, primary key)
-├── task_id             (foreign key → Task, unique — one snapshot per task at a time)
-├── content             (jsonb — the Tiptap JSON content of the description BEFORE the most recent edit)
-├── saved_by            (foreign key → User — who triggered the edit that caused this snapshot)
-└── saved_at            (timestamp — when the snapshot was taken, i.e. when the edit started)
++-- id                  (uuid, primary key)
++-- task_id             (foreign key -> Task, unique — one snapshot per task at a time)
++-- content             (jsonb — the Tiptap JSON content of the description BEFORE the most recent edit)
++-- saved_by            (foreign key -> User — who triggered the edit that caused this snapshot)
+L-- saved_at            (timestamp — when the snapshot was taken, i.e. when the edit started)
 ```
 
 > **One snapshot per task (not full history):** `TaskDescriptionSnapshot` uses a unique constraint on `task_id` — each save overwrites the previous snapshot. This gives one level of recovery ("undo the last edit") without the storage cost of full version history. Full history with diff and restore is post-MVP.

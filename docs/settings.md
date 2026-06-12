@@ -1,6 +1,6 @@
-# Settings
+﻿# Settings
 
-This document is the single source of truth for all settings pages in Teamority — personal, workspace, and space. Implementation phases are noted where relevant.
+This document is the single source of truth for all settings pages in Kanbanica — personal, workspace, and space. Implementation phases are noted where relevant.
 
 ---
 
@@ -11,12 +11,12 @@ Settings are accessed from two entry points in the sidebar bottom bar (see [desi
 | Entry point | Who sees it | Leads to |
 |---|---|---|
 | Gear icon (`Settings`) | Owner and Admin only | `/[workspaceId]/settings/general` |
-| User avatar / name row | All authenticated users | Profile popover → links below |
+| User avatar / name row | All authenticated users | Profile popover -> links below |
 
 **Profile popover links:**
-- Profile & Account → `/settings/account`
-- Sessions → `/settings/sessions`
-- Notifications → `/settings/notifications`
+- Profile & Account -> `/settings/account`
+- Sessions -> `/settings/sessions`
+- Notifications -> `/settings/notifications`
 - Sign out
 
 ---
@@ -34,7 +34,7 @@ Personal settings are scoped to the logged-in user and are workspace-independent
 | Field | Editable | Notes |
 |---|---|---|
 | Full name | Yes | Plain text, max 100 chars |
-| Avatar | Yes | JPEG / PNG / WebP, max 2 MB, min 100×100 px. Stored in R2. |
+| Avatar | Yes | JPEG / PNG / WebP, max 2 MB, min 100Ã—100 px. Stored in R2. |
 | Email address | No (read-only in MVP) | Shown for reference only |
 
 **Behaviour:**
@@ -71,29 +71,29 @@ Personal settings are scoped to the logged-in user and are workspace-independent
 
 ```
 Notification Settings
-├── Email Notifications
-│     ├── Delivery mode: [Instant] [Daily Digest] [Off]
-│     └── (if Digest) Digest time: [08:00 AM ▾]  Timezone: [Auto-detect ▾]
-├── Browser Push
-│     └── Enable push notifications: [toggle]
-│         (browser permission prompt fires on first enable)
-├── Notification Events
-│     Table: one row per trigger type
-│     Columns: Trigger | In-App | Email | Push
-│     ──────────────────────────────────────────
-│     Task assigned to me           ✓  ✓  ✓
-│     @mention                      ✓  ✓  ✓
-│     New comment on my task        ✓  ✓  ✓
-│     Reply to my comment           ✓  ✓  ✓
-│     Task status changed           ✓  ✓  –
-│     Due date reminder (24h)       ✓  ✓  ✓
-│     Task completed                ✓  –  –
-│     Sprint started                ✓  –  –
-│     Sprint ending soon (24h)      ✓  ✓  –
-│     Member added to workspace     ✓  –  –
-│     Invite accepted               ✓  ✓  –
-│
-└── Muted Spaces & Tasks
++-- Email Notifications
+|     +-- Delivery mode: [Instant] [Daily Digest] [Off]
+|     L-- (if Digest) Digest time: [08:00 AM v]  Timezone: [Auto-detect v]
++-- Browser Push
+|     L-- Enable push notifications: [toggle]
+|         (browser permission prompt fires on first enable)
++-- Notification Events
+|     Table: one row per trigger type
+|     Columns: Trigger | In-App | Email | Push
+|     ------------------------------------------
+|     Task assigned to me           [x]  [x]  [x]
+|     @mention                      [x]  [x]  [x]
+|     New comment on my task        [x]  [x]  [x]
+|     Reply to my comment           [x]  [x]  [x]
+|     Task status changed           [x]  [x]  --
+|     Due date reminder (24h)       [x]  [x]  [x]
+|     Task completed                [x]  --  --
+|     Sprint started                [x]  --  --
+|     Sprint ending soon (24h)      [x]  [x]  --
+|     Member added to workspace     [x]  --  --
+|     Invite accepted               [x]  [x]  --
+|
+L-- Muted Spaces & Tasks
       List of muted items (Space name or Task name + Space)
       Each row: [Unmute] action
       Empty state: "No muted spaces or tasks."
@@ -103,9 +103,9 @@ Notification Settings
 
 **Per-workspace overrides:** Users can override global defaults for a specific workspace from within that workspace's notification settings link (accessible via Space `...` menu). These overrides are stored with a `workspace_id` on `UserNotificationPreference`.
 
-**Per-Space mute:** Accessible from the Space sidebar `...` → "Mute Space". Adds a `MutedEntity` row. Appears in the Muted list above.
+**Per-Space mute:** Accessible from the Space sidebar `...` -> "Mute Space". Adds a `MutedEntity` row. Appears in the Muted list above.
 
-**Per-task mute:** Accessible from Task detail `...` → "Mute Task". Removes the user from `TaskWatcher` and adds a `MutedEntity` row.
+**Per-task mute:** Accessible from Task detail `...` -> "Mute Task". Removes the user from `TaskWatcher` and adds a `MutedEntity` row.
 
 **Digest rules:**
 - Digest email is only sent if there are undelivered notifications since the last digest.
@@ -153,14 +153,14 @@ Workspace settings are scoped to a single workspace. Route prefix: `/[workspaceI
 
 ```
 Members tab
-├── Search bar (filter by name or email)
-├── Role filter dropdown: All | Owner | Admin | Member | Guest
-├── Members table
-│     Columns: Avatar + Name | Email | Role | Joined | Actions
-│     Role cell: dropdown (Owner can change any; Admin can change Member/Guest only)
-│     Actions: [Remove] — disabled on self and on Owner (for non-owners)
-│
-└── Pending Invites section (collapsible)
++-- Search bar (filter by name or email)
++-- Role filter dropdown: All | Owner | Admin | Member | Guest
++-- Members table
+|     Columns: Avatar + Name | Email | Role | Joined | Actions
+|     Role cell: dropdown (Owner can change any; Admin can change Member/Guest only)
+|     Actions: [Remove] — disabled on self and on Owner (for non-owners)
+|
+L-- Pending Invites section (collapsible)
       Columns: Email | Invited by | Sent | Expires | [Cancel invite]
 ```
 
@@ -169,7 +169,7 @@ Members tab
 - Change role — inline dropdown in the table.
 - Remove member — `<AlertDialog>` confirmation. Removing a member also removes them from all Spaces within this workspace.
 - Cancel pending invite — immediate, no confirmation needed.
-- Transfer ownership (Owner only) — modal: select member → type workspace name to confirm → transfers Owner role, demotes current owner to Admin.
+- Transfer ownership (Owner only) — modal: select member -> type workspace name to confirm -> transfers Owner role, demotes current owner to Admin.
 
 ---
 
@@ -189,7 +189,7 @@ Members tab
 
 ## 3. Space Settings
 
-Space settings are accessed via the Space sidebar `...` → "Settings", or by navigating directly. Route prefix: `/[workspaceId]/[spaceId]/settings/`.
+Space settings are accessed via the Space sidebar `...` -> "Settings", or by navigating directly. Route prefix: `/[workspaceId]/[spaceId]/settings/`.
 
 ### 3.1 General — `/[workspaceId]/[spaceId]/settings/general`
 
@@ -202,11 +202,11 @@ Space settings are accessed via the Space sidebar `...` → "Settings", or by na
 | Name | Required, max 80 chars |
 | Color | Pick from 12-color palette (same palette as List colors) |
 | Icon / emoji | Optional emoji picker |
-| Visibility | Toggle: Public ↔ Private |
+| Visibility | Toggle: Public <-> Private |
 
 **Visibility change rules:**
-- Public → Private: only explicitly added Space members retain access.
-- Private → Public: all workspace members gain View access by default (existing explicit members keep their existing level).
+- Public -> Private: only explicitly added Space members retain access.
+- Private -> Public: all workspace members gain View access by default (existing explicit members keep their existing level).
 
 **Archive Space:** Button at the bottom of General settings (separate from Danger Zone). Archived Spaces are hidden from the sidebar but accessible via a "Show archived" toggle. Archiving is reversible.
 
@@ -223,13 +223,13 @@ Space settings are accessed via the Space sidebar `...` → "Settings", or by na
 
 ```
 Members tab
-├── Search existing workspace members by name or email
-├── Members table
-│     Columns: Avatar + Name | Email | Permission | Actions
-│     Permission cell: dropdown (Full Access / Edit / View)
-│     Actions: [Remove from Space]
-│
-└── Add Members button → inline search + permission picker
++-- Search existing workspace members by name or email
++-- Members table
+|     Columns: Avatar + Name | Email | Permission | Actions
+|     Permission cell: dropdown (Full Access / Edit / View)
+|     Actions: [Remove from Space]
+|
+L-- Add Members button -> inline search + permission picker
 ```
 
 **Notes:**
@@ -259,15 +259,15 @@ Members tab
 All settings pages share a two-column layout:
 
 ```
-┌────────────────────────────┬──────────────────────────────────────┐
-│  Left nav (200px)          │  Content area                        │
-│  ─────────────────         │  ─────────────────────────────────   │
-│  > General                 │  [Section heading]                   │
-│    Members                 │                                      │
-│    Security                │  [Form fields / tables]              │
-│                            │                                      │
-│                            │  [Danger Zone — if applicable]       │
-└────────────────────────────┴──────────────────────────────────────┘
++----------------------------+--------------------------------------+
+|  Left nav (200px)          |  Content area                        |
+|  -----------------         |  ---------------------------------   |
+|  > General                 |  [Section heading]                   |
+|    Members                 |                                      |
+|    Security                |  [Form fields / tables]              |
+|                            |                                      |
+|                            |  [Danger Zone — if applicable]       |
+L----------------------------+--------------------------------------+
 ```
 
 - On mobile (< 768px): left nav collapses to a top tab bar.

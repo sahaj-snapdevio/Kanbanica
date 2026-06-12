@@ -1,12 +1,7 @@
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
-import * as schema from "@/db/schema";
-import { env } from "@/lib/env";
+import { PrismaClient } from "@prisma/client";
 
-export const dbClient = postgres(env.DATABASE_URL, {
-  max: 20,
-  idle_timeout: 30,
-  connect_timeout: 10,
-});
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
-export const db = drizzle(dbClient, { schema });
+export const db = globalForPrisma.prisma ?? new PrismaClient();
+
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db;

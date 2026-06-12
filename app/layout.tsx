@@ -8,8 +8,8 @@ import { cn } from "@/lib/utils";
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "SaaS Starter",
-  description: "Your SaaS application",
+  title: "Kanbanica - Project Management for Modern Teams",
+  description: "Organise work across Workspaces, Spaces, Lists, and Tasks. Sprints, board views, comments, and smart notifications built in.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
