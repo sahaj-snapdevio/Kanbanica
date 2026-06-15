@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   CaretUpDownIcon,
   CheckIcon,
+  DotsThreeIcon,
   GearIcon,
   ListIcon,
   LockSimpleIcon,
@@ -15,6 +16,7 @@ import {
 } from "@phosphor-icons/react";
 import { authClient } from "@/lib/auth-client";
 import type { WorkspaceRole } from "@prisma/client";
+import { CreateSpaceModal } from "@/components/space/create-space-modal";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -60,6 +62,7 @@ export function WorkspaceShell({
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
+  const [createSpaceOpen, setCreateSpaceOpen] = React.useState(false);
 
   const initials = user.name
     ? user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
@@ -140,21 +143,40 @@ export function WorkspaceShell({
         {/* Spaces nav */}
         <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-4">
           <div>
-            <p className="px-2 pb-1 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Spaces
-            </p>
+            <div className="flex items-center px-2 pb-1">
+              <p className="flex-1 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Spaces
+              </p>
+              {isAdmin && (
+                <button
+                  onClick={() => setCreateSpaceOpen(true)}
+                  className="size-5 flex items-center justify-center rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                  title="Create Space"
+                >
+                  <PlusIcon className="size-3.5" />
+                </button>
+              )}
+            </div>
             <div className="space-y-0.5">
               {spaces.map((space) => (
                 <div key={space.id}>
-                  <div className="flex items-center gap-2 px-2 py-1.5 text-sm font-medium">
+                  <div className="group flex items-center gap-2 px-2 py-1.5 text-sm font-medium">
                     <span
                       className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
                       style={{ backgroundColor: space.color ?? "#9CA3AF" }}
                     />
-                    <span className="truncate">{space.name}</span>
+                    <span className="truncate flex-1">{space.name}</span>
                     {space.isPrivate && (
                       <LockSimpleIcon className="size-3 shrink-0 text-muted-foreground" />
                     )}
+                    <Link
+                      href={`/${workspace.id}/${space.id}/settings/general`}
+                      onClick={() => setSidebarOpen(false)}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Space settings"
+                    >
+                      <DotsThreeIcon className="size-4 text-muted-foreground hover:text-foreground" />
+                    </Link>
                   </div>
                   <div className="space-y-0.5">
                     {space.lists.map((list) => {
@@ -179,6 +201,15 @@ export function WorkspaceShell({
                   </div>
                 </div>
               ))}
+              {spaces.length === 0 && isAdmin && (
+                <button
+                  onClick={() => setCreateSpaceOpen(true)}
+                  className="w-full flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                >
+                  <PlusIcon className="size-4" />
+                  Create your first Space
+                </button>
+              )}
             </div>
           </div>
         </nav>
@@ -210,7 +241,7 @@ export function WorkspaceShell({
                 <span className="truncate text-sm">{displayName}</span>
               </button>
             </PopoverTrigger>
-            <PopoverContent side="top" align="start" className="min-w-[200px] p-1">
+            <PopoverContent side="top" align="start" className="min-w-50 p-1">
               <div className="flex items-center gap-2.5 px-2 py-2">
                 <Avatar size="sm">
                   <AvatarFallback className="text-xs">{initials}</AvatarFallback>
@@ -247,6 +278,12 @@ export function WorkspaceShell({
           </Popover>
         </div>
       </aside>
+
+      <CreateSpaceModal
+        open={createSpaceOpen}
+        onOpenChange={setCreateSpaceOpen}
+        workspaceId={workspace.id}
+      />
 
       {/* Main */}
       <div className="flex flex-1 flex-col min-w-0">
