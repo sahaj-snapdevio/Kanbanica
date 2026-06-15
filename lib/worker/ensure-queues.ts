@@ -24,6 +24,16 @@ export const QUEUE_OPTIONS: Record<
     expireInSeconds: 600,
     policy: "exclusive",
   },
+
+  // workspace.delete: full cascade deletion of a workspace (R2 files first,
+  // then DB). Idempotent — guarded by workspace.status === DELETING. Singleton
+  // key (workspaceId) is set at enqueue time to prevent duplicate jobs.
+  [JOB_NAMES.WORKSPACE_DELETE]: {
+    retryLimit: 3,
+    retryDelay: 60,
+    expireInSeconds: 900,
+    policy: "exclusive",
+  },
 };
 
 const JOB_QUEUES: JobName[] = Object.values(JOB_NAMES);

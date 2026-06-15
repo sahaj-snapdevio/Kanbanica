@@ -44,9 +44,12 @@ export async function startWorker(): Promise<void> {
   await initializeBoss();
 
   const { handleSendEmail } = await import("@/lib/worker/handlers/send-email");
+  const { handleWorkspaceDelete } = await import("@/lib/worker/handlers/workspace-delete");
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await boss.work(JOB_NAMES.SEND_EMAIL, { includeMetadata: true }, handleSendEmail as any);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await boss.work(JOB_NAMES.WORKSPACE_DELETE, { includeMetadata: true }, handleWorkspaceDelete as any);
 
   // ── Recurring cron schedules ──────────────────────────────────────────────
   // Add cron jobs here as your app grows, e.g.:

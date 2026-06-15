@@ -144,10 +144,10 @@ function Navbar() {
         </nav>
         <div className="hidden sm:flex items-center gap-2">
           <Button variant="ghost" size="sm" asChild>
-            <Link href="/sign-in">Sign in</Link>
+            <Link href="/login">Sign in</Link>
           </Button>
           <Button size="sm" asChild className="bg-indigo-600 hover:bg-indigo-700 text-white">
-            <Link href="/sign-in">
+            <Link href="/login">
               Get Started Free <ArrowRight className="ml-1 size-3.5" />
             </Link>
           </Button>
@@ -163,8 +163,8 @@ function Navbar() {
             <a href="#how-it-works" onClick={() => setMobileOpen(false)} className="hover:text-[#111827]">How it works</a>
             <a href="#faq" onClick={() => setMobileOpen(false)} className="hover:text-[#111827]">FAQ</a>
             <div className="flex flex-col gap-2 pt-2 border-t border-[#e5e7eb]">
-              <Button variant="outline" size="sm" asChild><Link href="/sign-in">Sign in</Link></Button>
-              <Button size="sm" asChild className="bg-indigo-600 hover:bg-indigo-700 text-white"><Link href="/sign-in">Get Started Free</Link></Button>
+              <Button variant="outline" size="sm" asChild><Link href="/login">Sign in</Link></Button>
+              <Button size="sm" asChild className="bg-indigo-600 hover:bg-indigo-700 text-white"><Link href="/login">Get Started Free</Link></Button>
             </div>
           </nav>
         </div>
@@ -211,7 +211,7 @@ function HeroSection() {
           </p>
           <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
             <Button size="lg" asChild className="h-11 px-6 text-base bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200">
-              <Link href="/sign-in">Get Started Free <ArrowRight className="ml-1.5 size-4" /></Link>
+              <Link href="/login">Get Started Free <ArrowRight className="ml-1.5 size-4" /></Link>
             </Button>
             <Button size="lg" variant="outline" asChild className="h-11 px-6 text-base border-[#e5e7eb] hover:bg-[#f9fafb]">
               <a href="#features">See what is included</a>
@@ -660,7 +660,7 @@ function CtaBanner() {
               asChild
               className="h-11 px-8 text-base font-semibold bg-white text-indigo-700 hover:bg-indigo-50 shadow-lg"
             >
-              <Link href="/sign-in">
+              <Link href="/login">
                 Start for free <ArrowRight className="ml-1.5 size-4" />
               </Link>
             </Button>
