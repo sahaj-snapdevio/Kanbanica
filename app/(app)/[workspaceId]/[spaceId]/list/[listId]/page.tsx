@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { list, listStatus, task, taskTag, tag, space, spaceMember } from "@/db/schema";
+import { list, listStatus, task, taskTag, tag, space, spaceMember, taskAssignee, user } from "@/db/schema";
 import { canAccessSpace, getWorkspaceMembership } from "@/lib/permissions";
 import { ListContainer } from "./_components/list-container";
 
@@ -67,27 +67,40 @@ export default async function ListPage({ params }: ListPageProps) {
         statusId: task.statusId,
         seqNumber: task.seqNumber,
         orderIndex: task.orderIndex,
+        dueDateStart: task.dueDateStart,
+        dueDateEnd: task.dueDateEnd,
       })
       .from(task)
       .where(and(eq(task.listId, listId), eq(task.isArchived, false)))
       .orderBy(asc(task.orderIndex)),
   ]);
 
-  // Fetch tags for all tasks
+  // Fetch tags + assignees for all tasks in parallel
   const taskIds = tasks.map((t) => t.id);
-  const tagRows =
+
+  const [tagRows, assigneeRows] = await Promise.all([
     taskIds.length > 0
-      ? await db
-          .select({
-            taskId: taskTag.taskId,
-            id: tag.id,
-            name: tag.name,
-            color: tag.color,
-          })
+      ? db
+          .select({ taskId: taskTag.taskId, id: tag.id, name: tag.name, color: tag.color })
           .from(taskTag)
           .innerJoin(tag, eq(taskTag.tagId, tag.id))
           .where(inArray(taskTag.taskId, taskIds))
-      : [];
+      : Promise.resolve([]),
+
+    taskIds.length > 0
+      ? db
+          .select({
+            taskId: taskAssignee.taskId,
+            userId: taskAssignee.userId,
+            name: user.name,
+            email: user.email,
+            image: user.image,
+          })
+          .from(taskAssignee)
+          .innerJoin(user, eq(user.id, taskAssignee.userId))
+          .where(inArray(taskAssignee.taskId, taskIds))
+      : Promise.resolve([]),
+  ]);
 
   const tagsByTaskId = new Map<string, { id: string; name: string; color: string }[]>();
   for (const row of tagRows) {
@@ -96,9 +109,17 @@ export default async function ListPage({ params }: ListPageProps) {
     tagsByTaskId.set(row.taskId, existing);
   }
 
+  const assigneesByTaskId = new Map<string, { userId: string; name: string; image: string | null }[]>();
+  for (const row of assigneeRows) {
+    const existing = assigneesByTaskId.get(row.taskId) ?? [];
+    existing.push({ userId: row.userId, name: row.name || row.email, image: row.image });
+    assigneesByTaskId.set(row.taskId, existing);
+  }
+
   const tasksWithTags = tasks.map((t) => ({
     ...t,
     tags: tagsByTaskId.get(t.id) ?? [],
+    assignees: assigneesByTaskId.get(t.id) ?? [],
   }));
 
   return (
