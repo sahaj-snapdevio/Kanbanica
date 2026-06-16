@@ -307,19 +307,17 @@ ListStatus
 
 ## Implementation Notes
 
-### Required Prisma Indexes
+### Required Drizzle Indexes
 
-```prisma
-model List {
-  // ...
-  @@index([spaceId])
-  @@index([spaceId, isArchived])   // sidebar query filters by both
-}
+These indexes are already defined in `db/schema/list.ts` via the table's third argument:
 
-model ListStatus {
-  // ...
-  @@index([listId])                // status lookup is always by listId
-}
+```ts
+// list table indexes
+index("list_space_id_idx").on(t.spaceId)
+index("list_space_archived_idx").on(t.spaceId, t.isArchived)  // sidebar query filters by both
+
+// listStatus table indexes
+index("list_status_list_id_idx").on(t.listId)  // status lookup is always by listId
 ```
 
 ### `order_index` -- Gap Strategy and Rebalancing
@@ -332,24 +330,33 @@ Lists are ordered in the sidebar per Space. `order_index` uses an integer gap st
 - **Rebalance trigger:** when a new midpoint equals an existing `order_index` (gap = 0), rewrite all `order_index` values for that Space in a single transaction with gap 1000
 
 ```typescript
-// src/lib/order-index.ts
+// lib/order-index.ts
+import { db } from '@/lib/db'
+import { list } from '@/db/schema'
+import { eq, and, desc, max } from 'drizzle-orm'
+
 export async function getNextOrderIndex(spaceId: string): Promise<number> {
-  const last = await db.list.findFirst({
-    where: { spaceId, isArchived: false },
-    orderBy: { orderIndex: 'desc' },
-    select: { orderIndex: true }
-  })
-  return (last?.orderIndex ?? 0) + 1000
+  const [row] = await db
+    .select({ maxIndex: max(list.orderIndex) })
+    .from(list)
+    .where(and(eq(list.spaceId, spaceId), eq(list.isArchived, false)))
+  return (row?.maxIndex ?? 0) + 1000
 }
 
-export async function rebalanceListOrder(tx: PrismaTransaction, spaceId: string) {
-  const lists = await tx.list.findMany({
-    where: { spaceId },
-    orderBy: { orderIndex: 'asc' },
-    select: { id: true }
-  })
+export async function rebalanceListOrder(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  spaceId: string
+) {
+  const lists = await tx
+    .select({ id: list.id })
+    .from(list)
+    .where(eq(list.spaceId, spaceId))
+    .orderBy(list.orderIndex)
+
   await Promise.all(
-    lists.map((l, i) => tx.list.update({ where: { id: l.id }, data: { orderIndex: (i + 1) * 1000 } }))
+    lists.map((l, i) =>
+      tx.update(list).set({ orderIndex: (i + 1) * 1000 }).where(eq(list.id, l.id))
+    )
   )
 }
 ```
@@ -361,52 +368,62 @@ Same gap strategy applies to `ListStatus.orderIndex` within a List.
 Create the List and its default statuses atomically. If status creation fails, the List must not exist.
 
 ```typescript
-// src/server/list.ts
+// server/list.ts
+import { db } from '@/lib/db'
+import { list, listStatus } from '@/db/schema'
 
 const DEFAULT_STATUSES = [
-  { name: 'Todo',        color: '#9CA3AF', type: 'open',   orderIndex: 1000 },
-  { name: 'In Progress', color: '#3B82F6', type: 'active', orderIndex: 2000 },
-  { name: 'Review',      color: '#8B5CF6', type: 'active', orderIndex: 3000 },
-  { name: 'Done',        color: '#22C55E', type: 'closed', orderIndex: 4000 },
+  { name: 'Todo',        color: '#9CA3AF', type: 'OPEN'   as const, orderIndex: 1000 },
+  { name: 'In Progress', color: '#3B82F6', type: 'ACTIVE' as const, orderIndex: 2000 },
+  { name: 'Review',      color: '#8B5CF6', type: 'ACTIVE' as const, orderIndex: 3000 },
+  { name: 'Done',        color: '#22C55E', type: 'CLOSED' as const, orderIndex: 4000 },
 ]
 
 export async function createList(spaceId: string, data: CreateListInput, userId: string) {
   const orderIndex = await getNextOrderIndex(spaceId)
 
-  return db.$transaction(async (tx) => {
-    const list = await tx.list.create({
-      data: { spaceId, orderIndex, createdBy: userId, ...data }
-    })
+  return db.transaction(async (tx) => {
+    const listId = crypto.randomUUID()
+    await tx.insert(list).values({ id: listId, spaceId, orderIndex, createdBy: userId, ...data })
 
-    await tx.listStatus.createMany({
-      data: DEFAULT_STATUSES.map(s => ({ ...s, listId: list.id }))
-    })
+    await tx.insert(listStatus).values(
+      DEFAULT_STATUSES.map(s => ({ id: crypto.randomUUID(), listId, ...s }))
+    )
 
-    return list
+    return listId
   })
 }
 ```
 
 ### `deleteList` -- R2 Before DB Cascade
 
-CLAUDE.md rule: never delete the DB record before the R2 file. For list deletion, collect all attachment keys first, delete from R2 in batches, then let Prisma cascade handle the DB.
+CLAUDE.md rule: never delete the DB record before the R2 file. For list deletion, collect all attachment keys first, delete from R2 in batches, then delete the DB record (FK cascade removes everything else).
 
 ```typescript
+import { db } from '@/lib/db'
+import { list, task, taskAttachment } from '@/db/schema'
+import { eq, inArray } from 'drizzle-orm'
+import { deleteFromR2 } from '@/lib/storage'
+
 export async function deleteList(listId: string) {
   // 1. Collect all R2 attachment keys for this list
-  const attachments = await db.taskAttachment.findMany({
-    where: { task: { listId } },
-    select: { id: true, r2Key: true }
-  })
+  const tasks = await db.select({ id: task.id }).from(task).where(eq(task.listId, listId))
+  const taskIds = tasks.map(t => t.id)
+
+  const attachments = taskIds.length > 0
+    ? await db.select({ fileUrl: taskAttachment.fileUrl })
+        .from(taskAttachment)
+        .where(inArray(taskAttachment.taskId, taskIds))
+    : []
 
   // 2. Delete from R2 in batches of 50
   for (let i = 0; i < attachments.length; i += 50) {
     const batch = attachments.slice(i, i + 50)
-    await Promise.all(batch.map(a => deleteFromR2(a.r2Key)))
+    await Promise.all(batch.map(a => deleteFromR2(a.fileUrl)))
   }
 
-  // 3. Now delete the DB record -- Prisma cascade removes everything else
-  await db.list.delete({ where: { id: listId } })
+  // 3. Now delete the DB record -- FK cascade removes everything else
+  await db.delete(list).where(eq(list.id, listId))
 }
 ```
 
@@ -417,59 +434,71 @@ If R2 deletion fails, abort and return 503 -- do not proceed to DB delete. Orpha
 Duplicate copies structure only by default. Tasks are optional (user opts in).
 
 ```typescript
+import { db } from '@/lib/db'
+import { list, listStatus, task } from '@/db/schema'
+import { eq, and } from 'drizzle-orm'
+
 export async function duplicateList(
   sourceListId: string,
   userId: string,
   includeTasks: boolean
 ) {
-  const source = await db.list.findUniqueOrThrow({
-    where: { id: sourceListId },
-    include: { statuses: true, tasks: includeTasks ? { where: { isArchived: false } } : false }
-  })
+  const [source] = await db.select().from(list).where(eq(list.id, sourceListId))
+  if (!source) throw new Error('NOT_FOUND')
+
+  const statuses = await db.select().from(listStatus).where(eq(listStatus.listId, sourceListId))
+  const sourceTasks = includeTasks
+    ? await db.select().from(task).where(and(eq(task.listId, sourceListId), eq(task.isArchived, false)))
+    : []
 
   const orderIndex = await getNextOrderIndex(source.spaceId)
 
-  return db.$transaction(async (tx) => {
+  return db.transaction(async (tx) => {
     // 1. Create new List
-    const newList = await tx.list.create({
-      data: {
-        spaceId: source.spaceId,
-        name: `Copy of ${source.name}`,
-        color: source.color,
-        description: source.description,
-        orderIndex,
-        createdBy: userId,
-      }
+    const newListId = crypto.randomUUID()
+    await tx.insert(list).values({
+      id: newListId,
+      spaceId: source.spaceId,
+      name: `Copy of ${source.name}`,
+      color: source.color,
+      description: source.description,
+      orderIndex,
+      createdBy: userId,
     })
 
     // 2. Copy statuses -- preserve orderIndex and type; generate new IDs
     const statusIdMap = new Map<string, string>()
-    for (const s of source.statuses) {
-      const newStatus = await tx.listStatus.create({
-        data: { listId: newList.id, name: s.name, color: s.color, type: s.type, orderIndex: s.orderIndex }
+    for (const s of statuses) {
+      const newStatusId = crypto.randomUUID()
+      await tx.insert(listStatus).values({
+        id: newStatusId,
+        listId: newListId,
+        name: s.name,
+        color: s.color,
+        type: s.type,
+        orderIndex: s.orderIndex,
       })
-      statusIdMap.set(s.id, newStatus.id)
+      statusIdMap.set(s.id, newStatusId)
     }
 
     // 3. Copy tasks (structure only -- no assignees, due dates, comments, attachments)
-    if (includeTasks && source.tasks) {
-      for (const task of source.tasks) {
-        const mappedStatusId = statusIdMap.get(task.statusId) ?? newList.statuses[0].id
-        await tx.task.create({
-          data: {
-            listId: newList.id,
-            statusId: mappedStatusId,
-            title: task.title,
-            priority: task.priority,
-            orderIndex: task.orderIndex,
-            createdBy: userId,
-            // assignees, dueDate, description NOT copied
-          }
-        })
-      }
+    for (const t of sourceTasks) {
+      const mappedStatusId = statusIdMap.get(t.statusId) ?? statuses[0]?.id
+      await tx.insert(task).values({
+        id: crypto.randomUUID(),
+        listId: newListId,
+        workspaceId: t.workspaceId,
+        seqNumber: t.seqNumber,  // NOTE: in real impl, increment workspace taskSeq
+        statusId: mappedStatusId!,
+        title: t.title,
+        priority: t.priority,
+        orderIndex: t.orderIndex,
+        reporterId: userId,
+        // assignees, dueDate, description NOT copied
+      })
     }
 
-    return newList
+    return newListId
   })
 }
 ```
@@ -481,22 +510,23 @@ export async function duplicateList(
 Moving a List to a different Space requires the user to have Full Access on BOTH the source and destination Space.
 
 ```typescript
+import { db } from '@/lib/db'
+import { list, space } from '@/db/schema'
+import { eq } from 'drizzle-orm'
+
 export async function moveList(listId: string, targetSpaceId: string, userId: string) {
   // Permission check on destination must happen before the update
-  const [list, targetSpace] = await Promise.all([
-    db.list.findUniqueOrThrow({ where: { id: listId } }),
-    db.space.findUniqueOrThrow({ where: { id: targetSpaceId } })
+  const [[sourceList], [targetSpace]] = await Promise.all([
+    db.select().from(list).where(eq(list.id, listId)),
+    db.select().from(space).where(eq(space.id, targetSpaceId)),
   ])
 
   // Verify user has Full Access on destination space (same workspace)
-  if (list.spaceId === targetSpaceId) return  // no-op
+  if (sourceList.spaceId === targetSpaceId) return  // no-op
 
   const orderIndex = await getNextOrderIndex(targetSpaceId)
 
-  await db.list.update({
-    where: { id: listId },
-    data: { spaceId: targetSpaceId, orderIndex }
-  })
+  await db.update(list).set({ spaceId: targetSpaceId, orderIndex }).where(eq(list.id, listId))
   // Statuses, tasks, and all nested data remain unchanged -- only spaceId moves
 }
 ```
@@ -508,28 +538,35 @@ After the move, the List inherits the destination Space's permission model -- me
 The "tasks must be reassigned before delete" check is vulnerable to a race condition if done as a pre-check. Do it atomically:
 
 ```typescript
+import { db } from '@/lib/db'
+import { listStatus, task } from '@/db/schema'
+import { eq, and, ne, count } from 'drizzle-orm'
+
 export async function deleteListStatus(listId: string, statusId: string) {
-  return db.$transaction(async (tx) => {
+  return db.transaction(async (tx) => {
     // Check inside transaction to prevent TOCTOU race
-    const taskCount = await tx.task.count({
-      where: { statusId, isArchived: false }
-    })
-    if (taskCount > 0) {
-      throw new Error(`TASKS_EXIST:${taskCount}`)
-    }
+    const [{ taskCount }] = await tx
+      .select({ taskCount: count() })
+      .from(task)
+      .where(and(eq(task.statusId, statusId), eq(task.isArchived, false)))
+
+    if (taskCount > 0) throw new Error(`TASKS_EXIST:${taskCount}`)
 
     // Ensure at least one closed status will remain
-    const status = await tx.listStatus.findUniqueOrThrow({ where: { id: statusId } })
-    if (status.type === 'closed') {
-      const remainingClosed = await tx.listStatus.count({
-        where: { listId, type: 'closed', id: { not: statusId } }
-      })
-      if (remainingClosed === 0) {
-        throw new Error('LAST_CLOSED_STATUS')
-      }
+    const [status] = await tx.select().from(listStatus).where(eq(listStatus.id, statusId))
+    if (status.type === 'CLOSED') {
+      const [{ remaining }] = await tx
+        .select({ remaining: count() })
+        .from(listStatus)
+        .where(and(
+          eq(listStatus.listId, listId),
+          eq(listStatus.type, 'CLOSED'),
+          ne(listStatus.id, statusId)
+        ))
+      if (remaining === 0) throw new Error('LAST_CLOSED_STATUS')
     }
 
-    await tx.listStatus.delete({ where: { id: statusId } })
+    await tx.delete(listStatus).where(eq(listStatus.id, statusId))
   })
 }
 ```
@@ -545,12 +582,20 @@ Board View columns are the List's statuses in `ListStatus.orderIndex` order -- t
 Reorder accepts an ordered array of status IDs and reassigns `orderIndex` with gap 1000:
 
 ```typescript
+import { db } from '@/lib/db'
+import { listStatus } from '@/db/schema'
+import { eq, and } from 'drizzle-orm'
+
 export async function reorderStatuses(listId: string, orderedIds: string[]) {
-  return db.$transaction(
-    orderedIds.map((id, i) =>
-      db.listStatus.update({ where: { id, listId }, data: { orderIndex: (i + 1) * 1000 } })
+  return db.transaction(async (tx) => {
+    await Promise.all(
+      orderedIds.map((id, i) =>
+        tx.update(listStatus)
+          .set({ orderIndex: (i + 1) * 1000 })
+          .where(and(eq(listStatus.id, id), eq(listStatus.listId, listId)))
+      )
     )
-  )
+  })
 }
 ```
 

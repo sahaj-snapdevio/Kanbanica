@@ -607,26 +607,33 @@ If the CTE returns a row, a cycle would be created.
 
 ### `TaskDescriptionSnapshot` -- Always Use Upsert
 
-The `TaskDescriptionSnapshot` table has a `UNIQUE` constraint on `taskId`. Always use Prisma `upsert`, never `create`:
+The `task_description_snapshot` table has a `UNIQUE` constraint on `taskId`. Always use an insert-on-conflict upsert — never a plain insert:
 
 ```typescript
-await db.taskDescriptionSnapshot.upsert({
-  where: { taskId },
-  create: {
+import { db } from '@/lib/db'
+import { taskDescriptionSnapshot } from '@/db/schema'
+import { eq } from 'drizzle-orm'
+
+await db
+  .insert(taskDescriptionSnapshot)
+  .values({
+    id: crypto.randomUUID(),
     taskId,
     content: previousContent,   // content BEFORE the current edit
     savedBy: actorId,
     savedAt: new Date(),
-  },
-  update: {
-    content: previousContent,
-    savedBy: actorId,
-    savedAt: new Date(),
-  }
-})
+  })
+  .onConflictDoUpdate({
+    target: taskDescriptionSnapshot.taskId,
+    set: {
+      content: previousContent,
+      savedBy: actorId,
+      savedAt: new Date(),
+    },
+  })
 ```
 
-A `create` on the second save will throw `P2002 Unique constraint failed`. The upsert pattern is required.
+A plain `insert` on the second save will throw a unique constraint violation. The `onConflictDoUpdate` pattern is required.
 
 ### Full-Text Search Limitation
 
@@ -634,12 +641,13 @@ A `create` on the second save will throw `P2002 Unique constraint failed`. The u
 
 **At MVP (Phases 1-11):** Global search queries `title` only. Description search is not available.
 
-**Post-MVP (Phase 11+):** Add a generated column to extract plain text:
-```prisma
-// In schema.prisma -- add after description field
-description_text String? // GENERATED ALWAYS AS (description->>'text') STORED
+**Post-MVP (Phase 11+):** Add a generated column to extract plain text via a raw SQL migration (Drizzle does not currently support PostgreSQL generated columns natively):
+
+```sql
+-- In a custom migration file in db/migrations/
+ALTER TABLE task ADD COLUMN description_text text GENERATED ALWAYS AS (description->>'text') STORED;
 ```
-This requires a raw migration (Prisma does not support generated columns natively). Once added, index it:
+Once added, index it:
 ```sql
 CREATE INDEX task_description_text_fts ON "Task" USING GIN (to_tsvector('english', description_text));
 ```

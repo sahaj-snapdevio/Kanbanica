@@ -259,19 +259,19 @@ L-- created_at          (timestamp)
 
 ## Implementation Notes
 
-### Required Prisma Index on SpaceMember
+### Required Drizzle Indexes on SpaceMember
 
-Every Private Space query filters by `(spaceId, userId)`. Without an index, this becomes a full table scan as SpaceMember grows:
+Every Private Space query filters by `(spaceId, userId)`. Without an index, this becomes a full table scan as SpaceMember grows.
 
-```prisma
-model SpaceMember {
-  // ...
-  @@unique([spaceId, userId])   // one record per user per space
-  @@index([userId, workspaceId]) // for "all spaces this user can access" lookup
-}
+In `db/schema/space.ts`:
+
+```ts
+// spaceMember table index config (third argument to pgTable)
+uniqueIndex("space_member_space_user_idx").on(t.spaceId, t.userId)
+// one record per user per space — the unique index also enforces no duplicate memberships
 ```
 
-The `@@unique` on `(spaceId, userId)` doubles as an index and enforces no duplicate memberships. The `@@index` on `(userId, workspaceId)` -- via a join through Space -- makes `getAccessibleSpaceIds` fast.
+The `uniqueIndex` on `(spaceId, userId)` doubles as an index and enforces no duplicate memberships. Add a separate index on `userId` for `getAccessibleSpaceIds` lookups if needed at scale.
 
 ### `getAccessibleSpaceIds` -- The Core Privacy Enforcement Query
 
@@ -285,31 +285,39 @@ export async function getAccessibleSpaceIds(
   workspaceId: string
 ): Promise<string[]> {
   // Owner and Admin can access all spaces
-  const member = await db.workspaceMember.findUnique({
-    where: { workspaceId_userId: { workspaceId, userId } }
-  })
+  const [member] = await db
+    .select()
+    .from(workspaceMember)
+    .where(and(eq(workspaceMember.workspaceId, workspaceId), eq(workspaceMember.userId, userId)))
+
   if (!member) return []
-  if (['OWNER', 'ADMIN'].includes(member.role)) {
-    const all = await db.space.findMany({
-      where: { workspaceId, isArchived: false },
-      select: { id: true }
-    })
+
+  if (member.role === 'OWNER' || member.role === 'ADMIN') {
+    const all = await db
+      .select({ id: space.id })
+      .from(space)
+      .where(and(eq(space.workspaceId, workspaceId), eq(space.isArchived, false)))
     return all.map(s => s.id)
   }
 
   // Members: public spaces + private spaces they are explicitly in
-  const spaces = await db.space.findMany({
-    where: {
-      workspaceId,
-      isArchived: false,
-      OR: [
-        { isPrivate: false },                                    // all public spaces
-        { members: { some: { userId } } }                       // private spaces user is in
-      ]
-    },
-    select: { id: true }
-  })
-  return spaces.map(s => s.id)
+  const publicSpaces = await db
+    .select({ id: space.id })
+    .from(space)
+    .where(and(eq(space.workspaceId, workspaceId), eq(space.isArchived, false), eq(space.isPrivate, false)))
+
+  const privateSpaces = await db
+    .select({ id: spaceMember.spaceId })
+    .from(spaceMember)
+    .innerJoin(space, eq(spaceMember.spaceId, space.id))
+    .where(and(
+      eq(spaceMember.userId, userId),
+      eq(space.workspaceId, workspaceId),
+      eq(space.isArchived, false),
+      eq(space.isPrivate, true)
+    ))
+
+  return [...new Set([...publicSpaces.map(s => s.id), ...privateSpaces.map(s => s.id)])]
 }
 ```
 
@@ -318,10 +326,15 @@ export async function getAccessibleSpaceIds(
 ```typescript
   // For guests: only spaces they are explicitly a member of
   if (member.role === 'GUEST') {
-    const memberships = await db.spaceMember.findMany({
-      where: { userId, space: { workspaceId, isArchived: false } },
-      select: { spaceId: true }
-    })
+    const memberships = await db
+      .select({ spaceId: spaceMember.spaceId })
+      .from(spaceMember)
+      .innerJoin(space, eq(spaceMember.spaceId, space.id))
+      .where(and(
+        eq(spaceMember.userId, userId),
+        eq(space.workspaceId, workspaceId),
+        eq(space.isArchived, false)
+      ))
     return memberships.map(m => m.spaceId)
   }
 ```
@@ -332,7 +345,7 @@ When `isPrivate` is toggled on a Space, no SpaceMember records are deleted. Acce
 
 ```typescript
 // PATCH /api/spaces/:id -- visibility toggle
-await db.space.update({ where: { id: spaceId }, data: { isPrivate: true } })
+await db.update(space).set({ isPrivate: true }).where(eq(space.id, spaceId))
 // No SpaceMember cleanup needed -- query layer handles exclusion automatically
 ```
 

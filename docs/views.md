@@ -383,7 +383,7 @@ export function useListViewPreference(listId: string) {
 }
 ```
 
-When Phase 12 arrives: replace the `useLocalStorage` hook with a SWR-backed server preference, migrate existing localStorage values, and create the DB tables via Prisma migration.
+When Phase 12 arrives: replace the `useLocalStorage` hook with a SWR-backed server preference, migrate existing localStorage values, and add the DB tables via a Drizzle migration (`npx drizzle-kit generate`).
 
 ### Board View Column Order
 

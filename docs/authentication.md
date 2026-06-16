@@ -15,7 +15,7 @@ Authentication handles user identity — who you are, how you prove it, and how 
 - Built specifically for Next.js (API Routes + Server Actions)
 - Database-backed sessions (more secure than stateless JWT)
 - Admin Plugin gives user ban, impersonation, and session revoke out of the box
-- Works natively with Prisma + PostgreSQL
+- Works natively with Drizzle ORM + PostgreSQL
 
 ---
 
@@ -459,7 +459,7 @@ Rules:
 - Permission check is always the second step -- before any DB read that is not needed for the check itself
 - All server actions return `{ error: string }` on failure -- never throw to the client
 - The inner `console.error` logs the real error; the outer return shows a safe generic message
-- Never return raw Prisma errors or stack traces -- they leak schema details
+- Never return raw DB errors or stack traces -- they leak schema details
 
 ### `requireSpaceMembershipAndPermission` Helper
 

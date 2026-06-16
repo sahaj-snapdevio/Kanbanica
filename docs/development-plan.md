@@ -17,7 +17,7 @@ At the start of each phase, reference the relevant feature doc from the `docs/` 
 | Framework | Next.js 15 (App Router) |
 | Language | TypeScript |
 | Database | PostgreSQL |
-| ORM | Prisma |
+| ORM | Drizzle ORM |
 | Auth | Better Auth (with Admin Plugin) |
 | Styling | Tailwind CSS |
 | UI Components | shadcn/ui |
@@ -77,13 +77,13 @@ Phase 19 ->  QA & Launch Prep
   ```
 - [ ] Install all dependencies in one pass
   ```bash
-  pnpm add prisma @prisma/client better-auth @aws-sdk/client-s3 @aws-sdk/s3-request-presigner \
+  pnpm add drizzle-orm postgres better-auth @aws-sdk/client-s3 @aws-sdk/s3-request-presigner \
     nodemailer pg-boss zod \
     @tiptap/react @tiptap/starter-kit \
     zustand swr \
     date-fns sharp \
     lucide-react
-  pnpm add -D @types/nodemailer tsx concurrently
+  pnpm add -D drizzle-kit @types/nodemailer tsx concurrently
   ```
 - [ ] Set up route groups in `src/app/`:
   ```
@@ -175,12 +175,15 @@ Phase 19 ->  QA & Launch Prep
 
 ### Step 3 — Core Singletons (build in this order)
 
-- [ ] `src/lib/db.ts` -- Prisma singleton
+- [ ] `lib/db.ts` -- Drizzle singleton
   ```typescript
-  import { PrismaClient } from '@prisma/client'
-  const globalForPrisma = globalThis as unknown as { prisma: PrismaClient }
-  export const db = globalForPrisma.prisma ?? new PrismaClient()
-  if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db
+  import { drizzle } from 'drizzle-orm/postgres-js'
+  import postgres from 'postgres'
+  import * as schema from '@/db/schema'
+  import { env } from '@/lib/env'
+
+  export const dbClient = postgres(env.DATABASE_URL, { max: 20 })
+  export const db = drizzle(dbClient, { schema })
   ```
 - [ ] `src/lib/auth.ts` -- Better Auth server instance (see [authentication.md](./authentication.md))
 - [ ] `src/lib/storage.ts` -- R2 client singleton + `getAttachmentUrl(r2Key)` + `deleteFromR2(r2Key)` helpers (see [services.md](./services.md))
@@ -218,18 +221,17 @@ Phase 19 ->  QA & Launch Prep
 ### Step 6 — Shared UI Primitives
 
 - [ ] `src/components/ui/local-date.tsx` -- `<LocalDate />` with `relative`, `date`, `datetime` formats (see [design-system.md](./design-system.md))
-- [ ] `GET /api/health` route returning `{ ok: true, db: 'connected' }` after `db.$queryRaw` SELECT 1
+- [ ] `GET /api/health` route returning `{ ok: true, db: 'connected' }` after `db.execute(sql\`SELECT 1\`)` check
 
 ### Step 7 — Database
 
 - [ ] Start PostgreSQL locally:
   ```bash
-  docker run --name Kanbanica-db -e POSTGRES_PASSWORD=dev -e POSTGRES_DB=Kanbanica -p 5432:5432 -d postgres:16
+  docker run --name teamority-db -e POSTGRES_PASSWORD=dev -e POSTGRES_DB=teamority -p 5432:5432 -d postgres:16
   ```
-- [ ] `npx prisma init`
-- [ ] Write full Prisma schema -- do in Phase 1 (see [database-schema.md](./database-schema.md))
-- [ ] `npx prisma migrate dev --name init`
-- [ ] `npx better-auth migrate`
+- [ ] Write Drizzle schema -- do in Phase 1 (see [database-schema.md](./database-schema.md))
+- [ ] `npx drizzle-kit generate`
+- [ ] `npx drizzle-kit migrate`
 
 ### Definition of Done
 
@@ -245,13 +247,13 @@ Phase 19 ->  QA & Launch Prep
 
 ## Phase 1 — Database Schema
 
-**Goal:** Full Prisma schema defined for all modules. All tables created in the database.
+**Goal:** Full Drizzle schema defined for all modules. All tables created in the database.
 
 **Reference docs:** All feature docs (each has a Data Model section)
 
 ### Tasks
 
-- [ ] Write Prisma schema for all models (in one `schema.prisma` file):
+- [ ] Write Drizzle schema for all models (one file per domain in `db/schema/`):
 
   **Auth tables (Better Auth managed):**
   - [ ] `User`
@@ -306,16 +308,17 @@ Phase 19 ->  QA & Launch Prep
 
 - [ ] Run initial migration:
   ```bash
-  npx prisma migrate dev --name init
+  npx drizzle-kit generate
+  npx drizzle-kit migrate
   ```
 - [ ] Seed database with:
   - [ ] One platform admin user (for development)
-- [ ] Confirm Prisma Studio opens and shows all tables:
+- [ ] Confirm Drizzle Studio opens and shows all tables:
   ```bash
-  npx prisma studio
+  npx drizzle-kit studio
   ```
 
-**Done when:** All tables exist in the database, seed data is populated, and Prisma Studio shows all tables correctly.
+**Done when:** All tables exist in the database, seed data is populated, and Drizzle Studio shows all tables correctly.
 
 ---
 
@@ -382,7 +385,7 @@ Phase 19 ->  QA & Launch Prep
 - [ ] Configure Better Auth in `src/lib/auth.ts`
   - Magic link provider (passwordless — sends a one-time sign-in link via email)
   - Admin Plugin
-  - Prisma adapter
+  - Drizzle adapter
   - Session config (7-day TTL, 30-day with remember me)
 - [ ] Mount Better Auth handler at `src/app/api/auth/[...all]/route.ts`
 - [ ] Configure Nodemailer (SMTP) as the email provider for Better Auth
