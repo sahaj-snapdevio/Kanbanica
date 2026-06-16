@@ -20,10 +20,12 @@ import { StatusSettingsPanel } from "@/components/list/status-settings-panel";
 import { CreateTaskModal } from "@/components/task/create-task-modal";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { SprintPanel } from "@/components/sprint/sprint-panel";
+import { SprintListView } from "@/components/sprint/sprint-list-view";
 import { ListView } from "./list-view";
 import { BoardView } from "./board-view";
 
-type View = "list" | "board";
+type View = "list" | "board" | "sprint";
 
 interface Status {
   id: string;
@@ -59,6 +61,7 @@ interface ListContainerProps {
 const VIEWS: { key: View; label: string }[] = [
   { key: "list", label: "List" },
   { key: "board", label: "Board" },
+  { key: "sprint", label: "Sprint" },
 ];
 
 export function ListContainer({
@@ -72,6 +75,7 @@ export function ListContainer({
 }: ListContainerProps) {
   const searchParams = useSearchParams();
   const [view, setView] = useState<View>((searchParams.get("view") as View) ?? "list");
+  const [sprintVersion, setSprintVersion] = useState(0);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
@@ -210,7 +214,7 @@ export function ListContainer({
       </div>
 
       {/* Active view */}
-      {view === "list" ? (
+      {view === "list" && (
         <ListView
           workspaceId={workspaceId}
           spaceId={space.id}
@@ -219,7 +223,8 @@ export function ListContainer({
           tasks={filteredTasks}
           isAdmin={isAdmin}
         />
-      ) : (
+      )}
+      {view === "board" && (
         <BoardView
           workspaceId={workspaceId}
           space={space}
@@ -228,6 +233,24 @@ export function ListContainer({
           tasks={tasks}
           headerless
         />
+      )}
+      {view === "sprint" && (
+        <>
+          <SprintPanel
+            workspaceId={workspaceId}
+            spaceId={space.id}
+            listId={list.id}
+            onDataChanged={() => setSprintVersion((v) => v + 1)}
+          />
+          <SprintListView
+            key={sprintVersion}
+            workspaceId={workspaceId}
+            spaceId={space.id}
+            listId={list.id}
+            statuses={statuses}
+            isAdmin={isAdmin}
+          />
+        </>
       )}
     </div>
   );

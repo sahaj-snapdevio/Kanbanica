@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { list, listStatus, task, taskTag, tag, space, spaceMember, taskAssignee, user } from "@/db/schema";
@@ -71,7 +71,7 @@ export default async function ListPage({ params }: ListPageProps) {
         dueDateEnd: task.dueDateEnd,
       })
       .from(task)
-      .where(and(eq(task.listId, listId), eq(task.isArchived, false)))
+      .where(and(eq(task.listId, listId), eq(task.isArchived, false), isNull(task.parentTaskId)))
       .orderBy(asc(task.orderIndex)),
   ]);
 

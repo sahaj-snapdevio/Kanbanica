@@ -32,6 +32,11 @@ export const QUEUE_OPTIONS: Record<
     policy: "exclusive",
     retryLimit: 1,
   },
+  [JOB_NAMES.SPRINT_AUTO_CLOSE]: {
+    expireInSeconds: 300,
+    policy: "exclusive",
+    retryLimit: 2,
+  },
 };
 
 export async function ensureJobQueues(boss: PgBoss) {
