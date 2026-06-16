@@ -55,17 +55,22 @@ export async function startWorker() {
   const { handleScaffoldHealthcheck } = await import(
     "@/lib/worker/handlers/scaffold-healthcheck"
   );
+  const { handleSprintAutoClose } = await import(
+    "@/lib/worker/handlers/sprint-auto-close"
+  );
 
   await Promise.all([
     work(JOB_NAMES.EMAIL_SEND, handleEmailSend),
     work(JOB_NAMES.EMAIL_OUTBOX_REAP, handleEmailOutboxReap),
     work(JOB_NAMES.EMAIL_EVENTS_PRUNE, handleEmailEventsPrune),
     work(JOB_NAMES.SCAFFOLD_HEALTHCHECK, handleScaffoldHealthcheck),
+    work(JOB_NAMES.SPRINT_AUTO_CLOSE, handleSprintAutoClose),
   ]);
 
   await boss.schedule(JOB_NAMES.EMAIL_OUTBOX_REAP, "*/15 * * * *", {});
   await boss.schedule(JOB_NAMES.EMAIL_EVENTS_PRUNE, "17 3 * * *", {});
   await boss.schedule(JOB_NAMES.SCAFFOLD_HEALTHCHECK, "*/10 * * * *", {});
+  await boss.schedule(JOB_NAMES.SPRINT_AUTO_CLOSE, "0 0 * * *", {});
 
   console.log("[worker] handlers registered");
 }

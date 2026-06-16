@@ -15,6 +15,13 @@
       "when": 1781583560962,
       "tag": "0001_outstanding_master_chief",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1781611367831,
+      "tag": "0002_gigantic_black_bolt",
+      "breakpoints": true
     }
   ]
 }

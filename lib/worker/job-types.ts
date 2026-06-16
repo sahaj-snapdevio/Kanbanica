@@ -3,6 +3,7 @@ export const JOB_NAMES = {
   EMAIL_OUTBOX_REAP: "email.outbox-reap",
   EMAIL_SEND: "email.send",
   SCAFFOLD_HEALTHCHECK: "scaffold.healthcheck",
+  SPRINT_AUTO_CLOSE: "sprint.auto-close",
 } as const;
 
 export type JobName = (typeof JOB_NAMES)[keyof typeof JOB_NAMES];
@@ -16,4 +17,5 @@ export type JobPayloads = {
   [JOB_NAMES.EMAIL_OUTBOX_REAP]: Record<string, never>;
   [JOB_NAMES.EMAIL_SEND]: EmailSendPayload;
   [JOB_NAMES.SCAFFOLD_HEALTHCHECK]: Record<string, never>;
+  [JOB_NAMES.SPRINT_AUTO_CLOSE]: Record<string, never>;
 };

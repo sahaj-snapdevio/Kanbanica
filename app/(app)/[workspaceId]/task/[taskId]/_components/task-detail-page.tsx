@@ -32,6 +32,7 @@ import {
   getWorkspaceMembers,
   getTaskActivity,
   logTime,
+  createSubtask,
 } from "@/app/actions/task";
 import { addAssignee, removeAssignee, toggleWatcher } from "@/app/actions/task-assignee";
 import { getWorkspaceTags, createTag, addTaskTag, removeTaskTag } from "@/app/actions/task-tag";
@@ -141,6 +142,8 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
   const [timeNote, setTimeNote] = React.useState("");
   const [saving, setSaving] = React.useState(false);
   const [showDepsSection, setShowDepsSection] = React.useState(false);
+  const [subtaskInput, setSubtaskInput] = React.useState("");
+  const [creatingSubtask, setCreatingSubtask] = React.useState(false);
   const [statusPopoverOpen, setStatusPopoverOpen] = React.useState(false);
   const [priorityPopoverOpen, setPriorityPopoverOpen] = React.useState(false);
   const [assigneePopoverOpen, setAssigneePopoverOpen] = React.useState(false);
@@ -185,7 +188,7 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
     }
   }, [data]);
 
-  const backUrl = `/${workspaceId}/${spaceId}/list/${listId}${fromView ? `?view=${fromView}` : ""}`;
+  const listBackUrl = `/${workspaceId}/${spaceId}/list/${listId}${fromView ? `?view=${fromView}` : ""}`;
 
   if (loading) {
     return (
@@ -199,14 +202,17 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4">
         <p className="text-muted-foreground">Task not found.</p>
-        <Button variant="ghost" onClick={() => router.push(backUrl)}>
+        <Button variant="ghost" onClick={() => router.push(listBackUrl)}>
           <ArrowLeftIcon className="size-4 mr-2" /> Back to list
         </Button>
       </div>
     );
   }
 
-  const { task: t, assignees, watchers, tags, checklists, dependencies, timeLogs, statuses, currentUserId } = data;
+  const { task: t, assignees, watchers, tags, checklists, dependencies, timeLogs, statuses, subtasks, parentTask, currentUserId } = data;
+  const backUrl = t.parentTaskId
+    ? `/${workspaceId}/task/${t.parentTaskId}`
+    : listBackUrl;
   const isWatching = watchers.some((w) => w.userId === currentUserId);
   const currentStatus = statuses.find((s) => s.id === t.statusId);
   const priority = PRIORITY_CONFIG[t.priority as Priority] ?? PRIORITY_CONFIG.NONE;
@@ -362,6 +368,17 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
         <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
           <ClipboardTextIcon className="size-4" />
           <span>{listName}</span>
+          {parentTask && (
+            <>
+              <CaretRightIcon className="size-3.5" />
+              <button
+                onClick={() => router.push(`/${workspaceId}/task/${parentTask.id}`)}
+                className="hover:text-foreground transition-colors truncate max-w-xs"
+              >
+                {parentTask.title}
+              </button>
+            </>
+          )}
           <CaretRightIcon className="size-3.5" />
           <span className="text-foreground font-medium truncate max-w-xs">{t.title}</span>
         </div>
@@ -616,6 +633,85 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
               </FieldRow>
             )}
           </div>
+
+          {/* Subtasks — only shown on parent tasks (not subtask detail pages) */}
+          {!t.parentTaskId && (
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-3">
+                <h3 className="text-sm font-semibold">Subtasks</h3>
+                {subtasks && subtasks.length > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    {subtasks.filter((s) => s.statusType === "CLOSED").length}/{subtasks.length} completed
+                  </span>
+                )}
+              </div>
+
+              {subtasks && subtasks.length > 0 && (
+                <>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Progress
+                      value={Math.round((subtasks.filter((s) => s.statusType === "CLOSED").length / subtasks.length) * 100)}
+                      className="flex-1 h-1.5"
+                    />
+                  </div>
+                  <div className="space-y-1 mb-3">
+                    {subtasks.map((sub) => (
+                      <div
+                        key={sub.id}
+                        className="flex items-center gap-2 rounded-md border bg-card px-3 py-2 hover:bg-accent/30 cursor-pointer group"
+                        onClick={() => router.push(`/${workspaceId}/task/${sub.id}`)}
+                      >
+                        <span
+                          className="size-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: sub.statusColor ?? "#9CA3AF" }}
+                        />
+                        <span className="font-mono text-xs text-muted-foreground shrink-0">#{sub.seqNumber}</span>
+                        <span className={cn("flex-1 text-sm truncate", sub.statusType === "CLOSED" && "line-through text-muted-foreground")}>
+                          {sub.title}
+                        </span>
+                        <CaretRightIcon className="size-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 shrink-0" />
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              <div className="flex gap-2 items-center">
+                <Input
+                  placeholder="Add subtask…"
+                  value={subtaskInput}
+                  onChange={(e) => setSubtaskInput(e.target.value)}
+                  onKeyDown={async (e) => {
+                    if (e.key === "Enter" && subtaskInput.trim()) {
+                      setCreatingSubtask(true);
+                      await createSubtask(workspaceId, spaceId, taskId, subtaskInput.trim());
+                      setSubtaskInput("");
+                      setCreatingSubtask(false);
+                      load();
+                    }
+                  }}
+                  disabled={creatingSubtask}
+                  className="h-8 text-xs"
+                />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 text-xs shrink-0"
+                  disabled={creatingSubtask || !subtaskInput.trim()}
+                  onClick={async () => {
+                    if (!subtaskInput.trim()) return;
+                    setCreatingSubtask(true);
+                    await createSubtask(workspaceId, spaceId, taskId, subtaskInput.trim());
+                    setSubtaskInput("");
+                    setCreatingSubtask(false);
+                    load();
+                  }}
+                >
+                  Add
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Description */}
           <div className="mb-6">

@@ -144,7 +144,7 @@ export async function getTaskDetail(
     .limit(1);
   if (!t) return { error: "Task not found" };
 
-  const [assignees, watchers, tags, checklists, dependencies, timeLogs, statuses, snapshot] =
+  const [assignees, watchers, tags, checklists, dependencies, timeLogs, statuses, snapshot, subtasks, parentTaskInfo] =
     await Promise.all([
       db
         .select({ userId: taskAssignee.userId, name: user.name, email: user.email, image: user.image })
@@ -212,6 +212,32 @@ export async function getTaskDetail(
         .where(eq(taskDescriptionSnapshot.taskId, taskId))
         .limit(1)
         .then((r) => r[0] ?? null),
+
+      db
+        .select({
+          id: task.id,
+          seqNumber: task.seqNumber,
+          title: task.title,
+          priority: task.priority,
+          statusId: task.statusId,
+          orderIndex: task.orderIndex,
+          statusName: listStatus.name,
+          statusColor: listStatus.color,
+          statusType: listStatus.type,
+        })
+        .from(task)
+        .leftJoin(listStatus, eq(listStatus.id, task.statusId))
+        .where(and(eq(task.parentTaskId, taskId), eq(task.isArchived, false)))
+        .orderBy(asc(task.orderIndex)),
+
+      t.parentTaskId
+        ? db
+            .select({ id: task.id, title: task.title, seqNumber: task.seqNumber })
+            .from(task)
+            .where(eq(task.id, t.parentTaskId))
+            .limit(1)
+            .then((r) => r[0] ?? null)
+        : Promise.resolve(null),
     ]);
 
   return {
@@ -224,6 +250,8 @@ export async function getTaskDetail(
     timeLogs,
     statuses,
     snapshot,
+    subtasks,
+    parentTask: parentTaskInfo,
     currentUserId: session.user.id,
   };
 }
@@ -627,6 +655,113 @@ export async function getTaskActivity(
     .limit(50);
 
   return { logs };
+}
+
+// ─── Create subtask ──────────────────────────────────────────────────────────
+
+export async function createSubtask(
+  workspaceId: string,
+  spaceId: string,
+  parentTaskId: string,
+  title: string,
+): Promise<{ taskId: string } | { error: string }> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return { error: "Unauthorized" };
+
+  const err = await requireEditAccess(session.user.id, workspaceId, spaceId);
+  if (err) return err;
+
+  const trimmedTitle = title.trim();
+  if (!trimmedTitle) return { error: "Subtask title is required" };
+
+  const [parentTask] = await db
+    .select({ id: task.id, listId: task.listId, workspaceId: task.workspaceId, parentTaskId: task.parentTaskId })
+    .from(task)
+    .where(eq(task.id, parentTaskId))
+    .limit(1);
+  if (!parentTask) return { error: "Parent task not found" };
+  if (parentTask.parentTaskId) return { error: "Cannot nest subtasks more than one level" };
+
+  const listId = parentTask.listId;
+
+  const [firstStatus] = await db
+    .select({ id: listStatus.id })
+    .from(listStatus)
+    .where(and(eq(listStatus.listId, listId), eq(listStatus.type, "OPEN")))
+    .orderBy(asc(listStatus.orderIndex))
+    .limit(1);
+
+  let statusId: string;
+  if (firstStatus) {
+    statusId = firstStatus.id;
+  } else {
+    const [anyStatus] = await db
+      .select({ id: listStatus.id })
+      .from(listStatus)
+      .where(eq(listStatus.listId, listId))
+      .orderBy(asc(listStatus.orderIndex))
+      .limit(1);
+    if (!anyStatus) return { error: "List has no statuses" };
+    statusId = anyStatus.id;
+  }
+
+  const [{ taskSeq }] = await db
+    .update(workspace)
+    .set({ taskSeq: sql`${workspace.taskSeq} + 1` })
+    .where(eq(workspace.id, workspaceId))
+    .returning({ taskSeq: workspace.taskSeq });
+
+  const taskId = createId();
+
+  await db.insert(task).values({
+    id: taskId,
+    seqNumber: taskSeq,
+    workspaceId,
+    listId,
+    statusId,
+    title: trimmedTitle,
+    priority: "NONE",
+    reporterId: session.user.id,
+    parentTaskId,
+    orderIndex: taskSeq * 1000,
+  });
+
+  await writeActivityLog(taskId, session.user.id, "subtask_created", { title: trimmedTitle, parentTaskId });
+  revalidatePath(`/${workspaceId}/${spaceId}/list/${listId}`);
+  return { taskId };
+}
+
+// ─── Get subtasks ─────────────────────────────────────────────────────────────
+
+export async function getSubtasks(
+  workspaceId: string,
+  spaceId: string,
+  parentTaskId: string,
+) {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return { error: "Unauthorized" };
+
+  const accessible = await canAccessSpace(session.user.id, workspaceId, spaceId);
+  if (!accessible) return { error: "Unauthorized" };
+
+  const subtasks = await db
+    .select({
+      id: task.id,
+      seqNumber: task.seqNumber,
+      title: task.title,
+      priority: task.priority,
+      statusId: task.statusId,
+      orderIndex: task.orderIndex,
+      statusName: listStatus.name,
+      statusColor: listStatus.color,
+      statusType: listStatus.type,
+    })
+    .from(task)
+    .leftJoin(listStatus, eq(listStatus.id, task.statusId))
+    .where(and(eq(task.parentTaskId, parentTaskId), eq(task.isArchived, false)))
+    .orderBy(asc(task.orderIndex));
+
+  return { subtasks };
 }
 
 // ─── Log time ─────────────────────────────────────────────────────────────────
