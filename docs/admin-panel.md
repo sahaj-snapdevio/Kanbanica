@@ -1,8 +1,8 @@
-# Admin Panel
+﻿# Admin Panel
 
 ## Overview
 
-The Admin Panel is an internal tool for the Teamority platform operators (us) to monitor, manage, and support the SaaS platform. It is completely separate from the customer-facing app and is not accessible to any customer regardless of their Workspace Role.
+The Admin Panel is an internal tool for the Kanbanica platform operators (us) to monitor, manage, and support the SaaS platform. It is completely separate from the customer-facing app and is not accessible to any customer regardless of their Workspace Role.
 
 **Who has access:** Platform operators only — defined by a separate `is_platform_admin` flag on the User record. Being a Workspace Owner does NOT grant Admin Panel access.
 
@@ -90,7 +90,7 @@ Clicking a user opens their detail page showing:
 **Workspaces section:**
 - List of all workspaces the user belongs to
 - Columns: Workspace name, Role in that workspace, Joined workspace date
-- Click workspace name → navigate to that workspace's detail page in Admin Panel
+- Click workspace name -> navigate to that workspace's detail page in Admin Panel
 
 **Session section:**
 - List of active sessions (device, browser, last used, IP address)
@@ -200,7 +200,7 @@ View and respond to support tickets submitted by customers from within the app.
 **Reply composer:**
 - Rich text editor (bold, lists, links, code block)
 - Toggle: `Reply to customer` / `Internal note`
-- Send reply → changes ticket status to In Progress automatically (if it was Open)
+- Send reply -> changes ticket status to In Progress automatically (if it was Open)
 
 **Status management:**
 - Change status manually: Open / In Progress / Resolved
@@ -213,8 +213,8 @@ View and respond to support tickets submitted by customers from within the app.
 
 ### Ticket Notifications (internal)
 
-- New ticket submitted → all platform admins receive an in-app notification
-- Customer replies to a resolved/in-progress ticket → assigned admin notified
+- New ticket submitted -> all platform admins receive an in-app notification
+- Customer replies to a resolved/in-progress ticket -> assigned admin notified
 
 ---
 
@@ -247,7 +247,7 @@ Platform-level usage metrics to understand how the product is being used.
 
 - Count of 4xx and 5xx API errors per day (line chart)
 - Top 10 most frequent error types (table: endpoint, error code, count, last occurred)
-- Clicking an error → shows recent log entries for that error
+- Clicking an error -> shows recent log entries for that error
 
 ### Data export
 
@@ -277,37 +277,37 @@ Platform-level usage metrics to understand how the product is being used.
 ```
 -- Platform admin flag lives on User table
 User
-├── ...
-├── is_platform_admin   (boolean, default: false)
-└── ...
++-- ...
++-- is_platform_admin   (boolean, default: false)
+L-- ...
 
 SupportTicket
-├── id                  (uuid, primary key)
-├── workspace_id        (foreign key → Workspace, nullable)
-├── submitted_by        (foreign key → User)
-├── assigned_to         (foreign key → User — platform admin, nullable)
-├── subject             (string, required)
-├── category            (enum: bug | question)
-├── status              (enum: open | in_progress | resolved)
-├── created_at          (timestamp)
-└── updated_at          (timestamp)
++-- id                  (uuid, primary key)
++-- workspace_id        (foreign key -> Workspace, nullable)
++-- submitted_by        (foreign key -> User)
++-- assigned_to         (foreign key -> User — platform admin, nullable)
++-- subject             (string, required)
++-- category            (enum: bug | question)
++-- status              (enum: open | in_progress | resolved)
++-- created_at          (timestamp)
+L-- updated_at          (timestamp)
 
 SupportTicketMessage
-├── id                  (uuid, primary key)
-├── ticket_id           (foreign key → SupportTicket)
-├── author_id           (foreign key → User)
-├── body                (text — rich text)
-├── is_internal_note    (boolean, default: false)
-└── created_at          (timestamp)
++-- id                  (uuid, primary key)
++-- ticket_id           (foreign key -> SupportTicket)
++-- author_id           (foreign key -> User)
++-- body                (text — rich text)
++-- is_internal_note    (boolean, default: false)
+L-- created_at          (timestamp)
 
 PlatformAuditLog
-├── id                  (uuid, primary key)
-├── admin_id            (foreign key → User — platform admin who performed action)
-├── action              (string — e.g. user_banned, workspace_deleted, impersonation_started)
-├── target_type         (enum: user | workspace | ticket)
-├── target_id           (uuid)
-├── meta                (json — additional context e.g. reason, old value, new value)
-└── created_at          (timestamp)
++-- id                  (uuid, primary key)
++-- admin_id            (foreign key -> User — platform admin who performed action)
++-- action              (string — e.g. user_banned, workspace_deleted, impersonation_started)
++-- target_type         (enum: user | workspace | ticket)
++-- target_id           (uuid)
++-- meta                (json — additional context e.g. reason, old value, new value)
+L-- created_at          (timestamp)
 ```
 
 ---

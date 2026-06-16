@@ -1,8 +1,8 @@
-# Workspace
+﻿# Workspace
 
 ## Overview
 
-Workspace is the top-level container in Teamority. Every user belongs to at least one Workspace. All Spaces, members, and settings live inside a Workspace.
+Workspace is the top-level container in Kanbanica. Every user belongs to at least one Workspace. All Spaces, members, and settings live inside a Workspace.
 
 **Real-world analogy:** A Workspace = your company or organization. e.g. `Acme Inc`, `Freelance Studio`, `My Team`
 
@@ -72,7 +72,7 @@ Workspace is the top-level container in Teamority. Every user belongs to at leas
 - Pending invites can be cancelled before acceptance
 
 **Pending Invite Visibility:**
-- **Admin / Owner view (`Settings → Members`):** A dedicated "Pending" section lists all outstanding invites — showing email, invited by, invited date, expiry date, and a Cancel button
+- **Admin / Owner view (`Settings -> Members`):** A dedicated "Pending" section lists all outstanding invites — showing email, invited by, invited date, expiry date, and a Cancel button
 - **Invited user view:** When an invited user logs in (or registers with the same email), they see a banner: `"You have a pending invite to join [Workspace Name]. [Accept] [Decline]"` — this ensures users who already have an account don't miss the invite
 
 **Via Invite Link:**
@@ -85,7 +85,7 @@ Workspace is the top-level container in Teamority. Every user belongs to at leas
 
 ### 6. Manage Members
 
-Accessible from **Workspace Settings → Members**
+Accessible from **Workspace Settings -> Members**
 
 - View all members (name, email, role, join date)
 - Search / filter members by name or role
@@ -161,30 +161,30 @@ Accessible by Owner and Admin only.
 
 ```
 Workspace
-├── id                  (uuid, primary key)
-├── name                (string, required)
-├── slug                (string, unique — vanity alias for URLs; routing uses id internally)
-├── logo_url            (string, nullable — R2 URL; takes priority over logo_emoji)
-├── logo_emoji          (string, nullable — single emoji character; used if logo_url is null)
-├── invite_link_token   (string, unique, nullable — null means link is disabled)
-├── task_seq            (integer, default: 0 — atomically incremented on each task creation, gives each task its #number)
-├── status              (enum: active | deleting, default: active — set to deleting on deletion confirm, background job does the rest)
-├── created_by          (user_id, foreign key)
-├── created_at          (timestamp)
-└── updated_at          (timestamp)
++-- id                  (uuid, primary key)
++-- name                (string, required)
++-- slug                (string, unique — vanity alias for URLs; routing uses id internally)
++-- logo_url            (string, nullable — R2 URL; takes priority over logo_emoji)
++-- logo_emoji          (string, nullable — single emoji character; used if logo_url is null)
++-- invite_link_token   (string, unique, nullable — null means link is disabled)
++-- task_seq            (integer, default: 0 — atomically incremented on each task creation, gives each task its #number)
++-- status              (enum: active | deleting, default: active — set to deleting on deletion confirm, background job does the rest)
++-- created_by          (user_id, foreign key)
++-- created_at          (timestamp)
+L-- updated_at          (timestamp)
 
 WorkspaceMember
-├── id                  (uuid, primary key)
-├── workspace_id        (foreign key → Workspace)
-├── user_id             (foreign key → User, nullable — null while invite is pending)
-├── email               (string, nullable — set while invite is pending, cleared on accept)
-├── role                (enum: owner | admin | member | guest)
-├── status              (enum: active | invited)
-├── invited_by          (user_id, nullable)
-├── invite_token        (string, unique, nullable — used in the email join link)
-├── invite_expires_at   (timestamp, nullable — 7 days from invite send date)
-├── joined_at           (timestamp, nullable)
-└── created_at          (timestamp)
++-- id                  (uuid, primary key)
++-- workspace_id        (foreign key -> Workspace)
++-- user_id             (foreign key -> User, nullable — null while invite is pending)
++-- email               (string, nullable — set while invite is pending, cleared on accept)
++-- role                (enum: owner | admin | member | guest)
++-- status              (enum: active | invited)
++-- invited_by          (user_id, nullable)
++-- invite_token        (string, unique, nullable — used in the email join link)
++-- invite_expires_at   (timestamp, nullable — 7 days from invite send date)
++-- joined_at           (timestamp, nullable)
+L-- created_at          (timestamp)
 ```
 
 ---
@@ -237,7 +237,7 @@ Workspace deletion is **not synchronous** — a large workspace can contain thou
 3. The workspace is immediately hidden from all members' workspace switchers
 4. A background job (cron) picks up all workspaces with `status = deleting` and performs the full cascade:
    - Delete R2 files in chunks (attachments, avatars) — retries on failure
-   - Delete DB child records in dependency order (TaskAttachment → Task → List → Space → Workspace)
+   - Delete DB child records in dependency order (TaskAttachment -> Task -> List -> Space -> Workspace)
 5. On completion: send confirmation email to Owner
 
 **Why this matters:** If R2 deletion runs before DB deletion and the job crashes, file references still exist in DB — recoverable. If DB deletes first and R2 crashes, files are orphaned forever — expensive and unrecoverable. Always delete storage last.

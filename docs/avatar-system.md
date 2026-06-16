@@ -1,8 +1,8 @@
-# Avatar & Profile Display System
+﻿# Avatar & Profile Display System
 
 ## Overview
 
-Every user and workspace in Teamority is represented visually with an avatar. Avatars appear across the entire product — task assignee chips, comments, activity log, notifications, member lists, and more. A consistent, well-defined avatar system prevents blank circles and broken images throughout the UI.
+Every user and workspace in Kanbanica is represented visually with an avatar. Avatars appear across the entire product — task assignee chips, comments, activity log, notifications, member lists, and more. A consistent, well-defined avatar system prevents blank circles and broken images throughout the UI.
 
 ---
 
@@ -21,17 +21,17 @@ The initials fallback is **always** available — it requires no upload and no e
 
 **What initials to show:**
 - Take the user's `full_name`
-- Split on spaces → take the first character of the first word and the first character of the last word, uppercased
+- Split on spaces -> take the first character of the first word and the first character of the last word, uppercased
 - Examples:
-  - `"John Doe"` → `JD`
-  - `"Alice"` → `A` (single word — one initial only)
-  - `"Mary Jane Watson"` → `MW` (first + last word only, middle ignored)
-  - `"john doe"` → `JD` (always uppercased regardless of input)
+  - `"John Doe"` -> `JD`
+  - `"Alice"` -> `A` (single word — one initial only)
+  - `"Mary Jane Watson"` -> `MW` (first + last word only, middle ignored)
+  - `"john doe"` -> `JD` (always uppercased regardless of input)
 - Maximum 2 characters shown
 
 **Background color — deterministic hash:**
 - Color is derived from the user's `id` (UUID) — not the name, so it never changes even if the user renames
-- Hash function: sum the char codes of the UUID string → `hash % PALETTE.length` → pick color
+- Hash function: sum the char codes of the UUID string -> `hash % PALETTE.length` -> pick color
 - This means the same user always gets the same color, on every device, for every viewer
 - Color is never chosen randomly at render time
 
@@ -50,7 +50,7 @@ The initials fallback is **always** available — it requires no upload and no e
 | 8 | Orange | `#EA580C` |
 | 9 | Slate | `#475569` |
 
-**Text color:** Always white (`#FFFFFF`) — all palette colors are dark enough to guarantee WCAG AA contrast ratio (≥4.5:1) against white text.
+**Text color:** Always white (`#FFFFFF`) — all palette colors are dark enough to guarantee WCAG AA contrast ratio (>=4.5:1) against white text.
 
 **Implementation (utility function):**
 
@@ -81,11 +81,11 @@ Avatars appear at different sizes depending on context. All sizes use the same c
 
 | Size | Pixels | Used in |
 |------|--------|---------|
-| `xs` | 20×20 | Activity log inline, notification list |
-| `sm` | 24×24 | Task card assignee chips, comment header, checklist item assignee |
-| `md` | 32×32 | Task detail panel sidebar, member list rows, mention dropdown |
-| `lg` | 40×40 | Profile settings page, workspace member table |
-| `xl` | 64×64 | Account settings page header |
+| `xs` | 20Ã—20 | Activity log inline, notification list |
+| `sm` | 24Ã—24 | Task card assignee chips, comment header, checklist item assignee |
+| `md` | 32Ã—32 | Task detail panel sidebar, member list rows, mention dropdown |
+| `lg` | 40Ã—40 | Profile settings page, workspace member table |
+| `xl` | 64Ã—64 | Account settings page header |
 
 **Font size for initials scales with avatar size:**
 
@@ -133,10 +133,10 @@ When a task has multiple assignees, avatars are stacked horizontally with overla
 Hovering any avatar (in any context) shows a tooltip after a 300ms delay:
 
 ```
-┌─────────────┐
-│ John Doe    │
-│ john@acme.. │
-└─────────────┘
++-------------+
+| John Doe    |
+| john@acme.. |
+L-------------+
 ```
 
 - Shows: full name (bold) + email address below
@@ -171,10 +171,10 @@ Workspaces also have an avatar — shown in the sidebar workspace switcher and w
 **Shape difference:** Workspace avatars use a **rounded square** (8px border-radius), not a circle. This visually distinguishes workspace avatars from user avatars throughout the product.
 
 **Initials fallback for workspace:**
-- Take workspace `name` → first character of each word → up to 2 characters
-- `"Acme Corp"` → `AC`
-- `"My Team"` → `MT`
-- `"Teamority"` → `T`
+- Take workspace `name` -> first character of each word -> up to 2 characters
+- `"Acme Corp"` -> `AC`
+- `"My Team"` -> `MT`
+- `"Kanbanica"` -> `T`
 - Color derived from workspace `id` using the same `getAvatarColor()` function
 
 ---
@@ -194,9 +194,9 @@ When a user deletes their account, their tasks and comments are attributed to `"
 
 Activity log entries and notifications triggered by the system (not by a specific user — e.g. auto-close sprint, due date reminder fired) show:
 
-- A Teamority logo mark icon in a light brand-colored circle
+- A Kanbanica logo mark icon in a light brand-colored circle
 - No initials, no tooltip name
-- Label reads: `"Teamority"` in the actor name position
+- Label reads: `"Kanbanica"` in the actor name position
 
 ---
 
@@ -206,9 +206,9 @@ Activity log entries and notifications triggered by the system (not by a specifi
 |------|-------|
 | Accepted formats | JPEG, PNG, WebP, GIF (static only — no animated GIFs) |
 | Max file size | 2 MB |
-| Min dimensions | 100×100 px |
+| Min dimensions | 100Ã—100 px |
 | Storage | S3-compatible storage — same bucket as task attachments, under `/avatars/` prefix |
-| Processing | Resized server-side to max 256×256 px before storing — no oversized originals kept |
+| Processing | Resized server-side to max 256Ã—256 px before storing — no oversized originals kept |
 | Old avatar | Previous avatar file is deleted from S3 storage when a new one is uploaded |
 
 ---
@@ -219,16 +219,16 @@ No new tables needed — avatar data lives on existing models:
 
 ```
 User
-├── ...
-├── name      (string — used for initials generation)
-├── image     (string, nullable — S3 URL if uploaded, null = use initials fallback)
-└── ...
++-- ...
++-- name      (string — used for initials generation)
++-- image     (string, nullable — S3 URL if uploaded, null = use initials fallback)
+L-- ...
 
 Workspace
-├── ...
-├── logo_url  (string, nullable — S3 URL or null = use initials fallback)
-├── logo_emoji (string, nullable — single emoji character, used if set instead of logo_url)
-└── ...
++-- ...
++-- logo_url  (string, nullable — S3 URL or null = use initials fallback)
++-- logo_emoji (string, nullable — single emoji character, used if set instead of logo_url)
+L-- ...
 ```
 
 > **Priority:** `logo_url` takes precedence over `logo_emoji`. If both are null, initials fallback is used.
@@ -265,7 +265,7 @@ Workspace
 2. Avatar background color is derived from `user.id`, not the name — color is stable even if the user changes their name.
 3. The same color palette and hash function must be used on both client and server to ensure consistent rendering.
 4. Workspace avatars use a rounded square shape; user avatars use a full circle — this distinction is consistent everywhere.
-5. Uploaded avatars are resized server-side to max 256×256 px before storage — raw originals are never kept.
+5. Uploaded avatars are resized server-side to max 256Ã—256 px before storage — raw originals are never kept.
 6. Old avatar files are deleted from S3 storage when replaced — no orphaned files accumulate.
 8. Greyed-out avatars (removed members) preserve the original color and initials — they are just rendered at 40% opacity.
 9. `+N` overflow chips use a neutral grey, not a palette color — they are not avatars, they are counters.

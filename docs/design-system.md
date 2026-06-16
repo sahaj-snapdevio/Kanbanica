@@ -1,8 +1,8 @@
-# Design System
+﻿# Design System
 
 ## Overview
 
-This is the single source of truth for all visual design decisions in Teamority. Every UI component, color, spacing, and typography choice must reference this doc. Do not invent values on the fly.
+This is the single source of truth for all visual design decisions in Kanbanica. Every UI component, color, spacing, and typography choice must reference this doc. Do not invent values on the fly.
 
 ---
 
@@ -211,11 +211,11 @@ Two fixed items are pinned at the very bottom of the sidebar, above the collapse
 ```
 [Avatar]  Full Name
           email@example.com
-──────────────────────────
-Profile & Account      →  /settings/account
-Sessions               →  /settings/sessions
-Notifications          →  /settings/notifications
-──────────────────────────
+--------------------------
+Profile & Account      ->  /settings/account
+Sessions               ->  /settings/sessions
+Notifications          ->  /settings/notifications
+--------------------------
 Sign out
 ```
 

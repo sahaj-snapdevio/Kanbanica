@@ -1,4 +1,4 @@
-# Notifications
+﻿# Notifications
 
 ## Overview
 
@@ -34,16 +34,16 @@ Every event below creates a `Notification` record. Each trigger has:
 
 | Trigger | Who gets notified | In-App | Email | Push | Configurable | Notification text |
 |---------|------------------|:------:|:-----:|:----:|:------------|------------------|
-| Task assigned to you | New assignee | ✅ | ✅ | ✅ | Yes | *"[Actor] assigned you to [Task title]"* |
-| Task unassigned from you | Former assignee | ✅ | ✅ | ❌ | Yes | *"[Actor] unassigned you from [Task title]"* |
-| Task status changed | Assignees + Watchers | ✅ | ✅ | ❌ | Yes | *"[Actor] changed status of [Task title] to [New Status]"* |
-| Task priority changed | Assignees + Watchers | ✅ | ❌ | ❌ | Yes (default off) | *"[Actor] changed priority of [Task title] to [Priority]"* |
-| Task due date changed | Assignees + Watchers | ✅ | ✅ | ❌ | Yes | *"[Actor] changed due date of [Task title] to [Date]"* |
-| Task completed (status → closed type) | Reporter + Watchers | ✅ | ✅ | ❌ | Yes | *"[Task title] was marked as done by [Actor]"* |
-| Task moved to a different List | Assignees + Watchers | ✅ | ❌ | ❌ | Yes (default off) | *"[Actor] moved [Task title] to [List name]"* |
-| Task deleted | Assignees + Watchers | ✅ | ❌ | ❌ | Yes | *"[Actor] deleted task [Task title]"* |
-| Subtask assigned to you | New assignee | ✅ | ✅ | ✅ | Yes | *"[Actor] assigned you to [Subtask title] in [Parent task title]"* |
-| Subtask completed | Parent task assignees | ✅ | ❌ | ❌ | Yes (default off) | *"[Actor] completed [Subtask title] in [Parent task title]"* |
+| Task assigned to you | New assignee | [x] | [x] | [x] | Yes | *"[Actor] assigned you to [Task title]"* |
+| Task unassigned from you | Former assignee | [x] | [x] | [ ] | Yes | *"[Actor] unassigned you from [Task title]"* |
+| Task status changed | Assignees + Watchers | [x] | [x] | [ ] | Yes | *"[Actor] changed status of [Task title] to [New Status]"* |
+| Task priority changed | Assignees + Watchers | [x] | [ ] | [ ] | Yes (default off) | *"[Actor] changed priority of [Task title] to [Priority]"* |
+| Task due date changed | Assignees + Watchers | [x] | [x] | [ ] | Yes | *"[Actor] changed due date of [Task title] to [Date]"* |
+| Task completed (status -> closed type) | Reporter + Watchers | [x] | [x] | [ ] | Yes | *"[Task title] was marked as done by [Actor]"* |
+| Task moved to a different List | Assignees + Watchers | [x] | [ ] | [ ] | Yes (default off) | *"[Actor] moved [Task title] to [List name]"* |
+| Task deleted | Assignees + Watchers | [x] | [ ] | [ ] | Yes | *"[Actor] deleted task [Task title]"* |
+| Subtask assigned to you | New assignee | [x] | [x] | [x] | Yes | *"[Actor] assigned you to [Subtask title] in [Parent task title]"* |
+| Subtask completed | Parent task assignees | [x] | [ ] | [ ] | Yes (default off) | *"[Actor] completed [Subtask title] in [Parent task title]"* |
 
 ---
 
@@ -53,9 +53,9 @@ These are sent by the system on a schedule — no human actor. Shown with a syst
 
 | Trigger | Who gets notified | In-App | Email | Push | Configurable | Notification text |
 |---------|------------------|:------:|:-----:|:----:|:------------|------------------|
-| Due date reminder — 1 day before | Assignees + Watchers | ✅ | ✅ | ✅ | Yes | *"[Task title] is due tomorrow"* |
-| Due date reminder — on due date | Assignees | ✅ | ✅ | ✅ | Yes | *"[Task title] is due today"* |
-| Task overdue (next day, still not closed) | Assignees | ✅ | ✅ | ✅ | Yes | *"[Task title] is overdue"* |
+| Due date reminder — 1 day before | Assignees + Watchers | [x] | [x] | [x] | Yes | *"[Task title] is due tomorrow"* |
+| Due date reminder — on due date | Assignees | [x] | [x] | [x] | Yes | *"[Task title] is due today"* |
+| Task overdue (next day, still not closed) | Assignees | [x] | [x] | [x] | Yes | *"[Task title] is overdue"* |
 
 **Firing rules:**
 - Reminders are sent once per trigger per task — not repeated daily.
@@ -68,11 +68,11 @@ These are sent by the system on a schedule — no human actor. Shown with a syst
 
 | Trigger | Who gets notified | In-App | Email | Push | Configurable | Notification text |
 |---------|------------------|:------:|:-----:|:----:|:------------|------------------|
-| New comment on task | Assignees + Watchers | ✅ | ✅ | ✅ | Yes | *"[Actor] commented on [Task title]: [first 80 chars of comment]"* |
-| Reply to your comment | Original comment author | ✅ | ✅ | ✅ | Yes | *"[Actor] replied to your comment on [Task title]"* |
-| @mention in comment | Mentioned user | ✅ | ✅ | ✅ | No (always on) | *"[Actor] mentioned you in [Task title]"* |
-| @mention in task description | Mentioned user | ✅ | ✅ | ✅ | No (always on) | *"[Actor] mentioned you in the description of [Task title]"* |
-| Comment thread resolved | Original comment author | ✅ | ❌ | ❌ | Yes (default off) | *"[Actor] resolved a comment thread on [Task title]"* |
+| New comment on task | Assignees + Watchers | [x] | [x] | [x] | Yes | *"[Actor] commented on [Task title]: [first 80 chars of comment]"* |
+| Reply to your comment | Original comment author | [x] | [x] | [x] | Yes | *"[Actor] replied to your comment on [Task title]"* |
+| @mention in comment | Mentioned user | [x] | [x] | [x] | No (always on) | *"[Actor] mentioned you in [Task title]"* |
+| @mention in task description | Mentioned user | [x] | [x] | [x] | No (always on) | *"[Actor] mentioned you in the description of [Task title]"* |
+| Comment thread resolved | Original comment author | [x] | [ ] | [ ] | Yes (default off) | *"[Actor] resolved a comment thread on [Task title]"* |
 
 **Deduplication rule for comments:**
 - If 3 or more comment notifications on the same task arrive within a **10-minute window**, they are grouped into one:
@@ -85,12 +85,12 @@ These are sent by the system on a schedule — no human actor. Shown with a syst
 
 | Trigger | Who gets notified | In-App | Email | Push | Configurable | Notification text |
 |---------|------------------|:------:|:-----:|:----:|:------------|------------------|
-| Invited to workspace | Invited user | ✅ | ✅ (always) | ❌ | No (always on) | *"[Actor] invited you to [Workspace name]"* |
-| Invite accepted | Inviter (Admin/Owner) | ✅ | ❌ | ❌ | Yes | *"[User] accepted your invitation to [Workspace name]"* |
-| Added to a Space | Added user | ✅ | ✅ | ❌ | Yes | *"[Actor] added you to [Space name]"* |
-| Removed from a Space | Removed user | ✅ | ✅ | ❌ | Yes | *"[Actor] removed you from [Space name]"* |
-| Role changed in workspace | Affected user | ✅ | ✅ | ❌ | Yes | *"[Actor] changed your role in [Workspace name] to [New Role]"* |
-| Space permission changed | Affected user | ✅ | ❌ | ❌ | Yes | *"[Actor] changed your permission in [Space name] to [Permission]"* |
+| Invited to workspace | Invited user | [x] | [x] (always) | [ ] | No (always on) | *"[Actor] invited you to [Workspace name]"* |
+| Invite accepted | Inviter (Admin/Owner) | [x] | [ ] | [ ] | Yes | *"[User] accepted your invitation to [Workspace name]"* |
+| Added to a Space | Added user | [x] | [x] | [ ] | Yes | *"[Actor] added you to [Space name]"* |
+| Removed from a Space | Removed user | [x] | [x] | [ ] | Yes | *"[Actor] removed you from [Space name]"* |
+| Role changed in workspace | Affected user | [x] | [x] | [ ] | Yes | *"[Actor] changed your role in [Workspace name] to [New Role]"* |
+| Space permission changed | Affected user | [x] | [ ] | [ ] | Yes | *"[Actor] changed your permission in [Space name] to [Permission]"* |
 
 ---
 
@@ -98,10 +98,10 @@ These are sent by the system on a schedule — no human actor. Shown with a syst
 
 | Trigger | Who gets notified | In-App | Email | Push | Configurable | Notification text |
 |---------|------------------|:------:|:-----:|:----:|:------------|------------------|
-| Sprint started | Members with tasks in the sprint | ✅ | ✅ | ❌ | Yes | *"[Actor] started [Sprint name] — you have [N] tasks in this sprint"* |
-| Sprint ending soon (1 day before end) | Members with open tasks in the sprint | ✅ | ✅ | ✅ | Yes | *"[Sprint name] ends tomorrow — you have [N] open tasks"* |
-| Sprint closed | Members who had tasks in the sprint | ✅ | ❌ | ❌ | Yes (default off) | *"[Actor] closed [Sprint name]"* |
-| New sprint auto-created | Space members with Full Access | ✅ | ❌ | ❌ | Yes (default off) | *"[Sprint name] was automatically created in [List name]"* |
+| Sprint started | Members with tasks in the sprint | [x] | [x] | [ ] | Yes | *"[Actor] started [Sprint name] — you have [N] tasks in this sprint"* |
+| Sprint ending soon (1 day before end) | Members with open tasks in the sprint | [x] | [x] | [x] | Yes | *"[Sprint name] ends tomorrow — you have [N] open tasks"* |
+| Sprint closed | Members who had tasks in the sprint | [x] | [ ] | [ ] | Yes (default off) | *"[Actor] closed [Sprint name]"* |
+| New sprint auto-created | Space members with Full Access | [x] | [ ] | [ ] | Yes (default off) | *"[Sprint name] was automatically created in [List name]"* |
 
 ---
 
@@ -111,7 +111,7 @@ These are sent by the system on a schedule — no human actor. Shown with a syst
 |------|--------|
 | No self-notifications | The actor never receives a notification for their own action |
 | No duplicates | If a user qualifies via multiple roles (assignee + watcher), they receive one notification |
-| Comment grouping | 3+ comments on the same task within 10 min → grouped into one notification |
+| Comment grouping | 3+ comments on the same task within 10 min -> grouped into one notification |
 | Muted task | No notifications for any event on a muted task, regardless of trigger |
 | Muted Space | No notifications for any task event in a muted Space |
 | Task deleted before reminder fires | Reminder is cancelled — no notification sent |
@@ -124,8 +124,8 @@ These are sent by the system on a schedule — no human actor. Shown with a syst
 
 ### Access
 
-- Bell icon `🔔` in the top navigation bar
-- Unread count badge on the bell icon (e.g. `🔔 5`)
+- Bell icon `ðŸ””` in the top navigation bar
+- Unread count badge on the bell icon (e.g. `ðŸ”” 5`)
 - Clicking the bell opens the notification panel (slide-out from the right)
 
 ### Notification panel
@@ -143,7 +143,7 @@ These are sent by the system on a schedule — no human actor. Shown with a syst
   - Unread indicator (blue dot on left)
 
 - **Actions on each notification:**
-  - Click → navigate directly to the task / space / item
+  - Click -> navigate directly to the task / space / item
   - Mark as read (individually)
   - Mark all as read (bulk button at top)
 
@@ -169,12 +169,12 @@ These are sent by the system on a schedule — no human actor. Shown with a syst
 ### Email content
 
 - **Instant email:**
-  - Subject: `"[Teamority] Jane assigned you to: Fix login bug"`
+  - Subject: `"[Kanbanica] Jane assigned you to: Fix login bug"`
   - Body: actor, action, task title, task description snippet, direct link to the task
   - One email per notification event
 
 - **Daily digest email:**
-  - Subject: `"[Teamority] Your daily summary — 8 updates"`
+  - Subject: `"[Kanbanica] Your daily summary — 8 updates"`
   - Body: grouped list of all notifications from the past 24 hours
   - Each item has a direct link to the relevant task
   - Sent only if there is at least one new notification — no empty digest emails
@@ -215,7 +215,7 @@ Browser push notifications appear as OS-level desktop notifications even when th
 ### Push notification format
 
 ```
-Teamority
+Kanbanica
 Jane commented on "Fix login bug"
 "Can you check the error logs for this?"
 ```
@@ -260,33 +260,33 @@ Users can configure notification preferences from their profile settings.
 
 **Per-Space mute:**
 - Mute an entire Space — no notifications from any task in that Space
-- Accessible from Space sidebar → `...` → `Mute Space`
+- Accessible from Space sidebar -> `...` -> `Mute Space`
 
 **Per-task mute:**
 - Mute a specific task — unsubscribe from all notifications for that task
 - Even if you are an assignee or watcher
-- Accessible from Task detail → `...` → `Mute Task`
+- Accessible from Task detail -> `...` -> `Mute Task`
 - Muting a task also removes you from Watchers
 
 ### Settings page layout
 
 ```
 Notification Settings
-├── Email Notifications
-│     ├── Delivery mode: [Instant] [Daily Digest] [Off]
-│     └── Digest time: [08:00 AM] [Timezone: Auto-detect]
-├── Browser Push
-│     └── Enable push notifications: [On/Off]
-├── Notification Events
-│     ├── Task assigned to me        [In-App ✓] [Email ✓] [Push ✓]
-│     ├── @mention                   [In-App ✓] [Email ✓] [Push ✓]
-│     ├── New comment on my task     [In-App ✓] [Email ✓] [Push ✓]
-│     ├── Task status changed        [In-App ✓] [Email ✓] [Push -]
-│     ├── Due date reminder          [In-App ✓] [Email ✓] [Push ✓]
-│     ├── Task completed             [In-App ✓] [Email -] [Push -]
-│     └── ... (all trigger types)
-└── Muted Spaces & Tasks
-      └── List of muted items with unmute option
++-- Email Notifications
+|     +-- Delivery mode: [Instant] [Daily Digest] [Off]
+|     L-- Digest time: [08:00 AM] [Timezone: Auto-detect]
++-- Browser Push
+|     L-- Enable push notifications: [On/Off]
++-- Notification Events
+|     +-- Task assigned to me        [In-App [x]] [Email [x]] [Push [x]]
+|     +-- @mention                   [In-App [x]] [Email [x]] [Push [x]]
+|     +-- New comment on my task     [In-App [x]] [Email [x]] [Push [x]]
+|     +-- Task status changed        [In-App [x]] [Email [x]] [Push -]
+|     +-- Due date reminder          [In-App [x]] [Email [x]] [Push [x]]
+|     +-- Task completed             [In-App [x]] [Email -] [Push -]
+|     L-- ... (all trigger types)
+L-- Muted Spaces & Tasks
+      L-- List of muted items with unmute option
 ```
 
 ---
@@ -295,53 +295,53 @@ Notification Settings
 
 ```
 Notification
-├── id                  (uuid, primary key)
-├── workspace_id        (foreign key → Workspace)
-├── recipient_id        (foreign key → User — who receives it)
-├── actor_id            (foreign key → User — who triggered it, nullable for system events)
-├── trigger_type        (string — e.g. task_assigned, comment_added, due_date_reminder)
-├── entity_type         (enum: task | comment | space | workspace | sprint)
-├── entity_id           (uuid — id of the related entity)
-├── title               (string — short notification text)
-├── body                (string — longer description, nullable)
-├── is_read             (boolean, default: false)
-├── read_at             (timestamp, nullable)
-├── created_at          (timestamp)
-└── expires_at          (timestamp — 90 days from created_at)
++-- id                  (uuid, primary key)
++-- workspace_id        (foreign key -> Workspace)
++-- recipient_id        (foreign key -> User — who receives it)
++-- actor_id            (foreign key -> User — who triggered it, nullable for system events)
++-- trigger_type        (string — e.g. task_assigned, comment_added, due_date_reminder)
++-- entity_type         (enum: task | comment | space | workspace | sprint)
++-- entity_id           (uuid — id of the related entity)
++-- title               (string — short notification text)
++-- body                (string — longer description, nullable)
++-- is_read             (boolean, default: false)
++-- read_at             (timestamp, nullable)
++-- created_at          (timestamp)
+L-- expires_at          (timestamp — 90 days from created_at)
 
 UserNotificationPreference
-├── id                  (uuid, primary key)
-├── user_id             (foreign key → User)
-├── workspace_id        (foreign key → Workspace, nullable — null = global default)
-├── trigger_type        (string — matches trigger_type in Notification)
-├── in_app_enabled      (boolean, default: true)
-├── email_enabled       (boolean, default: true)
-├── push_enabled        (boolean, default: true)
-└── updated_at          (timestamp)
++-- id                  (uuid, primary key)
++-- user_id             (foreign key -> User)
++-- workspace_id        (foreign key -> Workspace, nullable — null = global default)
++-- trigger_type        (string — matches trigger_type in Notification)
++-- in_app_enabled      (boolean, default: true)
++-- email_enabled       (boolean, default: true)
++-- push_enabled        (boolean, default: true)
+L-- updated_at          (timestamp)
 
 UserEmailPreference
-├── id                  (uuid, primary key)
-├── user_id             (foreign key → User)
-├── delivery_mode       (enum: instant | digest | off, default: instant)
-├── digest_time         (time — HH:MM, default: 08:00)
-├── digest_timezone     (string — IANA timezone, e.g. "Asia/Kolkata")
-└── updated_at          (timestamp)
++-- id                  (uuid, primary key)
++-- user_id             (foreign key -> User)
++-- delivery_mode       (enum: instant | digest | off, default: instant)
++-- digest_time         (time — HH:MM, default: 08:00)
++-- digest_timezone     (string — IANA timezone, e.g. "Asia/Kolkata")
+L-- updated_at          (timestamp)
 
 MutedEntity
-├── id                  (uuid, primary key)
-├── user_id             (foreign key → User)
-├── entity_type         (enum: task | space)
-├── entity_id           (uuid)
-└── created_at          (timestamp)
++-- id                  (uuid, primary key)
++-- user_id             (foreign key -> User)
++-- entity_type         (enum: task | space)
++-- entity_id           (uuid)
+L-- created_at          (timestamp)
 
 PushSubscription
-├── id                  (uuid, primary key)
-├── user_id             (foreign key → User)
-├── endpoint            (string — browser push endpoint URL)
-├── p256dh              (string — browser push encryption key)
-├── auth                (string — browser push auth secret)
-├── user_agent          (string — browser/device identifier)
-└── created_at          (timestamp)
++-- id                  (uuid, primary key)
++-- user_id             (foreign key -> User)
++-- endpoint            (string — browser push endpoint URL)
++-- p256dh              (string — browser push encryption key)
++-- auth                (string — browser push auth secret)
++-- user_agent          (string — browser/device identifier)
+L-- created_at          (timestamp)
 ```
 
 ---
@@ -369,7 +369,7 @@ PushSubscription
 
 | Screen | Route | Access |
 |--------|-------|--------|
-| Notification panel | Bell icon → slide-out panel (global) | All workspace members |
+| Notification panel | Bell icon -> slide-out panel (global) | All workspace members |
 | Notification settings | `/settings/notifications` | All workspace members |
 | Muted items list | `/settings/notifications#muted` | All workspace members |
 
@@ -445,7 +445,7 @@ Add to `.env.local`:
 ```
 VAPID_PUBLIC_KEY=BFc...     # starts with B, ~88 chars
 VAPID_PRIVATE_KEY=...       # ~43 chars
-VAPID_SUBJECT=mailto:push@teamority.com
+VAPID_SUBJECT=mailto:push@Kanbanica.com
 ```
 
 These are **optional** env vars -- if missing, push notifications are silently disabled (graceful degradation). Add to `src/lib/env.ts` Zod schema as optional:
