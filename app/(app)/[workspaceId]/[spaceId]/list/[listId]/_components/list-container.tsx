@@ -22,6 +22,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { SprintPanel } from "@/components/sprint/sprint-panel";
 import { SprintListView } from "@/components/sprint/sprint-list-view";
+import { ListFilterToolbar } from "@/components/list/list-filter-toolbar";
+import { type FilterState } from "@/app/actions/search";
 import { ListView } from "./list-view";
 import { BoardView } from "./board-view";
 
@@ -54,6 +56,8 @@ interface ListContainerProps {
   list: { id: string; name: string; color: string | null; description: string | null };
   statuses: Status[];
   tasks: Task[];
+  members: { userId: string; name: string | null; email: string | null }[];
+  tags: { id: string; name: string; color: string }[];
   canManage: boolean;
   isAdmin: boolean;
 }
@@ -70,6 +74,8 @@ export function ListContainer({
   list,
   statuses,
   tasks,
+  members,
+  tags,
   canManage,
   isAdmin,
 }: ListContainerProps) {
@@ -81,10 +87,42 @@ export function ListContainer({
   const [statusOpen, setStatusOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState<FilterState>({});
 
-  const filteredTasks = search.trim()
-    ? tasks.filter((t) => t.title.toLowerCase().includes(search.toLowerCase()))
-    : tasks;
+  const filteredTasks = tasks.filter((t) => {
+    if (search.trim() && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
+    if (filters.status?.length && !filters.status.includes(t.statusId)) return false;
+    if (filters.priority?.length && !filters.priority.includes(t.priority)) return false;
+    if (filters.due) {
+      const now = new Date();
+      const due = t.dueDateEnd ? new Date(t.dueDateEnd) : null;
+      if (filters.due === "overdue" && (!due || due >= now)) return false;
+      if (filters.due === "today") {
+        if (!due) return false;
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+        if (due < today || due >= tomorrow) return false;
+      }
+      if (filters.due === "this_week") {
+        if (!due) return false;
+        const start = new Date(); start.setHours(0, 0, 0, 0);
+        start.setDate(start.getDate() - start.getDay());
+        const end = new Date(start); end.setDate(end.getDate() + 7);
+        if (due < start || due >= end) return false;
+      }
+      if (filters.due === "no_due_date" && due) return false;
+    }
+    if (filters.assignee?.length) {
+      const hasUnassigned = filters.assignee.includes("unassigned");
+      const userIds = filters.assignee.filter((a) => a !== "unassigned");
+      const assigneeIds = t.assignees.map((a) => a.userId);
+      const matchUnassigned = hasUnassigned && assigneeIds.length === 0;
+      const matchUser = userIds.length > 0 && assigneeIds.some((id) => userIds.includes(id));
+      if (!matchUnassigned && !matchUser) return false;
+    }
+    if (filters.tags?.length && !t.tags.some((tg) => filters.tags!.includes(tg.id))) return false;
+    return true;
+  });
 
   return (
     <div className="space-y-5 p-6">
@@ -212,6 +250,18 @@ export function ListContainer({
           Task
         </button>
       </div>
+
+      {/* Filter toolbar */}
+      {view !== "sprint" && (
+        <ListFilterToolbar
+          listId={list.id}
+          statuses={statuses}
+          members={members}
+          tags={tags}
+          filters={filters}
+          onChange={setFilters}
+        />
+      )}
 
       {/* Active view */}
       {view === "list" && (

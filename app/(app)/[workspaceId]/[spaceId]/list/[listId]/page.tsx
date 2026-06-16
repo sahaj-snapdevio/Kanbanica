@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { list, listStatus, task, taskTag, tag, space, spaceMember, taskAssignee, user } from "@/db/schema";
+import { list, listStatus, task, taskTag, tag, space, spaceMember, taskAssignee, user, workspaceMember } from "@/db/schema";
 import { canAccessSpace, getWorkspaceMembership } from "@/lib/permissions";
 import { ListContainer } from "./_components/list-container";
 
@@ -53,7 +53,7 @@ export default async function ListPage({ params }: ListPageProps) {
 
   if (!currentList || !currentSpace) notFound();
 
-  const [statuses, tasks] = await Promise.all([
+  const [statuses, tasks, memberRows, allTags] = await Promise.all([
     db
       .select()
       .from(listStatus)
@@ -73,6 +73,15 @@ export default async function ListPage({ params }: ListPageProps) {
       .from(task)
       .where(and(eq(task.listId, listId), eq(task.isArchived, false), isNull(task.parentTaskId)))
       .orderBy(asc(task.orderIndex)),
+    db
+      .select({ userId: workspaceMember.userId, name: user.name, email: user.email })
+      .from(workspaceMember)
+      .leftJoin(user, eq(workspaceMember.userId, user.id))
+      .where(eq(workspaceMember.workspaceId, workspaceId)),
+    db
+      .select({ id: tag.id, name: tag.name, color: tag.color })
+      .from(tag)
+      .where(eq(tag.workspaceId, workspaceId)),
   ]);
 
   // Fetch tags + assignees for all tasks in parallel
@@ -122,6 +131,10 @@ export default async function ListPage({ params }: ListPageProps) {
     assignees: assigneesByTaskId.get(t.id) ?? [],
   }));
 
+  const members = memberRows
+    .filter((m) => m.userId)
+    .map((m) => ({ userId: m.userId!, name: m.name, email: m.email }));
+
   return (
     <ListContainer
       workspaceId={workspaceId}
@@ -129,6 +142,8 @@ export default async function ListPage({ params }: ListPageProps) {
       list={currentList}
       statuses={statuses}
       tasks={tasksWithTags}
+      members={members}
+      tags={allTags}
       canManage={canManage}
       isAdmin={isAdminOrOwner}
     />

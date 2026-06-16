@@ -29,7 +29,20 @@ export type ActivityEventType =
   | "task_archived"
   | "task_unarchived"
   | "time_logged"
-  | "comment_added";
+  | "comment_added"
+  | "comment_edited"
+  | "comment_deleted"
+  | "comment_resolved"
+  | "comment_unresolved"
+  | "subtask_created"
+  | "subtask_deleted"
+  | "subtask_completed"
+  | "sprint_assigned"
+  | "sprint_unassigned"
+  | "story_points_set"
+  | "checklist_item_added"
+  | "checklist_item_deleted"
+  | "checklist_renamed";
 
 export type ActivityMeta = Record<string, unknown>;
 

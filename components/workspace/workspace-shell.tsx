@@ -6,11 +6,13 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   ArchiveIcon,
   CaretUpDownIcon,
+  CheckCircleIcon,
   CheckIcon,
   CopyIcon,
   DotsThreeIcon,
   GearIcon,
   LockSimpleIcon,
+  MagnifyingGlassIcon,
   PencilSimpleIcon,
   PlusIcon,
   SignOutIcon,
@@ -18,6 +20,7 @@ import {
   XIcon,
   ListIcon,
 } from "@phosphor-icons/react";
+import { SearchPalette } from "@/components/search/search-palette";
 import { archiveSpace, deleteSpace } from "@/app/actions/space";
 import { archiveList, duplicateList } from "@/app/actions/list";
 import { SpaceActionDialog } from "@/components/workspace/space-action-dialog";
@@ -77,6 +80,7 @@ export function WorkspaceShell({
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
+  const [searchOpen, setSearchOpen] = React.useState(false);
   const [createSpaceOpen, setCreateSpaceOpen] = React.useState(false);
   const [spaceAction, setSpaceAction] = React.useState<{ id: string; name: string; variant: "archive" | "delete" } | null>(null);
   const [createListForSpace, setCreateListForSpace] = React.useState<{ spaceId: string } | null>(null);
@@ -94,6 +98,18 @@ export function WorkspaceShell({
   const displayName = user.name || user.email;
   const isAdmin = role === "OWNER" || role === "ADMIN";
 
+  // Ctrl+K / Cmd+K shortcut
+  React.useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen((o) => !o);
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, []);
+
   async function handleSignOut() {
     await authClient.signOut();
     router.push("/login");
@@ -101,6 +117,11 @@ export function WorkspaceShell({
 
   return (
     <div className="flex min-h-screen bg-background">
+      <SearchPalette
+        workspaceId={workspace.id}
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+      />
       <CreateSpaceModal
         open={createSpaceOpen}
         onOpenChange={setCreateSpaceOpen}
@@ -216,6 +237,47 @@ export function WorkspaceShell({
 
         {/* Spaces nav */}
         <nav className="flex-1 space-y-4 overflow-y-auto px-2 py-3">
+          {/* Search button */}
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="flex w-full items-center gap-2 rounded-md border bg-muted/50 px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <MagnifyingGlassIcon className="size-3.5 shrink-0" />
+            <span className="flex-1 text-left text-xs">Search…</span>
+            <kbd className="hidden sm:inline-flex h-4 items-center rounded border bg-background px-1 text-2xs font-medium">
+              ⌃K
+            </kbd>
+          </button>
+
+          {/* Global links */}
+          <div className="space-y-0.5">
+            {[
+              {
+                href: `/${workspace.id}/my-tasks`,
+                label: "My Tasks",
+                icon: <CheckCircleIcon className="size-4 shrink-0" weight="fill" />,
+              },
+            ].map(({ href, label, icon }) => {
+              const active = pathname === href;
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={() => setSidebarOpen(false)}
+                  className={cn(
+                    "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
+                    active
+                      ? "bg-accent font-medium text-accent-foreground"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                  )}
+                >
+                  {icon}
+                  {label}
+                </Link>
+              );
+            })}
+          </div>
+
           <div>
             <div className="flex items-center px-2 pb-1">
               <p className="flex-1 font-medium text-muted-foreground text-xs uppercase tracking-wide">
@@ -270,6 +332,14 @@ export function WorkspaceShell({
                         >
                           <GearIcon className="size-3.5 shrink-0 text-muted-foreground" />
                           Settings
+                        </Link>
+                        <Link
+                          href={`/${workspace.id}/${s.id}/activity`}
+                          onClick={() => setSidebarOpen(false)}
+                          className="flex items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors hover:bg-accent"
+                        >
+                          <GearIcon className="size-3.5 shrink-0 text-muted-foreground" />
+                          Activity
                         </Link>
                         <Link
                           href={`/${workspace.id}/${s.id}/settings/members`}

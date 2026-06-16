@@ -27,7 +27,6 @@ import {
   archiveTask,
   duplicateTask,
   getWorkspaceMembers,
-  getTaskActivity,
 } from "@/app/actions/task";
 import { addAssignee, removeAssignee, toggleWatcher } from "@/app/actions/task-assignee";
 import { getWorkspaceTags, createTag, addTaskTag, removeTaskTag } from "@/app/actions/task-tag";
@@ -64,7 +63,8 @@ import {
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { format, formatDistanceToNow } from "date-fns";
+import { format } from "date-fns";
+import { TaskActivityFeed } from "@/components/task/task-activity-feed";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -77,6 +77,7 @@ interface TaskDetailPanelProps {
   workspaceId: string;
   spaceId: string;
   listId: string;
+  isAdmin?: boolean;
 }
 
 // ─── Priority config ──────────────────────────────────────────────────────────
@@ -96,35 +97,7 @@ function userInitials(name: string | null, email: string | null) {
   return (email ?? "?").slice(0, 2).toUpperCase();
 }
 
-// ─── Activity event labels ────────────────────────────────────────────────────
 
-function describeEvent(eventType: string, meta: Record<string, unknown>): string {
-  switch (eventType) {
-    case "task_created": return "created this task";
-    case "title_changed": return `renamed to "${meta.to}"`;
-    case "status_changed": return "changed the status";
-    case "priority_changed": return `changed priority to ${meta.to}`;
-    case "description_updated": return "updated the description";
-    case "assignee_added": return "added an assignee";
-    case "assignee_removed": return "removed an assignee";
-    case "watcher_added": return "started watching";
-    case "watcher_removed": return "stopped watching";
-    case "due_date_set": return "set a due date";
-    case "due_date_changed": return "changed the due date";
-    case "due_date_removed": return "removed the due date";
-    case "tag_added": return `added tag "${meta.tagName}"`;
-    case "tag_removed": return `removed tag "${meta.tagName}"`;
-    case "dependency_added": return "added a dependency";
-    case "dependency_removed": return "removed a dependency";
-    case "task_archived": return "archived this task";
-    case "task_unarchived": return "unarchived this task";
-    case "task_moved": return "moved this task";
-    case "time_logged": return `logged ${meta.minutes} minutes`;
-    case "checklist_created": return "added a checklist";
-    case "checklist_deleted": return "deleted a checklist";
-    default: return eventType.replace(/_/g, " ");
-  }
-}
 
 // ─── Main panel ──────────────────────────────────────────────────────────────
 
@@ -135,6 +108,7 @@ export function TaskDetailPanel({
   workspaceId,
   spaceId,
   listId,
+  isAdmin,
 }: TaskDetailPanelProps) {
   const router = useRouter();
   const [data, setData] = React.useState<Awaited<ReturnType<typeof getTaskDetail>> | null>(null);
@@ -145,7 +119,6 @@ export function TaskDetailPanel({
   const [descEditing, setDescEditing] = React.useState(false);
   const [members, setMembers] = React.useState<{ userId: string | null; name: string; email: string; image: string | null }[]>([]);
   const [allTags, setAllTags] = React.useState<{ id: string; name: string; color: string }[]>([]);
-  const [activity, setActivity] = React.useState<{ id: string; eventType: string; meta: unknown; createdAt: Date; name: string | null; email: string | null }[]>([]);
   const [newChecklistName, setNewChecklistName] = React.useState("");
   const [addingChecklist, setAddingChecklist] = React.useState(false);
   const [newItemTexts, setNewItemTexts] = React.useState<Record<string, string>>({});
@@ -157,16 +130,14 @@ export function TaskDetailPanel({
 
   async function load() {
     setLoading(true);
-    const [detail, mem, tags, act] = await Promise.all([
+    const [detail, mem, tags] = await Promise.all([
       getTaskDetail(workspaceId, spaceId, taskId),
       getWorkspaceMembers(workspaceId),
       getWorkspaceTags(workspaceId),
-      getTaskActivity(workspaceId, spaceId, taskId),
     ]);
     setData(detail && !("error" in detail) ? detail : null);
     if (mem && !("error" in mem)) setMembers(mem.members.filter((m): m is typeof m & { userId: string } => m.userId !== null));
     if (tags && !("error" in tags)) setAllTags(tags.tags);
-    if (act && !("error" in act)) setActivity(act.logs as typeof activity);
     setLoading(false);
   }
 
@@ -636,30 +607,15 @@ export function TaskDetailPanel({
               </PopoverContent>
             </Popover>
 
-            {/* Activity log */}
-            {activity.length > 0 && (
-              <div>
-                <Label className="text-xs text-muted-foreground mb-2 block">Activity</Label>
-                <div className="space-y-3">
-                  {activity.map((log) => (
-                    <div key={log.id} className="flex items-start gap-2">
-                      <Avatar className="size-6 shrink-0 mt-0.5">
-                        <AvatarFallback className="text-[10px]">
-                          {userInitials(log.name, log.email)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <span className="text-xs font-medium">{log.name ?? log.email ?? "Someone"}</span>
-                        <span className="text-xs text-muted-foreground"> {describeEvent(log.eventType, log.meta as Record<string, unknown>)}</span>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">
-                          {formatDistanceToNow(new Date(log.createdAt), { addSuffix: true })}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* Comments + Activity feed */}
+            <TaskActivityFeed
+              workspaceId={workspaceId}
+              spaceId={spaceId}
+              listId={listId}
+              taskId={taskId}
+              currentUserId={currentUserId}
+              isAdmin={isAdmin}
+            />
           </div>
 
           {/* Sidebar column */}
