@@ -1,4 +1,4 @@
-# Empty States & Onboarding Checklist
+﻿# Empty States & Onboarding Checklist
 
 ## Overview
 
@@ -17,29 +17,29 @@ Empty states are **not** error states. They are welcoming, not alarming.
 
 ## 1. Post-Onboarding Getting Started Checklist
 
-When a brand-new user completes onboarding (Workspace created → Space created → lands in their first List), they see a **Getting Started checklist** panel pinned inside the empty List view.
+When a brand-new user completes onboarding (Workspace created -> Space created -> lands in their first List), they see a **Getting Started checklist** panel pinned inside the empty List view.
 
 This is the most important empty state in the product — it directly combats first-session churn.
 
 ### Layout
 
 ```
-┌──────────────────────────────────────────────────────────┐
-│  👋 Welcome to Teamority, [First Name]!                  │
-│                                                          │
-│  Here's how to get started:                              │
-│                                                          │
-│  ✅  Create your workspace           (done)              │
-│  ✅  Create your first Space         (done)              │
-│  ◻   Create your first task          [Create task →]     │
-│  ◻   Invite a teammate               [Invite →]          │
-│  ◻   Set a due date on a task        [Learn how →]       │
-│  ◻   Try the Board view              [Switch view →]     │
-│                                                          │
-│  Progress: ▓▓░░░░░░  2 of 6 complete                    │
-│                                                          │
-│                              [Dismiss checklist]         │
-└──────────────────────────────────────────────────────────┘
++----------------------------------------------------------+
+|  ðŸ‘‹ Welcome to Kanbanica, [First Name]!                  |
+|                                                          |
+|  Here's how to get started:                              |
+|                                                          |
+|  [x]  Create your workspace           (done)              |
+|  [x]  Create your first Space         (done)              |
+|  o   Create your first task          [Create task ->]     |
+|  o   Invite a teammate               [Invite ->]          |
+|  o   Set a due date on a task        [Learn how ->]       |
+|  o   Try the Board view              [Switch view ->]     |
+|                                                          |
+|  Progress: ##......  2 of 6 complete                    |
+|                                                          |
+|                              [Dismiss checklist]         |
+L----------------------------------------------------------+
 ```
 
 ### Checklist items
@@ -58,7 +58,7 @@ This is the most important empty state in the product — it directly combats fi
 - Checklist is shown **pinned above the task list** inside the first List, only for the workspace creator
 - Each item auto-checks as the user completes it — no manual ticking
 - Progress bar fills as items are completed
-- Once all 6 items are done: checklist collapses with a congratulations message: `"You're all set! 🎉 You've covered the basics."` then fades out after 3 seconds
+- Once all 6 items are done: checklist collapses with a congratulations message: `"You're all set! ðŸŽ‰ You've covered the basics."` then fades out after 3 seconds
 - `[Dismiss checklist]` link hides it permanently (stored in `UserOnboardingProgress.dismissed_at`)
 - Checklist is only shown to the user who created the workspace — teammates who join later do not see it
 - Checklist persists across sessions until dismissed or completed
@@ -67,17 +67,17 @@ This is the most important empty state in the product — it directly combats fi
 
 ```
 UserOnboardingProgress
-├── id                   (uuid, primary key)
-├── user_id              (foreign key → User)
-├── workspace_id         (foreign key → Workspace)
-├── step_workspace       (boolean, default: true — auto-complete)
-├── step_space           (boolean, default: true — auto-complete)
-├── step_first_task      (boolean, default: false)
-├── step_invite          (boolean, default: false)
-├── step_due_date        (boolean, default: false)
-├── step_board_view      (boolean, default: false)
-├── dismissed_at         (timestamp, nullable)
-└── created_at           (timestamp)
++-- id                   (uuid, primary key)
++-- user_id              (foreign key -> User)
++-- workspace_id         (foreign key -> Workspace)
++-- step_workspace       (boolean, default: true — auto-complete)
++-- step_space           (boolean, default: true — auto-complete)
++-- step_first_task      (boolean, default: false)
++-- step_invite          (boolean, default: false)
++-- step_due_date        (boolean, default: false)
++-- step_board_view      (boolean, default: false)
++-- dismissed_at         (timestamp, nullable)
+L-- created_at           (timestamp)
 ```
 
 ---
@@ -90,7 +90,7 @@ When a List has no tasks (freshly created, or all tasks have been deleted/moved)
 
 The first List is **never blank**. On onboarding completion, a single demo welcome task is auto-created inside it:
 
-- **Title:** `"👋 Welcome to [Workspace Name] — click here to see how a task works"`
+- **Title:** `"ðŸ‘‹ Welcome to [Workspace Name] — click here to see how a task works"`
 - **Description:** Pre-filled with a short walkthrough: *"This is a task. You can set a status, assign it to someone, add a due date, and leave comments. Try editing this task or create your own below."*
 - **Status:** First open status of the List
 - **Assignee:** The workspace creator (auto-assigned)
@@ -103,17 +103,17 @@ This gives the user something interactive to click on immediately — they learn
 ### For all other empty Lists
 
 ```
-┌────────────────────────────────────┐
-│                                    │
-│         📋                         │
-│                                    │
-│    This list has no tasks yet      │
-│    Add your first task to          │
-│    start tracking work             │
-│                                    │
-│      [ + Add your first task ]     │
-│                                    │
-└────────────────────────────────────┘
++------------------------------------+
+|                                    |
+|         ðŸ“‹                         |
+|                                    |
+|    This list has no tasks yet      |
+|    Add your first task to          |
+|    start tracking work             |
+|                                    |
+|      [ + Add your first task ]     |
+|                                    |
+L------------------------------------+
 ```
 
 | Element | Content |
@@ -130,34 +130,34 @@ This gives the user something interactive to click on immediately — they learn
 **Case A — List has tasks but none match current filters:**
 
 ```
-│         🔍                         │
-│   No tasks match your filters      │
-│   Try adjusting or clearing        │
-│   the active filters               │
-│                                    │
-│      [ Clear filters ]             │
+|         ðŸ”                         |
+|   No tasks match your filters      |
+|   Try adjusting or clearing        |
+|   the active filters               |
+|                                    |
+|      [ Clear filters ]             |
 ```
 
 **Case B — List has no tasks at all:**
 
 ```
-│         📋                         │
-│   No tasks in this board yet       │
-│   Tasks you add will appear here   │
-│   as cards in their status column  │
-│                                    │
-│      [ + Add a task ]              │
+|         ðŸ“‹                         |
+|   No tasks in this board yet       |
+|   Tasks you add will appear here   |
+|   as cards in their status column  |
+|                                    |
+|      [ + Add a task ]              |
 ```
 
 **Case C — Sprint is active but no tasks have been added to it:**
 
 ```
-│         🏃                         │
-│   No tasks in this sprint yet      │
-│   Add tasks from the backlog to    │
-│   define your sprint scope         │
-│                                    │
-│      [ Add tasks from backlog ]    │
+|         ðŸƒ                         |
+|   No tasks in this sprint yet      |
+|   Add tasks from the backlog to    |
+|   define your sprint scope         |
+|                                    |
+|      [ Add tasks from backlog ]    |
 ```
 
 ---
@@ -165,13 +165,13 @@ This gives the user something interactive to click on immediately — they learn
 ## 4. Empty Calendar View (no tasks with due dates)
 
 ```
-│         📅                         │
-│   No tasks scheduled this month    │
-│   Tasks with a due date will       │
-│   appear on the calendar           │
-│                                    │
-│      [ + Add a task with due date ]│
-│      [ See unscheduled tasks →  ]  │
+|         ðŸ“…                         |
+|   No tasks scheduled this month    |
+|   Tasks with a due date will       |
+|   appear on the calendar           |
+|                                    |
+|      [ + Add a task with due date ]|
+|      [ See unscheduled tasks ->  ]  |
 ```
 
 The Unscheduled sidebar is still shown on the right even when the calendar grid is empty — it may contain tasks without due dates.
@@ -183,12 +183,12 @@ The Unscheduled sidebar is still shown on the right even when the calendar grid 
 Shown in the Sprint panel when all List tasks are assigned to sprints.
 
 ```
-│         ✅                         │
-│   Backlog is empty                 │
-│   All tasks are in a sprint,       │
-│   or there are no tasks yet        │
-│                                    │
-│      [ + Create a task ]           │
+|         [x]                         |
+|   Backlog is empty                 |
+|   All tasks are in a sprint,       |
+|   or there are no tasks yet        |
+|                                    |
+|      [ + Create a task ]           |
 ```
 
 ---
@@ -198,13 +198,13 @@ Shown in the Sprint panel when all List tasks are assigned to sprints.
 Shown in the Sprint panel when no sprints have been created for this List.
 
 ```
-│         🏁                         │
-│   No sprints yet                   │
-│   Sprints let you time-box work    │
-│   into focused iterations          │
-│                                    │
-│      [ Create your first sprint ]  │
-│      [ Learn about sprints →    ]  │
+|         ðŸ                         |
+|   No sprints yet                   |
+|   Sprints let you time-box work    |
+|   into focused iterations          |
+|                                    |
+|      [ Create your first sprint ]  |
+|      [ Learn about sprints ->    ]  |
 ```
 
 - CTA opens the Create Sprint modal directly
@@ -217,12 +217,12 @@ Shown in the Sprint panel when no sprints have been created for this List.
 Shown when the logged-in user has no tasks assigned to them across the workspace.
 
 ```
-│         👤                         │
-│   You have no tasks yet            │
-│   Tasks assigned to you across     │
-│   all Spaces will appear here      │
-│                                    │
-│      [ Browse your Lists →     ]   │
+|         ðŸ‘¤                         |
+|   You have no tasks yet            |
+|   Tasks assigned to you across     |
+|   all Spaces will appear here      |
+|                                    |
+|      [ Browse your Lists ->     ]   |
 ```
 
 - CTA links to the last viewed List (or the workspace root if none)
@@ -235,12 +235,12 @@ Shown when the logged-in user has no tasks assigned to them across the workspace
 When a Space is created but has no Lists inside it (edge case — normally a default List is auto-created, but the user may have deleted it).
 
 ```
-│         📁                         │
-│   This Space has no Lists yet      │
-│   Lists are where tasks live —     │
-│   create one to get started        │
-│                                    │
-│      [ + Create a List ]           │
+|         ðŸ“                         |
+|   This Space has no Lists yet      |
+|   Lists are where tasks live —     |
+|   create one to get started        |
+|                                    |
+|      [ + Create a List ]           |
 ```
 
 ---
@@ -250,12 +250,12 @@ When a Space is created but has no Lists inside it (edge case — normally a def
 When a Folder has been created but no Lists have been added to it.
 
 ```
-│         📂                         │
-│   This folder is empty             │
-│   Add a List to start organizing   │
-│   tasks inside this folder         │
-│                                    │
-│      [ + Add a List ]              │
+|         ðŸ“‚                         |
+|   This folder is empty             |
+|   Add a List to start organizing   |
+|   tasks inside this folder         |
+|                                    |
+|      [ + Add a List ]              |
 ```
 
 ---
@@ -265,12 +265,12 @@ When a Folder has been created but no Lists have been added to it.
 When the user's notification inbox is empty.
 
 ```
-│         🔔                         │
-│   You're all caught up!            │
-│   Notifications from task updates, │
-│   mentions, and comments           │
-│   will appear here                 │
-│                                    │
+|         ðŸ””                         |
+|   You're all caught up!            |
+|   Notifications from task updates, |
+|   mentions, and comments           |
+|   will appear here                 |
+|                                    |
 ```
 
 No CTA needed — this is a positive state. Headline should feel like a success, not a problem.
@@ -282,14 +282,14 @@ No CTA needed — this is a positive state. Headline should feel like a success,
 When global search (Ctrl+K) returns no matches for the query.
 
 ```
-│         🔍                         │
-│   No results for "[query]"         │
-│   Try a different keyword,         │
-│   or search by task ID e.g. #42    │
-│                                    │
-│   Recent searches:                 │
-│   › Design login screen            │
-│   › Sprint 3                       │
+|         ðŸ”                         |
+|   No results for "[query]"         |
+|   Try a different keyword,         |
+|   or search by task ID e.g. #42    |
+|                                    |
+|   Recent searches:                 |
+|   > Design login screen            |
+|   > Sprint 3                       |
 ```
 
 - Shows recent search history below (last 5 searches)
@@ -302,10 +302,10 @@ When global search (Ctrl+K) returns no matches for the query.
 When a task was just created and has no activity yet beyond the creation event.
 
 ```
-│   Task created by [You]  just now  │
-│                                    │
-│   Activity will appear here as     │
-│   changes are made to this task    │
+|   Task created by [You]  just now  |
+|                                    |
+|   Activity will appear here as     |
+|   changes are made to this task    |
 ```
 
 Minimal — the creation event itself satisfies "not blank". No CTA needed.
@@ -317,14 +317,14 @@ Minimal — the creation event itself satisfies "not blank". No CTA needed.
 When a task has no comments.
 
 ```
-│         💬                         │
-│   No comments yet                  │
-│   Be the first to leave a comment  │
-│   Use @ to mention a teammate      │
-│                                    │
-│   [ Write a comment... ]  ← opens  │
-│                               the  │
-│                             editor │
+|         ðŸ’¬                         |
+|   No comments yet                  |
+|   Be the first to leave a comment  |
+|   Use @ to mention a teammate      |
+|                                    |
+|   [ Write a comment... ]  <- opens  |
+|                               the  |
+|                             editor |
 ```
 
 - The comment composer is always visible below this — so the empty state blends into the composer naturally
@@ -336,13 +336,13 @@ When a task has no comments.
 When the user has no support tickets submitted.
 
 ```
-│         🎫                         │
-│   No support tickets yet           │
-│   Having an issue or a question?   │
-│   We're here to help               │
-│                                    │
-│      [ Open a support ticket ]     │
-│      [ Browse Help Center →    ]   │
+|         ðŸŽ«                         |
+|   No support tickets yet           |
+|   Having an issue or a question?   |
+|   We're here to help               |
+|                                    |
+|      [ Open a support ticket ]     |
+|      [ Browse Help Center ->    ]   |
 ```
 
 ---
@@ -352,27 +352,27 @@ When the user has no support tickets submitted.
 When the user filters the Feature Requests board and nothing matches.
 
 ```
-│         💡                         │
-│   No feature requests found        │
-│   for this filter                  │
-│                                    │
-│      [ Clear filters ]             │
-│      [ Submit a new request ]      │
+|         ðŸ’¡                         |
+|   No feature requests found        |
+|   for this filter                  |
+|                                    |
+|      [ Clear filters ]             |
+|      [ Submit a new request ]      |
 ```
 
 ---
 
 ## 16. Workspace Members — Only the Owner
 
-When a workspace has only one member (the creator). Shown in `Settings → Members`.
+When a workspace has only one member (the creator). Shown in `Settings -> Members`.
 
 ```
-│   Just you here so far             │
-│   Invite your teammates to         │
-│   collaborate in Teamority         │
-│                                    │
-│      [ + Invite teammates ]        │
-│      [ Copy invite link ]          │
+|   Just you here so far             |
+|   Invite your teammates to         |
+|   collaborate in Kanbanica         |
+|                                    |
+|      [ + Invite teammates ]        |
+|      [ Copy invite link ]          |
 ```
 
 - Two CTAs: email invite (primary) and copy link (secondary, lower commitment)

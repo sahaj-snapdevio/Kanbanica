@@ -1,4 +1,4 @@
-# Teamority -- Complete Documentation Audit
+﻿# Kanbanica -- Complete Documentation Audit
 
 **Roles applied:** Senior Product Manager, Staff Software Engineer, Solution Architect, Documentation Architect
 
@@ -42,7 +42,7 @@
 | Avatar System | User/workspace avatars, AvatarStack, fallbacks | S3/R2, PostgreSQL | Complete |
 | Calendar View | Post-MVP: monthly/weekly grid, drag reschedule | dnd-kit, date-fns | Rewritten (was contradictory) |
 | Folder | Post-MVP: grouping layer in Space | `folderId` nullable | Correctly minimal |
-| Plans & Pricing | REMOVED -- Teamority is open-source; no paid plans | -- | Deleted |
+| Plans & Pricing | REMOVED -- Kanbanica is open-source; no paid plans | -- | Deleted |
 | Landing Page | 10 sections, SEO, analytics | Next.js App Router, Tailwind | Rewritten (was section list only) |
 | Improvement | Product audit: scope reductions, critical technical notes | All features | Excellent but not cross-linked to relevant docs |
 | Customer Support | Help Center + Ticket system | PostgreSQL, pg-boss, Nodemailer | Rewritten (was data-model stub) |
@@ -52,7 +52,7 @@
 
 ## Phase 2 -- krova-main Technical Patterns
 
-| Technical Area | Pattern Found | Reusable for Teamority |
+| Technical Area | Pattern Found | Reusable for Kanbanica |
 |---------------|---------------|----------------------|
 | pg-boss job registry | `JOB_NAMES` const + typed payloads + `QUEUE_OPTIONS` compile-time guard in `lib/worker/job-types.ts` | Yes -- adopt immediately for all 5 jobs |
 | Two-process architecture | `next dev` + `tsx --watch scripts/worker.ts` via `concurrently` | Yes -- copy `package.json` scripts pattern |
@@ -62,7 +62,7 @@
 | Env validation | `lib/env.ts` Zod schema at startup; typed `env` export everywhere; fail fast with clear errors | Yes -- implement in Phase 0 |
 | Auth pattern in server actions | `auth.api.getSession()` at top; `requireActionMembershipAndPermission()`; early return `{ error: string }` | Yes -- standard for all server actions |
 | Auth pattern in API routes | `lib/api/auth-helpers.ts` route-level helper; session -> 401, permission -> 403 | Yes -- all `/api/` routes |
-| Storage delete ordering | R2 delete enqueued BEFORE DB delete; failed enqueue aborts deletion | Yes -- matches Teamority rule; shows exact code pattern |
+| Storage delete ordering | R2 delete enqueued BEFORE DB delete; failed enqueue aborts deletion | Yes -- matches Kanbanica rule; shows exact code pattern |
 | Pre-flight checks before side effects | All permission/precondition checks run before any write or enqueue | Yes -- adopt as a rule |
 | `<LocalDate />` component | All timestamps rendered through it; prevents SSR/client hydration mismatch on date fields | Yes -- critical; build before any timestamp display |
 | Error wrapper in actions | `try/catch`; inner `console.error`; outer always `{ error: "Something went wrong" }` | Yes -- all server actions |
@@ -90,7 +90,7 @@
 | Notifications | Daily digest pg-boss job: mentioned in UserEmailPreference but no job name, schedule, or handler spec | Add: `JOB_NAMES.NOTIFICATION_DIGEST`; 30-min cron that fans out per-user jobs based on `digestTime` preference; `NotificationDigestPayload` with `userId` | Per-user delivery times require a batch cron, not a single daily cron |
 | Notifications | VAPID keys must be generated; no env var spec given | Add: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`; generation command: `npx web-push generate-vapid-keys` | krova-main's env.ts pattern shows exactly how to validate at startup |
 | Search & Filters | search.md implies full task search works; FTS on jsonb is not documented as limited | Add: task description search is post-MVP (Phase 11+); global search queries `title` and `name` fields only | Developer reading search.md without reading improvement.md will implement broken search |
-| Permission Model | `canPerformAction()` pseudo-code has no codebase location note; no middleware vs route handler boundary | Add: lives in `src/lib/permissions.ts`; Next.js middleware only checks authentication (session presence), not authorization | Teamority needs a clear authn/authz boundary |
+| Permission Model | `canPerformAction()` pseudo-code has no codebase location note; no middleware vs route handler boundary | Add: lives in `src/lib/permissions.ts`; Next.js middleware only checks authentication (session presence), not authorization | Kanbanica needs a clear authn/authz boundary |
 | Admin Panel | Impersonation 1-hour auto-expire mentioned but no implementation detail | Add: pg-boss cron (`impersonation.cleanup`) runs every 5 min and revokes sessions where `impersonatedBy IS NOT NULL AND createdAt < NOW() - 1 hour` | Security-critical feature; implementation path must be explicit |
 | Customer Support | Missing user flows, notification triggers, auto-close job, admin UI screens | Add full user flow, notification table, pg-boss auto-close spec, admin vs user permission separation | Was a data model stub; cannot be built from original doc |
 
@@ -121,7 +121,7 @@
 | views.md | 6.5/10 | No dnd-kit SSR safety note; no `UserListViewPreference` deferral note; no Board View column order spec | Add `dynamic({ ssr: false })` pattern; add deferral note |
 | search-and-filters.md | 6.5/10 | No FTS limitation stated; no Prisma full-text search syntax; no debounce pattern | Add Prisma search query; add FTS scope (title only at MVP) |
 | admin-panel.md | 6.0/10 | No impersonation session cleanup implementation; no force-delete job payload spec | Add impersonation cleanup cron spec; add admin API auth mechanism |
-| plans-and-pricing.md | REMOVED | Teamority is open-source; file deleted | -- |
+| plans-and-pricing.md | REMOVED | Kanbanica is open-source; file deleted | -- |
 | services.md | 6.0/10 | No setup runbook; no env var tables; no startup/teardown order | Rewritten -- now includes all of the above |
 | landing-page.md | 5.5/10 | No routing spec; no analytics implementation; no performance targets | Rewritten -- now includes routing, ISR, analytics, Lighthouse targets |
 | keyboard-shortcuts.md | 5.5/10 | No React hook architecture; no sequential shortcut pattern; no shortcut display component | Rewritten -- now includes full hook interface and registry |
@@ -188,19 +188,19 @@ The following 5 docs have been fully rewritten on disk:
 
 ## Top 10 Reusable Engineering Patterns from krova-main
 
-1. **`job-types.ts` registry** -- `JOB_NAMES` const + typed payload per job + `QUEUE_OPTIONS` compile-time guard. Apply to all 5 Teamority background jobs immediately. This pattern prevents ad-hoc job management and catches missing queue definitions at compile time.
+1. **`job-types.ts` registry** -- `JOB_NAMES` const + typed payload per job + `QUEUE_OPTIONS` compile-time guard. Apply to all 5 Kanbanica background jobs immediately. This pattern prevents ad-hoc job management and catches missing queue definitions at compile time.
 
-2. **`lib/audit.ts` fire-and-forget** -- `audit()` function wraps DB insert in `try/catch`; errors are logged but never thrown; includes `extractRequestContext()` for IP/UA from Next.js headers. Apply identically to Teamority's `ActivityLog` writes.
+2. **`lib/audit.ts` fire-and-forget** -- `audit()` function wraps DB insert in `try/catch`; errors are logged but never thrown; includes `extractRequestContext()` for IP/UA from Next.js headers. Apply identically to Kanbanica's `ActivityLog` writes.
 
 3. **`lib/env.ts` Zod validation** -- All env vars validated at startup with Zod schema; typed `env` export used everywhere instead of `process.env`. Implement in Phase 0 before writing any feature code. Fail fast on missing vars with descriptive messages.
 
 4. **Server action auth pattern** -- `auth.api.getSession()` at the top of every server action; `requireActionMembershipAndPermission()` for permission checks; early return `{ error: string }` throughout. Never inline session checks inside business logic.
 
-5. **Enqueue-before-delete storage ordering** -- Storage cleanup jobs enqueued BEFORE the DB transaction commits; failed enqueue aborts deletion and returns error. Applies to all Teamority attachment and avatar deletes.
+5. **Enqueue-before-delete storage ordering** -- Storage cleanup jobs enqueued BEFORE the DB transaction commits; failed enqueue aborts deletion and returns error. Applies to all Kanbanica attachment and avatar deletes.
 
 6. **Pre-flight checks before side effects** -- All precondition checks (permission, resource existence, business rules) run before any DB write or job enqueue. Prevents partial state on validation failure.
 
-7. **Lifecycle vs audit log separation** -- Operational context in lifecycle logs (free-form, entity-scoped); security records in audit logs (structured, actor-scoped). Maps directly to Teamority's `ActivityLog` vs `PlatformAuditLog`.
+7. **Lifecycle vs audit log separation** -- Operational context in lifecycle logs (free-form, entity-scoped); security records in audit logs (structured, actor-scoped). Maps directly to Kanbanica's `ActivityLog` vs `PlatformAuditLog`.
 
 8. **Transaction + enqueue pattern** -- Jobs enqueued inside or immediately after DB transactions. Ensures job payload is consistent with DB state at enqueue time. Apply to workspace deletion and sprint auto-close.
 

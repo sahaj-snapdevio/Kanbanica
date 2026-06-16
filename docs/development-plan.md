@@ -1,4 +1,4 @@
-# Development Plan
+﻿# Development Plan
 
 ## How to use this file
 
@@ -6,7 +6,7 @@ Each phase is a self-contained development step. Work through them **in order** 
 
 At the start of each phase, reference the relevant feature doc from the `docs/` folder. At the end of each phase, the app should be in a working, testable state before moving to the next.
 
-**Relevant docs:** All feature specs live in `f:\teamority\docs\`
+**Relevant docs:** All feature specs live in `f:\Kanbanica\docs\`
 
 ---
 
@@ -32,26 +32,26 @@ At the start of each phase, reference the relevant feature doc from the `docs/` 
 ## Phase Overview
 
 ```
-Phase 0  →  Project Setup
-Phase 1  →  Database Schema
-Phase 2  →  Landing Page
-Phase 3  →  Authentication Pages
-Phase 4  →  Onboarding
-Phase 5  →  Workspace
-Phase 6  →  Space
-Phase 7  →  Folder (Post-MVP — skipped in initial build)
-Phase 8  →  List
-Phase 9  →  Task
-Phase 10 →  Subtask
-Phase 11 →  Sprint
-Phase 12 →  Views (Board + Calendar + My Tasks)
-Phase 13 →  Collaboration (Comments + Activity)
-Phase 14 →  Search & Filters
-Phase 15 →  Notifications
-Phase 16 →  Permission Enforcement (audit pass)
-Phase 17 →  Admin Panel
-Phase 18 →  Customer Support
-Phase 19 →  QA & Launch Prep
+Phase 0  ->  Project Setup
+Phase 1  ->  Database Schema
+Phase 2  ->  Landing Page
+Phase 3  ->  Authentication Pages
+Phase 4  ->  Onboarding
+Phase 5  ->  Workspace
+Phase 6  ->  Space
+Phase 7  ->  Folder (Post-MVP — skipped in initial build)
+Phase 8  ->  List
+Phase 9  ->  Task
+Phase 10 ->  Subtask
+Phase 11 ->  Sprint
+Phase 12 ->  Views (Board + Calendar + My Tasks)
+Phase 13 ->  Collaboration (Comments + Activity)
+Phase 14 ->  Search & Filters
+Phase 15 ->  Notifications
+Phase 16 ->  Permission Enforcement (audit pass)
+Phase 17 ->  Admin Panel
+Phase 18 ->  Customer Support
+Phase 19 ->  QA & Launch Prep
 ```
 
 ---
@@ -68,8 +68,8 @@ Phase 19 →  QA & Launch Prep
 
 - [ ] Init Next.js 15 project
   ```bash
-  npx create-next-app@latest teamority --typescript --tailwind --app --src-dir
-  cd teamority
+  npx create-next-app@latest Kanbanica --typescript --tailwind --app --src-dir
+  cd Kanbanica
   ```
 - [ ] Install shadcn/ui
   ```bash
@@ -118,7 +118,7 @@ Phase 19 →  QA & Launch Prep
 - [ ] Copy `.env.example` to `.env.local` and fill local values:
   ```
   # Database
-  DATABASE_URL=postgresql://postgres:dev@localhost:5432/teamority
+  DATABASE_URL=postgresql://postgres:dev@localhost:5432/Kanbanica
 
   # Better Auth
   BETTER_AUTH_SECRET=                    # 32+ char random string
@@ -130,13 +130,13 @@ Phase 19 →  QA & Launch Prep
   SMTP_SECURE=false
   SMTP_USER=
   SMTP_PASS=
-  SMTP_FROM=noreply@teamority.com
+  SMTP_FROM=noreply@Kanbanica.com
 
   # Cloudflare R2 (or local MinIO for dev)
   R2_ENDPOINT=
   R2_ACCESS_KEY_ID=
   R2_SECRET_ACCESS_KEY=
-  R2_BUCKET_NAME=teamority-dev
+  R2_BUCKET_NAME=Kanbanica-dev
   R2_PUBLIC_URL=
 
   # App
@@ -145,7 +145,7 @@ Phase 19 →  QA & Launch Prep
   # Web Push (optional in dev)
   VAPID_PUBLIC_KEY=
   VAPID_PRIVATE_KEY=
-  VAPID_SUBJECT=mailto:admin@teamority.com
+  VAPID_SUBJECT=mailto:admin@Kanbanica.com
   ```
 - [ ] Create `src/lib/env.ts` -- Zod validation, fail fast on startup
   ```typescript
@@ -224,7 +224,7 @@ Phase 19 →  QA & Launch Prep
 
 - [ ] Start PostgreSQL locally:
   ```bash
-  docker run --name teamority-db -e POSTGRES_PASSWORD=dev -e POSTGRES_DB=teamority -p 5432:5432 -d postgres:16
+  docker run --name Kanbanica-db -e POSTGRES_PASSWORD=dev -e POSTGRES_DB=Kanbanica -p 5432:5432 -d postgres:16
   ```
 - [ ] `npx prisma init`
 - [ ] Write full Prisma schema -- do in Phase 1 (see [database-schema.md](./database-schema.md))
@@ -329,7 +329,7 @@ Phase 19 →  QA & Launch Prep
 
 **Layout & Navigation:**
 - [ ] Public layout (separate from app layout — no sidebar, no auth)
-- [ ] Sticky nav bar (transparent → solid on scroll)
+- [ ] Sticky nav bar (transparent -> solid on scroll)
 - [ ] Mobile hamburger menu
 - [ ] Logo + wordmark
 - [ ] Smooth scroll to section on anchor link click
@@ -337,9 +337,9 @@ Phase 19 →  QA & Launch Prep
 
 **Sections (in order):**
 - [ ] Hero section — headline, subheadline, primary + secondary CTA, trust nudge, hero image placeholder
-- [ ] Social proof bar — static text e.g. `"500+ teams already using Teamority"`
+- [ ] Social proof bar — static text e.g. `"500+ teams already using Kanbanica"`
 - [ ] Features section — 6 feature cards (Tasks, Sprints, Views, Comments, Notifications, Search)
-- [ ] How It Works — 4 steps (Create Workspace → Invite Team → Organize → Start Working)
+- [ ] How It Works — 4 steps (Create Workspace -> Invite Team -> Organize -> Start Working)
 - [ ] Views Showcase — tab switcher (List / Board / Calendar) with screenshots or placeholder images
 - [ ] Testimonials — 3 static cards
 - [ ] General FAQ — accordion (7 questions)
@@ -397,7 +397,7 @@ Phase 19 →  QA & Launch Prep
 - [ ] Magic link valid for **15 minutes**, single-use, invalidated after click
 - [ ] If email is not registered: auto-create account on first magic link use (sign up = sign in)
 - [ ] On magic link use: revoke the token immediately after session creation
-- [ ] Redirect logged-in users away from auth pages → app
+- [ ] Redirect logged-in users away from auth pages -> app
 - [ ] Protect all app routes — unauthenticated users redirected to `/sign-in`
 
 **Email templates (via SMTP / Nodemailer):**
@@ -410,14 +410,14 @@ Phase 19 →  QA & Launch Prep
 
 **Avatar system (build once here, used everywhere — reference [avatar-system.md](./avatar-system.md)):**
 - [ ] `getInitials(fullName)` utility — first + last initial, max 2 chars, uppercased
-- [ ] `getAvatarColor(userId)` utility — deterministic hash of UUID → index into 10-color palette
-- [ ] `<Avatar>` component — accepts `user: { name, image, id }`, size prop (`xs/sm/md/lg/xl`), renders photo → initials fallback in correct priority order
+- [ ] `getAvatarColor(userId)` utility — deterministic hash of UUID -> index into 10-color palette
+- [ ] `<Avatar>` component — accepts `user: { name, image, id }`, size prop (`xs/sm/md/lg/xl`), renders photo -> initials fallback in correct priority order
 - [ ] `<AvatarStack>` component — stacks up to 3 avatars with white border + `+N` overflow chip
-- [ ] Avatar upload: resize server-side to max 256×256px before storing to R2, delete old file on replace
+- [ ] Avatar upload: resize server-side to max 256Ã—256px before storing to R2, delete old file on replace
 - [ ] Greyed-out avatar state (40% opacity + tooltip) for removed workspace members
-- [ ] Workspace avatar: rounded square (8px radius), supports `logo_url` → `logo_emoji` → initials fallback
+- [ ] Workspace avatar: rounded square (8px radius), supports `logo_url` -> `logo_emoji` -> initials fallback
 - [ ] "Deleted User" avatar: grey circle with person icon, no initials
-- [ ] System event avatar: Teamority logo mark for automated activity log entries
+- [ ] System event avatar: Kanbanica logo mark for automated activity log entries
 - [ ] Delete account (with ownership transfer guard)
 
 **Done when:** A new user can sign in via magic link (auto-creates account on first use), verify email, and sign out. All auth pages are styled consistently with the landing page.
@@ -440,13 +440,13 @@ Phase 19 →  QA & Launch Prep
   - [ ] Name input (required)
   - [ ] Logo upload or emoji picker (optional)
 - [ ] Step 2 UI: Create first Space
-  - [ ] Hierarchy diagram shown above input: `Workspace → Space → List → Task` with example values (`Acme Inc → Engineering → Backlog → Fix login bug`)
+  - [ ] Hierarchy diagram shown above input: `Workspace -> Space -> List -> Task` with example values (`Acme Inc -> Engineering -> Backlog -> Fix login bug`)
   - [ ] Explainer: *"A Space is where your team's work lives — like a department or project area. You can create more later."*
   - [ ] Name input (required)
   - [ ] Color picker
 - [ ] On Space creation: auto-create default List named `"List"` inside it
 - [ ] On List creation: auto-create one demo welcome task inside it
-  - [ ] Title: `"👋 Welcome to [Workspace Name] — click here to see how a task works"`
+  - [ ] Title: `"ðŸ‘‹ Welcome to [Workspace Name] — click here to see how a task works"`
   - [ ] Description: pre-filled walkthrough copy
   - [ ] Assignee: workspace creator
   - [ ] Tag: `demo` (used to identify and auto-delete when creator makes their first real task)
@@ -456,14 +456,14 @@ Phase 19 →  QA & Launch Prep
 
 **Getting Started checklist (workspace creator only):**
 - [ ] Show checklist pinned above task list in the first List for the workspace creator
-- [ ] 6 checklist items — steps 1 & 2 auto-checked, steps 3–6 tracked via `UserOnboardingProgress`
+- [ ] 6 checklist items — steps 1 & 2 auto-checked, steps 3--6 tracked via `UserOnboardingProgress`
 - [ ] Auto-check `step_first_task` when user creates any task
 - [ ] Auto-check `step_invite` when user sends any workspace invite
 - [ ] Auto-check `step_due_date` when user sets a due date on any task
 - [ ] Auto-check `step_board_view` when user switches to Board view
 - [ ] Progress bar fills as steps complete
-- [ ] On all 6 complete: show `"You're all set! 🎉"` → fade out after 3 seconds
-- [ ] `[Dismiss checklist]` link → sets `dismissed_at`, hides permanently
+- [ ] On all 6 complete: show `"You're all set! ðŸŽ‰"` -> fade out after 3 seconds
+- [ ] `[Dismiss checklist]` link -> sets `dismissed_at`, hides permanently
 
 **Empty states (implement alongside each feature phase, but plan here):**
 - [ ] Empty List (no tasks) — icon + headline + `"+ Add your first task"` CTA
@@ -659,7 +659,7 @@ Phase 19 →  QA & Launch Prep
 
 **UI:**
 - [ ] List View — task rows with inline editable fields (status, priority, assignee, due date)
-- [ ] Quick create task: inline input at bottom of List (`+ Add Task`) → Enter to save
+- [ ] Quick create task: inline input at bottom of List (`+ Add Task`) -> Enter to save
 - [ ] Task detail panel (slide-in from right or full page modal):
   - [ ] Title (inline edit)
   - [ ] Status pill dropdown
@@ -705,7 +705,7 @@ Phase 19 →  QA & Launch Prep
 - [ ] Progress bar showing `closed / total` subtasks
 - [ ] Fraction counter on parent task card in List / Board view (e.g. `2/5`)
 - [ ] Collapse / expand subtask list (per user state)
-- [ ] Subtask opens as its own full detail panel with breadcrumb: `List › Parent Task › Subtask`
+- [ ] Subtask opens as its own full detail panel with breadcrumb: `List > Parent Task > Subtask`
 - [ ] Convert checklist item to subtask (context menu on checklist item)
 - [ ] Subtasks shown in My Tasks view (Phase 11) with parent context
 
@@ -781,7 +781,7 @@ Phase 19 →  QA & Launch Prep
 - [ ] Workspace-wide: shows all tasks + subtasks assigned to current user
 - [ ] Default grouping: Overdue / Due Today / Due This Week / Upcoming / No Due Date
 - [ ] Alternative grouping: By Space / By List / By Priority / By Status
-- [ ] Each task shows breadcrumb context (Space › List)
+- [ ] Each task shows breadcrumb context (Space > List)
 - [ ] Inline status and due date change
 - [ ] Filter: by Space, Priority, Status, toggle Show Completed
 
@@ -851,8 +851,8 @@ Phase 19 →  QA & Launch Prep
 - [ ] `C` — open quick-create task (context-aware: inline in List View, modal elsewhere)
 - [ ] `?` — open in-app keyboard shortcuts reference panel
 - [ ] `Esc` — close topmost open modal / panel / dropdown (one layer at a time)
-- [ ] `G` → `H` / `G` → `S` / `G` → `N` — sequential navigation shortcuts (1-second window)
-- [ ] List View: `↑`/`↓` row focus, `Enter` open panel, `E` inline title edit, `Space` toggle checkbox
+- [ ] `G` -> `H` / `G` -> `S` / `G` -> `N` — sequential navigation shortcuts (1-second window)
+- [ ] List View: `<-`/`<-` row focus, `Enter` open panel, `E` inline title edit, `Space` toggle checkbox
 - [ ] Task detail panel: `A` assignee picker, `D` due date picker, `L` tag picker, `Ctrl/Cmd+Shift+,` cycle priority
 - [ ] Rich text editor: `Ctrl/Cmd+Enter` submit comment — override Tiptap default if needed
 - [ ] `Backspace`/`Delete` on focused task row — show confirmation modal, `event.preventDefault()` to block browser back
@@ -867,7 +867,7 @@ Phase 19 →  QA & Launch Prep
 - [ ] Clear all filters button
 - [ ] Save filter combination with a name (`SavedFilter`)
 - [ ] Saved filters dropdown for quick reapply
-- [ ] Filter state carries across view switches (List ↔ Board ↔ Calendar)
+- [ ] Filter state carries across view switches (List <-> Board <-> Calendar)
 
 **Sort:**
 - [ ] Sort dropdown: Due Date, Priority, Status, Assignee, Created Date, Last Updated
@@ -930,9 +930,9 @@ Phase 19 →  QA & Launch Prep
 - [ ] Muted items list with unmute option
 
 **Due Date Reminder Job:**
-- [ ] Cron: runs daily, finds tasks due tomorrow → send reminders
-- [ ] Cron: runs daily, finds tasks due today → send reminders
-- [ ] Cron: runs daily, finds tasks that became overdue → send reminders
+- [ ] Cron: runs daily, finds tasks due tomorrow -> send reminders
+- [ ] Cron: runs daily, finds tasks due today -> send reminders
+- [ ] Cron: runs daily, finds tasks that became overdue -> send reminders
 - [ ] Skip if task is already closed
 
 **Done when:** All notification triggers fire correctly, in-app bell shows unread count, email notifications send via SMTP, browser push works after permission grant.
@@ -1062,8 +1062,8 @@ Phase 19 →  QA & Launch Prep
 ### Tasks
 
 **End-to-end testing:**
-- [ ] Full user journey: Sign up → Onboarding → Create Space → Create List → Create Task → Assign → Comment → Close Task
-- [ ] Full sprint lifecycle: Create → Start → Add Tasks → Close → handle incomplete tasks
+- [ ] Full user journey: Sign up -> Onboarding -> Create Space -> Create List -> Create Task -> Assign -> Comment -> Close Task
+- [ ] Full sprint lifecycle: Create -> Start -> Add Tasks -> Close -> handle incomplete tasks
 - [ ] Permission boundary tests: each role + Space permission combination
 - [ ] Email delivery tests (sign up, invite, reset, notifications, digest)
 - [ ] Browser push notification test
