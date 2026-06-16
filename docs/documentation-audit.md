@@ -31,12 +31,12 @@
 | Views | List/Board/My Tasks, user preferences | dnd-kit, PostgreSQL (Phase 12) | Adequate -- missing SSR safety notes |
 | Collaboration | Comments, reactions, Activity Log, attachments, @mentions | PostgreSQL, S3/R2, Nodemailer | Good -- missing upload pipeline |
 | Notifications | 3-channel: In-App/Email/Push, digest, 90-day retention | PostgreSQL, pg-boss, Web Push, Nodemailer | Good -- missing job schedule spec |
-| Search & Filters | Global Ctrl+K search, per-list filters, saved filters | PostgreSQL, Prisma FTS | Adequate -- critical FTS gap siloed in improvement.md |
+| Search & Filters | Global Ctrl+K search, per-list filters, saved filters | PostgreSQL, Drizzle ORM FTS | Adequate -- critical FTS gap siloed in improvement.md |
 | Permission Model | Two-level: Workspace Role + Space Permission | All feature modules | Excellent |
 | Admin Panel | Platform admin: metrics, impersonation, force-delete | PostgreSQL, Better Auth Admin Plugin | Adequate -- impersonation mechanics missing |
 | Empty States | 16 states, Getting Started checklist, onboarding progress | PostgreSQL (UserOnboardingProgress) | Complete |
 | Design System | Color tokens, typography, spacing, components | Tailwind v4, shadcn/ui, Lucide React | Complete -- no `<LocalDate />` spec |
-| Database Schema | Single Prisma source of truth, indexes, phase-gating | Prisma | Complete |
+| Database Schema | Single Drizzle ORM source of truth, indexes, phase-gating | Drizzle ORM | Complete |
 | Development Plan | 19 phases from setup to launch | All features | Complete -- no phase durations or completion criteria |
 | Services | 12 infrastructure decisions | All services | Rewritten (was decisions-only stub) |
 | Avatar System | User/workspace avatars, AvatarStack, fallbacks | S3/R2, PostgreSQL | Complete |
@@ -81,7 +81,7 @@
 | List | No spec for `order_index` reordering strategy; no spec for duplicate-list deep copy operation | Add: `order_index` uses fractional indexing or integer gaps; duplicate-list is a DB transaction copying List -> ListStatus -> Task rows in order | krova-main's transaction pattern shows how to structure multi-step copy operations |
 | Task | FTS gap acknowledged in `improvement.md` but not in `task.md` itself | Add: `description_text` generated column note (post-MVP Phase 11); until then, FTS on tasks is title-only | Critical architectural decision currently siloed in improvement.md |
 | Task | Dependency DFS cycle detection: algorithm mentioned but no implementation path | Add: on `POST /api/tasks/:id/dependencies`, traverse graph from `dependsOnTaskId` upward using recursive CTE or in-memory DFS; return 400 on cycle | Without this, a developer may implement a naive check that misses multi-hop cycles |
-| Subtask | Progress rollup formula documented but no Prisma query pattern; no N+1 warning | Add: computed on-the-fly with COUNT query; add `@@index([parentTaskId])`; no caching needed at MVP scale | Without this, a developer may write an N+1 query per task card in list view |
+| Subtask | Progress rollup formula documented but no Drizzle ORM query pattern; no N+1 warning | Add: computed on-the-fly with COUNT query; add `@@index([parentTaskId])`; no caching needed at MVP scale | Without this, a developer may write an N+1 query per task card in list view |
 | Sprint | Auto-close trigger mentioned as pg-boss cron but no job name, schedule, or payload spec | Add: `JOB_NAMES.SPRINT_AUTO_CLOSE`; cron schedule (every 15 min); `SprintAutoClosePayload` with `sprintId`; idempotency guard | krova-main's billing-hourly cron handler pattern is directly applicable |
 | Sprint | Incomplete task strategy (move_to_backlog / move_to_next_sprint / leave_as_is) documented as UX only | Add: transaction spec -- `move_to_backlog` deletes TaskSprint rows; `move_to_next_sprint` creates new Sprint and inserts TaskSprint rows; all in one transaction | Multi-step operations need transactional guards |
 | Views | dnd-kit Board View: no note on Next.js 15 App Router SSR incompatibility | Add: wrap all dnd-kit components in `dynamic(() => import(...), { ssr: false })`; dnd-kit accesses `window` on import and will crash SSR | improvement.md calls this out; views.md is where the note belongs |
@@ -111,7 +111,7 @@
 | design-system.md | 8.5/10 | No Sheet vs AlertDialog convention; no `<LocalDate />` component spec | Add component usage rules; add LocalDate implementation note |
 | collaboration.md | 8.0/10 | No presigned URL upload pipeline; no R2 delete ordering implementation | Add upload pipeline spec; add attachment hard-delete ordering note |
 | avatar-system.md | 8.0/10 | No server-side resize implementation choice; no R2 key naming convention | Add resize implementation note; add R2 key convention |
-| subtask.md | 7.5/10 | No progress rollup query pattern; N+1 risk not mentioned; no index note | Add Prisma query snippet; add `@@index([parentTaskId])`; clarify archived subtask exclusion |
+| subtask.md | 7.5/10 | No progress rollup query pattern; N+1 risk not mentioned; no index note | Add Drizzle ORM query snippet; add `@@index([parentTaskId])`; clarify archived subtask exclusion |
 | space.md | 7.5/10 | No Public -> Private toggle implementation detail; no SpaceMember index recommendation | Add query-layer enforcement note |
 | improvement.md | 7.5/10 | Not cross-linked from the docs it corrects | Add cross-reference links to task.md, views.md, search.md |
 | development-plan.md | 7.5/10 | No estimated durations; no definition of done per phase; no dependency callouts | Add phase completion criteria; add critical path notes |
@@ -119,7 +119,7 @@
 | sprint.md | 7.0/10 | No pg-boss job name/schedule for auto-close; no transaction spec for close modal actions | Add `JOB_NAMES` entry; add transaction spec |
 | list.md | 7.0/10 | No `order_index` rebalancing strategy; no duplicate-list transaction spec; no status auto-creation note | Add order_index strategy; add copy transaction pattern |
 | views.md | 6.5/10 | No dnd-kit SSR safety note; no `UserListViewPreference` deferral note; no Board View column order spec | Add `dynamic({ ssr: false })` pattern; add deferral note |
-| search-and-filters.md | 6.5/10 | No FTS limitation stated; no Prisma full-text search syntax; no debounce pattern | Add Prisma search query; add FTS scope (title only at MVP) |
+| search-and-filters.md | 6.5/10 | No FTS limitation stated; no Drizzle ORM full-text search syntax; no debounce pattern | Add Drizzle ORM search query; add FTS scope (title only at MVP) |
 | admin-panel.md | 6.0/10 | No impersonation session cleanup implementation; no force-delete job payload spec | Add impersonation cleanup cron spec; add admin API auth mechanism |
 | plans-and-pricing.md | REMOVED | Kanbanica is open-source; file deleted | -- |
 | services.md | 6.0/10 | No setup runbook; no env var tables; no startup/teardown order | Rewritten -- now includes all of the above |
@@ -133,7 +133,7 @@
 
 1. **task.md** (9.5) -- 16-field spec, 20 business rules, full data model with 10 related tables, complete event type reference, DFS cycle detection, description snapshot, data lifecycle. A developer can implement from this doc alone.
 2. **permission-model.md** (9.5) -- Full capability matrices for both permission levels, Guest restrictions, Private Space behavior, `canPerformAction()` pseudo-code. No ambiguity.
-3. **database-schema.md** (9.0) -- Single source of truth, Prisma-ready, phase-gated tables, index notes. Consistent with all feature docs.
+3. **database-schema.md** (9.0) -- Single source of truth, Drizzle ORM-ready, phase-gated tables, index notes. Consistent with all feature docs.
 4. **authentication.md** (8.5) -- Covers magic link flow, session management, rate limiting, data lifecycle, onboarding redirect.
 5. **empty-states.md** (8.5) -- All 16 states spec'd with exact copy, layout, and CTA. Getting Started checklist with auto-check rules.
 
@@ -153,7 +153,7 @@ The following 5 docs have been fully rewritten on disk:
 
 | File | Score Before | Score After | Summary of Changes |
 |------|-------------|-------------|-------------------|
-| `docs/customer-support.md` | 4.5/10 | 9.0/10 | Added full user flows, notification trigger table, pg-boss auto-close job spec, admin vs user permission model, complete API table, Prisma schema with indexes, `PlatformAuditLog` events |
+| `docs/customer-support.md` | 4.5/10 | 9.0/10 | Added full user flows, notification trigger table, pg-boss auto-close job spec, admin vs user permission model, complete API table, Drizzle ORM schema with indexes, `PlatformAuditLog` events |
 | `docs/calendar-view.md` | 4.0/10 | 8.0/10 | Clear "DO NOT BUILD in Phases 0-18" guard, SSR safety note for dnd-kit, timezone edge cases, dependency ordering |
 | `docs/keyboard-shortcuts.md` | 5.5/10 | 8.5/10 | `useKeyboardShortcuts` hook interface, `useSequentialShortcuts` state machine, Zustand shortcut registry for modal, per-route registration pattern, browser conflict table |
 | `docs/landing-page.md` | 5.5/10 | 8.5/10 | `(marketing)` route group spec, SSG + ISR rendering strategy, SEO metadata pattern, analytics event table, performance targets (Lighthouse), component tree |
@@ -176,7 +176,7 @@ The following 5 docs have been fully rewritten on disk:
 11. **plans-and-pricing.md** -- Add `checkPlanLimit()` function spec in `src/lib/plan.ts` and enforcement call in API routes
 12. **collaboration.md** -- Add task attachment presigned URL upload pipeline spec (request URL -> direct R2 upload -> confirm endpoint)
 13. **authentication.md** -- Add SMTP env var list and deliverability pre-launch checklist (SPF/DKIM/DMARC)
-14. **subtask.md** -- Add progress rollup Prisma query pattern and note on N+1 risk in list views
+14. **subtask.md** -- Add progress rollup Drizzle ORM query pattern and note on N+1 risk in list views
 15. **permission-model.md** -- Add `src/lib/permissions.ts` codebase location and middleware vs route handler boundary
 16. **database-schema.md** -- Add `description_text` generated column as a post-MVP placeholder comment
 17. **design-system.md** -- Add Sheet vs AlertDialog usage convention; add `<LocalDate />` component requirement
@@ -252,7 +252,7 @@ The following 5 docs have been fully rewritten on disk:
 
 8. **Comment soft-delete requires parent check inside a transaction** -- A comment with no replies can be hard-deleted. A comment with replies must be soft-deleted (preserves thread structure). This check must be inside a transaction to prevent race conditions.
 
-9. **`TaskDescriptionSnapshot` has a unique constraint on `taskId`** -- Only one snapshot per task. Saving a new description snapshot must use Prisma `upsert`, not `create`. A second `create` call will fail with a unique constraint violation.
+9. **`TaskDescriptionSnapshot` has a unique constraint on `taskId`** -- Only one snapshot per task. Saving a new description snapshot must use Drizzle ORM `upsert`, not `create`. A second `create` call will fail with a unique constraint violation.
 
 10. **VAPID push subscriptions are invalidated when keys rotate** -- If VAPID keys are changed, all stored `PushSubscription` records become invalid. WebPush returns HTTP 410 Gone on stale subscriptions. The handler must delete the `PushSubscription` record on 410 to prevent repeated failed sends.
 
@@ -264,10 +264,10 @@ The following 5 docs have been fully rewritten on disk:
 
 1. Initialize Next.js 15 project with TypeScript, Tailwind CSS v4, shadcn/ui
 2. Create `src/lib/env.ts` -- Zod validation of all env vars; fail fast on startup with clear messages
-3. Set up PostgreSQL locally (Docker), run `npx prisma init`, apply `npx better-auth migrate`
+3. Set up PostgreSQL locally (Docker), run `npx drizzle-kit generate && npx drizzle-kit migrate`
 4. Configure `scripts/worker.ts` + `concurrently` in `package.json`; start the worker even with zero handlers
 5. Create `src/lib/worker/job-types.ts` with empty `JOB_NAMES` and `QUEUE_OPTIONS`
-6. Create `src/lib/db.ts` (Prisma singleton) and `src/lib/auth.ts` (Better Auth instance)
+6. Create `src/lib/db.ts` (Drizzle ORM singleton) and `src/lib/auth.ts` (Better Auth instance)
 7. Set up Biome for linting/formatting
 8. Create `(marketing)` and `(app)` route groups; stub layouts with correct auth/no-auth separation
 9. Add `<LocalDate />` to `src/components/ui/local-date.tsx`

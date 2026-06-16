@@ -184,69 +184,68 @@ POST /api/support/tickets
 
 ## Database
 
-```prisma
-enum SupportTicketStatus {
-  OPEN
-  CLOSED
-}
+Schema file: `db/schema/support.ts`
 
-enum SupportTicketCategory {
-  GENERAL
-  TASKS
-  BILLING
-  TECHNICAL
-  OTHER
-}
+```ts
+import { pgEnum, pgTable, text, timestamp, boolean, integer, index, uniqueIndex } from "drizzle-orm/pg-core";
 
-model SupportTicket {
-  id           String                @id @default(uuid())
-  userId       String
-  ticketNumber String                @unique  // TKT-NNNN, auto-generated
-  subject      String
-  status       SupportTicketStatus   @default(OPEN)
-  category     SupportTicketCategory @default(GENERAL)
-  closedAt     DateTime?
-  closedReason String?               // "user_closed" | "admin_closed" | "auto_inactivity"
-  createdAt    DateTime              @default(now())
-  updatedAt    DateTime              @updatedAt
+export const supportTicketStatusEnum = pgEnum("support_ticket_status", ["OPEN", "CLOSED"]);
+export const supportTicketCategoryEnum = pgEnum("support_ticket_category", [
+  "GENERAL", "TASKS", "BILLING", "TECHNICAL", "OTHER",
+]);
 
-  messages     SupportTicketMessage[]
+export const supportTicket = pgTable("support_ticket", {
+  id:           text("id").primaryKey(),
+  userId:       text("user_id").notNull(),
+  ticketNumber: text("ticket_number").notNull().unique(),  // TKT-NNNN, auto-generated
+  subject:      text("subject").notNull(),
+  status:       supportTicketStatusEnum("status").notNull().default("OPEN"),
+  category:     supportTicketCategoryEnum("category").notNull().default("GENERAL"),
+  closedAt:     timestamp("closed_at", { withTimezone: true }),
+  closedReason: text("closed_reason"),  // "user_closed" | "admin_closed" | "auto_inactivity"
+  createdAt:    timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt:    timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("support_ticket_user_status_idx").on(t.userId, t.status),
+  index("support_ticket_status_updated_idx").on(t.status, t.updatedAt),  // for auto-close cron query
+]);
 
-  @@index([userId, status])
-  @@index([status, updatedAt])  // for auto-close cron query
-}
+export const supportTicketMessage = pgTable("support_ticket_message", {
+  id:       text("id").primaryKey(),
+  ticketId: text("ticket_id").notNull().references(() => supportTicket.id, { onDelete: "cascade" }),
+  authorId: text("author_id").notNull(),
+  isAdmin:  boolean("is_admin").notNull().default(false),
+  body:     text("body").notNull(),  // plain text
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("support_ticket_message_ticket_id_idx").on(t.ticketId),
+]);
 
-model SupportTicketMessage {
-  id        String   @id @default(uuid())
-  ticketId  String
-  authorId  String
-  isAdmin   Boolean  @default(false)
-  body      String   // plain text
-  createdAt DateTime @default(now())
-
-  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-
-  @@index([ticketId])
-}
-
-model HelpArticle {
-  id          String    @id @default(uuid())
-  title       String
-  slug        String    @unique
-  category    String
-  body        Json      // Tiptap JSON
-  isPublished Boolean   @default(false)
-  authorId    String
-  publishedAt DateTime?
-  orderIndex  Int       @default(0)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  @@index([category, isPublished])
-}
+export const helpArticle = pgTable("help_article", {
+  id:          text("id").primaryKey(),
+  title:       text("title").notNull(),
+  slug:        text("slug").notNull().unique(),
+  category:    text("category").notNull(),
+  body:        json("body").notNull(),  // Tiptap JSON
+  isPublished: boolean("is_published").notNull().default(false),
+  authorId:    text("author_id").notNull(),
+  publishedAt: timestamp("published_at", { withTimezone: true }),
+  orderIndex:  integer("order_index").notNull().default(0),
+  createdAt:   timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt:   timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("help_article_category_published_idx").on(t.category, t.isPublished),
+]);
 ```
 
-`ticketNumber` generation: use `SELECT MAX(ticketNumber) + 1` inside a transaction. Format as `TKT-` + zero-padded 4-digit number (e.g., `TKT-0042`).
+`ticketNumber` generation: use a raw SQL `UPDATE ... RETURNING` inside a transaction to atomically increment and return the next sequence number. Format as `TKT-` + zero-padded 4-digit number (e.g., `TKT-0042`):
+
+```ts
+const [{ nextNum }] = await tx.execute<{ nextNum: number }>(sql`
+  UPDATE support_ticket_sequence SET value = value + 1 RETURNING value AS "nextNum"
+`)
+const ticketNumber = `TKT-${String(nextNum).padStart(4, '0')}`
+```
 
 ---
 
@@ -321,8 +320,8 @@ Handler in `src/lib/worker/handlers/support-ticket-auto-close.ts`:
 ## Implementation Notes
 
 - Implement `src/lib/support/tickets.ts` as the business logic layer; server actions and API routes call it
-- Use `db.$transaction()` for ticket creation (count check + insert must be atomic)
-- `ticketNumber` counter: use `UPDATE` with `RETURNING` on a `Sequence` table, or a raw `nextval()` via `prisma.$executeRaw`
+- Use `db.transaction()` for ticket creation (count check + insert must be atomic)
+- `ticketNumber` counter: use `UPDATE ... RETURNING` on a sequence row table (see Database section above)
 - Email templates: `src/lib/email/support-ticket-created.tsx`, `support-ticket-reply.tsx`, `support-ticket-closed.tsx` -- use React Email components
 - Do NOT use Tiptap for ticket message body in MVP -- plain text only
 - Register the auto-close cron in `scripts/worker.ts`:

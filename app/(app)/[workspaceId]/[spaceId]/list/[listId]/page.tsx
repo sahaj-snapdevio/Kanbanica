@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { list, listStatus, task, taskTag, tag, space } from "@/db/schema";
+import { list, listStatus, task, taskTag, tag, space, spaceMember } from "@/db/schema";
 import { canAccessSpace, getWorkspaceMembership } from "@/lib/permissions";
 import { ListContainer } from "./_components/list-container";
 
@@ -23,6 +23,19 @@ export default async function ListPage({ params }: ListPageProps) {
   ]);
   if (!membership || !accessible) notFound();
 
+  const isAdminOrOwner = membership.role === "OWNER" || membership.role === "ADMIN";
+
+  // Determine canManage: OWNER/ADMIN always can; others need FULL_ACCESS in spaceMember
+  let canManage = isAdminOrOwner;
+  if (!isAdminOrOwner) {
+    const [sm] = await db
+      .select({ permission: spaceMember.permission })
+      .from(spaceMember)
+      .where(and(eq(spaceMember.userId, session.user.id), eq(spaceMember.spaceId, spaceId)))
+      .limit(1);
+    canManage = sm?.permission === "FULL_ACCESS";
+  }
+
   const [currentSpace, currentList] = await Promise.all([
     db
       .select({ id: space.id, name: space.name, color: space.color })
@@ -31,7 +44,7 @@ export default async function ListPage({ params }: ListPageProps) {
       .limit(1)
       .then((r) => r[0] ?? null),
     db
-      .select({ id: list.id, name: list.name })
+      .select({ id: list.id, name: list.name, color: list.color, description: list.description })
       .from(list)
       .where(and(eq(list.id, listId), eq(list.spaceId, spaceId), eq(list.isArchived, false)))
       .limit(1)
@@ -95,6 +108,8 @@ export default async function ListPage({ params }: ListPageProps) {
       list={currentList}
       statuses={statuses}
       tasks={tasksWithTags}
+      canManage={canManage}
+      isAdmin={isAdminOrOwner}
     />
   );
 }

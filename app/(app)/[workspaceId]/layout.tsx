@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { workspace, workspaceMember, space, list } from "@/db/schema";
+import { workspace, workspaceMember, space, spaceMember, list } from "@/db/schema";
 import { getAccessibleSpaceIds, getWorkspaceMembership } from "@/lib/permissions";
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";
 
@@ -64,25 +64,45 @@ export default async function WorkspaceLayout({ children, params }: WorkspaceLay
           .orderBy(asc(space.orderIndex), asc(space.createdAt))
       : [];
 
-  const spaceListMap: Record<string, { id: string; name: string }[]> = {};
+  const isAdminOrOwner = membership.role === "OWNER" || membership.role === "ADMIN";
+
+  const spaceListMap: Record<string, { id: string; name: string; color: string | null }[]> = {};
+  // Per-space canManageList: OWNER/ADMIN always can; others need FULL_ACCESS in spaceMember
+  const spaceCanManageMap: Record<string, boolean> = {};
+
   if (spaces.length > 0) {
-    const lists = await db
-      .select({ id: list.id, name: list.name, spaceId: list.spaceId })
-      .from(list)
-      .where(
-        and(
-          inArray(
-            list.spaceId,
-            spaces.map((s) => s.id),
-          ),
-          eq(list.isArchived, false),
-        ),
-      )
-      .orderBy(asc(list.orderIndex), asc(list.createdAt));
+    const spaceIdList = spaces.map((s) => s.id);
+
+    const [lists, spacePermissions] = await Promise.all([
+      db
+        .select({ id: list.id, name: list.name, spaceId: list.spaceId, color: list.color })
+        .from(list)
+        .where(and(inArray(list.spaceId, spaceIdList), eq(list.isArchived, false)))
+        .orderBy(asc(list.orderIndex), asc(list.createdAt)),
+
+      isAdminOrOwner
+        ? Promise.resolve([] as { spaceId: string; permission: string }[])
+        : db
+            .select({ spaceId: spaceMember.spaceId, permission: spaceMember.permission })
+            .from(spaceMember)
+            .where(
+              and(
+                eq(spaceMember.userId, userId),
+                inArray(spaceMember.spaceId, spaceIdList),
+              ),
+            ),
+    ]);
 
     for (const l of lists) {
       if (!spaceListMap[l.spaceId]) spaceListMap[l.spaceId] = [];
-      spaceListMap[l.spaceId].push({ id: l.id, name: l.name });
+      spaceListMap[l.spaceId].push({ id: l.id, name: l.name, color: l.color });
+    }
+
+    const permMap: Record<string, string> = {};
+    for (const sp of spacePermissions) permMap[sp.spaceId] = sp.permission;
+
+    for (const s of spaces) {
+      spaceCanManageMap[s.id] = isAdminOrOwner || permMap[s.id] === "FULL_ACCESS";
     }
   }
 
@@ -94,7 +114,11 @@ export default async function WorkspaceLayout({ children, params }: WorkspaceLay
         name: m.name,
         logoEmoji: m.logoEmoji,
       }))}
-      spaces={spaces.map((s) => ({ ...s, lists: spaceListMap[s.id] ?? [] }))}
+      spaces={spaces.map((s) => ({
+        ...s,
+        lists: spaceListMap[s.id] ?? [],
+        canManageList: spaceCanManageMap[s.id] ?? isAdminOrOwner,
+      }))}
       role={membership.role}
       user={{ name: session.user.name ?? null, email: session.user.email }}
     >

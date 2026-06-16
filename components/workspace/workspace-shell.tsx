@@ -7,9 +7,11 @@ import {
   ArchiveIcon,
   CaretUpDownIcon,
   CheckIcon,
+  CopyIcon,
   DotsThreeIcon,
   GearIcon,
   LockSimpleIcon,
+  PencilSimpleIcon,
   PlusIcon,
   SignOutIcon,
   TrashIcon,
@@ -17,6 +19,7 @@ import {
   ListIcon,
 } from "@phosphor-icons/react";
 import { archiveSpace, deleteSpace } from "@/app/actions/space";
+import { archiveList, duplicateList } from "@/app/actions/list";
 import { SpaceActionDialog } from "@/components/workspace/space-action-dialog";
 import { authClient } from "@/lib/auth-client";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -25,6 +28,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { CreateSpaceModal } from "@/components/workspace/create-space-modal";
+import { CreateListModal } from "@/components/list/create-list-modal";
+import { EditListDialog } from "@/components/list/edit-list-dialog";
+import { DeleteListDialog } from "@/components/list/delete-list-dialog";
 
 interface WorkspaceSummary {
   id: string;
@@ -32,12 +38,19 @@ interface WorkspaceSummary {
   logoEmoji: string | null;
 }
 
+interface ListSummary {
+  id: string;
+  name: string;
+  color: string | null;
+}
+
 interface SpaceSummary {
   id: string;
   name: string;
   color: string | null;
   isPrivate: boolean;
-  lists: { id: string; name: string }[];
+  canManageList: boolean;
+  lists: ListSummary[];
 }
 
 interface WorkspaceShellProps {
@@ -66,6 +79,9 @@ export function WorkspaceShell({
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const [createSpaceOpen, setCreateSpaceOpen] = React.useState(false);
   const [spaceAction, setSpaceAction] = React.useState<{ id: string; name: string; variant: "archive" | "delete" } | null>(null);
+  const [createListForSpace, setCreateListForSpace] = React.useState<{ spaceId: string } | null>(null);
+  const [editList, setEditList] = React.useState<{ spaceId: string; list: ListSummary } | null>(null);
+  const [deleteList, setDeleteList] = React.useState<{ spaceId: string; list: ListSummary } | null>(null);
 
   const initials = user.name
     ? user.name
@@ -90,6 +106,35 @@ export function WorkspaceShell({
         onOpenChange={setCreateSpaceOpen}
         workspaceId={workspace.id}
       />
+
+      {createListForSpace && (
+        <CreateListModal
+          open
+          onOpenChange={(open) => !open && setCreateListForSpace(null)}
+          workspaceId={workspace.id}
+          spaceId={createListForSpace.spaceId}
+        />
+      )}
+
+      {editList && (
+        <EditListDialog
+          open
+          onOpenChange={(open) => !open && setEditList(null)}
+          workspaceId={workspace.id}
+          spaceId={editList.spaceId}
+          list={editList.list}
+        />
+      )}
+
+      {deleteList && (
+        <DeleteListDialog
+          open
+          onOpenChange={(open) => !open && setDeleteList(null)}
+          workspaceId={workspace.id}
+          spaceId={deleteList.spaceId}
+          list={deleteList.list}
+        />
+      )}
 
       {spaceAction && (
         <SpaceActionDialog
@@ -198,6 +243,15 @@ export function WorkspaceShell({
                     {s.isPrivate && (
                       <LockSimpleIcon className="size-3 shrink-0 text-muted-foreground" />
                     )}
+                    {s.canManageList && (
+                      <button
+                        onClick={() => setCreateListForSpace({ spaceId: s.id })}
+                        className="opacity-0 transition-opacity group-hover:opacity-100 flex size-5 items-center justify-center rounded hover:bg-accent"
+                        title="Add list"
+                      >
+                        <PlusIcon className="size-3.5 text-muted-foreground" />
+                      </button>
+                    )}
                     <Popover>
                       <PopoverTrigger asChild>
                         <button
@@ -248,22 +302,85 @@ export function WorkspaceShell({
                       const href = `/${workspace.id}/${s.id}/list/${l.id}`;
                       const active = pathname === href;
                       return (
-                        <Link
-                          key={l.id}
-                          href={href}
-                          onClick={() => setSidebarOpen(false)}
-                          className={cn(
-                            "flex items-center gap-2 rounded-md py-1.5 pr-2 pl-7 text-sm transition-colors",
-                            active
-                              ? "bg-accent font-medium text-accent-foreground"
-                              : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                        <div key={l.id} className="group/list relative flex items-center">
+                          <Link
+                            href={href}
+                            onClick={() => setSidebarOpen(false)}
+                            className={cn(
+                              "flex flex-1 items-center gap-2 rounded-md py-1.5 pr-7 pl-7 text-sm transition-colors",
+                              active
+                                ? "bg-accent font-medium text-accent-foreground"
+                                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                            )}
+                          >
+                            <span
+                              className="size-2 shrink-0 rounded-full"
+                              style={{ backgroundColor: l.color ?? "#9CA3AF" }}
+                            />
+                            <span className="truncate">{l.name}</span>
+                          </Link>
+                          {s.canManageList && (
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <button
+                                  className="absolute right-1 opacity-0 transition-opacity group-hover/list:opacity-100 flex size-5 items-center justify-center rounded hover:bg-accent"
+                                  title="List options"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <DotsThreeIcon className="size-3.5 text-muted-foreground" />
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent side="right" align="start" className="w-44 p-1">
+                                <button
+                                  onClick={() => setEditList({ spaceId: s.id, list: l })}
+                                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors hover:bg-accent"
+                                >
+                                  <PencilSimpleIcon className="size-3.5 shrink-0 text-muted-foreground" />
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    await duplicateList(workspace.id, s.id, l.id);
+                                  }}
+                                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors hover:bg-accent"
+                                >
+                                  <CopyIcon className="size-3.5 shrink-0 text-muted-foreground" />
+                                  Duplicate
+                                </button>
+                                <div className="my-1 h-px bg-border" />
+                                <button
+                                  onClick={async () => {
+                                    await archiveList(workspace.id, s.id, l.id);
+                                  }}
+                                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                                >
+                                  <ArchiveIcon className="size-3.5 shrink-0" />
+                                  Archive
+                                </button>
+                                {isAdmin && (
+                                  <button
+                                    onClick={() => setDeleteList({ spaceId: s.id, list: l })}
+                                    className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-destructive transition-colors hover:bg-destructive/10"
+                                  >
+                                    <TrashIcon className="size-3.5 shrink-0" />
+                                    Delete
+                                  </button>
+                                )}
+                              </PopoverContent>
+                            </Popover>
                           )}
-                        >
-                          <ListIcon className="size-3.5 shrink-0" />
-                          <span className="truncate">{l.name}</span>
-                        </Link>
+                        </div>
                       );
                     })}
+                    {s.canManageList && (
+                      <button
+                        onClick={() => setCreateListForSpace({ spaceId: s.id })}
+                        className="flex w-full items-center gap-2 rounded-md py-1.5 pl-7 pr-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                      >
+                        <PlusIcon className="size-3" />
+                        Add list
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

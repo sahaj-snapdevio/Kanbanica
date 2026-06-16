@@ -263,17 +263,14 @@ Task
 
 ### Required Schema Index
 
-Add this index to the `Task` model in `prisma/schema.prisma`:
+These indexes are already defined in `db/schema/task.ts`:
 
-```prisma
-model Task {
-  // ... existing fields ...
-  @@index([parentTaskId])   // required for progress rollup and subtask list queries
-  @@index([listId, parentTaskId])  // for filtering subtasks within a list
-}
+```ts
+index("task_parent_task_id_idx").on(t.parentTaskId)        // required for progress rollup and subtask list queries
+index("task_list_parent_idx").on(t.listId, t.parentTaskId) // for filtering subtasks within a list
 ```
 
-Without `@@index([parentTaskId])`, the progress rollup query runs a full table scan for every task card rendered in List View -- an N+1 problem at scale.
+Without `task_parent_task_id_idx`, the progress rollup query runs a full table scan for every task card rendered in List View -- an N+1 problem at scale.
 
 ### Progress Rollup Query
 
@@ -284,17 +281,17 @@ Compute on the fly. Do NOT cache per task -- the count is small and the index ma
 
 async function getSubtaskProgress(parentTaskId: string) {
   // Single query: count total and closed subtasks
-  const result = await db.$queryRaw<[{ total: bigint; closed: bigint }]>`
+  const result = await db.execute<{ total: string; closed: string }>(sql`
     SELECT
       COUNT(*)                                      AS total,
       COUNT(*) FILTER (
         WHERE ls.type = 'CLOSED' AND t.is_archived = false
       )                                             AS closed
-    FROM "Task" t
-    JOIN "ListStatus" ls ON ls.id = t.status_id
+    FROM task t
+    JOIN list_status ls ON ls.id = t.status_id
     WHERE t.parent_task_id = ${parentTaskId}
       AND t.is_archived = false
-  `
+  `)
 
   const total = Number(result[0].total)
   const closed = Number(result[0].closed)
@@ -320,19 +317,17 @@ async function getSubtaskProgressBatch(
 ): Promise<Record<string, { total: number; closed: number; percent: number }>> {
   if (parentTaskIds.length === 0) return {}
 
-  const rows = await db.$queryRaw<
-    Array<{ parent_task_id: string; total: bigint; closed: bigint }>
-  >`
+  const rows = await db.execute<{ parent_task_id: string; total: string; closed: string }>(sql`
     SELECT
       t.parent_task_id,
       COUNT(*)                                             AS total,
       COUNT(*) FILTER (WHERE ls.type = 'CLOSED')          AS closed
-    FROM "Task" t
-    JOIN "ListStatus" ls ON ls.id = t.status_id
-    WHERE t.parent_task_id = ANY(${parentTaskIds}::uuid[])
+    FROM task t
+    JOIN list_status ls ON ls.id = t.status_id
+    WHERE t.parent_task_id = ANY(${sql.raw(`ARRAY[${parentTaskIds.map(id => `'${id}'`).join(',')}]`)}::text[])
       AND t.is_archived = false
     GROUP BY t.parent_task_id
-  `
+  `)
 
   return Object.fromEntries(
     rows.map(r => [
@@ -359,44 +354,43 @@ Creating a subtask follows the same code path as creating a regular task, with t
 // src/lib/tasks/create-subtask.ts
 
 async function createSubtask(parentTaskId: string, data: CreateSubtaskInput, actorId: string) {
-  const parent = await db.task.findUniqueOrThrow({
-    where: { id: parentTaskId },
-    select: { listId: true, workspaceId: true }
-  })
+  const [parent] = await db.select().from(task).where(eq(task.id, parentTaskId))
+  if (!parent) throw new NotFoundError('Task not found')
 
   // Guard: cannot nest subtasks
   if (parent.parentTaskId !== null) {
     throw new BadRequestError('Subtasks cannot be nested more than one level deep')
   }
 
-  return db.$transaction(async (tx) => {
+  return db.transaction(async (tx) => {
     // Increment workspace taskSeq atomically
-    const [{ task_seq }] = await tx.$queryRaw<[{ task_seq: number }]>`
-      UPDATE "Workspace" SET task_seq = task_seq + 1
+    const [{ taskSeq }] = await tx.execute<{ taskSeq: number }>(sql`
+      UPDATE workspace SET task_seq = task_seq + 1
       WHERE id = ${parent.workspaceId}
-      RETURNING task_seq
-    `
+      RETURNING task_seq AS "taskSeq"
+    `)
 
-    const subtask = await tx.task.create({
-      data: {
-        ...data,
-        listId: parent.listId,      // always inherited
-        parentTaskId,
-        seqNumber: task_seq,
-      }
+    const subtaskId = crypto.randomUUID()
+    await tx.insert(task).values({
+      id: subtaskId,
+      ...data,
+      listId: parent.listId,      // always inherited
+      workspaceId: parent.workspaceId,
+      parentTaskId,
+      seqNumber: taskSeq,
+      reporterId: actorId,
     })
 
     // Write ActivityLog on parent task
-    await tx.activityLog.create({
-      data: {
-        taskId: parentTaskId,
-        userId: actorId,
-        eventType: 'subtask_created',
-        meta: { subtask_id: subtask.id, subtask_title: subtask.title }
-      }
+    await tx.insert(activityLog).values({
+      id: crypto.randomUUID(),
+      taskId: parentTaskId,
+      userId: actorId,
+      eventType: 'subtask_created',
+      meta: { subtask_id: subtaskId, subtask_title: data.title },
     })
 
-    return subtask
+    return subtaskId
   })
 }
 ```
@@ -410,29 +404,37 @@ async function convertChecklistItemToSubtask(
   checklistItemId: string,
   actorId: string
 ) {
-  return db.$transaction(async (tx) => {
-    const item = await tx.checklistItem.findUniqueOrThrow({
-      where: { id: checklistItemId },
-      include: { checklist: { include: { task: true } } }
+  // Fetch item + checklist + parent task
+  const [item] = await db
+    .select({
+      itemTitle: checklistItem.title,
+      taskId: checklist.taskId,
+      listId: task.listId,
     })
+    .from(checklistItem)
+    .innerJoin(checklist, eq(checklistItem.checklistId, checklist.id))
+    .innerJoin(task, eq(checklist.taskId, task.id))
+    .where(eq(checklistItem.id, checklistItemId))
 
-    const parentTask = item.checklist.task
-    const defaultStatus = await tx.listStatus.findFirstOrThrow({
-      where: { listId: parentTask.listId, type: 'OPEN' },
-      orderBy: { orderIndex: 'asc' }
-    })
+  if (!item) throw new NotFoundError('Checklist item not found')
 
-    // Create subtask
-    const subtask = await createSubtask(
-      parentTask.id,
-      { title: item.title, statusId: defaultStatus.id },
-      actorId
-    )
+  const [defaultStatus] = await db
+    .select()
+    .from(listStatus)
+    .where(and(eq(listStatus.listId, item.listId), eq(listStatus.type, 'OPEN')))
+    .orderBy(listStatus.orderIndex)
+    .limit(1)
 
-    // Delete the checklist item
-    await tx.checklistItem.delete({ where: { id: checklistItemId } })
+  // Create subtask
+  const subtaskId = await createSubtask(
+    item.taskId,
+    { title: item.itemTitle, statusId: defaultStatus.id },
+    actorId
+  )
 
-    return subtask
-  })
+  // Delete the checklist item
+  await db.delete(checklistItem).where(eq(checklistItem.id, checklistItemId))
+
+  return subtaskId
 }
 ```

@@ -1,6 +1,6 @@
 # Database Schema
 
-Single source of truth for all Prisma models. This is what goes into `prisma/schema.prisma`.
+Single source of truth for all Drizzle table definitions. These are split across files in `db/schema/` and re-exported from `db/schema/index.ts`.
 
 All feature-level data model sections in individual docs are the narrative spec. This file is the build reference.
 
@@ -8,623 +8,584 @@ All feature-level data model sections in individual docs are the narrative spec.
 
 ## Conventions
 
-- All IDs: `String @id @default(uuid())`
-- All tables have: `createdAt DateTime @default(now())` and `updatedAt DateTime @updatedAt`
-- Soft delete: `isArchived Boolean @default(false)` + `archivedAt DateTime?`
+- All IDs: `text("id").primaryKey()` — UUIDs generated via `crypto.randomUUID()` before insert
+- All tables have: `createdAt` and `updatedAt` as `timestamp({ withTimezone: true }).notNull().defaultNow()`
+- `updatedAt` must be set manually on every update: `.set({ updatedAt: new Date() })`
+- Soft delete: `isArchived boolean default false` + `archivedAt timestamp?`
 - Hard delete: immediate, no tombstone (unless noted)
-- Enums use SCREAMING_SNAKE_CASE
+- Enums use Drizzle `pgEnum` with SCREAMING_SNAKE_CASE values
+- Schema files live in `db/schema/<domain>.ts` and are exported from `db/schema/index.ts`
+- Run migrations: `npx drizzle-kit generate` then `npx drizzle-kit migrate`
 
 ---
 
 ## Auth Tables (Better Auth managed)
 
-Better Auth creates and manages these. Do not manually create migrations for them — let `npx better-auth migrate` handle it.
+Better Auth creates and manages these. Schema file: `db/schema/auth.ts`.
+Better Auth's Drizzle adapter generates the exact column names it needs — do not rename them.
 
-```prisma
-model User {
-  id               String    @id @default(uuid())
-  name             String
-  email            String    @unique
-  emailVerified    Boolean   @default(false)
-  image            String?
-  isPlatformAdmin  Boolean   @default(false)
-  banned           Boolean   @default(false)
-  bannedReason     String?
-  bannedAt         DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-}
+```ts
+// db/schema/auth.ts
+import { pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
 
-model Session {
-  id             String   @id @default(uuid())
-  expiresAt      DateTime
-  token          String   @unique
-  ipAddress      String?
-  userAgent      String?
-  userId         String
-  impersonatedBy String?
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-}
+export const user = pgTable("user", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  emailVerified: boolean("email_verified").notNull().default(false),
+  image: text("image"),
+  isPlatformAdmin: boolean("is_platform_admin").notNull().default(false),
+  banned: boolean("banned").notNull().default(false),
+  bannedReason: text("banned_reason"),
+  bannedAt: timestamp("banned_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
-model Account {
-  id                    String    @id @default(uuid())
-  accountId             String
-  providerId            String
-  userId                String
-  accessToken           String?
-  refreshToken          String?
-  idToken               String?
-  accessTokenExpiresAt  DateTime?
-  refreshTokenExpiresAt DateTime?
-  scope                 String?
-  password              String?
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
-}
+export const session = pgTable("session", {
+  id: text("id").primaryKey(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  token: text("token").notNull().unique(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  impersonatedBy: text("impersonated_by"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
-model Verification {
-  id         String   @id @default(uuid())
-  identifier String
-  value      String
-  expiresAt  DateTime
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-}
+export const account = pgTable("account", {
+  id: text("id").primaryKey(),
+  accountId: text("account_id").notNull(),
+  providerId: text("provider_id").notNull(),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  idToken: text("id_token"),
+  accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true }),
+  refreshTokenExpiresAt: timestamp("refresh_token_expires_at", { withTimezone: true }),
+  scope: text("scope"),
+  password: text("password"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const verification = pgTable("verification", {
+  id: text("id").primaryKey(),
+  identifier: text("identifier").notNull(),
+  value: text("value").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
 ```
 
 ---
 
 ## Workspace
 
-```prisma
-enum WorkspaceStatus {
-  ACTIVE
-  DELETING
-}
+Schema file: `db/schema/workspace.ts`
 
-model Workspace {
-  id              String          @id @default(uuid())
-  name            String
-  slug            String          @unique
-  logoUrl         String?
-  logoEmoji       String?
-  inviteLinkToken String?         @unique
-  taskSeq         Int             @default(0)
-  status          WorkspaceStatus @default(ACTIVE)
-  createdBy       String
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+```ts
+import { pgEnum, pgTable, text, timestamp, integer, boolean, index } from "drizzle-orm/pg-core";
 
-  members         WorkspaceMember[]
-  spaces          Space[]
-}
+export const workspaceStatusEnum = pgEnum("workspace_status", ["ACTIVE", "DELETING"]);
+export const workspaceRoleEnum = pgEnum("workspace_role", ["OWNER", "ADMIN", "MEMBER", "GUEST"]);
+export const memberStatusEnum = pgEnum("member_status", ["ACTIVE", "INVITED"]);
 
-enum WorkspaceRole {
-  OWNER
-  ADMIN
-  MEMBER
-  GUEST
-}
+export const workspace = pgTable("workspace", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  logoUrl: text("logo_url"),
+  logoEmoji: text("logo_emoji"),
+  inviteLinkToken: text("invite_link_token").unique(),
+  taskSeq: integer("task_seq").notNull().default(0),
+  status: workspaceStatusEnum("status").notNull().default("ACTIVE"),
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
-enum MemberStatus {
-  ACTIVE
-  INVITED
-}
-
-model WorkspaceMember {
-  id              String        @id @default(uuid())
-  workspaceId     String
-  userId          String?
-  email           String?
-  role            WorkspaceRole
-  status          MemberStatus
-  invitedBy       String?
-  inviteToken     String?       @unique
-  inviteExpiresAt DateTime?
-  joinedAt        DateTime?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-
-  workspace       Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-}
+export const workspaceMember = pgTable("workspace_member", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull().references(() => workspace.id, { onDelete: "cascade" }),
+  userId: text("user_id"),
+  email: text("email"),
+  role: workspaceRoleEnum("role").notNull(),
+  status: memberStatusEnum("status").notNull(),
+  invitedBy: text("invited_by"),
+  inviteToken: text("invite_token").unique(),
+  inviteExpiresAt: timestamp("invite_expires_at", { withTimezone: true }),
+  joinedAt: timestamp("joined_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("workspace_member_workspace_id_idx").on(t.workspaceId),
+  index("workspace_member_user_id_idx").on(t.userId),
+]);
 ```
 
 ---
 
 ## Space
 
-```prisma
-model Space {
-  id          String   @id @default(uuid())
-  workspaceId String
-  name        String
-  color       String?
-  isPrivate   Boolean  @default(false)
-  isArchived  Boolean  @default(false)
-  archivedAt  DateTime?
-  createdBy   String
-  orderIndex  Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+Schema file: `db/schema/space.ts`
 
-  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  members     SpaceMember[]
-  lists       List[]
-}
+```ts
+import { pgEnum, pgTable, text, timestamp, boolean, integer, uniqueIndex, index } from "drizzle-orm/pg-core";
+import { workspace } from "./workspace";
 
-enum SpacePermission {
-  FULL_ACCESS
-  EDIT
-  VIEW
-}
+export const spacePermissionEnum = pgEnum("space_permission", ["FULL_ACCESS", "EDIT", "VIEW"]);
 
-model SpaceMember {
-  id          String          @id @default(uuid())
-  spaceId     String
-  userId      String
-  permission  SpacePermission
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+export const space = pgTable("space", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull().references(() => workspace.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  color: text("color"),
+  isPrivate: boolean("is_private").notNull().default(false),
+  isArchived: boolean("is_archived").notNull().default(false),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  createdBy: text("created_by").notNull(),
+  orderIndex: integer("order_index").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("space_workspace_id_idx").on(t.workspaceId),
+]);
 
-  space       Space           @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-
-  @@unique([spaceId, userId])
-}
+export const spaceMember = pgTable("space_member", {
+  id: text("id").primaryKey(),
+  spaceId: text("space_id").notNull().references(() => space.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull(),
+  permission: spacePermissionEnum("permission").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("space_member_space_user_idx").on(t.spaceId, t.userId),
+]);
 ```
 
 ---
 
 ## List
 
-```prisma
-model List {
-  id          String    @id @default(uuid())
-  spaceId     String
-  folderId    String?   -- null in MVP (Folder is post-MVP)
-  name        String
-  description String?
-  color       String?
-  orderIndex  Int       @default(0)
-  isArchived  Boolean   @default(false)
-  archivedAt  DateTime?
-  createdBy   String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+Schema file: `db/schema/list.ts`
 
-  space       Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  statuses    ListStatus[]
-  tasks       Task[]
-}
+```ts
+import { pgEnum, pgTable, text, timestamp, boolean, integer, index } from "drizzle-orm/pg-core";
+import { space } from "./space";
 
-enum StatusType {
-  OPEN
-  ACTIVE
-  CLOSED
-}
+export const statusTypeEnum = pgEnum("status_type", ["OPEN", "ACTIVE", "CLOSED"]);
 
-model ListStatus {
-  id         String     @id @default(uuid())
-  listId     String
-  name       String
-  color      String
-  type       StatusType
-  orderIndex Int        @default(0)
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+export const list = pgTable("list", {
+  id: text("id").primaryKey(),
+  spaceId: text("space_id").notNull().references(() => space.id, { onDelete: "cascade" }),
+  folderId: text("folder_id"),  // null in MVP — Folder is post-MVP
+  name: text("name").notNull(),
+  description: text("description"),
+  color: text("color"),
+  orderIndex: integer("order_index").notNull().default(0),
+  isArchived: boolean("is_archived").notNull().default(false),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("list_space_id_idx").on(t.spaceId),
+]);
 
-  list       List       @relation(fields: [listId], references: [id], onDelete: Cascade)
-  tasks      Task[]
-}
+export const listStatus = pgTable("list_status", {
+  id: text("id").primaryKey(),
+  listId: text("list_id").notNull().references(() => list.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  color: text("color").notNull(),
+  type: statusTypeEnum("type").notNull(),
+  orderIndex: integer("order_index").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("list_status_list_id_idx").on(t.listId),
+]);
 ```
 
 ---
 
 ## Task
 
-```prisma
-enum Priority {
-  NONE
-  LOW
-  MEDIUM
-  HIGH
-  URGENT
-}
+Schema file: `db/schema/task.ts`
 
-model Task {
-  id            String    @id @default(uuid())
-  seqNumber     Int
-  workspaceId   String
-  listId        String
-  parentTaskId  String?
-  statusId      String
-  title         String
-  description   Json?          // Tiptap rich text — full-text search on jsonb requires generated column (post-MVP, Phase 11+)
-  priority      Priority  @default(NONE)
-  reporterId    String
-  dueDateStart  DateTime?
-  dueDateEnd    DateTime?
-  timeEstimate  Int?
-  orderIndex    Int       @default(0)
-  isArchived    Boolean   @default(false)
-  archivedAt    DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+```ts
+import { pgEnum, pgTable, text, timestamp, boolean, integer, json, index } from "drizzle-orm/pg-core";
+import { list } from "./list";
+import { listStatus } from "./list";
+import { workspace } from "./workspace";
 
-  list          List          @relation(fields: [listId], references: [id], onDelete: Cascade)
-  status        ListStatus    @relation(fields: [statusId], references: [id])
-  parentTask    Task?         @relation("Subtasks", fields: [parentTaskId], references: [id])
-  subtasks      Task[]        @relation("Subtasks")
-  assignees     TaskAssignee[]
-  watchers      TaskWatcher[]
-  tags          TaskTag[]
-  checklists    Checklist[]
-  dependencies  TaskDependency[] @relation("BlockedBy")
-  blocking      TaskDependency[] @relation("Blocking")
-  comments      Comment[]
-  attachments   TaskAttachment[]
-  activityLogs  ActivityLog[]
-  timeLogs      TimeLog[]
-  notifications Notification[]
-  descSnapshot  TaskDescriptionSnapshot?
-  sprintTasks   TaskSprint[]
-}
+export const priorityEnum = pgEnum("priority", ["NONE", "LOW", "MEDIUM", "HIGH", "URGENT"]);
+export const dependencyTypeEnum = pgEnum("dependency_type", ["BLOCKED_BY"]);
 
-model TaskAssignee {
-  taskId    String
-  userId    String
-  createdAt DateTime @default(now())
+export const task = pgTable("task", {
+  id: text("id").primaryKey(),
+  seqNumber: integer("seq_number").notNull(),
+  workspaceId: text("workspace_id").notNull().references(() => workspace.id, { onDelete: "cascade" }),
+  listId: text("list_id").notNull().references(() => list.id, { onDelete: "cascade" }),
+  parentTaskId: text("parent_task_id"),  // self-reference set up via relations
+  statusId: text("status_id").notNull().references(() => listStatus.id),
+  title: text("title").notNull(),
+  description: json("description"),  // Tiptap JSON — full-text search on jsonb is post-MVP
+  priority: priorityEnum("priority").notNull().default("NONE"),
+  reporterId: text("reporter_id").notNull(),
+  dueDateStart: timestamp("due_date_start", { withTimezone: true }),
+  dueDateEnd: timestamp("due_date_end", { withTimezone: true }),
+  timeEstimate: integer("time_estimate"),
+  orderIndex: integer("order_index").notNull().default(0),
+  isArchived: boolean("is_archived").notNull().default(false),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("task_list_id_idx").on(t.listId),
+  index("task_workspace_id_idx").on(t.workspaceId),
+  index("task_parent_task_id_idx").on(t.parentTaskId),
+  index("task_status_id_idx").on(t.statusId),
+]);
 
-  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+export const taskAssignee = pgTable("task_assignee", {
+  taskId: text("task_id").notNull().references(() => task.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  // composite PK set via primaryKey() in relations or enforced via unique index
+  index("task_assignee_task_id_idx").on(t.taskId),
+]);
 
-  @@id([taskId, userId])
-}
+export const taskWatcher = pgTable("task_watcher", {
+  taskId: text("task_id").notNull().references(() => task.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("task_watcher_task_id_idx").on(t.taskId),
+]);
 
-model TaskWatcher {
-  taskId    String
-  userId    String
-  createdAt DateTime @default(now())
+export const tag = pgTable("tag", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull(),
+  name: text("name").notNull(),
+  color: text("color").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
-  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+export const taskTag = pgTable("task_tag", {
+  taskId: text("task_id").notNull().references(() => task.id, { onDelete: "cascade" }),
+  tagId: text("tag_id").notNull().references(() => tag.id, { onDelete: "cascade" }),
+});
 
-  @@id([taskId, userId])
-}
+export const taskDependency = pgTable("task_dependency", {
+  id: text("id").primaryKey(),
+  taskId: text("task_id").notNull().references(() => task.id, { onDelete: "cascade" }),
+  dependsOnTaskId: text("depends_on_task_id").notNull().references(() => task.id, { onDelete: "cascade" }),
+  type: dependencyTypeEnum("type").notNull().default("BLOCKED_BY"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
-model Tag {
-  id          String    @id @default(uuid())
-  workspaceId String
-  name        String
-  color       String
-  createdAt   DateTime  @default(now())
+export const taskDescriptionSnapshot = pgTable("task_description_snapshot", {
+  id: text("id").primaryKey(),
+  taskId: text("task_id").notNull().unique().references(() => task.id, { onDelete: "cascade" }),
+  content: json("content").notNull(),
+  savedBy: text("saved_by").notNull(),
+  savedAt: timestamp("saved_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
-  taskTags    TaskTag[]
-
-  @@unique([workspaceId, name])
-}
-
-model TaskTag {
-  taskId    String
-  tagId     String
-
-  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  @@id([taskId, tagId])
-}
-
-enum DependencyType {
-  BLOCKED_BY
-}
-
-model TaskDependency {
-  id              String         @id @default(uuid())
-  taskId          String
-  dependsOnTaskId String
-  type            DependencyType @default(BLOCKED_BY)
-  createdAt       DateTime       @default(now())
-
-  task            Task           @relation("BlockedBy", fields: [taskId], references: [id], onDelete: Cascade)
-  dependsOnTask   Task           @relation("Blocking", fields: [dependsOnTaskId], references: [id], onDelete: Cascade)
-
-  @@unique([taskId, dependsOnTaskId])
-}
-
-model TaskDescriptionSnapshot {
-  id        String   @id @default(uuid())
-  taskId    String   @unique
-  content   Json
-  savedBy   String
-  savedAt   DateTime @default(now())
-
-  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-}
-
-model TimeLog {
-  id              String   @id @default(uuid())
-  taskId          String
-  userId          String
-  durationMinutes Int
-  note            String?
-  loggedAt        DateTime @default(now())
-  createdAt       DateTime @default(now())
-
-  task            Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-}
+export const timeLog = pgTable("time_log", {
+  id: text("id").primaryKey(),
+  taskId: text("task_id").notNull().references(() => task.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull(),
+  durationMinutes: integer("duration_minutes").notNull(),
+  note: text("note"),
+  loggedAt: timestamp("logged_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("time_log_task_id_idx").on(t.taskId),
+]);
 ```
 
 ---
 
 ## Checklist
 
-```prisma
-model Checklist {
-  id        String          @id @default(uuid())
-  taskId    String
-  name      String
-  orderIndex Int            @default(0)
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
+Schema file: `db/schema/checklist.ts`
 
-  task      Task            @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  items     ChecklistItem[]
-}
+```ts
+import { pgTable, text, timestamp, boolean, integer, index } from "drizzle-orm/pg-core";
+import { task } from "./task";
 
-model ChecklistItem {
-  id          String    @id @default(uuid())
-  checklistId String
-  title       String
-  isChecked   Boolean   @default(false)
-  checkedBy   String?
-  checkedAt   DateTime?
-  orderIndex  Int       @default(0)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+export const checklist = pgTable("checklist", {
+  id: text("id").primaryKey(),
+  taskId: text("task_id").notNull().references(() => task.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  orderIndex: integer("order_index").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("checklist_task_id_idx").on(t.taskId),
+]);
 
-  checklist   Checklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
-}
+export const checklistItem = pgTable("checklist_item", {
+  id: text("id").primaryKey(),
+  checklistId: text("checklist_id").notNull().references(() => checklist.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  isChecked: boolean("is_checked").notNull().default(false),
+  checkedBy: text("checked_by"),
+  checkedAt: timestamp("checked_at", { withTimezone: true }),
+  orderIndex: integer("order_index").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
 ```
 
 ---
 
 ## Sprint
 
-```prisma
-enum SprintStatus {
-  PLANNED
-  ACTIVE
-  CLOSED
-}
+Schema file: `db/schema/sprint.ts`
 
-model Sprint {
-  id          String       @id @default(uuid())
-  listId      String
-  workspaceId String
-  name        String
-  goal        String?
-  status      SprintStatus @default(PLANNED)
-  startDate   DateTime?
-  endDate     DateTime?
-  createdBy   String
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+```ts
+import { pgEnum, pgTable, text, timestamp, integer, index } from "drizzle-orm/pg-core";
+import { task } from "./task";
+import { workspace } from "./workspace";
+import { list } from "./list";
 
-  taskSprints TaskSprint[]
-}
+export const sprintStatusEnum = pgEnum("sprint_status", ["PLANNED", "ACTIVE", "CLOSED"]);
 
-model TaskSprint {
-  taskId    String
-  sprintId  String
-  points    Int?
-  addedAt   DateTime @default(now())
+export const sprint = pgTable("sprint", {
+  id: text("id").primaryKey(),
+  listId: text("list_id").notNull().references(() => list.id, { onDelete: "cascade" }),
+  workspaceId: text("workspace_id").notNull().references(() => workspace.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  goal: text("goal"),
+  status: sprintStatusEnum("status").notNull().default("PLANNED"),
+  startDate: timestamp("start_date", { withTimezone: true }),
+  endDate: timestamp("end_date", { withTimezone: true }),
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("sprint_list_id_idx").on(t.listId),
+]);
 
-  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  sprint    Sprint   @relation(fields: [sprintId], references: [id], onDelete: Cascade)
-
-  @@id([taskId, sprintId])
-}
+export const taskSprint = pgTable("task_sprint", {
+  taskId: text("task_id").notNull().references(() => task.id, { onDelete: "cascade" }),
+  sprintId: text("sprint_id").notNull().references(() => sprint.id, { onDelete: "cascade" }),
+  points: integer("points"),
+  addedAt: timestamp("added_at", { withTimezone: true }).notNull().defaultNow(),
+});
 ```
 
 ---
 
 ## Collaboration
 
-```prisma
-model Comment {
-  id              String    @id @default(uuid())
-  taskId          String
-  parentCommentId String?
-  authorId        String
-  body            Json
-  isDeleted       Boolean   @default(false)
-  isResolved      Boolean   @default(false)
-  resolvedBy      String?
-  resolvedAt      DateTime?
-  editedAt        DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+Schema file: `db/schema/collaboration.ts`
 
-  task            Task              @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  parentComment   Comment?          @relation("Replies", fields: [parentCommentId], references: [id])
-  replies         Comment[]         @relation("Replies")
-  reactions       CommentReaction[]
-  attachments     TaskAttachment[]
-}
+```ts
+import { pgTable, text, timestamp, boolean, json, uniqueIndex, index } from "drizzle-orm/pg-core";
+import { task } from "./task";
 
-model CommentReaction {
-  id        String   @id @default(uuid())
-  commentId String
-  userId    String
-  emoji     String
-  createdAt DateTime @default(now())
+export const comment = pgTable("comment", {
+  id: text("id").primaryKey(),
+  taskId: text("task_id").notNull().references(() => task.id, { onDelete: "cascade" }),
+  parentCommentId: text("parent_comment_id"),  // self-reference
+  authorId: text("author_id").notNull(),
+  body: json("body").notNull(),
+  isDeleted: boolean("is_deleted").notNull().default(false),
+  isResolved: boolean("is_resolved").notNull().default(false),
+  resolvedBy: text("resolved_by"),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  editedAt: timestamp("edited_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("comment_task_id_idx").on(t.taskId),
+]);
 
-  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+export const commentReaction = pgTable("comment_reaction", {
+  id: text("id").primaryKey(),
+  commentId: text("comment_id").notNull().references(() => comment.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull(),
+  emoji: text("emoji").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("comment_reaction_unique_idx").on(t.commentId, t.userId, t.emoji),
+]);
 
-  @@unique([commentId, userId, emoji])
-}
+export const activityLog = pgTable("activity_log", {
+  id: text("id").primaryKey(),
+  taskId: text("task_id").notNull().references(() => task.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull(),
+  eventType: text("event_type").notNull(),
+  meta: json("meta").notNull().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("activity_log_task_id_idx").on(t.taskId),
+]);
 
-model ActivityLog {
-  id        String   @id @default(uuid())
-  taskId    String
-  userId    String
-  eventType String
-  meta      Json     @default("{}")
-  createdAt DateTime @default(now())
-
-  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-}
-
-model TaskAttachment {
-  id         String   @id @default(uuid())
-  taskId     String
-  commentId  String?
-  uploadedBy String
-  fileName   String
-  fileUrl    String
-  fileSize   Int
-  mimeType   String
-  createdAt  DateTime @default(now())
-
-  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  comment    Comment? @relation(fields: [commentId], references: [id])
-}
+export const taskAttachment = pgTable("task_attachment", {
+  id: text("id").primaryKey(),
+  taskId: text("task_id").notNull().references(() => task.id, { onDelete: "cascade" }),
+  commentId: text("comment_id"),  // optional link to a comment
+  uploadedBy: text("uploaded_by").notNull(),
+  fileName: text("file_name").notNull(),
+  fileUrl: text("file_url").notNull(),
+  fileSize: integer("file_size").notNull(),
+  mimeType: text("mime_type").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("task_attachment_task_id_idx").on(t.taskId),
+]);
 ```
 
 ---
 
 ## Notifications
 
-```prisma
-enum NotificationEntityType {
-  TASK
-  COMMENT
-  SPACE
-  WORKSPACE
-  SPRINT
-}
+Schema file: `db/schema/notification.ts`
 
-model Notification {
-  id          String                 @id @default(uuid())
-  workspaceId String
-  recipientId String
-  actorId     String?
-  triggerType String
-  entityType  NotificationEntityType
-  entityId    String
-  title       String
-  body        String?
-  isRead      Boolean                @default(false)
-  readAt      DateTime?
-  createdAt   DateTime               @default(now())
-  expiresAt   DateTime
+```ts
+import { pgEnum, pgTable, text, timestamp, boolean, uniqueIndex, index } from "drizzle-orm/pg-core";
 
-  task        Task?                  @relation(fields: [entityId], references: [id])
-}
+export const notificationEntityTypeEnum = pgEnum("notification_entity_type", [
+  "TASK", "COMMENT", "SPACE", "WORKSPACE", "SPRINT",
+]);
 
-model UserNotificationPreference {
-  id           String   @id @default(uuid())
-  userId       String
-  workspaceId  String?
-  triggerType  String
-  inAppEnabled Boolean  @default(true)
-  emailEnabled Boolean  @default(true)
-  pushEnabled  Boolean  @default(true)
-  updatedAt    DateTime @updatedAt
+export const mutedEntityTypeEnum = pgEnum("muted_entity_type", ["TASK", "SPACE"]);
 
-  @@unique([userId, workspaceId, triggerType])
-}
+export const notification = pgTable("notification", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull(),
+  recipientId: text("recipient_id").notNull(),
+  actorId: text("actor_id"),
+  triggerType: text("trigger_type").notNull(),
+  entityType: notificationEntityTypeEnum("entity_type").notNull(),
+  entityId: text("entity_id").notNull(),
+  title: text("title").notNull(),
+  body: text("body"),
+  isRead: boolean("is_read").notNull().default(false),
+  readAt: timestamp("read_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+}, (t) => [
+  index("notification_recipient_read_idx").on(t.recipientId, t.isRead),
+  index("notification_expires_at_idx").on(t.expiresAt),
+]);
 
-model UserEmailPreference {
-  id             String   @id @default(uuid())
-  userId         String   @unique
-  deliveryMode   String   @default("instant")
-  digestTime     String   @default("08:00")
-  digestTimezone String   @default("UTC")
-  updatedAt      DateTime @updatedAt
-}
+export const userNotificationPreference = pgTable("user_notification_preference", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  workspaceId: text("workspace_id"),
+  triggerType: text("trigger_type").notNull(),
+  inAppEnabled: boolean("in_app_enabled").notNull().default(true),
+  emailEnabled: boolean("email_enabled").notNull().default(true),
+  pushEnabled: boolean("push_enabled").notNull().default(true),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("user_notif_pref_unique_idx").on(t.userId, t.workspaceId, t.triggerType),
+]);
 
-enum MutedEntityType {
-  TASK
-  SPACE
-}
+export const userEmailPreference = pgTable("user_email_preference", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().unique(),
+  deliveryMode: text("delivery_mode").notNull().default("instant"),
+  digestTime: text("digest_time").notNull().default("08:00"),
+  digestTimezone: text("digest_timezone").notNull().default("UTC"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
-model MutedEntity {
-  id         String          @id @default(uuid())
-  userId     String
-  entityType MutedEntityType
-  entityId   String
-  createdAt  DateTime        @default(now())
+export const mutedEntity = pgTable("muted_entity", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  entityType: mutedEntityTypeEnum("entity_type").notNull(),
+  entityId: text("entity_id").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("muted_entity_unique_idx").on(t.userId, t.entityType, t.entityId),
+]);
 
-  @@unique([userId, entityType, entityId])
-}
-
-model PushSubscription {
-  id        String   @id @default(uuid())
-  userId    String
-  endpoint  String
-  p256dh    String
-  auth      String
-  userAgent String?
-  createdAt DateTime @default(now())
-}
+export const pushSubscription = pgTable("push_subscription", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  endpoint: text("endpoint").notNull(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
 ```
 
 ---
 
 ## Search & Onboarding
 
-```prisma
-model UserSearchHistory {
-  id          String   @id @default(uuid())
-  userId      String
-  workspaceId String
-  entityType  String
-  entityId    String
-  visitedAt   DateTime @default(now())
-}
+Schema file: `db/schema/search.ts`
 
-model SavedFilter {
-  id        String   @id @default(uuid())
-  userId    String
-  listId    String
-  name      String
-  filters   Json
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
+```ts
+import { pgTable, text, timestamp, boolean, json, uniqueIndex, index } from "drizzle-orm/pg-core";
 
-model UserOnboardingProgress {
-  id             String   @id @default(uuid())
-  userId         String
-  workspaceId    String
-  stepWorkspace  Boolean  @default(true)
-  stepSpace      Boolean  @default(true)
-  stepFirstTask  Boolean  @default(false)
-  stepInvite     Boolean  @default(false)
-  stepDueDate    Boolean  @default(false)
-  stepBoardView  Boolean  @default(false)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+export const userSearchHistory = pgTable("user_search_history", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  workspaceId: text("workspace_id").notNull(),
+  entityType: text("entity_type").notNull(),
+  entityId: text("entity_id").notNull(),
+  visitedAt: timestamp("visited_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("user_search_history_user_workspace_idx").on(t.userId, t.workspaceId),
+]);
 
-  @@unique([userId, workspaceId])
-}
+export const savedFilter = pgTable("saved_filter", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  listId: text("list_id").notNull(),
+  name: text("name").notNull(),
+  filters: json("filters").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const userOnboardingProgress = pgTable("user_onboarding_progress", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  workspaceId: text("workspace_id").notNull(),
+  stepWorkspace: boolean("step_workspace").notNull().default(true),
+  stepSpace: boolean("step_space").notNull().default(true),
+  stepFirstTask: boolean("step_first_task").notNull().default(false),
+  stepInvite: boolean("step_invite").notNull().default(false),
+  stepDueDate: boolean("step_due_date").notNull().default(false),
+  stepBoardView: boolean("step_board_view").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("user_onboarding_user_workspace_idx").on(t.userId, t.workspaceId),
+]);
 ```
 
 ---
 
 ## Admin / Audit
 
-```prisma
-model PlatformAuditLog {
-  id         String   @id @default(uuid())
-  adminId    String
-  action     String
-  targetType String
-  targetId   String
-  meta       Json     @default("{}")
-  createdAt  DateTime @default(now())
-}
+Schema file: `db/schema/audit-logs.ts`
+
+```ts
+import { pgTable, text, timestamp, json } from "drizzle-orm/pg-core";
+
+export const platformAuditLog = pgTable("platform_audit_log", {
+  id: text("id").primaryKey(),
+  adminId: text("admin_id").notNull(),
+  action: text("action").notNull(),
+  targetType: text("target_type").notNull(),
+  targetId: text("target_id").notNull(),
+  meta: json("meta").notNull().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
 ```
 
 ---
@@ -633,30 +594,21 @@ model PlatformAuditLog {
 
 | Table | Reason |
 |-------|--------|
-| `Folder` | Post-MVP — do not create |
-| `UserListViewPreference` | Include when implementing Views (Phase 12) |
-| `UserMyTasksPreference` | Include when implementing My Tasks (Phase 12) |
+| `folder` | Post-MVP — do not create |
+| `user_list_view_preference` | Include when implementing Views (Phase 12) |
+| `user_my_tasks_preference` | Include when implementing My Tasks (Phase 12) |
 
 ---
 
-## Index Notes
+## Migration workflow
 
-Add these indexes in Prisma after the initial schema is working:
+```bash
+# Generate a new migration after changing schema files
+npx drizzle-kit generate
 
-```prisma
--- Task lookups
-@@index([listId])
-@@index([workspaceId])
-@@index([parentTaskId])
-@@index([statusId])
+# Apply pending migrations to the database
+npx drizzle-kit migrate
 
--- Notification lookups
-@@index([recipientId, isRead])
-@@index([expiresAt])
-
--- Search history
-@@index([userId, workspaceId])
-
--- Activity log
-@@index([taskId])
+# Inspect current DB state
+npx drizzle-kit studio
 ```

@@ -15,7 +15,7 @@ Full product specs live in `docs/`. Read the relevant doc before implementing an
 | Framework | Next.js 15 (App Router) |
 | Language | TypeScript |
 | Database | PostgreSQL |
-| ORM | Prisma |
+| ORM | Drizzle ORM |
 | Auth | Better Auth (with Admin Plugin) |
 | Styling | Tailwind CSS v4 |
 | UI Components | shadcn/ui |
@@ -30,24 +30,26 @@ Full product specs live in `docs/`. Read the relevant doc before implementing an
 ## Project Structure
 
 ```
-src/
-├── app/                   ← Next.js App Router
-│   ├── (auth)/            ← sign-in, onboarding (unauthenticated layout)
-│   ├── (app)/             ← main app (authenticated layout)
-│   │   └── [workspaceId]/ ← workspace-scoped routes
-│   ├── api/               ← API route handlers
-│   └── admin/             ← platform admin panel
-├── components/
-│   ├── ui/                ← shadcn/ui primitives
-│   └── common/            ← shared app components
-├── lib/
-│   ├── db.ts              ← Prisma client singleton
-│   ├── auth.ts            ← Better Auth server instance
-│   └── utils.ts           ← shared utilities
-├── hooks/                 ← custom React hooks
-├── store/                 ← Zustand stores
-├── types/                 ← TypeScript types and interfaces
-└── server/                ← server actions
+app/                       ← Next.js App Router
+├── (auth)/                ← sign-in, onboarding (unauthenticated layout)
+├── (app)/                 ← main app (authenticated layout)
+│   └── [workspaceId]/     ← workspace-scoped routes
+├── api/                   ← API route handlers
+└── admin/                 ← platform admin panel
+components/
+├── ui/                    ← shadcn/ui primitives
+└── common/                ← shared app components
+db/
+├── schema/                ← Drizzle table definitions (one file per domain)
+└── migrations/            ← generated SQL migrations
+lib/
+├── db.ts                  ← Drizzle client singleton
+├── auth.ts                ← Better Auth server instance
+└── utils.ts               ← shared utilities
+hooks/                     ← custom React hooks
+store/                     ← Zustand stores
+types/                     ← TypeScript types and interfaces
+server/                    ← server actions
 ```
 
 ---
@@ -64,9 +66,9 @@ src/
 - All API routes check session first, return 401 if missing.
 
 ### Database
-- Prisma ORM. Schema in `prisma/schema.prisma`.
-- All IDs are UUIDs (`@default(uuid())`).
-- All tables have `createdAt` and `updatedAt` (`@updatedAt`).
+- Drizzle ORM. Schema files in `db/schema/`, migrations in `db/migrations/`.
+- All IDs are UUIDs (generated via `crypto.randomUUID()` before insert).
+- All tables have `createdAt` and `updatedAt` (updated manually on each write).
 - Soft deletes use `isArchived` + `archivedAt` pattern (not a deleted flag).
 - Hard deletes are immediate with no recovery unless otherwise stated in the feature doc.
 
@@ -123,4 +125,4 @@ src/
 
 Phases are in `docs/development-plan.md`. Work through them in order. Do not skip phases.
 
-Current phase: **Phase 0 — Project Setup**
+Current phase: **Phase 7 (skipped) → Phase 8 — List**

@@ -18,9 +18,9 @@ Document every infrastructure service Kanbanica depends on, the decision rationa
 
 **Role:** Primary relational database for all application data.
 
-**Decision:** Industry-standard, mature, strong Prisma support, excellent full-text search capabilities for future use, `jsonb` for Tiptap content storage.
+**Decision:** Industry-standard, mature, excellent full-text search capabilities for future use, `jsonb` for Tiptap content storage.
 
-**ORM:** All DB access via `src/lib/db.ts` Prisma singleton. Never use raw SQL unless Prisma cannot express the query. No second DB client.
+**ORM:** All DB access via `lib/db.ts` Drizzle singleton. Never use raw SQL unless Drizzle cannot express the query. No second DB client.
 
 **Required env vars:**
 ```
@@ -39,13 +39,11 @@ docker run --name Kanbanica-db \
 createdb Kanbanica
 
 # Apply schema
-npx prisma migrate dev --name init
-
-# Apply Better Auth tables (separately -- do NOT include in Prisma migrations)
-npx better-auth migrate
+npx drizzle-kit generate
+npx drizzle-kit migrate
 ```
 
-**Connection pool:** Prisma's default pool. For serverless deployments, add `connection_limit=5&pool_timeout=20` to the connection string.
+**Connection pool:** Configured in the `postgres` client in `lib/db.ts` (`max: 20`). For serverless deployments, reduce to `max: 5`.
 
 **Startup behavior:** Application fails to start if `DATABASE_URL` is missing or unreachable (validated in `src/lib/env.ts`).
 
@@ -103,7 +101,7 @@ BETTER_AUTH_SECRET=your-32-char-secret-here
 BETTER_AUTH_URL=https://app.Kanbanica.com
 ```
 
-**Auth tables:** Managed exclusively by `npx better-auth migrate`. Never include `User`, `Session`, `Account`, or `Verification` tables in Prisma migrations. Do not run `prisma migrate dev` for these tables.
+**Auth tables:** Better Auth manages the `user`, `session`, `account`, and `verification` tables via its Drizzle adapter. These are defined in `db/schema/auth.ts` so Drizzle migrations include them — but column names must match what Better Auth expects exactly.
 
 **Session check pattern (server-side):**
 ```typescript
@@ -279,17 +277,17 @@ NEXT_PUBLIC_APP_URL
 ## Startup / Teardown Order
 
 **Startup:**
-1. Validate all env vars (`src/lib/env.ts`) -- fail fast with clear error messages
-2. Prisma client initializes (lazy singleton in `src/lib/db.ts`)
+1. Validate all env vars (`lib/env.ts`) -- fail fast with clear error messages
+2. Drizzle client initializes (lazy singleton in `lib/db.ts`)
 3. Better Auth initializes (lazy)
 4. pg-boss worker starts (`scripts/worker.ts`): calls `boss.start()`, registers all handlers and cron jobs
 
 **Teardown (SIGTERM):**
 1. pg-boss: `boss.stop()` -- drains in-flight jobs gracefully
-2. Prisma: `prisma.$disconnect()`
+2. Drizzle: close the underlying `postgres` client via `dbClient.end()`
 3. Next.js: default graceful shutdown
 
-**Health check endpoint:** `GET /api/health` -- returns `{ ok: true, db: 'connected' }` after a `prisma.$queryRaw\`SELECT 1\`` check. Used by load balancer / container orchestrator.
+**Health check endpoint:** `GET /api/health` -- returns `{ ok: true, db: 'connected' }` after a `db.execute(sql\`SELECT 1\`)` check. Used by load balancer / container orchestrator.
 
 ---
 
@@ -341,7 +339,7 @@ export async function enqueueJob<K extends keyof JobPayloadMap>(
 ```
 src/
   lib/
-    db.ts               <- Prisma singleton
+    db.ts               <- Drizzle singleton
     auth.ts             <- Better Auth server instance
     env.ts              <- Zod env validation (validated at startup)
     storage.ts          <- R2/S3 client + upload helpers
@@ -365,7 +363,7 @@ scripts/
 | Scenario | Handling |
 |----------|---------|
 | pg-boss worker crashes mid-job | pg-boss marks job as `failed`; retry policy per job (default 3 retries); all handlers must be idempotent |
-| Database unreachable at startup | App exits with error; env validation passes but Prisma connection fails; health check returns 503 |
+| Database unreachable at startup | App exits with error; env validation passes but Drizzle connection fails; health check returns 503 |
 | R2 bucket unreachable during upload | Return 503 to client; do not create DB record; user retries |
 | VAPID keys changed after subscriptions stored | Existing `PushSubscription` records become invalid; handle HTTP 410 by deleting the subscription |
 | SMTP provider rate limit hit | Email enqueued as pg-boss job; retries with exponential backoff; after max retries, log to error monitoring |
@@ -382,7 +380,7 @@ scripts/
 - [ ] Workspace deletion enqueues a pg-boss job and returns HTTP 202
 - [ ] pg-boss job completes and workspace is fully deleted from the DB
 - [ ] All required env vars validated at startup with clear error messages on missing vars
-- [ ] `npx prisma migrate dev` and `npx better-auth migrate` run without conflicts
+- [ ] `npx drizzle-kit generate` and `npx drizzle-kit migrate` run without conflicts
 
 ---
 
@@ -404,13 +402,11 @@ docker run --name Kanbanica-db \
   -e POSTGRES_DB=Kanbanica \
   -p 5432:5432 -d postgres:16
 
-# 4. Apply Prisma schema
-npx prisma migrate dev --name init
+# 4. Apply Drizzle schema
+npx drizzle-kit generate
+npx drizzle-kit migrate
 
-# 5. Apply Better Auth tables
-npx better-auth migrate
-
-# 6. Seed plans (optional, for pricing page)
+# 5. Seed plans (optional, for pricing page)
 npx tsx scripts/seed-plans.ts
 
 # 7. Generate VAPID keys (optional, for push notifications)

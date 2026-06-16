@@ -375,22 +375,23 @@ export async function recordSearchVisit(
 }
 ```
 
-Add a unique index to `UserSearchHistory` for the upsert to work:
+Add a unique index to `user_search_history` for the upsert to work (already in `db/schema/search.ts`):
 
-```prisma
-model UserSearchHistory {
-  // ...
-  @@unique([userId, workspaceId, entityType, entityId])
-  @@index([userId, workspaceId, visitedAt])  // for ORDER BY visitedAt DESC
-}
+```ts
+uniqueIndex("user_search_history_unique_idx").on(t.userId, t.workspaceId, t.entityType, t.entityId)
+index("user_search_history_visited_idx").on(t.userId, t.workspaceId, t.visitedAt)  // for ORDER BY visitedAt DESC
 ```
 
-### Filter-to-Prisma Query Builder
+### Filter-to-Drizzle Query Builder
 
-`GET /api/lists/:listId/tasks` accepts filter params and must translate them into a Prisma `where` clause. Build it incrementally:
+`GET /api/lists/:listId/tasks` accepts filter params and must translate them into Drizzle `where` conditions. Build it incrementally with `and()`:
 
 ```typescript
-// src/server/task-filters.ts
+// server/task-filters.ts
+import { db } from '@/lib/db'
+import { task, taskAssignee, taskTag, listStatus } from '@/db/schema'
+import { and, eq, inArray, isNull, lt, gte, lte, ne, exists } from 'drizzle-orm'
+import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns'
 
 interface FilterParams {
   status?: string[]       // status IDs
@@ -407,34 +408,37 @@ interface FilterParams {
   dir?: 'asc' | 'desc'
 }
 
-export function buildTaskWhere(listId: string, params: FilterParams) {
-  const where: Prisma.TaskWhereInput = {
-    listId,
-    isArchived: false,
-    parentTaskId: null,
-  }
+export function buildTaskFilters(listId: string, params: FilterParams) {
+  const conditions = [
+    eq(task.listId, listId),
+    eq(task.isArchived, false),
+    isNull(task.parentTaskId),
+  ]
 
   if (params.status?.length) {
-    where.statusId = { in: params.status }
+    conditions.push(inArray(task.statusId, params.status))
   }
 
   if (params.priority?.length) {
-    where.priority = { in: params.priority as Priority[] }
+    conditions.push(inArray(task.priority, params.priority as any[]))
   }
 
+  // assignee filter uses EXISTS subquery
   if (params.assignee?.length) {
     const hasUnassigned = params.assignee.includes('unassigned')
     const userIds = params.assignee.filter(a => a !== 'unassigned')
 
     if (hasUnassigned && userIds.length > 0) {
-      where.OR = [
-        { assignees: { none: {} } },
-        { assignees: { some: { userId: { in: userIds } } } }
-      ]
+      // tasks with no assignee OR assigned to one of the specified users
+      // Use raw SQL for OR-of-subqueries pattern
+      conditions.push(sql`(
+        NOT EXISTS (SELECT 1 FROM task_assignee ta WHERE ta.task_id = ${task.id})
+        OR EXISTS (SELECT 1 FROM task_assignee ta WHERE ta.task_id = ${task.id} AND ta.user_id = ANY(${userIds}::text[]))
+      )`)
     } else if (hasUnassigned) {
-      where.assignees = { none: {} }
-    } else {
-      where.assignees = { some: { userId: { in: userIds } } }
+      conditions.push(sql`NOT EXISTS (SELECT 1 FROM task_assignee ta WHERE ta.task_id = ${task.id})`)
+    } else if (userIds.length) {
+      conditions.push(sql`EXISTS (SELECT 1 FROM task_assignee ta WHERE ta.task_id = ${task.id} AND ta.user_id = ANY(${userIds}::text[]))`)
     }
   }
 
@@ -442,58 +446,52 @@ export function buildTaskWhere(listId: string, params: FilterParams) {
     const now = new Date()
     switch (params.due) {
       case 'overdue':
-        where.dueDateEnd = { lt: now }
-        where.status = { type: { not: 'CLOSED' } }
+        conditions.push(lt(task.dueDateEnd, now))
+        conditions.push(sql`EXISTS (SELECT 1 FROM list_status ls WHERE ls.id = ${task.statusId} AND ls.type != 'CLOSED')`)
         break
       case 'today':
-        where.dueDateEnd = { gte: startOfDay(now), lte: endOfDay(now) }
+        conditions.push(gte(task.dueDateEnd, startOfDay(now)))
+        conditions.push(lte(task.dueDateEnd, endOfDay(now)))
         break
       case 'this_week':
-        where.dueDateEnd = { gte: startOfWeek(now), lte: endOfWeek(now) }
+        conditions.push(gte(task.dueDateEnd, startOfWeek(now)))
+        conditions.push(lte(task.dueDateEnd, endOfWeek(now)))
         break
       case 'this_month':
-        where.dueDateEnd = { gte: startOfMonth(now), lte: endOfMonth(now) }
+        conditions.push(gte(task.dueDateEnd, startOfMonth(now)))
+        conditions.push(lte(task.dueDateEnd, endOfMonth(now)))
         break
       case 'no_due_date':
-        where.dueDateEnd = null
+        conditions.push(isNull(task.dueDateEnd))
         break
     }
   }
 
-  if (params.dueDateFrom || params.dueDateTo) {
-    where.dueDateEnd = {
-      ...(params.dueDateFrom ? { gte: new Date(params.dueDateFrom) } : {}),
-      ...(params.dueDateTo   ? { lte: new Date(params.dueDateTo)   } : {}),
-    }
-  }
+  if (params.dueDateFrom) conditions.push(gte(task.dueDateEnd, new Date(params.dueDateFrom)))
+  if (params.dueDateTo)   conditions.push(lte(task.dueDateEnd, new Date(params.dueDateTo)))
 
   if (params.tags?.length) {
-    where.tags = { some: { tagId: { in: params.tags } } }
+    conditions.push(sql`EXISTS (SELECT 1 FROM task_tag tt WHERE tt.task_id = ${task.id} AND tt.tag_id = ANY(${params.tags}::text[]))`)
   }
 
   if (params.createdBy?.length) {
-    where.createdBy = { in: params.createdBy }
+    conditions.push(inArray(task.reporterId, params.createdBy))
   }
 
-  if (params.createdFrom || params.createdTo) {
-    where.createdAt = {
-      ...(params.createdFrom ? { gte: new Date(params.createdFrom) } : {}),
-      ...(params.createdTo   ? { lte: new Date(params.createdTo)   } : {}),
-    }
-  }
+  if (params.createdFrom) conditions.push(gte(task.createdAt, new Date(params.createdFrom)))
+  if (params.createdTo)   conditions.push(lte(task.createdAt, new Date(params.createdTo)))
 
-  return where
+  return and(...conditions)
 }
 
 export function buildTaskOrderBy(sort?: string, dir: 'asc' | 'desc' = 'asc') {
-  const d = dir
+  const d = dir === 'desc' ? desc : asc
   switch (sort) {
-    case 'due_date':    return { dueDateEnd: d }
-    case 'priority':    return { priority: d }
-    case 'assignee':    return { assignees: { _count: d } }
-    case 'created_at':  return { createdAt: d }
-    case 'updated_at':  return { updatedAt: d }
-    default:            return { orderIndex: 'asc' as const }  // manual sort
+    case 'due_date':    return d(task.dueDateEnd)
+    case 'priority':    return d(task.priority)
+    case 'created_at':  return d(task.createdAt)
+    case 'updated_at':  return d(task.updatedAt)
+    default:            return asc(task.orderIndex)  // manual sort
   }
 }
 ```

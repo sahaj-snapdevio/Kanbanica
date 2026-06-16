@@ -49,7 +49,7 @@ This same pattern is required for Board View. Both views must never be imported 
 
 ### Date Handling
 
-- All dates stored in UTC (`DateTime` Prisma type -> PostgreSQL `TIMESTAMP WITH TIME ZONE`)
+- All dates stored in UTC (Drizzle `timestamp({ withTimezone: true })` -> PostgreSQL `TIMESTAMP WITH TIME ZONE`)
 - Calendar grid renders in the user's local timezone using `Intl.DateTimeFormat`
 - Use `date-fns` for grid generation (month/week date arithmetic)
 - Drag-to-reschedule sends the target date in ISO format; client must convert local date -> UTC before sending
