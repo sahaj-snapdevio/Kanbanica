@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   ArchiveIcon,
+  BellIcon,
   CaretUpDownIcon,
   CheckCircleIcon,
   CheckIcon,
@@ -34,6 +35,7 @@ import { CreateSpaceModal } from "@/components/workspace/create-space-modal";
 import { CreateListModal } from "@/components/list/create-list-modal";
 import { EditListDialog } from "@/components/list/edit-list-dialog";
 import { DeleteListDialog } from "@/components/list/delete-list-dialog";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 
 interface WorkspaceSummary {
   id: string;
@@ -240,8 +242,8 @@ export function WorkspaceShell({
           </button>
         </div>
 
-        {/* Right side placeholder */}
-        <div className="w-8 shrink-0" />
+        {/* Right side — notification bell */}
+        <NotificationBell />
       </header>
 
       {/* Body: sidebar + main content */}
@@ -490,6 +492,13 @@ export function WorkspaceShell({
               >
                 <GearIcon className="size-4" />
                 Workspace settings
+              </Link>
+              <Link
+                href={`/${workspace.id}/notifications/settings`}
+                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent"
+              >
+                <BellIcon className="size-4" />
+                Notification settings
               </Link>
               <Separator className="my-1" />
               <button

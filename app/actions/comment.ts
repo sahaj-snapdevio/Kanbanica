@@ -5,9 +5,10 @@ import { and, eq, inArray, asc } from "drizzle-orm";
 import { createId } from "@paralleldrive/cuid2";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { comment, commentReaction, taskAttachment, user } from "@/db/schema";
+import { comment, commentReaction, taskAttachment, taskWatcher, user } from "@/db/schema";
 import { canAccessSpace, getWorkspaceMembership } from "@/lib/permissions";
 import { writeActivityLog } from "@/lib/activity-log";
+import { createNotifications } from "@/lib/notifications/create-notification";
 import { storage } from "@/lib/storage";
 import { revalidatePath } from "next/cache";
 
@@ -52,6 +53,26 @@ async function requireSpaceAccess(userId: string, workspaceId: string, spaceId: 
 
 function revalidateTask(workspaceId: string, spaceId: string, listId: string) {
   revalidatePath(`/${workspaceId}/${spaceId}/list/${listId}`);
+}
+
+// ─── extractMentionIds ────────────────────────────────────────────────────────
+
+function extractMentionIds(body: unknown): string[] {
+  if (!body || typeof body !== "object") return [];
+  const ids: string[] = [];
+  function walk(node: unknown) {
+    if (!node || typeof node !== "object") return;
+    const n = node as Record<string, unknown>;
+    if (n.type === "mention" && n.attrs && typeof n.attrs === "object") {
+      const attrs = n.attrs as Record<string, unknown>;
+      if (typeof attrs.id === "string") ids.push(attrs.id);
+    }
+    if (Array.isArray(n.content)) {
+      for (const child of n.content) walk(child);
+    }
+  }
+  walk(body);
+  return [...new Set(ids)];
 }
 
 // ─── getTaskComments ──────────────────────────────────────────────────────────
@@ -214,6 +235,64 @@ export async function createComment(
   });
 
   void writeActivityLog(taskId, session.user.id, "comment_added", { comment_id: id });
+
+  // Fire-and-forget notifications
+  const watchers = await db
+    .select({ userId: taskWatcher.userId })
+    .from(taskWatcher)
+    .where(eq(taskWatcher.taskId, taskId));
+
+  const watcherIds = watchers.map((w) => w.userId);
+
+  // Comment added notification to all watchers
+  createNotifications({
+    workspaceId,
+    actorId: session.user.id,
+    recipientIds: watcherIds,
+    triggerType: "comment_added",
+    entityType: "COMMENT",
+    entityId: id,
+    title: `New comment on a task you're watching`,
+    muteCheckEntityIds: [taskId],
+  });
+
+  // Reply notification to parent comment author
+  if (parentCommentId) {
+    const [parentComment] = await db
+      .select({ authorId: comment.authorId })
+      .from(comment)
+      .where(eq(comment.id, parentCommentId))
+      .limit(1);
+
+    if (parentComment) {
+      createNotifications({
+        workspaceId,
+        actorId: session.user.id,
+        recipientIds: [parentComment.authorId],
+        triggerType: "comment_reply",
+        entityType: "COMMENT",
+        entityId: id,
+        title: `Someone replied to your comment`,
+        muteCheckEntityIds: [taskId],
+      });
+    }
+  }
+
+  // Mention notifications
+  const mentionedIds = extractMentionIds(body);
+  if (mentionedIds.length > 0) {
+    createNotifications({
+      workspaceId,
+      actorId: session.user.id,
+      recipientIds: mentionedIds,
+      triggerType: "mention_comment",
+      entityType: "COMMENT",
+      entityId: id,
+      title: `You were mentioned in a comment`,
+      muteCheckEntityIds: [taskId],
+    });
+  }
+
   revalidateTask(workspaceId, spaceId, listId);
 
   return { commentId: id };

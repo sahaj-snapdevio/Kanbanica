@@ -26,6 +26,10 @@ const envSchema = z.object({
   S3_ACCESS_KEY_ID: z.string().min(1).default("minioadmin"),
   S3_SECRET_ACCESS_KEY: z.string().min(1).default("minioadmin"),
   S3_PUBLIC_URL: optionalString,
+  VAPID_PUBLIC_KEY: optionalString,
+  VAPID_PRIVATE_KEY: optionalString,
+  VAPID_SUBJECT: optionalString,
+  NEXT_PUBLIC_VAPID_PUBLIC_KEY: optionalString,
 });
 
 const parsed = envSchema.safeParse(process.env);
