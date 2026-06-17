@@ -17,17 +17,25 @@ import {
   tag,
   user,
 } from "@/db/schema";
-import { canAccessSpace, getWorkspaceMembership } from "@/lib/permissions";
+import { canAccessSpace, getSpacePermission, hasPermissionLevel } from "@/lib/permissions";
 import { writeActivityLog } from "@/lib/activity-log";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+// View-level access: read sprint data, backlog, active sprint view
 async function requireAccess(userId: string, workspaceId: string, spaceId: string) {
-  const [membership, accessible] = await Promise.all([
-    getWorkspaceMembership(userId, workspaceId),
-    canAccessSpace(userId, workspaceId, spaceId),
-  ]);
-  if (!membership || !accessible) return { error: "Unauthorized" } as const;
+  const accessible = await canAccessSpace(userId, workspaceId, spaceId);
+  if (!accessible) return { error: "Unauthorized" } as const;
+  return null;
+}
+
+// Full-access: create, start, close, delete sprints; manage sprint tasks
+async function requireFullAccess(userId: string, workspaceId: string, spaceId: string) {
+  const permission = await getSpacePermission(userId, workspaceId, spaceId);
+  if (permission === null) return { error: "Forbidden" } as const;
+  if (!hasPermissionLevel(permission, "full_access")) {
+    return { error: "You need Full Access to manage sprints" } as const;
+  }
   return null;
 }
 
@@ -111,7 +119,7 @@ export async function createSprint(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
-  const err = await requireAccess(session.user.id, workspaceId, spaceId);
+  const err = await requireFullAccess(session.user.id, workspaceId, spaceId);
   if (err) return err;
 
   const name = data.name.trim();
@@ -164,7 +172,7 @@ export async function startSprint(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
-  const err = await requireAccess(session.user.id, workspaceId, spaceId);
+  const err = await requireFullAccess(session.user.id, workspaceId, spaceId);
   if (err) return err;
 
   const [activeSprint] = await db
@@ -206,7 +214,7 @@ export async function deleteSprint(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
-  const err = await requireAccess(session.user.id, workspaceId, spaceId);
+  const err = await requireFullAccess(session.user.id, workspaceId, spaceId);
   if (err) return err;
 
   const [targetSprint] = await db
@@ -310,7 +318,7 @@ export async function addTaskToSprint(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
-  const err = await requireAccess(session.user.id, workspaceId, spaceId);
+  const err = await requireFullAccess(session.user.id, workspaceId, spaceId);
   if (err) return err;
 
   const [targetTask] = await db
@@ -360,7 +368,7 @@ export async function removeTaskFromSprint(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
-  const err = await requireAccess(session.user.id, workspaceId, spaceId);
+  const err = await requireFullAccess(session.user.id, workspaceId, spaceId);
   if (err) return err;
 
   await db
@@ -384,7 +392,7 @@ export async function updateStoryPoints(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
-  const err = await requireAccess(session.user.id, workspaceId, spaceId);
+  const err = await requireFullAccess(session.user.id, workspaceId, spaceId);
   if (err) return err;
 
   const [row] = await db
@@ -414,7 +422,7 @@ export async function markAllSprintTasksDone(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
-  const err = await requireAccess(session.user.id, workspaceId, spaceId);
+  const err = await requireFullAccess(session.user.id, workspaceId, spaceId);
   if (err) return err;
 
   // Find first CLOSED-type status in the list
@@ -474,7 +482,7 @@ export async function closeSprint(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
-  const err = await requireAccess(session.user.id, workspaceId, spaceId);
+  const err = await requireFullAccess(session.user.id, workspaceId, spaceId);
   if (err) return err;
 
   const [targetSprint] = await db
@@ -576,7 +584,7 @@ export async function createNextSprintFromClosed(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
-  const err = await requireAccess(session.user.id, workspaceId, spaceId);
+  const err = await requireFullAccess(session.user.id, workspaceId, spaceId);
   if (err) return err;
 
   const [closedSprint] = await db

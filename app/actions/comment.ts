@@ -6,7 +6,7 @@ import { createId } from "@paralleldrive/cuid2";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { comment, commentReaction, taskAttachment, taskWatcher, user } from "@/db/schema";
-import { canAccessSpace, getWorkspaceMembership } from "@/lib/permissions";
+import { canAccessSpace, getSpacePermission, hasPermissionLevel } from "@/lib/permissions";
 import { writeActivityLog } from "@/lib/activity-log";
 import { createNotifications } from "@/lib/notifications/create-notification";
 import { storage } from "@/lib/storage";
@@ -343,11 +343,8 @@ export async function deleteComment(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
-  const [membership, accessible] = await Promise.all([
-    getWorkspaceMembership(session.user.id, workspaceId),
-    canAccessSpace(session.user.id, workspaceId, spaceId),
-  ]);
-  if (!membership || !accessible) return { error: "Unauthorized" };
+  const permission = await getSpacePermission(session.user.id, workspaceId, spaceId);
+  if (permission === null) return { error: "Forbidden" };
 
   const [existing] = await db
     .select({ authorId: comment.authorId })
@@ -357,8 +354,9 @@ export async function deleteComment(
 
   if (!existing) return { error: "Comment not found" };
 
-  const isAdmin = membership.role === "OWNER" || membership.role === "ADMIN";
-  if (existing.authorId !== session.user.id && !isAdmin) {
+  // full_access can delete any comment; others can only delete their own
+  const canDeleteAny = hasPermissionLevel(permission, "full_access");
+  if (existing.authorId !== session.user.id && !canDeleteAny) {
     return { error: "You don't have permission to delete this comment" };
   }
 

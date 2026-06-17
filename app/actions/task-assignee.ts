@@ -6,7 +6,7 @@ import { and, eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { task, taskAssignee, taskWatcher } from "@/db/schema";
-import { canAccessSpace, getWorkspaceMembership } from "@/lib/permissions";
+import { canAccessSpace, getSpacePermission, hasPermissionLevel, getWorkspaceMembership } from "@/lib/permissions";
 import { writeActivityLog } from "@/lib/activity-log";
 
 function revalidateTask(workspaceId: string, spaceId: string, listId: string) {
@@ -23,11 +23,8 @@ export async function addAssignee(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
-  const [membership, accessible] = await Promise.all([
-    getWorkspaceMembership(session.user.id, workspaceId),
-    canAccessSpace(session.user.id, workspaceId, spaceId),
-  ]);
-  if (!membership || !accessible) return { error: "Unauthorized" };
+  const permission = await getSpacePermission(session.user.id, workspaceId, spaceId);
+  if (permission === null || !hasPermissionLevel(permission, "edit")) return { error: "Forbidden" };
 
   // Verify assignee is active in workspace
   const assigneeMembership = await getWorkspaceMembership(assigneeUserId, workspaceId);
@@ -61,11 +58,8 @@ export async function removeAssignee(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
-  const [membership, accessible] = await Promise.all([
-    getWorkspaceMembership(session.user.id, workspaceId),
-    canAccessSpace(session.user.id, workspaceId, spaceId),
-  ]);
-  if (!membership || !accessible) return { error: "Unauthorized" };
+  const permission = await getSpacePermission(session.user.id, workspaceId, spaceId);
+  if (permission === null || !hasPermissionLevel(permission, "edit")) return { error: "Forbidden" };
 
   await db
     .delete(taskAssignee)

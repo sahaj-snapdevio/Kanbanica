@@ -7,15 +7,16 @@ import { and, asc, eq, max } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { checklist, checklistItem } from "@/db/schema";
-import { canAccessSpace } from "@/lib/permissions";
+import { getSpacePermission, hasPermissionLevel } from "@/lib/permissions";
 
 function revalidateList(workspaceId: string, spaceId: string, listId: string) {
   revalidatePath(`/${workspaceId}/${spaceId}/list/${listId}`);
 }
 
-async function requireAccess(userId: string, workspaceId: string, spaceId: string) {
-  const accessible = await canAccessSpace(userId, workspaceId, spaceId);
-  return accessible;
+// Checklist mutations require at least "edit" permission
+async function requireEditAccess(userId: string, workspaceId: string, spaceId: string) {
+  const permission = await getSpacePermission(userId, workspaceId, spaceId);
+  return permission !== null && hasPermissionLevel(permission, "edit");
 }
 
 async function nextChecklistOrder(taskId: string) {
@@ -46,7 +47,7 @@ export async function createChecklist(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
-  if (!(await requireAccess(session.user.id, workspaceId, spaceId))) return { error: "Unauthorized" };
+  if (!(await requireEditAccess(session.user.id, workspaceId, spaceId))) return { error: "Forbidden" };
 
   const trimmed = name.trim();
   if (!trimmed) return { error: "Checklist name is required" };
@@ -73,7 +74,7 @@ export async function updateChecklist(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
-  if (!(await requireAccess(session.user.id, workspaceId, spaceId))) return { error: "Unauthorized" };
+  if (!(await requireEditAccess(session.user.id, workspaceId, spaceId))) return { error: "Forbidden" };
 
   const trimmed = name.trim();
   if (!trimmed) return { error: "Name is required" };
@@ -96,7 +97,7 @@ export async function deleteChecklist(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
-  if (!(await requireAccess(session.user.id, workspaceId, spaceId))) return { error: "Unauthorized" };
+  if (!(await requireEditAccess(session.user.id, workspaceId, spaceId))) return { error: "Forbidden" };
 
   await db.delete(checklist).where(eq(checklist.id, checklistId));
 
@@ -116,7 +117,7 @@ export async function addChecklistItem(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
-  if (!(await requireAccess(session.user.id, workspaceId, spaceId))) return { error: "Unauthorized" };
+  if (!(await requireEditAccess(session.user.id, workspaceId, spaceId))) return { error: "Forbidden" };
 
   const trimmed = title.trim();
   if (!trimmed) return { error: "Item title is required" };
@@ -143,7 +144,7 @@ export async function updateChecklistItem(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
-  if (!(await requireAccess(session.user.id, workspaceId, spaceId))) return { error: "Unauthorized" };
+  if (!(await requireEditAccess(session.user.id, workspaceId, spaceId))) return { error: "Forbidden" };
 
   const trimmed = title.trim();
   if (!trimmed) return { error: "Title is required" };
@@ -166,7 +167,7 @@ export async function toggleChecklistItem(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
-  if (!(await requireAccess(session.user.id, workspaceId, spaceId))) return { error: "Unauthorized" };
+  if (!(await requireEditAccess(session.user.id, workspaceId, spaceId))) return { error: "Forbidden" };
 
   const [item] = await db
     .select({ isChecked: checklistItem.isChecked })
@@ -199,7 +200,7 @@ export async function deleteChecklistItem(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
-  if (!(await requireAccess(session.user.id, workspaceId, spaceId))) return { error: "Unauthorized" };
+  if (!(await requireEditAccess(session.user.id, workspaceId, spaceId))) return { error: "Forbidden" };
 
   await db.delete(checklistItem).where(eq(checklistItem.id, itemId));
 

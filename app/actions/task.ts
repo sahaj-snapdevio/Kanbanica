@@ -24,22 +24,44 @@ import {
   checklistItem,
   user,
 } from "@/db/schema";
-import { canAccessSpace, getWorkspaceMembership } from "@/lib/permissions";
+import { canAccessSpace, getSpacePermission, hasPermissionLevel } from "@/lib/permissions";
 import { writeActivityLog } from "@/lib/activity-log";
 import { createNotifications } from "@/lib/notifications/create-notification";
 
 // ─── Permission helpers ──────────────────────────────────────────────────────
 
+// Requires at least "edit" permission — creates, updates, tags, time-logging, etc.
 async function requireEditAccess(
   userId: string,
   workspaceId: string,
   spaceId: string,
 ): Promise<{ error: string } | null> {
-  const [membership, accessible] = await Promise.all([
-    getWorkspaceMembership(userId, workspaceId),
-    canAccessSpace(userId, workspaceId, spaceId),
-  ]);
-  if (!membership || !accessible) return { error: "Unauthorized" };
+  const permission = await getSpacePermission(userId, workspaceId, spaceId);
+  if (permission === null) return { error: "Forbidden" };
+  if (!hasPermissionLevel(permission, "edit")) return { error: "Forbidden" };
+  return null;
+}
+
+// Requires at least "view" permission — reads, activity, comments.
+async function requireViewAccess(
+  userId: string,
+  workspaceId: string,
+  spaceId: string,
+): Promise<{ error: string } | null> {
+  const accessible = await canAccessSpace(userId, workspaceId, spaceId);
+  if (!accessible) return { error: "Forbidden" };
+  return null;
+}
+
+// Requires "full_access" permission — delete task, etc.
+async function requireFullAccess(
+  userId: string,
+  workspaceId: string,
+  spaceId: string,
+): Promise<{ error: string } | null> {
+  const permission = await getSpacePermission(userId, workspaceId, spaceId);
+  if (permission === null) return { error: "Forbidden" };
+  if (!hasPermissionLevel(permission, "full_access")) return { error: "Forbidden" };
   return null;
 }
 
@@ -135,8 +157,8 @@ export async function getTaskDetail(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
-  const accessible = await canAccessSpace(session.user.id, workspaceId, spaceId);
-  if (!accessible) return { error: "Unauthorized" };
+  const permErr = await requireViewAccess(session.user.id, workspaceId, spaceId);
+  if (permErr) return permErr;
 
   const [t] = await db
     .select()
@@ -408,8 +430,8 @@ export async function updateTaskStatus(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
-  const accessible = await canAccessSpace(session.user.id, workspaceId, spaceId);
-  if (!accessible) return { error: "Unauthorized" };
+  const permErr = await requireEditAccess(session.user.id, workspaceId, spaceId);
+  if (permErr) return permErr;
 
   const [existing] = await db
     .select({ statusId: task.statusId })
@@ -472,16 +494,8 @@ export async function deleteTask(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
-  const [membership, accessible] = await Promise.all([
-    getWorkspaceMembership(session.user.id, workspaceId),
-    canAccessSpace(session.user.id, workspaceId, spaceId),
-  ]);
-  if (!membership || !accessible) return { error: "Unauthorized" };
-
-  // Only FULL_ACCESS / Admin / Owner can delete
-  const isAdmin = membership.role === "OWNER" || membership.role === "ADMIN";
-  // TODO: check space permission for MEMBER with FULL_ACCESS
-  if (!isAdmin) return { error: "You don't have permission to delete tasks" };
+  const permErr = await requireFullAccess(session.user.id, workspaceId, spaceId);
+  if (permErr) return { error: "You don't have permission to delete tasks" };
 
   await db.delete(task).where(and(eq(task.id, taskId), eq(task.listId, listId)));
 
@@ -625,8 +639,8 @@ export async function moveTask(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
-  const membership = await getWorkspaceMembership(session.user.id, workspaceId);
-  if (!membership) return { error: "Unauthorized" };
+  const permErr = await requireEditAccess(session.user.id, workspaceId, spaceId);
+  if (permErr) return permErr;
 
   const [t] = await db.select({ listId: task.listId, statusId: task.statusId }).from(task).where(eq(task.id, taskId)).limit(1);
   if (!t) return { error: "Task not found" };
@@ -686,8 +700,8 @@ export async function getTaskActivity(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
-  const accessible = await canAccessSpace(session.user.id, workspaceId, spaceId);
-  if (!accessible) return { error: "Unauthorized" };
+  const permErr = await requireViewAccess(session.user.id, workspaceId, spaceId);
+  if (permErr) return permErr;
 
   const logs = await db
     .select({
@@ -793,8 +807,8 @@ export async function getSubtasks(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
-  const accessible = await canAccessSpace(session.user.id, workspaceId, spaceId);
-  if (!accessible) return { error: "Unauthorized" };
+  const permErr = await requireViewAccess(session.user.id, workspaceId, spaceId);
+  if (permErr) return permErr;
 
   const subtasks = await db
     .select({

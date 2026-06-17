@@ -97,6 +97,9 @@ export async function updateSpace(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
+  const admin = await requireWorkspaceAdmin(session.user.id, workspaceId);
+  if (!admin) return { error: "Only Admin and Owner can update Spaces" };
+
   const name = data.name.trim();
   if (!name) return { error: "Name is required" };
 
@@ -122,6 +125,9 @@ export async function archiveSpace(
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
+
+  const admin = await requireWorkspaceAdmin(session.user.id, workspaceId);
+  if (!admin) return { error: "Only Admin and Owner can archive Spaces" };
 
   await db
     .update(space)
@@ -159,6 +165,18 @@ export async function addSpaceMember(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
+  const admin = await requireWorkspaceAdmin(session.user.id, workspaceId);
+  if (!admin) return { error: "Only Admin and Owner can manage space members" };
+
+  // Validate that the target user is a workspace member
+  const targetMembership = await getWorkspaceMembership(userId, workspaceId);
+  if (!targetMembership) return { error: "User is not a workspace member" };
+
+  // Guests cannot be assigned full_access
+  if (targetMembership.role === "GUEST" && permission === "FULL_ACCESS") {
+    return { error: "Guests cannot be granted Full Access" };
+  }
+
   await db.insert(spaceMember).values({
     id: createId(),
     spaceId,
@@ -180,6 +198,15 @@ export async function changeSpaceMemberPermission(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
+  const admin = await requireWorkspaceAdmin(session.user.id, workspaceId);
+  if (!admin) return { error: "Only Admin and Owner can manage space members" };
+
+  // Guests cannot be assigned full_access
+  const targetMembership = await getWorkspaceMembership(userId, workspaceId);
+  if (targetMembership?.role === "GUEST" && permission === "FULL_ACCESS") {
+    return { error: "Guests cannot be granted Full Access" };
+  }
+
   await db
     .update(spaceMember)
     .set({ permission, updatedAt: new Date() })
@@ -195,6 +222,9 @@ export async function removeSpaceMember(
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
+
+  const admin = await requireWorkspaceAdmin(session.user.id, workspaceId);
+  if (!admin) return { error: "Only Admin and Owner can manage space members" };
 
   await db
     .delete(spaceMember)

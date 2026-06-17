@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { getAccessibleSpaceIds } from "@/lib/permissions";
+import { canAccessSpace, getAccessibleSpaceIds } from "@/lib/permissions";
 import {
   task,
   taskAssignee,
@@ -427,6 +427,9 @@ export async function getFilteredTasks(
 > {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
+
+  const accessible = await canAccessSpace(session.user.id, workspaceId, spaceId);
+  if (!accessible) return { error: "Forbidden" };
 
   // Build where conditions manually
   const conditions: Parameters<typeof and> = [

@@ -7,7 +7,7 @@ import { and, eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { task, taskDependency, listStatus } from "@/db/schema";
-import { canAccessSpace } from "@/lib/permissions";
+import { canAccessSpace, getSpacePermission, hasPermissionLevel } from "@/lib/permissions";
 import { writeActivityLog } from "@/lib/activity-log";
 
 function revalidateList(workspaceId: string, spaceId: string, listId: string) {
@@ -45,8 +45,8 @@ export async function addDependency(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
-  const accessible = await canAccessSpace(session.user.id, workspaceId, spaceId);
-  if (!accessible) return { error: "Unauthorized" };
+  const permission = await getSpacePermission(session.user.id, workspaceId, spaceId);
+  if (permission === null || !hasPermissionLevel(permission, "edit")) return { error: "Forbidden" };
 
   if (taskId === dependsOnTaskId) return { error: "A task cannot depend on itself" };
 
@@ -95,8 +95,8 @@ export async function removeDependency(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
-  const accessible = await canAccessSpace(session.user.id, workspaceId, spaceId);
-  if (!accessible) return { error: "Unauthorized" };
+  const permission = await getSpacePermission(session.user.id, workspaceId, spaceId);
+  if (permission === null || !hasPermissionLevel(permission, "edit")) return { error: "Forbidden" };
 
   const [dep] = await db
     .select({ dependsOnTaskId: taskDependency.dependsOnTaskId })

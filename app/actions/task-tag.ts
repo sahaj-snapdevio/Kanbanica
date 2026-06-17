@@ -7,7 +7,7 @@ import { and, asc, eq, ilike } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { tag, taskTag } from "@/db/schema";
-import { canAccessSpace, getWorkspaceMembership } from "@/lib/permissions";
+import { getSpacePermission, hasPermissionLevel, getWorkspaceMembership } from "@/lib/permissions";
 import { writeActivityLog } from "@/lib/activity-log";
 
 const TAG_COLORS = [
@@ -82,11 +82,8 @@ export async function addTaskTag(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
-  const [membership, accessible] = await Promise.all([
-    getWorkspaceMembership(session.user.id, workspaceId),
-    canAccessSpace(session.user.id, workspaceId, spaceId),
-  ]);
-  if (!membership || !accessible) return { error: "Unauthorized" };
+  const permission = await getSpacePermission(session.user.id, workspaceId, spaceId);
+  if (permission === null || !hasPermissionLevel(permission, "edit")) return { error: "Forbidden" };
 
   await db.insert(taskTag).values({ taskId, tagId }).onConflictDoNothing();
 
@@ -107,11 +104,8 @@ export async function removeTaskTag(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
-  const [membership, accessible] = await Promise.all([
-    getWorkspaceMembership(session.user.id, workspaceId),
-    canAccessSpace(session.user.id, workspaceId, spaceId),
-  ]);
-  if (!membership || !accessible) return { error: "Unauthorized" };
+  const permission = await getSpacePermission(session.user.id, workspaceId, spaceId);
+  if (permission === null || !hasPermissionLevel(permission, "edit")) return { error: "Forbidden" };
 
   await db
     .delete(taskTag)
