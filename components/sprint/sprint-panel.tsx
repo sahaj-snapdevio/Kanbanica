@@ -202,7 +202,7 @@ function ActiveSprintCard({
             )}
           </div>
         </div>
-        <Badge variant="outline" className="shrink-0 border-primary/30 text-primary bg-primary/10 text-xs">
+        <Badge variant="outline" className="shrink-0 border-primary/30 text-primary bg-primary/10 text-xs px-2 py-1 rounded">
           Active
         </Badge>
       </div>
@@ -473,13 +473,13 @@ export function SprintPanel({ workspaceId, spaceId, listId, onDataChanged }: Spr
           <TargetIcon className="size-4 text-muted-foreground" />
           <span className="text-sm font-medium flex-1">Sprints</span>
           {activeSprints.length > 0 && (
-            <Badge variant="outline" className="border-primary/30 text-primary bg-primary/10 text-xs">
-              1 active
+            <Badge variant="outline" className="shrink-0 border-primary/30 text-primary bg-primary/10 text-xs px-2 py-1 rounded">
+              {activeSprints.length} Active
             </Badge>
           )}
           {plannedSprints.length > 0 && (
-            <Badge variant="secondary" className="text-xs">
-              {plannedSprints.length} planned
+            <Badge variant="outline" className="shrink-0 border-border text-muted-foreground bg-muted text-xs px-2 py-1 rounded">
+              {plannedSprints.length} Planned
             </Badge>
           )}
         </button>

@@ -16,6 +16,7 @@ import {
 } from "@phosphor-icons/react";
 import { archiveTask, deleteTask, duplicateTask } from "@/app/actions/task";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CreateTaskModal } from "@/components/task/create-task-modal";
 import { cn } from "@/lib/utils";
@@ -236,13 +237,14 @@ function StatusGroupRows({
               ? <CaretRightIcon className="size-3.5 text-muted-foreground shrink-0" />
               : <CaretDownIcon className="size-3.5 text-muted-foreground shrink-0" />
             }
-            <span
-              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold"
-              style={{ backgroundColor: `${status.color}18`, color: status.color }}
+            <Badge
+              variant="outline"
+              className="text-xs px-2 py-1 rounded font-semibold"
+              style={{ borderColor: `${status.color}50`, backgroundColor: `${status.color}18`, color: status.color }}
             >
-              <span className="size-1.5 rounded-full" style={{ backgroundColor: status.color }} />
+              <span className="size-1.5 rounded-full mr-1.5 shrink-0" style={{ backgroundColor: status.color }} />
               {status.name}
-            </span>
+            </Badge>
             <span className="text-xs text-muted-foreground tabular-nums">{tasks.length}</span>
           </button>
         </td>

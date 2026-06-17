@@ -21,6 +21,7 @@ import {
   Dialog,
   DialogContent,
   DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -137,7 +138,7 @@ export function CreateTaskModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl p-0 gap-0 overflow-hidden" aria-describedby={undefined}>
         <DialogHeader className="sr-only">
-          <span>Create Task</span>
+          <DialogTitle>Create Task</DialogTitle>
         </DialogHeader>
 
         {/* Top bar: status tabs (Task / Doc / etc simplified) */}

@@ -40,7 +40,7 @@ export default async function TaskPage({ params }: TaskPageProps) {
   if (!accessible) notFound();
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden m-0">
+    <div className="h-full flex flex-col overflow-hidden">
       <TaskDetailPage
         workspaceId={workspaceId}
         spaceId={l.spaceId}

@@ -17,6 +17,7 @@ import {
 } from "@phosphor-icons/react";
 import { format, isToday, isPast } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { getActiveSprintView, addTaskToSprint } from "@/app/actions/sprint";
 import { createTask, archiveTask, deleteTask, duplicateTask } from "@/app/actions/task";
@@ -454,9 +455,17 @@ export function SprintListView({ workspaceId, spaceId, listId, statuses, isAdmin
             ({formatDateRange(sprintInfo.startDate, sprintInfo.endDate)})
           </span>
         </button>
-        <span className="text-xs font-semibold text-primary uppercase tracking-wide shrink-0">
+        <Badge
+          variant="outline"
+          className={cn(
+            "shrink-0 text-xs px-2 py-1 rounded uppercase tracking-wide",
+            sprintInfo.status === "ACTIVE"  && "border-primary/30 text-primary bg-primary/10",
+            sprintInfo.status === "PLANNED" && "border-border text-muted-foreground bg-muted",
+            sprintInfo.status === "CLOSED"  && "border-border text-muted-foreground bg-muted",
+          )}
+        >
           {sprintInfo.status}
-        </span>
+        </Badge>
       </div>
 
       {/* Task table — inside the same card */}
