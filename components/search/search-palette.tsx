@@ -69,10 +69,10 @@ export function SearchPalette({ workspaceId, open, onClose }: SearchPaletteProps
     return () => document.removeEventListener("keydown", handler);
   }, [open, onClose]);
 
-  async function navigateTask(taskId: string, spaceId: string, listId: string) {
+  async function navigateTask(taskId: string) {
     await recordSearchVisit(workspaceId, "task", taskId);
     onClose();
-    router.push(`/${workspaceId}/${spaceId}/list/${listId}?task=${taskId}`);
+    router.push(`/${workspaceId}/task/${taskId}`);
   }
 
   async function navigateList(listId: string, spaceId: string) {
@@ -163,7 +163,7 @@ export function SearchPalette({ workspaceId, open, onClose }: SearchPaletteProps
                     return (
                       <button
                         key={t.id}
-                        onClick={() => navigateTask(t.id, t.spaceId, t.listId)}
+                        onClick={() => navigateTask(t.id)}
                         className="flex w-full items-start gap-3 px-4 py-2.5 text-left hover:bg-accent transition-colors"
                       >
                         <span

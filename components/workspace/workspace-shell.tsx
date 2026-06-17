@@ -116,7 +116,7 @@ export function WorkspaceShell({
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex h-screen flex-col bg-background overflow-hidden">
       <SearchPalette
         workspaceId={workspace.id}
         open={searchOpen}
@@ -172,6 +172,80 @@ export function WorkspaceShell({
         />
       )}
 
+      {/* Global top bar */}
+      <header className="sticky top-0 z-40 flex h-12 shrink-0 items-center border-b bg-card px-3 gap-3">
+        {/* Mobile sidebar toggle */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-8 lg:hidden shrink-0"
+          onClick={() => setSidebarOpen(true)}
+        >
+          <ListIcon className="size-5" />
+        </Button>
+
+        {/* Workspace switcher — left side */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <button className="flex shrink-0 items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors hover:bg-accent max-w-45">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-xs font-semibold">
+                {workspaceBadge(workspace)}
+              </span>
+              <span className="truncate hidden sm:block">{workspace.name}</span>
+              <CaretUpDownIcon className="size-3.5 shrink-0 text-muted-foreground" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-64 p-1">
+            <p className="px-2 py-1.5 font-medium text-muted-foreground text-xs uppercase tracking-wide">
+              Workspaces
+            </p>
+            {workspaces.map((ws) => (
+              <Link
+                key={ws.id}
+                href={`/${ws.id}`}
+                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent"
+              >
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-xs">
+                  {workspaceBadge(ws)}
+                </span>
+                <span className="flex-1 truncate">{ws.name}</span>
+                {ws.id === workspace.id && <CheckIcon className="size-4 text-primary" />}
+              </Link>
+            ))}
+            <Separator className="my-1" />
+            <Link
+              href="/onboarding?new=1"
+              className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <PlusIcon className="size-4" />
+              Create workspace
+            </Link>
+          </PopoverContent>
+        </Popover>
+
+        <div className="h-5 w-px bg-border shrink-0" />
+
+        {/* Centered search bar */}
+        <div className="flex flex-1 justify-center">
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="flex items-center gap-2 h-8 w-full max-w-md rounded-md border bg-muted/50 px-3 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <MagnifyingGlassIcon className="size-4 shrink-0" />
+            <span className="flex-1 text-left text-sm">Search…</span>
+            <kbd className="hidden sm:inline-flex items-center gap-0.5 rounded border bg-background px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
+              Ctrl K
+            </kbd>
+          </button>
+        </div>
+
+        {/* Right side placeholder */}
+        <div className="w-8 shrink-0" />
+      </header>
+
+      {/* Body: sidebar + main content */}
+      <div className="flex flex-1 overflow-hidden">
+
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-20 bg-black/50 lg:hidden"
@@ -182,73 +256,12 @@ export function WorkspaceShell({
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-30 flex w-60 flex-col border-r bg-card transition-transform duration-200 lg:static lg:translate-x-0",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full",
+          "fixed inset-y-12 left-0 z-30 flex w-60 shrink-0 flex-col border-r bg-card transition-transform duration-200 lg:static lg:inset-y-auto lg:h-full",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         )}
       >
-        {/* Workspace switcher */}
-        <div className="flex h-14 items-center gap-1 border-b px-3">
-          <Popover>
-            <PopoverTrigger asChild>
-              <button className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors hover:bg-accent">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-xs">
-                  {workspaceBadge(workspace)}
-                </span>
-                <span className="truncate">{workspace.name}</span>
-                <CaretUpDownIcon className="ml-auto size-3.5 shrink-0 text-muted-foreground" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-64 p-1">
-              <p className="px-2 py-1.5 font-medium text-muted-foreground text-xs uppercase tracking-wide">
-                Workspaces
-              </p>
-              {workspaces.map((ws) => (
-                <Link
-                  key={ws.id}
-                  href={`/${ws.id}`}
-                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent"
-                >
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-xs">
-                    {workspaceBadge(ws)}
-                  </span>
-                  <span className="flex-1 truncate">{ws.name}</span>
-                  {ws.id === workspace.id && <CheckIcon className="size-4 text-primary" />}
-                </Link>
-              ))}
-              <Separator className="my-1" />
-              <Link
-                href="/onboarding?new=1"
-                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              >
-                <PlusIcon className="size-4" />
-                Create workspace
-              </Link>
-            </PopoverContent>
-          </Popover>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="lg:hidden shrink-0 size-8"
-            onClick={() => setSidebarOpen(false)}
-          >
-            <XIcon className="size-4" />
-          </Button>
-        </div>
-
         {/* Spaces nav */}
         <nav className="flex-1 space-y-4 overflow-y-auto px-2 py-3">
-          {/* Search button */}
-          <button
-            onClick={() => setSearchOpen(true)}
-            className="flex w-full items-center gap-2 rounded-md border bg-muted/50 px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          >
-            <MagnifyingGlassIcon className="size-3.5 shrink-0" />
-            <span className="flex-1 text-left text-xs">Search…</span>
-            <kbd className="hidden sm:inline-flex h-4 items-center rounded border bg-background px-1 text-2xs font-medium">
-              ⌃K
-            </kbd>
-          </button>
-
           {/* Global links */}
           <div className="space-y-0.5">
             {[
@@ -491,22 +504,11 @@ export function WorkspaceShell({
       </aside>
 
       {/* Main content */}
-      <div className="flex min-w-0 flex-1 flex-col">
-        {/* Mobile header */}
-        <header className="flex h-14 items-center gap-3 border-b px-4 lg:hidden">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-8"
-            onClick={() => setSidebarOpen(true)}
-          >
-            <ListIcon className="size-5" />
-          </Button>
-          <span className="font-semibold text-sm">{workspace.name}</span>
-        </header>
-
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <main className="flex-1 overflow-auto">{children}</main>
       </div>
+
+      </div>{/* end body row */}
     </div>
   );
 }
