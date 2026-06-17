@@ -8,6 +8,7 @@ export const JOB_NAMES = {
   DUE_DATE_REMINDER: "notification.due-date-reminder",
   NOTIFICATION_DIGEST_SCAN: "notification.digest-scan",
   NOTIFICATION_DIGEST_SEND: "notification.digest-send",
+  IMPERSONATION_CLEANUP: "impersonation.cleanup",
 } as const;
 
 export type JobName = (typeof JOB_NAMES)[keyof typeof JOB_NAMES];
@@ -26,4 +27,5 @@ export type JobPayloads = {
   [JOB_NAMES.DUE_DATE_REMINDER]: Record<string, never>;
   [JOB_NAMES.NOTIFICATION_DIGEST_SCAN]: Record<string, never>;
   [JOB_NAMES.NOTIFICATION_DIGEST_SEND]: { userId: string; windowStart: string; windowEnd: string };
+  [JOB_NAMES.IMPERSONATION_CLEANUP]: Record<string, never>;
 };

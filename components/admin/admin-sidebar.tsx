@@ -1,97 +1,70 @@
 "use client";
 
-import {
-  ChartBar,
-  Envelope,
-  ArrowLeft,
-  SignOut,
-  Stack,
-  Users,
-} from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { logoutAction } from "@/app/actions/auth";
-import { Button } from "@/components/ui/button";
-import { PRODUCT_NAME } from "@/config/platform";
+import {
+  LayoutDashboard,
+  Users,
+  Building2,
+  TicketCheck,
+  BarChart3,
+  ScrollText,
+  LogOut,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
-const navItems = [
-  { href: "/orbit", label: "Overview", icon: ChartBar, exact: true },
-  { href: "/orbit/users", label: "Users", icon: Users, exact: false },
-  { href: "/orbit/queues", label: "Queues", icon: Stack, exact: false },
-  { href: "/orbit/email", label: "Email", icon: Envelope, exact: false },
+const NAV_ITEMS = [
+  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/users", label: "Users", icon: Users },
+  { href: "/admin/workspaces", label: "Workspaces", icon: Building2 },
+  { href: "/admin/tickets", label: "Support Tickets", icon: TicketCheck },
+  { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/admin/audit-log", label: "Audit Log", icon: ScrollText },
 ];
 
-export function AdminSidebar({ email }: { email: string }) {
+export function AdminSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
-      {/* Brand */}
-      <div className="flex items-center gap-3 border-b border-sidebar-border px-5 py-5">
-        <span className="grid size-9 shrink-0 place-items-center bg-sidebar-primary font-black text-sidebar-primary-foreground text-xs">
-          KR
-        </span>
-        <div className="min-w-0">
-          <p className="font-black text-sm leading-none">{PRODUCT_NAME}</p>
-          <p className="mt-1 text-2xs font-semibold uppercase tracking-ui text-sidebar-foreground/40">
-            Admin Panel
-          </p>
-        </div>
+    <aside className="w-60 shrink-0 bg-neutral-900 text-neutral-100 flex flex-col h-full">
+      <div className="px-4 py-5 border-b border-neutral-700">
+        <div className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Teamority</div>
+        <div className="text-sm font-bold mt-0.5">Admin Panel</div>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 px-3 py-5">
-        <p className="mb-2 px-3 text-2xs font-semibold uppercase tracking-ui text-sidebar-foreground/30">
-          Navigation
-        </p>
-        <div className="space-y-0.5">
-          {navItems.map(({ href, label, icon: Icon, exact }) => {
-            const isActive = exact ? pathname === href : pathname.startsWith(href);
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={`flex items-center gap-3 border-l-2 px-3 py-2.5 text-xs font-semibold uppercase tracking-ui transition-colors ${
-                  isActive
-                    ? "border-sidebar-foreground bg-sidebar-accent text-sidebar-foreground"
-                    : "border-transparent text-sidebar-foreground/50 hover:border-sidebar-foreground/20 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                }`}
-              >
-                <Icon size={15} weight={isActive ? "fill" : "regular"} />
-                {label}
-              </Link>
-            );
-          })}
-        </div>
+      <nav className="flex-1 px-2 py-4 space-y-0.5">
+        {NAV_ITEMS.map((item) => {
+          const Icon = item.icon;
+          const isActive =
+            item.href === "/admin"
+              ? pathname === "/admin"
+              : pathname.startsWith(item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
+                isActive
+                  ? "bg-neutral-700 text-white"
+                  : "text-neutral-400 hover:bg-neutral-800 hover:text-white"
+              )}
+            >
+              <Icon className="w-4 h-4 shrink-0" />
+              {item.label}
+            </Link>
+          );
+        })}
       </nav>
 
-      {/* Footer */}
-      <div className="space-y-2 border-t border-sidebar-border p-4">
-        <p className="truncate px-1 text-2xs font-semibold uppercase tracking-ui text-sidebar-foreground/30">
-          {email}
-        </p>
-        <Button
-          asChild
-          variant="secondary"
-          size="sm"
-          className="w-full justify-start gap-2"
+      <div className="px-2 py-4 border-t border-neutral-700">
+        <Link
+          href="/"
+          className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-neutral-400 hover:bg-neutral-800 hover:text-white transition-colors"
         >
-          <Link href="/dashboard">
-            <ArrowLeft size={14} />
-            Dashboard
-          </Link>
-        </Button>
-        <form action={logoutAction}>
-          <Button
-            type="submit"
-            variant="secondary"
-            size="sm"
-            className="w-full justify-start gap-2"
-          >
-            <SignOut size={14} />
-            Sign out
-          </Button>
-        </form>
+          <LogOut className="w-4 h-4 shrink-0" />
+          Exit Admin
+        </Link>
       </div>
     </aside>
   );

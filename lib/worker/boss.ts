@@ -62,6 +62,7 @@ export async function startWorker() {
   const { handleDueDateReminder } = await import("@/lib/worker/handlers/due-date-reminder");
   const { handleNotificationDigestScan } = await import("@/lib/worker/handlers/notification-digest-scan");
   const { handleNotificationDigestSend } = await import("@/lib/worker/handlers/notification-digest-send");
+  const { handleImpersonationCleanup } = await import("@/lib/worker/handlers/impersonation-cleanup");
 
   await Promise.all([
     work(JOB_NAMES.EMAIL_SEND, handleEmailSend),
@@ -73,6 +74,7 @@ export async function startWorker() {
     work(JOB_NAMES.DUE_DATE_REMINDER, handleDueDateReminder),
     work(JOB_NAMES.NOTIFICATION_DIGEST_SCAN, handleNotificationDigestScan),
     work(JOB_NAMES.NOTIFICATION_DIGEST_SEND, handleNotificationDigestSend),
+    work(JOB_NAMES.IMPERSONATION_CLEANUP, handleImpersonationCleanup),
   ]);
 
   await boss.schedule(JOB_NAMES.EMAIL_OUTBOX_REAP, "*/15 * * * *", {});
@@ -82,6 +84,7 @@ export async function startWorker() {
   await boss.schedule(JOB_NAMES.NOTIFICATION_CLEANUP, "0 1 * * *", {});
   await boss.schedule(JOB_NAMES.DUE_DATE_REMINDER, "0 * * * *", {});
   await boss.schedule(JOB_NAMES.NOTIFICATION_DIGEST_SCAN, "*/30 * * * *", {});
+  await boss.schedule(JOB_NAMES.IMPERSONATION_CLEANUP, "*/5 * * * *", {});
 
   console.log("[worker] handlers registered");
 }
