@@ -2,19 +2,29 @@
 
 import * as React from "react";
 import {
+  AtIcon,
   CaretDownIcon,
   CaretRightIcon,
   CheckCircleIcon,
   DotsThreeIcon,
+  FileIcon,
+  FilePdfIcon,
+  PaperclipIcon,
   PaperPlaneRightIcon,
   PencilSimpleIcon,
+  PlusIcon,
   SmileyIcon,
+  ThumbsUpIcon,
   TrashIcon,
   XCircleIcon,
+  XIcon,
 } from "@phosphor-icons/react";
 import { formatDistanceToNow, format } from "date-fns";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import Mention from "@tiptap/extension-mention";
+import { getWorkspaceMentionMembers, type MentionMember } from "@/app/actions/mention";
+import { buildMentionSuggestion } from "@/components/task/mention-suggestion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import {
@@ -25,10 +35,21 @@ import {
   resolveComment,
   unresolveComment,
   toggleReaction,
+  type CommentAttachment,
   type CommentWithReplies,
 } from "@/app/actions/comment";
 import { getTaskActivity } from "@/app/actions/task";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -61,7 +82,8 @@ interface TaskActivityFeedProps {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function initials(name: string | null, email: string | null) {
-  if (name) return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+  const n = name?.trim();
+  if (n) return n.split(" ").map((s) => s[0]).join("").toUpperCase().slice(0, 2);
   return (email ?? "?").slice(0, 2).toUpperCase();
 }
 
@@ -104,7 +126,7 @@ function describeEvent(eventType: string, meta: Record<string, unknown>): string
 
 const COMMON_EMOJIS = ["👍", "👎", "❤️", "😄", "🎉", "🚀", "👀", "✅"];
 
-// ─── Mini Tiptap editor ───────────────────────────────────────────────────────
+// ─── Comment editor ───────────────────────────────────────────────────────────
 
 function CommentEditor({
   placeholder,
@@ -112,57 +134,244 @@ function CommentEditor({
   onCancel,
   initialContent,
   autoFocus,
+  enableAttachments,
+  compact,
+  members,
 }: {
   placeholder?: string;
-  onSubmit: (content: unknown) => Promise<void>;
+  onSubmit: (content: unknown, files: File[]) => Promise<void>;
   onCancel?: () => void;
   initialContent?: unknown;
   autoFocus?: boolean;
+  enableAttachments?: boolean;
+  compact?: boolean;
+  members?: MentionMember[];
 }) {
   const [submitting, setSubmitting] = React.useState(false);
+  const [pendingFiles, setPendingFiles] = React.useState<File[]>([]);
+  const [editorEmpty, setEditorEmpty] = React.useState(!initialContent);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  // Stable ref so the editor's handleKeyDown always calls the latest handleSubmit
+  const submitRef = React.useRef<() => void>(() => undefined);
+
+  // Keep a ref so the mention suggestion always reads the latest members list,
+  // even though the Tiptap extension is created only once on mount.
+  const membersRef = React.useRef<MentionMember[]>(members ?? []);
+  React.useEffect(() => {
+    membersRef.current = members ?? [];
+  }, [members]);
+
+  const mentionExtension = React.useMemo(
+    () =>
+      Mention.configure({
+        HTMLAttributes: { class: "mention" },
+        renderText: ({ node }) =>
+          `@${(node.attrs.label as string | null) ?? (node.attrs.id as string) ?? "someone"}`,
+        suggestion: buildMentionSuggestion(() => membersRef.current),
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
 
   const editor = useEditor({
-    extensions: [StarterKit],
+    extensions: [StarterKit, mentionExtension],
     content: (initialContent as object) ?? "",
     autofocus: autoFocus,
+    onUpdate: ({ editor: e }) => setEditorEmpty(e.isEmpty),
     editorProps: {
+      handleKeyDown: (_, event) => {
+        // Enter without Shift/Meta submits; Shift+Enter inserts a newline (default)
+        if (event.key === "Enter" && !event.shiftKey && !event.metaKey && !event.ctrlKey) {
+          submitRef.current();
+          return true;
+        }
+        return false;
+      },
       attributes: {
-        class: "prose prose-sm dark:prose-invert max-w-none min-h-[60px] outline-none px-3 py-2 text-sm",
+        class: cn(
+          "prose prose-sm dark:prose-invert max-w-none outline-none px-3 py-2.5 text-sm",
+          compact ? "min-h-[44px]" : "min-h-[72px]",
+        ),
       },
     },
   });
 
   async function handleSubmit() {
-    if (!editor || editor.isEmpty) return;
+    if (!editor || (editorEmpty && pendingFiles.length === 0)) return;
     setSubmitting(true);
     try {
-      await onSubmit(editor.getJSON());
+      // Deep-clone through JSON.parse/stringify to convert ProseMirror's
+      // null-prototype attrs objects into plain objects — React Flight (server
+      // action transport) drops null-prototype object properties silently.
+      const body = JSON.parse(JSON.stringify(editor.getJSON())) as unknown;
+      await onSubmit(body, pendingFiles);
       editor.commands.clearContent();
+      setPendingFiles([]);
+      setEditorEmpty(true);
     } finally {
       setSubmitting(false);
     }
   }
 
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    setPendingFiles((prev) => [...prev, ...files]);
+    e.target.value = "";
+  }
+
+  function removeFile(index: number) {
+    setPendingFiles((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  const canSubmit = !editorEmpty || pendingFiles.length > 0;
+
+  // Keep submitRef pointing at the latest handleSubmit so the editor keydown
+  // closure (created once) always calls the current version.
+  submitRef.current = () => void handleSubmit();
+
   return (
-    <div className="rounded-lg border bg-background focus-within:ring-1 focus-within:ring-primary/40 transition-shadow">
+    <div className="rounded-xl border bg-background shadow-sm focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary/40 transition-all">
       <EditorContent editor={editor} />
-      <div className="flex items-center justify-end gap-2 border-t px-2 py-1.5">
+
+      {/* Pending file previews */}
+      {pendingFiles.length > 0 && (
+        <div className="flex flex-wrap gap-2 px-3 pb-2 border-t pt-2">
+          {pendingFiles.map((file, i) => (
+            <div
+              key={`${file.name}-${i}`}
+              className="flex items-center gap-1.5 rounded-md border bg-muted/40 px-2 py-1 text-xs"
+            >
+              {file.type.startsWith("image/") ? (
+                <img
+                  src={URL.createObjectURL(file)}
+                  alt={file.name}
+                  className="size-4 object-cover rounded"
+                />
+              ) : file.type === "application/pdf" ? (
+                <FilePdfIcon className="size-4 text-red-500 shrink-0" />
+              ) : (
+                <FileIcon className="size-4 text-muted-foreground shrink-0" />
+              )}
+              <span className="truncate max-w-28">{file.name}</span>
+              <button
+                onClick={() => removeFile(i)}
+                className="text-muted-foreground hover:text-destructive shrink-0"
+              >
+                <XIcon className="size-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Toolbar */}
+      <div className="flex items-center gap-0.5 border-t px-2 py-1.5">
+        {/* Left tools */}
+        <button className="size-7 flex items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
+          <PlusIcon className="size-3.5" />
+        </button>
+
+        <div className="w-px h-4 bg-border mx-1" />
+
+        {/* Emoji */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <button className="size-7 flex items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
+              <SmileyIcon className="size-4" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-2" align="start">
+            <div className="flex gap-1">
+              {COMMON_EMOJIS.map((emoji) => (
+                <button
+                  key={emoji}
+                  onClick={() => editor?.commands.insertContent(emoji)}
+                  className="rounded p-1 text-base hover:bg-accent transition-colors"
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        {/* Attach */}
+        {enableAttachments && (
+          <>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="size-7 flex items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+              title="Attach file"
+            >
+              <PaperclipIcon className="size-4" />
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              multiple
+              onChange={handleFileChange}
+            />
+          </>
+        )}
+
+        {/* Mention */}
+        <button className="size-7 flex items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
+          <AtIcon className="size-4" />
+        </button>
+
+        <button className="size-7 flex items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
+          <DotsThreeIcon className="size-4" />
+        </button>
+
+        {/* Right: cancel + submit */}
+        <div className="flex-1" />
+
         {onCancel && (
           <button
             onClick={onCancel}
-            className="text-xs text-muted-foreground hover:text-foreground px-2 py-1"
+            className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-accent transition-colors mr-1"
           >
             Cancel
           </button>
         )}
-        <button
-          onClick={handleSubmit}
-          disabled={submitting || !editor || editor.isEmpty}
-          className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-colors"
-        >
-          <PaperPlaneRightIcon className="size-3" />
-          {submitting ? "Sending…" : "Comment"}
-        </button>
+
+        {/* Submit group */}
+        <div className={cn(
+          "flex items-center rounded-lg overflow-hidden border transition-colors",
+          canSubmit ? "border-primary bg-primary" : "border-border bg-muted/40",
+        )}>
+          <button
+            onClick={handleSubmit}
+            disabled={submitting || !canSubmit}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors",
+              canSubmit
+                ? "text-primary-foreground hover:bg-primary/90"
+                : "text-muted-foreground cursor-not-allowed",
+            )}
+          >
+            {submitting ? (
+              <span>Sending…</span>
+            ) : (
+              <>
+                <span>Comment</span>
+              </>
+            )}
+          </button>
+          <div className={cn("w-px h-4", canSubmit ? "bg-primary-foreground/30" : "bg-border")} />
+          <button
+            disabled={!canSubmit}
+            className={cn(
+              "flex items-center justify-center px-1.5 py-1.5 transition-colors",
+              canSubmit
+                ? "text-primary-foreground hover:bg-primary/90"
+                : "text-muted-foreground cursor-not-allowed",
+            )}
+          >
+            <PaperPlaneRightIcon className="size-3.5" />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -172,7 +381,14 @@ function CommentEditor({
 
 function CommentBody({ body }: { body: unknown }) {
   const editor = useEditor({
-    extensions: [StarterKit],
+    extensions: [
+      StarterKit,
+      Mention.configure({
+        HTMLAttributes: { class: "mention" },
+        renderText: ({ node }) =>
+          `@${(node.attrs.label as string | null) ?? (node.attrs.id as string) ?? "someone"}`,
+      }),
+    ],
     content: (body as object) ?? "",
     editable: false,
     editorProps: {
@@ -182,6 +398,69 @@ function CommentBody({ body }: { body: unknown }) {
     },
   });
   return <EditorContent editor={editor} />;
+}
+
+// ─── Comment attachments ──────────────────────────────────────────────────────
+
+function CommentAttachments({ attachments }: { attachments: CommentAttachment[] }) {
+  const images = attachments.filter((a) => a.mimeType.startsWith("image/"));
+  const files = attachments.filter((a) => !a.mimeType.startsWith("image/"));
+
+  return (
+    <div className="px-3 pb-2 space-y-2">
+      {/* Image grid */}
+      {images.length > 0 && (
+        <div className={cn(
+          "grid gap-1.5",
+          images.length === 1 ? "grid-cols-1" : images.length === 2 ? "grid-cols-2" : "grid-cols-3",
+        )}>
+          {images.map((img) => (
+            <a
+              key={img.id}
+              href={img.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block overflow-hidden rounded-lg border bg-muted/30 hover:opacity-90 transition-opacity"
+            >
+              <img
+                src={img.url}
+                alt={img.fileName}
+                className={cn(
+                  "w-full object-cover",
+                  images.length === 1 ? "max-h-64" : "h-28",
+                )}
+              />
+            </a>
+          ))}
+        </div>
+      )}
+
+      {/* File cards */}
+      {files.length > 0 && (
+        <div className="space-y-1">
+          {files.map((file) => (
+            <a
+              key={file.id}
+              href={file.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2 hover:bg-accent transition-colors"
+            >
+              {file.mimeType === "application/pdf" ? (
+                <FilePdfIcon className="size-4 text-red-500 shrink-0" />
+              ) : (
+                <FileIcon className="size-4 text-muted-foreground shrink-0" />
+              )}
+              <span className="text-xs font-medium truncate flex-1">{file.fileName}</span>
+              <span className="text-2xs text-muted-foreground shrink-0">
+                {(file.fileSize / 1024).toFixed(0)} KB
+              </span>
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ─── Single comment ───────────────────────────────────────────────────────────
@@ -196,6 +475,7 @@ function CommentItem({
   isAdmin,
   depth,
   onRefresh,
+  members,
 }: {
   comment: CommentWithReplies;
   workspaceId: string;
@@ -206,29 +486,30 @@ function CommentItem({
   isAdmin?: boolean;
   depth: number;
   onRefresh: () => void;
+  members: MentionMember[];
 }) {
   const [replying, setReplying] = React.useState(false);
   const [editing, setEditing] = React.useState(false);
   const [repliesOpen, setRepliesOpen] = React.useState(true);
+  const [deleteOpen, setDeleteOpen] = React.useState(false);
 
   const isAuthor = comment.authorId === currentUserId;
   const canDelete = isAuthor || isAdmin;
   const canResolve = isAuthor || isAdmin;
-  const displayName = comment.authorName ?? comment.authorEmail ?? "Unknown";
+  const displayName = comment.authorName?.trim() || comment.authorEmail || "Unknown";
 
   async function handleDelete() {
-    if (!confirm("Delete this comment?")) return;
     await deleteComment(workspaceId, spaceId, listId, taskId, comment.id);
     onRefresh();
   }
 
-  async function handleReply(body: unknown) {
+  async function handleReply(body: unknown, _files: File[]) {
     await createComment(workspaceId, spaceId, listId, taskId, body, comment.id);
     setReplying(false);
     onRefresh();
   }
 
-  async function handleEdit(body: unknown) {
+  async function handleEdit(body: unknown, _files: File[]) {
     await editComment(workspaceId, spaceId, listId, comment.id, body);
     setEditing(false);
     onRefresh();
@@ -248,39 +529,47 @@ function CommentItem({
     onRefresh();
   }
 
+  const thumbsUpReaction = comment.reactions.find((r) => r.emoji === "👍");
+  const hasThumbsUp = thumbsUpReaction?.userIds.includes(currentUserId) ?? false;
+
   return (
-    <div className={cn("group/comment", depth > 0 && "ml-8 border-l pl-4")}>
-      <div className={cn("rounded-lg p-3", comment.isResolved && "opacity-60")}>
+    <div className={cn("group/comment", depth > 0 && "ml-6 mt-2")}>
+      {/* Comment card */}
+      <div
+        className={cn(
+          "rounded-xl border bg-card transition-colors",
+          comment.isResolved && "opacity-60",
+          depth > 0 && "border-border/60",
+        )}
+      >
         {/* Header */}
-        <div className="flex items-start gap-2 mb-2">
-          <Avatar className="size-6 shrink-0 mt-0.5">
+        <div className="flex items-center gap-2 px-3 pt-3 pb-2">
+          <Avatar className="size-7 shrink-0">
             {comment.authorImage && <AvatarImage src={comment.authorImage} />}
-            <AvatarFallback className="text-2xs bg-primary/10 text-primary">
+            <AvatarFallback className="text-2xs bg-primary/10 text-primary font-semibold">
               {initials(comment.authorName, comment.authorEmail)}
             </AvatarFallback>
           </Avatar>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-semibold">{displayName}</span>
-              <span
-                className="text-2xs text-muted-foreground"
-                title={format(new Date(comment.createdAt), "PPpp")}
-              >
-                {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <span className="text-sm font-semibold leading-none">{displayName}</span>
+            <span
+              className="text-2xs text-muted-foreground"
+              title={format(new Date(comment.createdAt), "PPpp")}
+            >
+              {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
+            </span>
+            {comment.editedAt && (
+              <span className="text-2xs text-muted-foreground italic">(edited)</span>
+            )}
+            {comment.isResolved && (
+              <span className="text-2xs text-green-600 font-medium flex items-center gap-0.5">
+                <CheckCircleIcon className="size-3" weight="fill" /> Resolved
               </span>
-              {comment.editedAt && (
-                <span className="text-2xs text-muted-foreground italic">(edited)</span>
-              )}
-              {comment.isResolved && (
-                <span className="text-2xs text-green-600 font-medium flex items-center gap-0.5">
-                  <CheckCircleIcon className="size-3" weight="fill" /> Resolved
-                </span>
-              )}
-            </div>
+            )}
           </div>
 
-          {/* Actions popover */}
-          <div className="opacity-0 group-hover/comment:opacity-100 flex items-center gap-1 transition-opacity shrink-0">
+          {/* Options menu — visible on hover */}
+          <div className="opacity-0 group-hover/comment:opacity-100 flex items-center gap-0.5 transition-opacity shrink-0">
             {canResolve && depth === 0 && (
               <button
                 onClick={handleResolve}
@@ -301,111 +590,162 @@ function CommentItem({
               </button>
             )}
             {canDelete && (
-              <button
-                onClick={handleDelete}
-                className="size-6 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
-              >
-                <TrashIcon className="size-3.5" />
-              </button>
+              <>
+                <button
+                  onClick={() => setDeleteOpen(true)}
+                  className="size-6 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                >
+                  <TrashIcon className="size-3.5" />
+                </button>
+                <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete comment?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This comment will be permanently deleted and cannot be recovered.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => void handleDelete()}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </>
             )}
           </div>
         </div>
 
         {/* Body */}
-        <div className="pl-8">
+        <div className="px-3 pb-1">
           {comment.isDeleted ? (
-            <p className="text-sm italic text-muted-foreground">[Comment deleted]</p>
+            <p className="text-sm italic text-muted-foreground py-1">[Comment deleted]</p>
           ) : editing ? (
             <CommentEditor
               initialContent={comment.body}
               onSubmit={handleEdit}
               onCancel={() => setEditing(false)}
               autoFocus
+              compact
+              members={members}
             />
           ) : (
             <CommentBody body={comment.body} />
           )}
-
-          {/* Reactions */}
-          {!comment.isDeleted && (
-            <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-              {comment.reactions.map((r) => {
-                const reacted = r.userIds.includes(currentUserId);
-                return (
-                  <button
-                    key={r.emoji}
-                    onClick={() => handleReaction(r.emoji)}
-                    className={cn(
-                      "flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors",
-                      reacted ? "border-primary/40 bg-primary/10 text-primary" : "border-border hover:bg-accent",
-                    )}
-                  >
-                    <span>{r.emoji}</span>
-                    <span className="font-medium">{r.count}</span>
-                  </button>
-                );
-              })}
-
-              {/* Add reaction */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button className="opacity-0 group-hover/comment:opacity-100 size-6 flex items-center justify-center rounded hover:bg-accent text-muted-foreground transition-opacity">
-                    <SmileyIcon className="size-3.5" />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-2" align="start">
-                  <div className="flex gap-1">
-                    {COMMON_EMOJIS.map((emoji) => (
-                      <button
-                        key={emoji}
-                        onClick={() => handleReaction(emoji)}
-                        className="rounded p-1 text-base hover:bg-accent transition-colors"
-                      >
-                        {emoji}
-                      </button>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
-
-              {/* Reply button */}
-              {depth === 0 && (
-                <button
-                  onClick={() => setReplying((v) => !v)}
-                  className="opacity-0 group-hover/comment:opacity-100 text-xs text-muted-foreground hover:text-foreground transition-opacity ml-1"
-                >
-                  Reply
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Reply editor */}
-          {replying && (
-            <div className="mt-3">
-              <CommentEditor
-                placeholder="Write a reply…"
-                onSubmit={handleReply}
-                onCancel={() => setReplying(false)}
-                autoFocus
-              />
-            </div>
-          )}
         </div>
+
+        {/* Attachments */}
+        {!comment.isDeleted && comment.attachments.length > 0 && (
+          <CommentAttachments attachments={comment.attachments} />
+        )}
+
+        {/* Footer */}
+        {!comment.isDeleted && (
+          <div className="flex items-center gap-1 px-3 pb-2 pt-1 border-t border-border/40">
+            {/* Existing emoji reactions */}
+            {comment.reactions.map((r) => {
+              const reacted = r.userIds.includes(currentUserId);
+              return (
+                <button
+                  key={r.emoji}
+                  onClick={() => handleReaction(r.emoji)}
+                  className={cn(
+                    "flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors",
+                    reacted
+                      ? "border-primary/40 bg-primary/10 text-primary"
+                      : "border-border hover:bg-accent",
+                  )}
+                >
+                  <span>{r.emoji}</span>
+                  <span className="font-medium">{r.count}</span>
+                </button>
+              );
+            })}
+
+            {/* Thumbs up quick reaction */}
+            <button
+              onClick={() => handleReaction("👍")}
+              className={cn(
+                "size-7 flex items-center justify-center rounded-md border transition-colors",
+                hasThumbsUp
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-border hover:bg-accent text-muted-foreground hover:text-foreground",
+              )}
+              title="Like"
+            >
+              <ThumbsUpIcon className="size-3.5" weight={hasThumbsUp ? "fill" : "regular"} />
+            </button>
+
+            {/* Emoji picker */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="size-7 flex items-center justify-center rounded-md border border-border hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
+                  <SmileyIcon className="size-3.5" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-2" align="start">
+                <div className="flex gap-1">
+                  {COMMON_EMOJIS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      onClick={() => handleReaction(emoji)}
+                      className="rounded p-1 text-base hover:bg-accent transition-colors"
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            <div className="flex-1" />
+
+            {/* Reply */}
+            {depth === 0 && (
+              <button
+                onClick={() => setReplying((v) => !v)}
+                className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors px-1"
+              >
+                Reply
+              </button>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Reply editor */}
+      {replying && (
+        <div className="mt-2 ml-4">
+          <CommentEditor
+            placeholder="Write a reply…"
+            onSubmit={handleReply}
+            onCancel={() => setReplying(false)}
+            autoFocus
+            compact
+            members={members}
+          />
+        </div>
+      )}
 
       {/* Replies */}
       {comment.replies.length > 0 && (
-        <div className="mt-1">
+        <div className="mt-2">
           <button
             onClick={() => setRepliesOpen((v) => !v)}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground ml-8 mb-1 transition-colors"
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground ml-3 mb-2 transition-colors"
           >
-            {repliesOpen ? <CaretDownIcon className="size-3" /> : <CaretRightIcon className="size-3" />}
+            {repliesOpen
+              ? <CaretDownIcon className="size-3" />
+              : <CaretRightIcon className="size-3" />}
             {comment.replies.length} {comment.replies.length === 1 ? "reply" : "replies"}
           </button>
           {repliesOpen && (
-            <div className="space-y-1">
+            <div className="space-y-2">
               {comment.replies.map((reply) => (
                 <CommentItem
                   key={reply.id}
@@ -418,6 +758,7 @@ function CommentItem({
                   isAdmin={isAdmin}
                   depth={depth + 1}
                   onRefresh={onRefresh}
+                  members={members}
                 />
               ))}
             </div>
@@ -432,7 +773,7 @@ function CommentItem({
 
 function ActivityRow({ entry }: { entry: ActivityEntry }) {
   return (
-    <div className="flex items-start gap-2 py-1">
+    <div className="flex items-start gap-2 py-1 px-1">
       <Avatar className="size-5 shrink-0 mt-0.5">
         {entry.image && <AvatarImage src={entry.image} />}
         <AvatarFallback className="text-[9px] bg-muted">
@@ -444,7 +785,7 @@ function ActivityRow({ entry }: { entry: ActivityEntry }) {
         {" "}
         {describeEvent(entry.eventType, entry.meta as Record<string, unknown>)}
         <span
-          className="ml-2 text-2xs"
+          className="ml-2 text-2xs opacity-70"
           title={format(new Date(entry.createdAt), "PPpp")}
         >
           {formatDistanceToNow(new Date(entry.createdAt), { addSuffix: true })}
@@ -466,39 +807,59 @@ export function TaskActivityFeed({
 }: TaskActivityFeedProps) {
   const [comments, setComments] = React.useState<CommentWithReplies[]>([]);
   const [activityLogs, setActivityLogs] = React.useState<ActivityEntry[]>([]);
+  const [members, setMembers] = React.useState<MentionMember[]>([]);
   const [loading, setLoading] = React.useState(true);
 
   const load = React.useCallback(async () => {
-    const [commentsRes, activityRes] = await Promise.all([
+    const [commentsRes, activityRes, membersRes] = await Promise.all([
       getTaskComments(workspaceId, spaceId, taskId),
       getTaskActivity(workspaceId, spaceId, taskId),
+      getWorkspaceMentionMembers(workspaceId, spaceId),
     ]);
     if (!("error" in commentsRes)) setComments(commentsRes.comments);
     if (!("error" in activityRes)) setActivityLogs(activityRes.logs as ActivityEntry[]);
+    if (Array.isArray(membersRes)) setMembers(membersRes);
     setLoading(false);
   }, [workspaceId, spaceId, taskId]);
 
   React.useEffect(() => { void load(); }, [load]);
 
-  // Interleave comments + activity log in chronological order
   const feed: FeedItem[] = React.useMemo(() => {
     const items: FeedItem[] = [
-      ...comments.map((c): FeedItem => ({ type: "comment", createdAt: new Date(c.createdAt), comment: c })),
+      ...comments.map((c): FeedItem => ({
+        type: "comment",
+        createdAt: new Date(c.createdAt),
+        comment: c,
+      })),
       ...activityLogs
-        .filter((a) => a.eventType !== "comment_added") // skip — comment itself shown
-        .map((a): FeedItem => ({ type: "activity", createdAt: new Date(a.createdAt), activity: a })),
+        .filter((a) => a.eventType !== "comment_added")
+        .map((a): FeedItem => ({
+          type: "activity",
+          createdAt: new Date(a.createdAt),
+          activity: a,
+        })),
     ];
     items.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
     return items;
   }, [comments, activityLogs]);
 
-  async function handleNewComment(body: unknown) {
-    await createComment(workspaceId, spaceId, listId, taskId, body);
+  async function handleNewComment(body: unknown, files: File[]) {
+    const res = await createComment(workspaceId, spaceId, listId, taskId, body);
+    if (files.length > 0 && "commentId" in res) {
+      await Promise.all(
+        files.map((file) => {
+          const fd = new FormData();
+          fd.append("file", file);
+          fd.append("commentId", res.commentId);
+          return fetch(`/api/tasks/${taskId}/attachments`, { method: "POST", body: fd });
+        }),
+      );
+    }
     void load();
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
         Activity
       </p>
@@ -507,14 +868,14 @@ export function TaskActivityFeed({
         <div className="space-y-3 animate-pulse">
           {[1, 2, 3].map((i) => (
             <div key={i} className="flex gap-2">
-              <div className="size-6 rounded-full bg-muted shrink-0" />
-              <div className="flex-1 h-14 rounded-lg bg-muted" />
+              <div className="size-7 rounded-full bg-muted shrink-0" />
+              <div className="flex-1 h-20 rounded-xl bg-muted" />
             </div>
           ))}
         </div>
       ) : (
-        <div className="space-y-1">
-          {feed.map((item, i) =>
+        <div className="space-y-2">
+          {feed.map((item) =>
             item.type === "comment" && item.comment ? (
               <CommentItem
                 key={`c-${item.comment.id}`}
@@ -527,6 +888,7 @@ export function TaskActivityFeed({
                 isAdmin={isAdmin}
                 depth={0}
                 onRefresh={load}
+                members={members}
               />
             ) : item.activity ? (
               <ActivityRow key={`a-${item.activity.id}`} entry={item.activity} />
@@ -539,10 +901,14 @@ export function TaskActivityFeed({
       )}
 
       {/* New comment editor */}
-      <CommentEditor
-        placeholder="Write a comment… (Ctrl+Enter to submit)"
-        onSubmit={handleNewComment}
-      />
+      <div className="pt-1">
+        <CommentEditor
+          placeholder="Comment, use '/' for commands"
+          onSubmit={handleNewComment}
+          enableAttachments
+          members={members}
+        />
+      </div>
     </div>
   );
 }

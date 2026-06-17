@@ -45,6 +45,7 @@ interface ListSummary {
   id: string;
   name: string;
   color: string | null;
+  description: string | null;
 }
 
 interface SpaceSummary {

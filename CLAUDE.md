@@ -21,7 +21,7 @@ Full product specs live in `docs/`. Read the relevant doc before implementing an
 | UI Components | shadcn/ui |
 | Rich Text | Tiptap |
 | State | Zustand (client) + SWR (server) |
-| File Storage | S3-compatible (Cloudflare R2) |
+| File Storage | files-sdk (local `fs` adapter in dev → S3/R2/GCS in prod) |
 | Background Jobs | pg-boss |
 | Email | Nodemailer (SMTP) |
 
@@ -84,9 +84,13 @@ server/                    ← server actions
 - Never expose internal error messages to the client.
 
 ### File Uploads
-- All files go to Cloudflare R2 (S3-compatible).
-- Always delete the R2 file when deleting the DB record.
-- Never delete the DB record before the R2 file (orphaned files are unrecoverable).
+- File storage is handled via **files-sdk** (`lib/storage.ts`) — a unified adapter layer.
+- **Local dev:** `fs` adapter stores files in `./uploads/` and serves them via `/api/files/[...key]`.
+- **Production:** swap adapter to S3/R2/GCS by setting `STORAGE_DRIVER` env var and credentials — no app code changes.
+- The DB stores the **storage key** (e.g. `attachments/{workspaceId}/{taskId}/{uuid}/{filename}`) in the `file_url` column — never a full URL.
+- Always delete the storage file before deleting the DB record (orphaned files are unrecoverable).
+- Generate serving URLs on demand by calling `storage.url(key)` — never persist URLs.
+- File size limit: 10 MB per file.
 
 ### Task Descriptions
 - Stored as Tiptap JSON in a `jsonb` column (`description`).

@@ -21,7 +21,7 @@ export default async function OnboardingPage({ searchParams }: OnboardingPagePro
   if (createNew === "1") {
     return (
       <div className="flex min-h-screen items-center justify-center p-6">
-        <OnboardingWizard existingWorkspace={null} />
+        <OnboardingWizard existingWorkspace={null} userName={session.user.name ?? ""} />
       </div>
     );
   }
@@ -64,6 +64,7 @@ export default async function OnboardingPage({ searchParams }: OnboardingPagePro
         existingWorkspace={
           membership ? { id: membership.workspaceId, name: membership.workspaceName } : null
         }
+        userName={session.user.name ?? ""}
       />
     </div>
   );

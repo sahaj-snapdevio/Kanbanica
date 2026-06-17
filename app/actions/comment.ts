@@ -5,12 +5,22 @@ import { and, eq, inArray, asc } from "drizzle-orm";
 import { createId } from "@paralleldrive/cuid2";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { comment, commentReaction, user } from "@/db/schema";
+import { comment, commentReaction, taskAttachment, user } from "@/db/schema";
 import { canAccessSpace, getWorkspaceMembership } from "@/lib/permissions";
 import { writeActivityLog } from "@/lib/activity-log";
+import { storage } from "@/lib/storage";
 import { revalidatePath } from "next/cache";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface CommentAttachment {
+  id: string;
+  fileName: string;
+  fileUrl: string;
+  mimeType: string;
+  fileSize: number;
+  url: string;
+}
 
 export interface CommentWithReplies {
   id: string;
@@ -28,6 +38,7 @@ export interface CommentWithReplies {
   editedAt: Date | null;
   createdAt: Date;
   reactions: { emoji: string; userIds: string[]; count: number }[];
+  attachments: CommentAttachment[];
   replies: CommentWithReplies[];
 }
 
@@ -110,6 +121,39 @@ export async function getTaskComments(
     }));
   }
 
+  // Fetch attachments for all comments
+  const attachmentRows =
+    allCommentIds.length > 0
+      ? await db
+          .select({
+            id: taskAttachment.id,
+            commentId: taskAttachment.commentId,
+            fileName: taskAttachment.fileName,
+            fileUrl: taskAttachment.fileUrl,
+            mimeType: taskAttachment.mimeType,
+            fileSize: taskAttachment.fileSize,
+          })
+          .from(taskAttachment)
+          .where(inArray(taskAttachment.commentId, allCommentIds))
+          .orderBy(asc(taskAttachment.createdAt))
+      : [];
+
+  const attachmentUrls = await Promise.all(attachmentRows.map((a) => storage.url(a.fileUrl)));
+  const attachmentMap = new Map<string, CommentAttachment[]>();
+  for (let i = 0; i < attachmentRows.length; i++) {
+    const a = attachmentRows[i];
+    if (!a.commentId) continue;
+    if (!attachmentMap.has(a.commentId)) attachmentMap.set(a.commentId, []);
+    attachmentMap.get(a.commentId)!.push({
+      id: a.id,
+      fileName: a.fileName,
+      fileUrl: a.fileUrl,
+      mimeType: a.mimeType,
+      fileSize: a.fileSize,
+      url: attachmentUrls[i],
+    });
+  }
+
   // Build tree: top-level comments first, then nest replies
   const byId = new Map<string, CommentWithReplies>();
   for (const row of rows) {
@@ -120,6 +164,7 @@ export async function getTaskComments(
       authorImage: row.authorImage ?? null,
       body: row.body,
       reactions: buildReactions(row.id),
+      attachments: attachmentMap.get(row.id) ?? [],
       replies: [],
     });
   }

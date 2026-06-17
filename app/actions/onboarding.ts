@@ -6,7 +6,7 @@ import { z } from "zod";
 import { createId } from "@paralleldrive/cuid2";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { workspace, workspaceMember, space, listStatus, list, userOnboardingProgress, task, taskAssignee, tag, taskTag } from "@/db/schema";
+import { workspace, workspaceMember, space, listStatus, list, userOnboardingProgress, task, taskAssignee, tag, taskTag, user as userTable } from "@/db/schema";
 import { and, count, eq } from "drizzle-orm";
 
 const DEFAULT_STATUSES = [
@@ -45,6 +45,17 @@ async function generateUniqueSlug(name: string): Promise<string> {
     if (!existing) return slug;
     slug = `${base}-${i}`;
   }
+}
+
+export async function saveUserName(
+  name: string,
+): Promise<{ ok: true } | { error: string }> {
+  const user = await getSessionUser();
+  const trimmed = name.trim();
+  if (!trimmed || trimmed.length < 2) return { error: "Please enter your full name." };
+  if (trimmed.length > 100) return { error: "Name is too long." };
+  await db.update(userTable).set({ name: trimmed, updatedAt: new Date() }).where(eq(userTable.id, user.id));
+  return { ok: true };
 }
 
 const createWorkspaceSchema = z.object({

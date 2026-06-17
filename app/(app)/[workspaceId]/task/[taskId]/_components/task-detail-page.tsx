@@ -11,10 +11,15 @@ import {
   ClipboardTextIcon,
   CopyIcon,
   DotsThreeIcon,
+  DownloadSimpleIcon,
   EyeIcon,
   EyeSlashIcon,
+  FileIcon,
+  FilePdfIcon,
   FlagIcon,
+  ImageIcon,
   LinkIcon,
+  PaperclipIcon,
   PlusIcon,
   TagIcon,
   TimerIcon,
@@ -30,10 +35,10 @@ import {
   archiveTask,
   duplicateTask,
   getWorkspaceMembers,
-  getTaskActivity,
   logTime,
   createSubtask,
 } from "@/app/actions/task";
+import { TaskActivityFeed } from "@/components/task/task-activity-feed";
 import { addAssignee, removeAssignee, toggleWatcher } from "@/app/actions/task-assignee";
 import { getWorkspaceTags, createTag, addTaskTag, removeTaskTag } from "@/app/actions/task-tag";
 import {
@@ -53,7 +58,7 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { TaskDescriptionEditor } from "@/components/task/task-description-editor";
-import { format, formatDistanceToNow } from "date-fns";
+import { format } from "date-fns";
 
 type Priority = "NONE" | "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 
@@ -68,34 +73,6 @@ const PRIORITY_CONFIG: Record<Priority, { label: string; color: string; dot: str
 function userInitials(name: string | null, email: string | null) {
   if (name) return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
   return (email ?? "?").slice(0, 2).toUpperCase();
-}
-
-function describeEvent(eventType: string, meta: Record<string, unknown>): string {
-  switch (eventType) {
-    case "task_created":        return "created this task";
-    case "title_changed":       return `renamed to "${meta.to}"`;
-    case "status_changed":      return "changed the status";
-    case "priority_changed":    return `changed priority to ${meta.to}`;
-    case "description_updated": return "updated the description";
-    case "assignee_added":      return "added an assignee";
-    case "assignee_removed":    return "removed an assignee";
-    case "watcher_added":       return "started watching";
-    case "watcher_removed":     return "stopped watching";
-    case "due_date_set":        return "set a due date";
-    case "due_date_changed":    return "changed the due date";
-    case "due_date_removed":    return "removed the due date";
-    case "tag_added":           return `added tag "${meta.tagName}"`;
-    case "tag_removed":         return `removed tag "${meta.tagName}"`;
-    case "dependency_added":    return "added a dependency";
-    case "dependency_removed":  return "removed a dependency";
-    case "task_archived":       return "archived this task";
-    case "task_unarchived":     return "unarchived this task";
-    case "task_moved":          return "moved this task";
-    case "time_logged":         return `logged ${meta.minutes} minutes`;
-    case "checklist_created":   return "added a checklist";
-    case "checklist_deleted":   return "deleted a checklist";
-    default:                    return eventType.replace(/_/g, " ");
-  }
 }
 
 // ─── Field row (label + value in grid) ───────────────────────────────────────
@@ -132,7 +109,6 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
   const [members, setMembers] = React.useState<{ userId: string; name: string; email: string; image: string | null }[]>([]);
   const [allTags, setAllTags] = React.useState<{ id: string; name: string; color: string }[]>([]);
   const [tagSearch, setTagSearch] = React.useState("");
-  const [activity, setActivity] = React.useState<{ id: string; eventType: string; meta: unknown; createdAt: Date; name: string | null; email: string | null }[]>([]);
   const [newChecklistName, setNewChecklistName] = React.useState("");
   const [addingChecklist, setAddingChecklist] = React.useState(false);
   const [newItemTexts, setNewItemTexts] = React.useState<Record<string, string>>({});
@@ -143,6 +119,11 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
   const [saving, setSaving] = React.useState(false);
   const [showDepsSection, setShowDepsSection] = React.useState(false);
   const [subtaskInput, setSubtaskInput] = React.useState("");
+  const [attachments, setAttachments] = React.useState<{
+    id: string; fileName: string; fileSize: number; mimeType: string; url: string; commentId: string | null; uploadedBy: string; createdAt: Date;
+  }[]>([]);
+  const [uploadingFile, setUploadingFile] = React.useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [creatingSubtask, setCreatingSubtask] = React.useState(false);
   const [statusPopoverOpen, setStatusPopoverOpen] = React.useState(false);
   const [priorityPopoverOpen, setPriorityPopoverOpen] = React.useState(false);
@@ -151,11 +132,11 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
 
   async function fetchAll(showSpinner: boolean) {
     if (showSpinner) setLoading(true);
-    const [detail, mem, tags, act] = await Promise.all([
+    const [detail, mem, tags, attRes] = await Promise.all([
       getTaskDetail(workspaceId, spaceId, taskId),
       getWorkspaceMembers(workspaceId),
       getWorkspaceTags(workspaceId),
-      getTaskActivity(workspaceId, spaceId, taskId),
+      fetch(`/api/tasks/${taskId}/attachments`).then((r) => r.json()).catch(() => ({ attachments: [] })),
     ]);
     setData(detail && !("error" in detail) ? detail : null);
     if (mem && !("error" in mem)) {
@@ -166,7 +147,7 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
       );
     }
     if (tags && !("error" in tags)) setAllTags(tags.tags);
-    if (act && !("error" in act)) setActivity(act.logs as typeof activity);
+    if (attRes?.attachments) setAttachments(attRes.attachments);
     if (showSpinner) setLoading(false);
   }
 
@@ -355,6 +336,33 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
     navigator.clipboard.writeText(`${window.location.origin}/${workspaceId}/task/${taskId}`);
   }
 
+  async function handleFileUpload(file: File) {
+    setUploadingFile(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch(`/api/tasks/${taskId}/attachments`, { method: "POST", body: fd });
+    setUploadingFile(false);
+    if (res.ok) {
+      const { attachment } = await res.json();
+      setAttachments((prev) => [...prev, attachment]);
+    }
+  }
+
+  async function handleDeleteAttachment(attachmentId: string) {
+    await fetch(`/api/attachments/${attachmentId}`, { method: "DELETE" });
+    setAttachments((prev) => prev.filter((a) => a.id !== attachmentId));
+  }
+
+  function formatBytes(bytes: number) {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  function isImage(mimeType: string) {
+    return mimeType.startsWith("image/");
+  }
+
   return (
     <div className="flex h-full flex-col overflow-hidden bg-background">
       {/* Top bar */}
@@ -512,7 +520,7 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
                             className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
                           >
                             <Avatar className="size-6 shrink-0">
-                              <AvatarFallback className="text-[10px]">{userInitials(m.name, m.email)}</AvatarFallback>
+                              <AvatarFallback className="text-2xs">{userInitials(m.name, m.email)}</AvatarFallback>
                             </Avatar>
                             <span className="flex-1 truncate text-left">{m.name}</span>
                             {selected && <CheckIcon className="size-3.5 text-primary shrink-0" />}
@@ -722,6 +730,114 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
             />
           </div>
 
+          {/* Attachments */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <PaperclipIcon className="size-4 text-muted-foreground" />
+                <h3 className="text-sm font-semibold">Attachments</h3>
+                {attachments.filter((a) => !a.commentId).length > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    {attachments.filter((a) => !a.commentId).length} file{attachments.filter((a) => !a.commentId).length !== 1 ? "s" : ""}
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingFile}
+                className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs text-muted-foreground border hover:bg-accent hover:text-foreground transition-colors disabled:opacity-50"
+              >
+                <PlusIcon className="size-3.5" />
+                {uploadingFile ? "Uploading…" : "Attach file"}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    handleFileUpload(file);
+                    e.target.value = "";
+                  }
+                }}
+              />
+            </div>
+
+            {/* Drop zone */}
+            <div
+              className="rounded-lg border-2 border-dashed border-border/50 p-4 transition-colors hover:border-primary/30 hover:bg-accent/20 cursor-pointer"
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add("border-primary/60", "bg-accent/30"); }}
+              onDragLeave={(e) => { e.currentTarget.classList.remove("border-primary/60", "bg-accent/30"); }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.currentTarget.classList.remove("border-primary/60", "bg-accent/30");
+                const file = e.dataTransfer.files[0];
+                if (file) handleFileUpload(file);
+              }}
+            >
+              {attachments.filter((a) => !a.commentId).length === 0 ? (
+                <div className="flex flex-col items-center gap-1 py-2 text-muted-foreground">
+                  <PaperclipIcon className="size-8 opacity-30" />
+                  <p className="text-xs">Drop files here or click to upload</p>
+                  <p className="text-2xs opacity-60">Max 10 MB per file</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3" onClick={(e) => e.stopPropagation()}>
+                  {attachments
+                    .filter((a) => !a.commentId)
+                    .map((att) => (
+                      <div key={att.id} className="group relative rounded-md border bg-card overflow-hidden">
+                        {isImage(att.mimeType) ? (
+                          <a href={att.url} target="_blank" rel="noopener noreferrer">
+                            <img
+                              src={att.url}
+                              alt={att.fileName}
+                              className="w-full h-24 object-cover"
+                            />
+                          </a>
+                        ) : (
+                          <a
+                            href={att.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            download={att.fileName}
+                            className="flex flex-col items-center justify-center gap-2 h-24 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                          >
+                            {att.mimeType === "application/pdf" ? (
+                              <FilePdfIcon className="size-8 text-red-500" />
+                            ) : (
+                              <FileIcon className="size-8" />
+                            )}
+                            <DownloadSimpleIcon className="size-3.5 opacity-0 group-hover:opacity-100 absolute top-2 right-8 transition-opacity" />
+                          </a>
+                        )}
+                        <div className="px-2 py-1.5 border-t">
+                          <p className="text-xs truncate font-medium">{att.fileName}</p>
+                          <p className="text-2xs text-muted-foreground">{formatBytes(att.fileSize)}</p>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteAttachment(att.id)}
+                          className="absolute top-1 right-1 size-5 flex items-center justify-center rounded bg-background/80 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <XIcon className="size-3" />
+                        </button>
+                      </div>
+                    ))}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                    disabled={uploadingFile}
+                    className="flex flex-col items-center justify-center h-full min-h-24 rounded-md border-2 border-dashed border-border/50 text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors disabled:opacity-50"
+                  >
+                    <PlusIcon className="size-5" />
+                    <span className="text-2xs mt-1">{uploadingFile ? "Uploading…" : "Add file"}</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
           <Separator className="mb-6" />
 
           {/* Checklists */}
@@ -872,35 +988,16 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
           </div>
         </div>
 
-        {/* ── Right: activity ── */}
+        {/* ── Right: comments + activity ── */}
         <div className="w-80 xl:w-96 shrink-0 border-l flex flex-col overflow-hidden">
-          <div className="flex items-center gap-2 px-5 py-3 border-b shrink-0">
-            <h2 className="font-semibold text-sm">Activity</h2>
-          </div>
-
-          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-            {activity.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No activity yet.</p>
-            ) : (
-              activity.map((log) => (
-                <div key={log.id} className="flex items-start gap-2.5">
-                  <Avatar className="size-6 shrink-0 mt-0.5">
-                    <AvatarFallback className="text-[9px] bg-primary/10 text-primary">
-                      {userInitials(log.name, log.email)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs leading-relaxed">
-                      <span className="font-medium">{log.name ?? log.email ?? "Someone"}</span>{" "}
-                      <span className="text-muted-foreground">{describeEvent(log.eventType, (log.meta as Record<string, unknown>) ?? {})}</span>
-                    </p>
-                    <p className="text-[10px] text-muted-foreground/60 mt-0.5">
-                      {formatDistanceToNow(new Date(log.createdAt), { addSuffix: true })}
-                    </p>
-                  </div>
-                </div>
-              ))
-            )}
+          <div className="flex-1 overflow-y-auto px-5 py-4">
+            <TaskActivityFeed
+              workspaceId={workspaceId}
+              spaceId={spaceId}
+              listId={listId}
+              taskId={taskId}
+              currentUserId={currentUserId}
+            />
           </div>
 
           {/* Task seq footer */}
