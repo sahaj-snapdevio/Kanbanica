@@ -1,6 +1,6 @@
 import { pgEnum, pgTable, text, timestamp, boolean, integer, json, index } from "drizzle-orm/pg-core";
 
-export const supportTicketStatusEnum = pgEnum("support_ticket_status", ["OPEN", "CLOSED"]);
+export const supportTicketStatusEnum = pgEnum("support_ticket_status", ["OPEN", "IN_PROGRESS", "CLOSED"]);
 export const supportTicketCategoryEnum = pgEnum("support_ticket_category", [
   "GENERAL",
   "TASKS",
@@ -18,6 +18,7 @@ export const supportTicket = pgTable(
     subject: text("subject").notNull(),
     status: supportTicketStatusEnum("status").notNull().default("OPEN"),
     category: supportTicketCategoryEnum("category").notNull().default("GENERAL"),
+    assignedTo: text("assigned_to"),
     closedAt: timestamp("closed_at", { withTimezone: true }),
     closedReason: text("closed_reason"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -38,6 +39,7 @@ export const supportTicketMessage = pgTable(
       .references(() => supportTicket.id, { onDelete: "cascade" }),
     authorId: text("author_id").notNull(),
     isAdmin: boolean("is_admin").notNull().default(false),
+    isInternalNote: boolean("is_internal_note").notNull().default(false),
     body: text("body").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

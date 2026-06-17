@@ -57,6 +57,11 @@ export const QUEUE_OPTIONS: Record<
     policy: "exclusive",
     retryLimit: 0,
   },
+  [JOB_NAMES.IMPERSONATION_CLEANUP]: {
+    expireInSeconds: 300,
+    policy: "exclusive",
+    retryLimit: 2,
+  },
 };
 
 export async function ensureJobQueues(boss: PgBoss) {
