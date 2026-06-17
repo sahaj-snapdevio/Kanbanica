@@ -1,0 +1,220 @@
+"use client";
+
+import * as React from "react";
+import useSWR from "swr";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+
+const TRIGGER_LABELS: Record<string, string> = {
+  task_assigned: "Task assigned to me",
+  task_unassigned: "Task unassigned from me",
+  task_status_changed: "Task status changed",
+  task_priority_changed: "Task priority changed",
+  task_due_date_changed: "Task due date changed",
+  task_completed: "Task marked complete",
+  task_moved: "Task moved",
+  task_deleted: "Task deleted",
+  comment_added: "New comment",
+  comment_reply: "Reply to my comment",
+  mention_comment: "Mentioned in comment",
+  mention_description: "Mentioned in description",
+  comment_resolved: "Comment resolved",
+  due_date_reminder_1day: "Due date reminder (1 day)",
+  due_date_today: "Due today",
+  task_overdue: "Task overdue",
+  workspace_invited: "Invited to workspace",
+  invite_accepted: "Invite accepted",
+  space_added: "Added to space",
+  space_removed: "Removed from space",
+  role_changed: "Role changed",
+  space_permission_changed: "Space permission changed",
+  sprint_started: "Sprint started",
+  sprint_ending_soon: "Sprint ending soon",
+  sprint_closed: "Sprint closed",
+  sprint_auto_created: "Sprint auto-created",
+};
+
+interface NotifPref {
+  triggerType: string;
+  inAppEnabled: boolean;
+  emailEnabled: boolean;
+  pushEnabled: boolean;
+}
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
+export default function NotificationSettingsPage() {
+  const { data: emailPrefData, mutate: mutateEmail } = useSWR(
+    "/api/me/email-preferences",
+    fetcher,
+  );
+  const { data: notifPrefData, mutate: mutateNotif } = useSWR(
+    "/api/me/notification-preferences",
+    fetcher,
+  );
+
+  const [deliveryMode, setDeliveryMode] = React.useState<string>("instant");
+  const [digestTime, setDigestTime] = React.useState<string>("08:00");
+  const [prefs, setPrefs] = React.useState<NotifPref[]>([]);
+  const [saving, setSaving] = React.useState(false);
+
+  React.useEffect(() => {
+    if (emailPrefData?.preference) {
+      setDeliveryMode(emailPrefData.preference.deliveryMode ?? "instant");
+      setDigestTime(emailPrefData.preference.digestTime ?? "08:00");
+    }
+  }, [emailPrefData]);
+
+  React.useEffect(() => {
+    if (notifPrefData?.preferences) {
+      setPrefs(notifPrefData.preferences);
+    }
+  }, [notifPrefData]);
+
+  async function saveEmailPrefs() {
+    setSaving(true);
+    try {
+      await fetch("/api/me/email-preferences", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deliveryMode, digestTime }),
+      });
+      await mutateEmail();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function saveNotifPref(
+    triggerType: string,
+    field: keyof Omit<NotifPref, "triggerType">,
+    value: boolean,
+  ) {
+    const updated = prefs.map((p) =>
+      p.triggerType === triggerType ? { ...p, [field]: value } : p,
+    );
+    setPrefs(updated);
+
+    await fetch("/api/me/notification-preferences", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        preferences: [{ triggerType, ...updated.find((p) => p.triggerType === triggerType) }],
+      }),
+    });
+    await mutateNotif();
+  }
+
+  return (
+    <div className="mx-auto max-w-3xl space-y-8 p-6">
+      <div>
+        <h2 className="text-xl font-semibold">Notification Settings</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Control how and when you receive notifications.
+        </p>
+      </div>
+
+      {/* Email delivery section */}
+      <div className="space-y-4 rounded-lg border p-4">
+        <h3 className="font-medium">Email Delivery</h3>
+        <div className="flex items-center gap-4">
+          <Label htmlFor="delivery-mode" className="w-32 shrink-0">
+            Delivery mode
+          </Label>
+          <Select value={deliveryMode} onValueChange={setDeliveryMode}>
+            <SelectTrigger id="delivery-mode" className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="instant">Instant</SelectItem>
+              <SelectItem value="digest">Daily Digest</SelectItem>
+              <SelectItem value="off">Off</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {deliveryMode === "digest" && (
+          <div className="flex items-center gap-4">
+            <Label htmlFor="digest-time" className="w-32 shrink-0">
+              Digest time (UTC)
+            </Label>
+            <input
+              id="digest-time"
+              type="time"
+              value={digestTime}
+              onChange={(e) => setDigestTime(e.target.value)}
+              className="rounded-md border bg-background px-3 py-1.5 text-sm"
+            />
+          </div>
+        )}
+        <Button onClick={saveEmailPrefs} disabled={saving} size="sm">
+          {saving ? "Saving..." : "Save email preferences"}
+        </Button>
+      </div>
+
+      {/* Per-trigger toggles */}
+      <div className="space-y-4">
+        <h3 className="font-medium">Notification Preferences</h3>
+        <div className="overflow-hidden rounded-lg border">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/50">
+                <th className="px-4 py-2 text-left font-medium">Event</th>
+                <th className="px-4 py-2 text-center font-medium">In-App</th>
+                <th className="px-4 py-2 text-center font-medium">Email</th>
+                <th className="px-4 py-2 text-center font-medium">Push</th>
+              </tr>
+            </thead>
+            <tbody>
+              {prefs.map((pref) => (
+                <tr key={pref.triggerType} className="border-b last:border-0">
+                  <td className="px-4 py-2.5 text-sm">
+                    {TRIGGER_LABELS[pref.triggerType] ?? pref.triggerType}
+                  </td>
+                  <td className="px-4 py-2.5 text-center">
+                    <Switch
+                      checked={pref.inAppEnabled}
+                      onCheckedChange={(v) =>
+                        void saveNotifPref(pref.triggerType, "inAppEnabled", v)
+                      }
+                    />
+                  </td>
+                  <td className="px-4 py-2.5 text-center">
+                    <Switch
+                      checked={pref.emailEnabled}
+                      onCheckedChange={(v) =>
+                        void saveNotifPref(pref.triggerType, "emailEnabled", v)
+                      }
+                    />
+                  </td>
+                  <td className="px-4 py-2.5 text-center">
+                    <Switch
+                      checked={pref.pushEnabled}
+                      onCheckedChange={(v) =>
+                        void saveNotifPref(pref.triggerType, "pushEnabled", v)
+                      }
+                    />
+                  </td>
+                </tr>
+              ))}
+              {prefs.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                    Loading preferences...
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}

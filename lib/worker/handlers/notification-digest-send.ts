@@ -1,0 +1,90 @@
+import type { Job } from "pg-boss";
+import { and, eq, gte, lt } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { notification, user } from "@/db/schema";
+import { enqueueEmail } from "@/lib/email/index";
+
+interface DigestSendPayload {
+  userId: string;
+  windowStart: string;
+  windowEnd: string;
+}
+
+export async function handleNotificationDigestSend(jobs: Job<DigestSendPayload>[]) {
+  for (const job of jobs) {
+    await processDigest(job.data);
+  }
+}
+
+async function processDigest({ userId, windowStart, windowEnd }: DigestSendPayload) {
+  const [userRow] = await db
+    .select({ email: user.email, name: user.name })
+    .from(user)
+    .where(eq(user.id, userId))
+    .limit(1);
+
+  if (!userRow) return;
+
+  const notifications = await db
+    .select()
+    .from(notification)
+    .where(
+      and(
+        eq(notification.recipientId, userId),
+        eq(notification.isRead, false),
+        gte(notification.createdAt, new Date(windowStart)),
+        lt(notification.createdAt, new Date(windowEnd)),
+      ),
+    )
+    .limit(50);
+
+  if (notifications.length === 0) return;
+
+  const rows = notifications
+    .map(
+      (n) => `<tr>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #eee;">${escapeHtml(n.title)}</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #eee; color: #666; font-size: 12px;">${n.createdAt.toUTCString()}</td>
+      </tr>`,
+    )
+    .join("");
+
+  const html = `
+    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #1a1a1a;">Your Teamority Notification Digest</h2>
+      <p>Here are your notifications from the last 30 minutes:</p>
+      <table style="width: 100%; border-collapse: collapse; border: 1px solid #eee;">
+        <thead>
+          <tr style="background: #f9f9f9;">
+            <th style="padding: 8px 12px; text-align: left; border-bottom: 2px solid #eee;">Notification</th>
+            <th style="padding: 8px 12px; text-align: left; border-bottom: 2px solid #eee;">Time</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <p style="color: #666; font-size: 12px; margin-top: 24px;">
+        You're receiving this digest because you have digest notifications enabled in Teamority.
+      </p>
+    </div>
+  `;
+
+  const text = notifications.map((n) => `- ${n.title} (${n.createdAt.toUTCString()})`).join("\n");
+
+  await enqueueEmail({
+    to: userRow.email,
+    subject: "[Teamority] Your notification digest",
+    html,
+    text,
+  });
+
+  console.log("[notification-digest-send] sent digest to", userRow.email, "with", notifications.length, "notifications");
+}
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}

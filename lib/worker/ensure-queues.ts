@@ -37,6 +37,26 @@ export const QUEUE_OPTIONS: Record<
     policy: "exclusive",
     retryLimit: 2,
   },
+  [JOB_NAMES.NOTIFICATION_CLEANUP]: {
+    expireInSeconds: 300,
+    policy: "exclusive",
+    retryLimit: 0,
+  },
+  [JOB_NAMES.DUE_DATE_REMINDER]: {
+    expireInSeconds: 300,
+    policy: "exclusive",
+    retryLimit: 0,
+  },
+  [JOB_NAMES.NOTIFICATION_DIGEST_SCAN]: {
+    expireInSeconds: 300,
+    policy: "exclusive",
+    retryLimit: 0,
+  },
+  [JOB_NAMES.NOTIFICATION_DIGEST_SEND]: {
+    expireInSeconds: 300,
+    policy: "exclusive",
+    retryLimit: 0,
+  },
 };
 
 export async function ensureJobQueues(boss: PgBoss) {

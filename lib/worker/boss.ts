@@ -58,6 +58,10 @@ export async function startWorker() {
   const { handleSprintAutoClose } = await import(
     "@/lib/worker/handlers/sprint-auto-close"
   );
+  const { handleNotificationCleanup } = await import("@/lib/worker/handlers/notification-cleanup");
+  const { handleDueDateReminder } = await import("@/lib/worker/handlers/due-date-reminder");
+  const { handleNotificationDigestScan } = await import("@/lib/worker/handlers/notification-digest-scan");
+  const { handleNotificationDigestSend } = await import("@/lib/worker/handlers/notification-digest-send");
 
   await Promise.all([
     work(JOB_NAMES.EMAIL_SEND, handleEmailSend),
@@ -65,12 +69,19 @@ export async function startWorker() {
     work(JOB_NAMES.EMAIL_EVENTS_PRUNE, handleEmailEventsPrune),
     work(JOB_NAMES.SCAFFOLD_HEALTHCHECK, handleScaffoldHealthcheck),
     work(JOB_NAMES.SPRINT_AUTO_CLOSE, handleSprintAutoClose),
+    work(JOB_NAMES.NOTIFICATION_CLEANUP, handleNotificationCleanup),
+    work(JOB_NAMES.DUE_DATE_REMINDER, handleDueDateReminder),
+    work(JOB_NAMES.NOTIFICATION_DIGEST_SCAN, handleNotificationDigestScan),
+    work(JOB_NAMES.NOTIFICATION_DIGEST_SEND, handleNotificationDigestSend),
   ]);
 
   await boss.schedule(JOB_NAMES.EMAIL_OUTBOX_REAP, "*/15 * * * *", {});
   await boss.schedule(JOB_NAMES.EMAIL_EVENTS_PRUNE, "17 3 * * *", {});
   await boss.schedule(JOB_NAMES.SCAFFOLD_HEALTHCHECK, "*/10 * * * *", {});
   await boss.schedule(JOB_NAMES.SPRINT_AUTO_CLOSE, "0 0 * * *", {});
+  await boss.schedule(JOB_NAMES.NOTIFICATION_CLEANUP, "0 1 * * *", {});
+  await boss.schedule(JOB_NAMES.DUE_DATE_REMINDER, "0 * * * *", {});
+  await boss.schedule(JOB_NAMES.NOTIFICATION_DIGEST_SCAN, "*/30 * * * *", {});
 
   console.log("[worker] handlers registered");
 }

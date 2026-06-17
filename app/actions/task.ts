@@ -26,6 +26,7 @@ import {
 } from "@/db/schema";
 import { canAccessSpace, getWorkspaceMembership } from "@/lib/permissions";
 import { writeActivityLog } from "@/lib/activity-log";
+import { createNotifications } from "@/lib/notifications/create-notification";
 
 // ─── Permission helpers ──────────────────────────────────────────────────────
 
@@ -369,6 +370,28 @@ export async function updateTask(
   }
 
   await Promise.all(logs.map((fn) => fn()));
+
+  // Notify watchers of due date change
+  if (data.dueDateEnd !== undefined) {
+    const dueDateWatchers = await db
+      .select({ userId: taskWatcher.userId })
+      .from(taskWatcher)
+      .where(eq(taskWatcher.taskId, taskId));
+    const dueDateWatcherIds = dueDateWatchers.map((w) => w.userId);
+    if (dueDateWatcherIds.length > 0) {
+      createNotifications({
+        workspaceId,
+        actorId: session.user.id,
+        recipientIds: dueDateWatcherIds,
+        triggerType: "task_due_date_changed",
+        entityType: "TASK",
+        entityId: taskId,
+        title: `Task due date changed`,
+        muteCheckEntityIds: [taskId],
+      });
+    }
+  }
+
   revalidateList(workspaceId, spaceId, listId);
   return { ok: true };
 }
@@ -404,6 +427,35 @@ export async function updateTaskStatus(
     from: existing.statusId,
     to: statusId,
   });
+
+  // Notify watchers of status change
+  const taskWatchers = await db
+    .select({ userId: taskWatcher.userId })
+    .from(taskWatcher)
+    .where(eq(taskWatcher.taskId, taskId));
+
+  const newStatus = await db
+    .select({ name: listStatus.name, type: listStatus.type })
+    .from(listStatus)
+    .where(eq(listStatus.id, statusId))
+    .limit(1)
+    .then((r) => r[0] ?? null);
+
+  const watcherIds = taskWatchers.map((w) => w.userId);
+  if (watcherIds.length > 0) {
+    createNotifications({
+      workspaceId,
+      actorId: session.user.id,
+      recipientIds: watcherIds,
+      triggerType: newStatus?.type === "CLOSED" ? "task_completed" : "task_status_changed",
+      entityType: "TASK",
+      entityId: taskId,
+      title: newStatus?.type === "CLOSED"
+        ? `Task marked as complete`
+        : `Task status changed to "${newStatus?.name ?? statusId}"`,
+      muteCheckEntityIds: [taskId],
+    });
+  }
 
   revalidateList(workspaceId, spaceId, listId);
   return { ok: true };
