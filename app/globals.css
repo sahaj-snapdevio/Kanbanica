@@ -251,6 +251,26 @@ body {
 
 /* Task list */
 .ProseMirror ul[data-type="taskList"] { list-style: none; padding-left: 0.25rem; }
+
+/* Mentions */
+.mention {
+  color: var(--primary);
+  background: color-mix(in oklch, var(--primary) 12%, transparent);
+  border-radius: 0.25rem;
+  padding: 0 0.25rem;
+  font-weight: 500;
+  cursor: default;
+}
+
+/* Tippy mention popup — reset default tippy theme */
+.tippy-box[data-theme~="mention-popup"] {
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+.tippy-box[data-theme~="mention-popup"] > .tippy-content {
+  padding: 0;
+}
 .ProseMirror ul[data-type="taskList"] li { display: flex; align-items: flex-start; gap: 0.5rem; }
 .ProseMirror ul[data-type="taskList"] li > label { margin-top: 2px; cursor: pointer; }
 .ProseMirror ul[data-type="taskList"] li > label input { cursor: pointer; }

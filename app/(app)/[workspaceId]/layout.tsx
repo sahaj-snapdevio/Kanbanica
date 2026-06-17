@@ -66,7 +66,7 @@ export default async function WorkspaceLayout({ children, params }: WorkspaceLay
 
   const isAdminOrOwner = membership.role === "OWNER" || membership.role === "ADMIN";
 
-  const spaceListMap: Record<string, { id: string; name: string; color: string | null }[]> = {};
+  const spaceListMap: Record<string, { id: string; name: string; color: string | null; description: string | null }[]> = {};
   // Per-space canManageList: OWNER/ADMIN always can; others need FULL_ACCESS in spaceMember
   const spaceCanManageMap: Record<string, boolean> = {};
 
@@ -75,7 +75,7 @@ export default async function WorkspaceLayout({ children, params }: WorkspaceLay
 
     const [lists, spacePermissions] = await Promise.all([
       db
-        .select({ id: list.id, name: list.name, spaceId: list.spaceId, color: list.color })
+        .select({ id: list.id, name: list.name, spaceId: list.spaceId, color: list.color, description: list.description })
         .from(list)
         .where(and(inArray(list.spaceId, spaceIdList), eq(list.isArchived, false)))
         .orderBy(asc(list.orderIndex), asc(list.createdAt)),
@@ -95,7 +95,7 @@ export default async function WorkspaceLayout({ children, params }: WorkspaceLay
 
     for (const l of lists) {
       if (!spaceListMap[l.spaceId]) spaceListMap[l.spaceId] = [];
-      spaceListMap[l.spaceId].push({ id: l.id, name: l.name, color: l.color });
+      spaceListMap[l.spaceId].push({ id: l.id, name: l.name, color: l.color, description: l.description });
     }
 
     const permMap: Record<string, string> = {};

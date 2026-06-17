@@ -262,7 +262,7 @@ export function TaskDetailPanel({
     setDepQuery(q);
     if (q.length < 2) { setDepResults([]); return; }
     const res = await searchTasksForDependency(workspaceId, spaceId, q, taskId);
-    if ("tasks" in res) setDepResults(res.tasks);
+    if ("tasks" in res) setDepResults(res.tasks?.map((t) => ({ id: t.id, title: t.title, seqNumber: t.seqNumber })) ?? []);
   }
 
   async function handleAddDep(dependsOnTaskId: string) {

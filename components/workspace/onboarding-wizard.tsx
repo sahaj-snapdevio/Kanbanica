@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { ArrowRightIcon, BuildingsIcon, StackIcon } from "@phosphor-icons/react";
+import { ArrowRightIcon, BuildingsIcon, StackIcon, UserIcon } from "@phosphor-icons/react";
 import { toast } from "sonner";
-import { createOnboardingWorkspace, createOnboardingSpace } from "@/app/actions/onboarding";
+import { createOnboardingWorkspace, createOnboardingSpace, saveUserName } from "@/app/actions/onboarding";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -26,27 +26,42 @@ const SPACE_COLORS = [
 
 interface OnboardingWizardProps {
   existingWorkspace: { id: string; name: string } | null;
+  userName: string;
 }
 
-export function OnboardingWizard({ existingWorkspace }: OnboardingWizardProps) {
+export function OnboardingWizard({ existingWorkspace, userName }: OnboardingWizardProps) {
+  // Step 0 = collect name (only if blank), Step 1 = workspace, Step 2 = space
+  const needsName = !userName.trim();
+  const [step, setStep] = useState<"name" | "workspace" | "space">(
+    needsName ? "name" : existingWorkspace ? "space" : "workspace",
+  );
+
   const [workspaceState, setWorkspaceState] = useState(existingWorkspace);
   const [pending, startTransition] = useTransition();
 
+  const [displayName, setDisplayName] = useState("");
   const [workspaceName, setWorkspaceName] = useState("");
   const [logoEmoji, setLogoEmoji] = useState<string | null>(null);
 
   const [spaceName, setSpaceName] = useState("");
   const [spaceColor, setSpaceColor] = useState(SPACE_COLORS[0]);
 
+  function handleSaveName(e: React.FormEvent) {
+    e.preventDefault();
+    startTransition(async () => {
+      const result = await saveUserName(displayName);
+      if ("error" in result) { toast.error(result.error); return; }
+      setStep("workspace");
+    });
+  }
+
   function handleCreateWorkspace(e: React.FormEvent) {
     e.preventDefault();
     startTransition(async () => {
       const result = await createOnboardingWorkspace({ name: workspaceName, logoEmoji });
-      if ("error" in result) {
-        toast.error(result.error);
-        return;
-      }
+      if ("error" in result) { toast.error(result.error); return; }
       setWorkspaceState({ id: result.workspaceId, name: workspaceName.trim() });
+      setStep("space");
     });
   }
 
@@ -63,7 +78,49 @@ export function OnboardingWizard({ existingWorkspace }: OnboardingWizardProps) {
     });
   }
 
-  if (!workspaceState) {
+  // ── Step 0: collect name ──────────────────────────────────────────────────
+  if (step === "name") {
+    return (
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+            <UserIcon className="size-5 text-primary" weight="duotone" />
+          </div>
+          <CardTitle className="text-xl">What's your name?</CardTitle>
+          <CardDescription>
+            This is how teammates will see you across the workspace.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSaveName} className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="display-name">Full name</Label>
+              <Input
+                id="display-name"
+                placeholder="e.g. Priya Shah"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                maxLength={100}
+                autoFocus
+                required
+              />
+            </div>
+            <Button
+              type="submit"
+              className="w-full gap-2"
+              disabled={pending || displayName.trim().length < 2}
+            >
+              <ArrowRightIcon className="size-4" />
+              Continue
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // ── Step 1: create workspace ──────────────────────────────────────────────
+  if (step === "workspace") {
     return (
       <Card className="w-full max-w-md">
         <CardHeader>
@@ -128,6 +185,7 @@ export function OnboardingWizard({ existingWorkspace }: OnboardingWizardProps) {
     );
   }
 
+  // ── Step 2: create first space ────────────────────────────────────────────
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
