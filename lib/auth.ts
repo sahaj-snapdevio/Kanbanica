@@ -32,6 +32,10 @@ export const auth = betterAuth({
         }
       : {}),
   },
+  emailAndPassword: {
+    enabled: true,
+    disableSignUp: true,
+  },
   plugins: [
     admin({
       impersonationSessionDuration: 3600,

@@ -34,5 +34,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     await db.update(supportTicket).set({ status: "IN_PROGRESS", updatedAt: new Date() }).where(eq(supportTicket.id, id));
   }
 
+  if (!isInternalNote) {
+    const { notifyUserOfAdminReply } = await import("@/lib/support/tickets");
+    void notifyUserOfAdminReply({ ticketId: id });
+  }
+
   return NextResponse.json({ message: msg });
 }
