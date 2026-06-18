@@ -6,12 +6,13 @@ import { db } from "@/lib/db";
 import { workspace } from "@/db/schema";
 import { getWorkspaceMembership } from "@/lib/permissions";
 import { SecuritySettings } from "@/components/workspace/security-settings";
+import { PRODUCT_NAME } from "@/config/platform";
 
 interface SecurityPageProps {
   params: Promise<{ workspaceId: string }>;
 }
 
-export const metadata = { title: "Security — Kanbanica" };
+export const metadata = { title: `Security — ${PRODUCT_NAME}` };
 
 export default async function SecurityPage({ params }: SecurityPageProps) {
   const { workspaceId } = await params;

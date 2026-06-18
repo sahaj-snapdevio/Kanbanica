@@ -3,12 +3,13 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { workspace } from "@/db/schema";
 import { GeneralSettingsForm } from "@/components/workspace/general-settings-form";
+import { PRODUCT_NAME } from "@/config/platform";
 
 interface GeneralSettingsPageProps {
   params: Promise<{ workspaceId: string }>;
 }
 
-export const metadata = { title: "General Settings — Kanbanica" };
+export const metadata = { title: `General Settings — ${PRODUCT_NAME}` };
 
 export default async function GeneralSettingsPage({ params }: GeneralSettingsPageProps) {
   const { workspaceId } = await params;

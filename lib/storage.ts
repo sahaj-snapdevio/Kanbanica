@@ -13,7 +13,7 @@ function createStorage() {
   //
   // Required env vars:
   //   STORAGE_DRIVER=s3          (or "r2" — both use the S3 adapter)
-  //   S3_BUCKET=teamority-uploads
+  //   S3_BUCKET=kanbanica-uploads
   //   S3_REGION=auto             (use "auto" for R2, e.g. "us-east-1" for AWS S3)
   //   S3_ACCESS_KEY_ID=...
   //   S3_SECRET_ACCESS_KEY=...

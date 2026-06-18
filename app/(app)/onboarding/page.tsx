@@ -6,8 +6,9 @@ import { workspaceMember, workspace, space, list } from "@/db/schema";
 import { and, asc, eq } from "drizzle-orm";
 import { getAccessibleSpaceIds } from "@/lib/permissions";
 import { OnboardingWizard } from "@/components/workspace/onboarding-wizard";
+import { PRODUCT_NAME } from "@/config/platform";
 
-export const metadata = { title: "Get started — Kanbanica" };
+export const metadata = { title: `Get started — ${PRODUCT_NAME}` };
 
 interface OnboardingPageProps {
   searchParams: Promise<{ new?: string }>;

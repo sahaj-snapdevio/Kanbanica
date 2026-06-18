@@ -6,12 +6,13 @@ import { db } from "@/lib/db";
 import { workspace, workspaceMember } from "@/db/schema";
 import { user } from "@/db/schema/auth";
 import { MembersManager } from "@/components/workspace/members-manager";
+import { PRODUCT_NAME } from "@/config/platform";
 
 interface MembersPageProps {
   params: Promise<{ workspaceId: string }>;
 }
 
-export const metadata = { title: "Members — Kanbanica" };
+export const metadata = { title: `Members — ${PRODUCT_NAME}` };
 
 export default async function MembersPage({ params }: MembersPageProps) {
   const { workspaceId } = await params;

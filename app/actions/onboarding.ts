@@ -8,6 +8,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { workspace, workspaceMember, space, listStatus, list, userOnboardingProgress, task, taskAssignee, tag, taskTag, user as userTable } from "@/db/schema";
 import { and, count, eq } from "drizzle-orm";
+import { PRODUCT_NAME } from "@/config/platform";
 
 const DEFAULT_STATUSES = [
   { name: "Todo", color: "#9CA3AF", type: "OPEN" as const, orderIndex: 0 },
@@ -196,7 +197,7 @@ export async function createOnboardingSpace(input: {
         workspaceId,
         listId,
         statusId: todoStatusId,
-        title: `👋 Welcome to ${wsRow?.name ?? "Kanbanica"} — click to see how a task works`,
+        title: `👋 Welcome to ${wsRow?.name ?? PRODUCT_NAME} — click to see how a task works`,
         description: {
           type: "doc",
           content: [{ type: "paragraph", content: [{ type: "text", text: "This is a task. You can set a status, assign it to someone, add a due date, and leave comments. Try editing this task or create your own." }] }],

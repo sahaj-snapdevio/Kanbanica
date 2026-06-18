@@ -7,12 +7,13 @@ import { spaceMember, workspaceMember } from "@/db/schema";
 import { user } from "@/db/schema/auth";
 import { getWorkspaceMembership } from "@/lib/permissions";
 import { SpaceMembersManager } from "@/components/space/space-members-manager";
+import { PRODUCT_NAME } from "@/config/platform";
 
 interface PageProps {
   params: Promise<{ workspaceId: string; spaceId: string }>;
 }
 
-export const metadata = { title: "Space Members — Kanbanica" };
+export const metadata = { title: `Space Members — ${PRODUCT_NAME}` };
 
 export default async function SpaceMembersPage({ params }: PageProps) {
   const session = await auth.api.getSession({ headers: await headers() });
