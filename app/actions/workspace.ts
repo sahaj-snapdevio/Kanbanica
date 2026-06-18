@@ -1,30 +1,36 @@
 "use server";
 
-import { headers } from "next/headers";
 import { createId } from "@paralleldrive/cuid2";
-import { and, eq, inArray, ne } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
+import { headers } from "next/headers";
+import { workspace, workspaceMember } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { workspace, workspaceMember } from "@/db/schema";
 import { getWorkspaceMembership } from "@/lib/permissions";
 
 type WorkspaceRole = "OWNER" | "ADMIN" | "MEMBER" | "GUEST";
 
 async function requireSession() {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return null;
+  if (!session) {
+    return null;
+  }
   return session;
 }
 
 async function requireAdmin(userId: string, workspaceId: string) {
   const m = await getWorkspaceMembership(userId, workspaceId);
-  if (!m || (m.role !== "OWNER" && m.role !== "ADMIN")) return null;
+  if (!m || (m.role !== "OWNER" && m.role !== "ADMIN")) {
+    return null;
+  }
   return m;
 }
 
 async function requireOwner(userId: string, workspaceId: string) {
   const m = await getWorkspaceMembership(userId, workspaceId);
-  if (!m || m.role !== "OWNER") return null;
+  if (!m || m.role !== "OWNER") {
+    return null;
+  }
   return m;
 }
 
@@ -37,23 +43,35 @@ export async function updateWorkspace(data: {
   logoEmoji: string | null;
 }): Promise<{ ok: true } | { error: string }> {
   const session = await requireSession();
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const admin = await requireAdmin(session.user.id, data.workspaceId);
-  if (!admin) return { error: "Only admins can update the workspace" };
+  if (!admin) {
+    return { error: "Only admins can update the workspace" };
+  }
 
   const name = data.name.trim();
   const slug = data.slug.trim().toLowerCase();
-  if (!name) return { error: "Name is required" };
-  if (!slug) return { error: "Slug is required" };
-  if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) return { error: "Invalid slug format" };
+  if (!name) {
+    return { error: "Name is required" };
+  }
+  if (!slug) {
+    return { error: "Slug is required" };
+  }
+  if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) {
+    return { error: "Invalid slug format" };
+  }
 
   // Check slug uniqueness
   const existing = await db
     .select({ id: workspace.id })
     .from(workspace)
     .where(and(eq(workspace.slug, slug), ne(workspace.id, data.workspaceId)));
-  if (existing.length > 0) return { error: "That slug is already taken" };
+  if (existing.length > 0) {
+    return { error: "That slug is already taken" };
+  }
 
   await db
     .update(workspace)
@@ -66,12 +84,16 @@ export async function updateWorkspace(data: {
 // ── Invite link ────────────────────────────────────────────────────────────
 
 export async function regenerateInviteLink(
-  workspaceId: string,
+  workspaceId: string
 ): Promise<{ ok: true } | { error: string }> {
   const session = await requireSession();
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
   const owner = await requireOwner(session.user.id, workspaceId);
-  if (!owner) return { error: "Only the owner can manage the invite link" };
+  if (!owner) {
+    return { error: "Only the owner can manage the invite link" };
+  }
 
   await db
     .update(workspace)
@@ -82,12 +104,16 @@ export async function regenerateInviteLink(
 }
 
 export async function disableInviteLink(
-  workspaceId: string,
+  workspaceId: string
 ): Promise<{ ok: true } | { error: string }> {
   const session = await requireSession();
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
   const owner = await requireOwner(session.user.id, workspaceId);
-  if (!owner) return { error: "Only the owner can manage the invite link" };
+  if (!owner) {
+    return { error: "Only the owner can manage the invite link" };
+  }
 
   await db
     .update(workspace)
@@ -105,19 +131,32 @@ export async function inviteMember(data: {
   role: "ADMIN" | "MEMBER" | "GUEST";
 }): Promise<{ ok: true } | { error: string }> {
   const session = await requireSession();
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
   const actor = await requireAdmin(session.user.id, data.workspaceId);
-  if (!actor) return { error: "Only admins can invite members" };
+  if (!actor) {
+    return { error: "Only admins can invite members" };
+  }
 
   const email = data.email.trim().toLowerCase();
-  if (!email) return { error: "Email is required" };
+  if (!email) {
+    return { error: "Email is required" };
+  }
 
   // Don't duplicate active or pending invite
   const existing = await db
     .select({ id: workspaceMember.id })
     .from(workspaceMember)
-    .where(and(eq(workspaceMember.workspaceId, data.workspaceId), eq(workspaceMember.email, email)));
-  if (existing.length > 0) return { error: "This email is already a member or has a pending invite" };
+    .where(
+      and(
+        eq(workspaceMember.workspaceId, data.workspaceId),
+        eq(workspaceMember.email, email)
+      )
+    );
+  if (existing.length > 0) {
+    return { error: "This email is already a member or has a pending invite" };
+  }
 
   await db.insert(workspaceMember).values({
     id: createId(),
@@ -140,9 +179,13 @@ export async function resendInvite(data: {
   memberId: string;
 }): Promise<{ ok: true } | { error: string }> {
   const session = await requireSession();
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
   const actor = await requireAdmin(session.user.id, data.workspaceId);
-  if (!actor) return { error: "Only admins can resend invites" };
+  if (!actor) {
+    return { error: "Only admins can resend invites" };
+  }
 
   await db
     .update(workspaceMember)
@@ -154,8 +197,8 @@ export async function resendInvite(data: {
     .where(
       and(
         eq(workspaceMember.id, data.memberId),
-        eq(workspaceMember.workspaceId, data.workspaceId),
-      ),
+        eq(workspaceMember.workspaceId, data.workspaceId)
+      )
     );
 
   return { ok: true };
@@ -166,9 +209,13 @@ export async function cancelInvite(data: {
   memberId: string;
 }): Promise<{ ok: true } | { error: string }> {
   const session = await requireSession();
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
   const actor = await requireAdmin(session.user.id, data.workspaceId);
-  if (!actor) return { error: "Only admins can cancel invites" };
+  if (!actor) {
+    return { error: "Only admins can cancel invites" };
+  }
 
   await db
     .delete(workspaceMember)
@@ -176,8 +223,8 @@ export async function cancelInvite(data: {
       and(
         eq(workspaceMember.id, data.memberId),
         eq(workspaceMember.workspaceId, data.workspaceId),
-        eq(workspaceMember.status, "INVITED"),
-      ),
+        eq(workspaceMember.status, "INVITED")
+      )
     );
 
   return { ok: true };
@@ -189,9 +236,13 @@ export async function changeMemberRole(data: {
   role: "ADMIN" | "MEMBER" | "GUEST";
 }): Promise<{ ok: true } | { error: string }> {
   const session = await requireSession();
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
   const actor = await requireAdmin(session.user.id, data.workspaceId);
-  if (!actor) return { error: "Only admins can change roles" };
+  if (!actor) {
+    return { error: "Only admins can change roles" };
+  }
 
   const target = await db
     .select({ role: workspaceMember.role, userId: workspaceMember.userId })
@@ -199,14 +250,22 @@ export async function changeMemberRole(data: {
     .where(
       and(
         eq(workspaceMember.id, data.memberId),
-        eq(workspaceMember.workspaceId, data.workspaceId),
-      ),
+        eq(workspaceMember.workspaceId, data.workspaceId)
+      )
     );
 
-  if (!target.length) return { error: "Member not found" };
-  if (target[0].role === "OWNER") return { error: "Cannot change owner's role" };
-  if (actor.role === "ADMIN" && target[0].role === "ADMIN") return { error: "Admins cannot change other admins" };
-  if (actor.role === "ADMIN" && data.role === "ADMIN") return { error: "Admins cannot grant Admin role" };
+  if (!target.length) {
+    return { error: "Member not found" };
+  }
+  if (target[0].role === "OWNER") {
+    return { error: "Cannot change owner's role" };
+  }
+  if (actor.role === "ADMIN" && target[0].role === "ADMIN") {
+    return { error: "Admins cannot change other admins" };
+  }
+  if (actor.role === "ADMIN" && data.role === "ADMIN") {
+    return { error: "Admins cannot grant Admin role" };
+  }
 
   await db
     .update(workspaceMember)
@@ -221,9 +280,13 @@ export async function removeMember(data: {
   memberId: string;
 }): Promise<{ ok: true } | { error: string }> {
   const session = await requireSession();
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
   const actor = await requireAdmin(session.user.id, data.workspaceId);
-  if (!actor) return { error: "Only admins can remove members" };
+  if (!actor) {
+    return { error: "Only admins can remove members" };
+  }
 
   const target = await db
     .select({ role: workspaceMember.role, userId: workspaceMember.userId })
@@ -231,13 +294,19 @@ export async function removeMember(data: {
     .where(
       and(
         eq(workspaceMember.id, data.memberId),
-        eq(workspaceMember.workspaceId, data.workspaceId),
-      ),
+        eq(workspaceMember.workspaceId, data.workspaceId)
+      )
     );
 
-  if (!target.length) return { error: "Member not found" };
-  if (target[0].role === "OWNER") return { error: "Cannot remove the owner" };
-  if (target[0].userId === session.user.id) return { error: "Cannot remove yourself" };
+  if (!target.length) {
+    return { error: "Member not found" };
+  }
+  if (target[0].role === "OWNER") {
+    return { error: "Cannot remove the owner" };
+  }
+  if (target[0].userId === session.user.id) {
+    return { error: "Cannot remove yourself" };
+  }
 
   await db.delete(workspaceMember).where(eq(workspaceMember.id, data.memberId));
 
@@ -250,16 +319,24 @@ export async function transferOwnership(data: {
   confirmName: string;
 }): Promise<{ ok: true } | { error: string }> {
   const session = await requireSession();
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
   const owner = await requireOwner(session.user.id, data.workspaceId);
-  if (!owner) return { error: "Only the owner can transfer ownership" };
+  if (!owner) {
+    return { error: "Only the owner can transfer ownership" };
+  }
 
   const [ws] = await db
     .select({ name: workspace.name })
     .from(workspace)
     .where(eq(workspace.id, data.workspaceId));
-  if (!ws) return { error: "Workspace not found" };
-  if (data.confirmName.trim() !== ws.name.trim()) return { error: "Workspace name does not match" };
+  if (!ws) {
+    return { error: "Workspace not found" };
+  }
+  if (data.confirmName.trim() !== ws.name.trim()) {
+    return { error: "Workspace name does not match" };
+  }
 
   const [ownerMember] = await db
     .select({ id: workspaceMember.id })
@@ -268,8 +345,8 @@ export async function transferOwnership(data: {
       and(
         eq(workspaceMember.workspaceId, data.workspaceId),
         eq(workspaceMember.userId, session.user.id),
-        eq(workspaceMember.status, "ACTIVE"),
-      ),
+        eq(workspaceMember.status, "ACTIVE")
+      )
     );
 
   await db.transaction(async (tx) => {
@@ -293,20 +370,55 @@ export async function deleteWorkspace(data: {
   confirmName: string;
 }): Promise<{ ok: true } | { error: string }> {
   const session = await requireSession();
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
   const owner = await requireOwner(session.user.id, data.workspaceId);
-  if (!owner) return { error: "Only the owner can delete the workspace" };
+  if (!owner) {
+    return { error: "Only the owner can delete the workspace" };
+  }
 
   const [ws] = await db
     .select({ name: workspace.name })
     .from(workspace)
     .where(eq(workspace.id, data.workspaceId));
-  if (!ws) return { error: "Workspace not found" };
-  if (data.confirmName.trim() !== ws.name.trim()) return { error: "Workspace name does not match" };
+  if (!ws) {
+    return { error: "Workspace not found" };
+  }
+  if (data.confirmName.trim() !== ws.name.trim()) {
+    return { error: "Workspace name does not match" };
+  }
 
   await db
     .update(workspace)
     .set({ status: "DELETING", updatedAt: new Date() })
+    .where(eq(workspace.id, data.workspaceId));
+
+  return { ok: true };
+}
+
+export async function updateWorkspaceTheme(data: {
+  workspaceId: string;
+  theme: string;
+  appearanceMode: "light" | "dark" | "auto";
+}): Promise<{ ok: true } | { error: string }> {
+  const session = await requireSession();
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
+
+  const admin = await requireAdmin(session.user.id, data.workspaceId);
+  if (!admin) {
+    return { error: "Only admins can update workspace theme settings" };
+  }
+
+  await db
+    .update(workspace)
+    .set({
+      theme: data.theme,
+      appearanceMode: data.appearanceMode,
+      updatedAt: new Date(),
+    })
     .where(eq(workspace.id, data.workspaceId));
 
   return { ok: true };

@@ -520,6 +520,14 @@ Phase 19 ->  QA & Launch Prep
 - [ ] Transfer ownership modal
 - [ ] **Sidebar bottom — Workspace Settings icon** (`Settings` from Lucide): links to `/[workspaceId]/settings/general`; visible to Owner and Admin only (hidden for Member/Guest)
 - [ ] **Sidebar bottom — User profile row**: avatar + name; clicking opens a popover with links to `/settings/account`, `/settings/sessions`, `/settings/notifications`, and a Sign Out action (see [design-system.md](./design-system.md) Sidebar Bottom Bar section)
+- [ ] **Themes settings** (`/[workspaceId]/settings/themes`):
+  - [ ] Appearance picker: Light / Dark / System cards
+  - [ ] Accent color grid: 10 theme swatches (Indigo, Black, Purple, Blue, Pink, Violet, Orange, Teal, Bronze, Mint)
+  - [ ] Live preview — DOM update on click before save
+  - [ ] Save writes to DB + localStorage; Cancel reverts preview
+  - [ ] `ThemeProvider` wraps workspace layout, reads `initialTheme` + `initialAppearanceMode` from DB
+  - [ ] `data-theme` attribute + `.dark` class applied to `<html>`
+  - [ ] CSS variables for all 10 themes defined in `app/globals.css` (light + dark variants each)
 
 **Permission checks:**
 - [ ] Only Owner can delete workspace or transfer ownership

@@ -44,13 +44,13 @@ Krova sits between consumer VPS providers (DigitalOcean, Linode) and raw bare-me
 
 ### Target Users
 
-| Segment | Use Case |
-|---|---|
-| **Indie developers** | Cheap, isolated dev/staging environments |
-| **Startups** | Secure compute without DevOps overhead |
-| **Agencies** | Isolated per-client infrastructure |
-| **Security-conscious teams** | VM isolation with full root SSH access |
-| **Platform engineers** | Firecracker-based microVM platforms |
+| Segment                      | Use Case                                 |
+| ---------------------------- | ---------------------------------------- |
+| **Indie developers**         | Cheap, isolated dev/staging environments |
+| **Startups**                 | Secure compute without DevOps overhead   |
+| **Agencies**                 | Isolated per-client infrastructure       |
+| **Security-conscious teams** | VM isolation with full root SSH access   |
+| **Platform engineers**       | Firecracker-based microVM platforms      |
 
 ---
 
@@ -58,68 +58,68 @@ Krova sits between consumer VPS providers (DigitalOcean, Linode) and raw bare-me
 
 ### Frontend
 
-| Technology | Version | Purpose |
-|---|---|---|
-| Next.js | 16 (App Router) | Full-stack React framework |
-| React | 19 | UI rendering |
-| TypeScript | 6 (strict) | Type safety |
-| Tailwind CSS | v4 | Utility-first styling |
-| shadcn/ui | latest | Component library (Radix primitives) |
-| React Hook Form + Zod | — | Form validation |
-| pusher-js | — | Real-time WebSocket client |
-| SWR | — | Client-side data fetching & cache |
-| xterm.js + addon-fit | — | In-browser terminal emulator |
-| Recharts | — | Data visualization (billing charts) |
-| sonner | — | Toast notifications |
-| next-themes | — | Dark/light mode |
-| date-fns | — | Date manipulation |
-| embla-carousel-react | — | Carousel component |
+| Technology            | Version         | Purpose                              |
+| --------------------- | --------------- | ------------------------------------ |
+| Next.js               | 16 (App Router) | Full-stack React framework           |
+| React                 | 19              | UI rendering                         |
+| TypeScript            | 6 (strict)      | Type safety                          |
+| Tailwind CSS          | v4              | Utility-first styling                |
+| shadcn/ui             | latest          | Component library (Radix primitives) |
+| React Hook Form + Zod | —               | Form validation                      |
+| pusher-js             | —               | Real-time WebSocket client           |
+| SWR                   | —               | Client-side data fetching & cache    |
+| xterm.js + addon-fit  | —               | In-browser terminal emulator         |
+| Recharts              | —               | Data visualization (billing charts)  |
+| sonner                | —               | Toast notifications                  |
+| next-themes           | —               | Dark/light mode                      |
+| date-fns              | —               | Date manipulation                    |
+| embla-carousel-react  | —               | Carousel component                   |
 
 ### Backend
 
-| Technology | Version | Purpose |
-|---|---|---|
-| Node.js | 22 | Runtime |
-| PostgreSQL | 15+ | Primary database |
-| Drizzle ORM | 0.45 | Type-safe DB queries + migrations |
-| Better Auth | 1.6 | Authentication (magic link + Google OAuth) |
-| pg-boss | 12 | PostgreSQL-backed background job queue |
-| Pusher (server) | 5 | Real-time event broadcasting |
-| React Email | 6 | Transactional email template rendering |
-| ssh2 | — | Node.js SSH client for host server management |
-| @aws-sdk/client-s3 | — | S3-compatible object storage |
-| @polar-sh/sdk | — | Payment processing |
-| Biome | 2.4 | Linting + code formatting |
+| Technology         | Version | Purpose                                       |
+| ------------------ | ------- | --------------------------------------------- |
+| Node.js            | 22      | Runtime                                       |
+| PostgreSQL         | 15+     | Primary database                              |
+| Drizzle ORM        | 0.45    | Type-safe DB queries + migrations             |
+| Better Auth        | 1.6     | Authentication (magic link + Google OAuth)    |
+| pg-boss            | 12      | PostgreSQL-backed background job queue        |
+| Pusher (server)    | 5       | Real-time event broadcasting                  |
+| React Email        | 6       | Transactional email template rendering        |
+| ssh2               | —       | Node.js SSH client for host server management |
+| @aws-sdk/client-s3 | —       | S3-compatible object storage                  |
+| @polar-sh/sdk      | —       | Payment processing                            |
+| Biome              | 2.4     | Linting + code formatting                     |
 
 ### Infrastructure (External)
 
-| Technology | Purpose |
-|---|---|
-| **Firecracker** | MicroVM hypervisor (< 125ms boot, < 5MB overhead) |
-| **Caddy** | Per-server reverse proxy + TLS (Let's Encrypt) |
-| **Cloudflare for SaaS** | Custom-domain TLS + DDoS protection |
-| **S3-compatible storage** (iDrive E2, Backblaze B2, etc.) | Snapshot + backup storage |
-| **restic** | Content-addressed snapshot deduplication |
-| **rclone** | Multipart upload pipeline for backups |
+| Technology                                                | Purpose                                           |
+| --------------------------------------------------------- | ------------------------------------------------- |
+| **Firecracker**                                           | MicroVM hypervisor (< 125ms boot, < 5MB overhead) |
+| **Caddy**                                                 | Per-server reverse proxy + TLS (Let's Encrypt)    |
+| **Cloudflare for SaaS**                                   | Custom-domain TLS + DDoS protection               |
+| **S3-compatible storage** (iDrive E2, Backblaze B2, etc.) | Snapshot + backup storage                         |
+| **restic**                                                | Content-addressed snapshot deduplication          |
+| **rclone**                                                | Multipart upload pipeline for backups             |
 
 ### External Services
 
-| Service | Purpose |
-|---|---|
-| **Polar** | Subscription billing, credit top-ups, overage metering |
-| **EmailIt** | Transactional email delivery + marketing contact sync |
-| **Pusher / Soketi** | WebSocket real-time updates + in-browser terminal |
-| **Google OAuth** | Social login alternative |
-| **Cloudflare API** | Custom hostname DNS + cache purge |
+| Service             | Purpose                                                |
+| ------------------- | ------------------------------------------------------ |
+| **Polar**           | Subscription billing, credit top-ups, overage metering |
+| **EmailIt**         | Transactional email delivery + marketing contact sync  |
+| **Pusher / Soketi** | WebSocket real-time updates + in-browser terminal      |
+| **Google OAuth**    | Social login alternative                               |
+| **Cloudflare API**  | Custom hostname DNS + cache purge                      |
 
 ### Deployment
 
-| Technology | Purpose |
-|---|---|
-| **Dokploy** | Docker Swarm orchestration |
+| Technology         | Purpose                                             |
+| ------------------ | --------------------------------------------------- |
+| **Dokploy**        | Docker Swarm orchestration                          |
 | **GitHub Actions** | CI (lint, typecheck, unit tests, integration tests) |
-| **Docker** | Containerized worker process |
-| **pg-boss** | Persistent job queue (survives restarts) |
+| **Docker**         | Containerized worker process                        |
+| **pg-boss**        | Persistent job queue (survives restarts)            |
 
 ---
 
@@ -225,81 +225,81 @@ krova-main/
 
 ### 4.1 Cube Lifecycle Management
 
-| Feature | How It Works |
-|---|---|
-| **Create Cube** | User selects image, vCPU, RAM, disk, region → server allocated by free-capacity score → pg-boss `cube.provision` job runs via SSH → Firecracker launched in jailer chroot → guest agent handshake |
-| **Sleep / Wake** | Sleep: Firecracker paused (process suspended), prorated charge, disk continues billing. Wake: resume (fast) or cold-boot if process dead |
-| **Cold Restart** | SIGKILL + relaunch; picks up new kernel version; no data loss |
-| **Resize** | vCPU: cold restart required. RAM: live virtio-mem hot-plug (no restart). Disk: live ext4 online resize |
-| **Delete** | Optional pre-deletion backup → terminate process → free ports → wipe rootfs → delete DB record |
-| **Cross-Server Transfer** | Snapshot source → restore on destination → flip `serverId` + re-route all domains/TCP mappings atomically |
-| **Error Recovery** | `cube.error-recovery-scan` cron (5 min) finds error-state cubes → `cube.error-recovery` probes host → attempts revive (max 3 attempts) |
+| Feature                   | How It Works                                                                                                                                                                                      |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Create Cube**           | User selects image, vCPU, RAM, disk, region → server allocated by free-capacity score → pg-boss `cube.provision` job runs via SSH → Firecracker launched in jailer chroot → guest agent handshake |
+| **Sleep / Wake**          | Sleep: Firecracker paused (process suspended), prorated charge, disk continues billing. Wake: resume (fast) or cold-boot if process dead                                                          |
+| **Cold Restart**          | SIGKILL + relaunch; picks up new kernel version; no data loss                                                                                                                                     |
+| **Resize**                | vCPU: cold restart required. RAM: live virtio-mem hot-plug (no restart). Disk: live ext4 online resize                                                                                            |
+| **Delete**                | Optional pre-deletion backup → terminate process → free ports → wipe rootfs → delete DB record                                                                                                    |
+| **Cross-Server Transfer** | Snapshot source → restore on destination → flip `serverId` + re-route all domains/TCP mappings atomically                                                                                         |
+| **Error Recovery**        | `cube.error-recovery-scan` cron (5 min) finds error-state cubes → `cube.error-recovery` probes host → attempts revive (max 3 attempts)                                                            |
 
 ### 4.2 Snapshots & Backups
 
-| Feature | How It Works |
-|---|---|
-| **Auto Snapshots** | Hourly cron checks per-plan cadence; creates restic snapshot of cube disk; per-plan retention (keep-last, keep-daily, keep-weekly) |
-| **Manual Snapshots** | Customer-created, capped per plan; permanently retained until deleted |
-| **Restore** | restic dump → e2fsck → atomic replace of live rootfs → cube wakes from restored state |
-| **Export as `.cube`** | tar archive: manifest.json + rootfs.ext4.zst + checksums → S3 → presigned download URL |
-| **Clone to New Cube** | Copy snapshot to any server; optional disk growth; inject new SSH key |
-| **Pin Auto → Manual** | Convert auto snapshot to manual to prevent it being pruned |
-| **Pre-Deletion Backup** | Full `.cube` blob stored in S3 before cube is deleted; can be redeployed as new cube |
-| **Backup Redeploy** | Download `.cube` → provision new cube → inject new SSH key → re-create domains + TCP mappings |
+| Feature                 | How It Works                                                                                                                       |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| **Auto Snapshots**      | Hourly cron checks per-plan cadence; creates restic snapshot of cube disk; per-plan retention (keep-last, keep-daily, keep-weekly) |
+| **Manual Snapshots**    | Customer-created, capped per plan; permanently retained until deleted                                                              |
+| **Restore**             | restic dump → e2fsck → atomic replace of live rootfs → cube wakes from restored state                                              |
+| **Export as `.cube`**   | tar archive: manifest.json + rootfs.ext4.zst + checksums → S3 → presigned download URL                                             |
+| **Clone to New Cube**   | Copy snapshot to any server; optional disk growth; inject new SSH key                                                              |
+| **Pin Auto → Manual**   | Convert auto snapshot to manual to prevent it being pruned                                                                         |
+| **Pre-Deletion Backup** | Full `.cube` blob stored in S3 before cube is deleted; can be redeployed as new cube                                               |
+| **Backup Redeploy**     | Download `.cube` → provision new cube → inject new SSH key → re-create domains + TCP mappings                                      |
 
 ### 4.3 Billing & Subscriptions
 
-| Feature | How It Works |
-|---|---|
-| **Hourly Billing** | Cron charges every `running` cube: `(vcpus × $0.001 + ramGb × $0.0025 + diskGb × $0.00005) × tierMultiplier` |
-| **Prorated Charges** | On lifecycle change (sleep/delete/resize), fractional hours since last billing, clamped to 1 hour |
-| **Sleep Storage** | Sleeping cubes continue paying disk rate — prevents "infinite free parking" |
-| **Volume Discounts** | 1-2 vCPU: 1.0×; 3-4: 0.95×; 5-8: 0.85×; 9+: 0.8× |
-| **Plans** | Operator-managed in Orbit; includes monthly credit grant, resource limits, snapshot config |
-| **Credit Top-ups** | One-time Polar checkout; processing fee gross-upped so customer receives full face amount |
-| **Postpaid Overage** | Optional per-space cap; three-bucket cascade: prepaid → overage budget → auto-sleep |
-| **Overage Metering** | Reports `krova_overage_usd` meter events to Polar; `polar.meter-reconcile` cron replays missed events |
+| Feature              | How It Works                                                                                                 |
+| -------------------- | ------------------------------------------------------------------------------------------------------------ |
+| **Hourly Billing**   | Cron charges every `running` cube: `(vcpus × $0.001 + ramGb × $0.0025 + diskGb × $0.00005) × tierMultiplier` |
+| **Prorated Charges** | On lifecycle change (sleep/delete/resize), fractional hours since last billing, clamped to 1 hour            |
+| **Sleep Storage**    | Sleeping cubes continue paying disk rate — prevents "infinite free parking"                                  |
+| **Volume Discounts** | 1-2 vCPU: 1.0×; 3-4: 0.95×; 5-8: 0.85×; 9+: 0.8×                                                             |
+| **Plans**            | Operator-managed in Orbit; includes monthly credit grant, resource limits, snapshot config                   |
+| **Credit Top-ups**   | One-time Polar checkout; processing fee gross-upped so customer receives full face amount                    |
+| **Postpaid Overage** | Optional per-space cap; three-bucket cascade: prepaid → overage budget → auto-sleep                          |
+| **Overage Metering** | Reports `krova_overage_usd` meter events to Polar; `polar.meter-reconcile` cron replays missed events        |
 
 ### 4.4 Networking
 
-| Feature | How It Works |
-|---|---|
-| **Private IPv4** | 198.18.0.0/15 per-server bridge; cube IP derived from server subnet + per-cube octet |
-| **Private IPv6** | ULA fd00:c0be:S::octet; NAT66 outbound; no inbound IPv6 |
-| **SSH Port Mapping** | Automatic per-cube iptables DNAT; customer can change via `PUT /ssh-port` |
-| **Custom TCP Mappings** | Customer maps any cube port → allocated host port (30000–50000); optional CIDR whitelist per mapping |
-| **Custom Domains** | Cloudflare Custom Hostnames; Caddy routes verified domain to cube's private IP:port |
-| **Domain Cache Purge** | Customer or admin triggers Cloudflare cache purge; per-domain cooldown prevents rate-limit abuse |
+| Feature                 | How It Works                                                                                             |
+| ----------------------- | -------------------------------------------------------------------------------------------------------- |
+| **Private IPv4**        | 198.18.0.0/15 per-server bridge; cube IP derived from server subnet + per-cube octet                     |
+| **Private IPv6**        | ULA fd00:c0be:S::octet; NAT66 outbound; no inbound IPv6                                                  |
+| **SSH Port Mapping**    | Automatic per-cube iptables DNAT; customer can change via `PUT /ssh-port`                                |
+| **Custom TCP Mappings** | Customer maps any cube port → allocated host port (30000–50000); optional CIDR whitelist per mapping     |
+| **Custom Domains**      | Cloudflare Custom Hostnames; Caddy routes verified domain to cube's private IP:port                      |
+| **Domain Cache Purge**  | Customer or admin triggers Cloudflare cache purge; per-domain cooldown prevents rate-limit abuse         |
 | **Space Domain Claims** | Space claims ownership of a registrable domain via DNS TXT challenge; auto-releases on failure threshold |
 
 ### 4.5 Real-time & Terminal
 
-| Feature | How It Works |
-|---|---|
-| **Live Cube Status** | `cube.reachability` cron (1 min): L1 vsock ping, L2 SSH check, L3 guest metrics; broadcasts via Pusher |
+| Feature                 | How It Works                                                                                                     |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **Live Cube Status**    | `cube.reachability` cron (1 min): L1 vsock ping, L2 SSH check, L3 guest metrics; broadcasts via Pusher           |
 | **In-Browser Terminal** | xterm.js + Soketi; framed binary protocol over WebSocket; vsock PTY on host; session auto-cleans on idle/timeout |
-| **Job Log Streaming** | Each worker step emits `job.log` Pusher events; UI streams real-time provisioning progress |
+| **Job Log Streaming**   | Each worker step emits `job.log` Pusher events; UI streams real-time provisioning progress                       |
 
 ### 4.6 Team & Spaces
 
-| Feature | How It Works |
-|---|---|
-| **Spaces** | Isolation boundary; separate billing, cubes, members, domains per space |
-| **Member Invites** | Magic-link email invite; accepted invite creates `spaceMemberships` + `memberPermissions` rows |
+| Feature                  | How It Works                                                                                                    |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| **Spaces**               | Isolation boundary; separate billing, cubes, members, domains per space                                         |
+| **Member Invites**       | Magic-link email invite; accepted invite creates `spaceMemberships` + `memberPermissions` rows                  |
 | **Granular Permissions** | 8 permission types: cube (view/create/manage), billing (view/manage), members (invite/manage), webhook (manage) |
-| **Cube-Level Access** | Optional: restrict member to specific cubes via `memberCubeAssignments` |
-| **API Keys** | Per-space, scoped to creator's permissions; single-use secret (shown once); hashed SHA-256 |
-| **Ownership Transfer** | Owner can transfer to any member; demotes transferor to regular member |
+| **Cube-Level Access**    | Optional: restrict member to specific cubes via `memberCubeAssignments`                                         |
+| **API Keys**             | Per-space, scoped to creator's permissions; single-use secret (shown once); hashed SHA-256                      |
+| **Ownership Transfer**   | Owner can transfer to any member; demotes transferor to regular member                                          |
 
 ### 4.7 Webhooks & Audit
 
-| Feature | How It Works |
-|---|---|
+| Feature               | How It Works                                                                                                      |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | **Outbound Webhooks** | Per-space endpoint; 36 event types; HMAC-SHA256 signed; up to 4 retries; auto-disabled at 50 consecutive failures |
-| **Delivery History** | 30-day retention; per-event status, response code, attempts |
-| **SSRF Guard** | URL re-resolved on every delivery; blocks RFC1918/loopback/link-local/169.254.169.254 |
-| **Audit Logs** | Every mutation logged: actor (user/admin/system), entity, metadata, IP, user agent, source |
+| **Delivery History**  | 30-day retention; per-event status, response code, attempts                                                       |
+| **SSRF Guard**        | URL re-resolved on every delivery; blocks RFC1918/loopback/link-local/169.254.169.254                             |
+| **Audit Logs**        | Every mutation logged: actor (user/admin/system), entity, metadata, IP, user agent, source                        |
 
 ### 4.8 Admin (Orbit)
 
@@ -311,10 +311,10 @@ Full platform administration including fleet server management, user management,
 
 ### Login Methods
 
-| Method | Implementation | Notes |
-|---|---|---|
-| **Magic Link** | Better Auth built-in | Passwordless; first use auto-creates account; disposable email + MX validation |
-| **Google OAuth** | Better Auth Google plugin | Updates profile image on every login; `overrideUserInfoOnSignIn: true` |
+| Method           | Implementation            | Notes                                                                          |
+| ---------------- | ------------------------- | ------------------------------------------------------------------------------ |
+| **Magic Link**   | Better Auth built-in      | Passwordless; first use auto-creates account; disposable email + MX validation |
+| **Google OAuth** | Better Auth Google plugin | Updates profile image on every login; `overrideUserInfoOnSignIn: true`         |
 
 ### Session Management
 
@@ -327,17 +327,17 @@ Full platform administration including fleet server management, user management,
 
 **Platform Level:**
 
-| Role | How Set | Capabilities |
-|---|---|---|
-| `admin` | `user.role = 'admin'` | Full Orbit access, impersonation, global billing |
-| Standard user | `user.role = null` | Normal product access |
+| Role          | How Set               | Capabilities                                     |
+| ------------- | --------------------- | ------------------------------------------------ |
+| `admin`       | `user.role = 'admin'` | Full Orbit access, impersonation, global billing |
+| Standard user | `user.role = null`    | Normal product access                            |
 
 **Space Level:**
 
-| Role | How Set | Capabilities |
-|---|---|---|
-| **Owner** | `spaceMemberships.isOwner = true` | All permissions, transfer ownership |
-| **Member** | `isOwner = false` | Only explicitly granted `memberPermissions` |
+| Role       | How Set                           | Capabilities                                |
+| ---------- | --------------------------------- | ------------------------------------------- |
+| **Owner**  | `spaceMemberships.isOwner = true` | All permissions, transfer ownership         |
+| **Member** | `isOwner = false`                 | Only explicitly granted `memberPermissions` |
 
 **8 Permission Types:**
 
@@ -353,6 +353,7 @@ webhook.manage  — create/edit outbound webhooks
 ```
 
 **Cube-Level Restriction (optional):**
+
 - No `memberCubeAssignments` rows → member sees all cubes in the space
 - With rows → member restricted to assigned cubes only
 
@@ -364,87 +365,87 @@ webhook.manage  — create/edit outbound webhooks
 
 #### Authentication & Users
 
-| Table | Key Fields | Purpose |
-|---|---|---|
-| `user` | id, email, name, role, banned, marketingOptIn | User accounts (Better Auth managed) |
-| `session` | userId, token, expiresAt, impersonatedBy | Active sessions |
-| `account` | userId, providerId (google), accessToken | OAuth provider links |
-| `verification` | identifier, value, expiresAt | Email verification tokens |
+| Table          | Key Fields                                    | Purpose                             |
+| -------------- | --------------------------------------------- | ----------------------------------- |
+| `user`         | id, email, name, role, banned, marketingOptIn | User accounts (Better Auth managed) |
+| `session`      | userId, token, expiresAt, impersonatedBy      | Active sessions                     |
+| `account`      | userId, providerId (google), accessToken      | OAuth provider links                |
+| `verification` | identifier, value, expiresAt                  | Email verification tokens           |
 
 #### Spaces & Membership
 
-| Table | Key Fields | Purpose |
-|---|---|---|
-| `spaces` | id, name, creditBalance, planId, polarCustomerId, subscriptionStatus | Team workspace + billing state |
-| `spaceMemberships` | userId, spaceId, isOwner | User ↔ Space link |
-| `memberPermissions` | membershipId, permission (pgEnum) | Granular access control |
-| `memberCubeAssignments` | membershipId, cubeId | Optional per-cube restrictions |
-| `invites` | email, spaceId, token, permissions, status | Pending invitations |
-| `apiKeys` | spaceId, keyHashSha256, label, lastUsedAt | API key records |
+| Table                   | Key Fields                                                           | Purpose                        |
+| ----------------------- | -------------------------------------------------------------------- | ------------------------------ |
+| `spaces`                | id, name, creditBalance, planId, polarCustomerId, subscriptionStatus | Team workspace + billing state |
+| `spaceMemberships`      | userId, spaceId, isOwner                                             | User ↔ Space link              |
+| `memberPermissions`     | membershipId, permission (pgEnum)                                    | Granular access control        |
+| `memberCubeAssignments` | membershipId, cubeId                                                 | Optional per-cube restrictions |
+| `invites`               | email, spaceId, token, permissions, status                           | Pending invitations            |
+| `apiKeys`               | spaceId, keyHashSha256, label, lastUsedAt                            | API key records                |
 
 #### Cubes (VMs)
 
-| Table | Key Fields | Purpose |
-|---|---|---|
-| `cubes` | id, spaceId, serverId, status, vcpus, ramMb, diskLimitGb, internalIp, internalIpv6, jailerUid, launchMode, lastBilledAt | Core VM entity |
-| `allocatedPorts` | serverId, port, cubeId, purpose | TCP port pool (30000–50000) |
-| `tcpPortMappings` | cubeId, cubePort, hostPort, isSsh, status | Port forwarding rules |
-| `tcpMappingWhitelistedIps` | mappingId, cidr | CIDR whitelist per mapping |
-| `cubeTerminalSessions` | cubeId, status, jobId, expiredAt | Browser terminal sessions |
-| `cubeImports` | spaceId, uploadState, provisionState | .cube file upload tracking |
+| Table                      | Key Fields                                                                                                              | Purpose                     |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------- | --------------------------- |
+| `cubes`                    | id, spaceId, serverId, status, vcpus, ramMb, diskLimitGb, internalIp, internalIpv6, jailerUid, launchMode, lastBilledAt | Core VM entity              |
+| `allocatedPorts`           | serverId, port, cubeId, purpose                                                                                         | TCP port pool (30000–50000) |
+| `tcpPortMappings`          | cubeId, cubePort, hostPort, isSsh, status                                                                               | Port forwarding rules       |
+| `tcpMappingWhitelistedIps` | mappingId, cidr                                                                                                         | CIDR whitelist per mapping  |
+| `cubeTerminalSessions`     | cubeId, status, jobId, expiredAt                                                                                        | Browser terminal sessions   |
+| `cubeImports`              | spaceId, uploadState, provisionState                                                                                    | .cube file upload tracking  |
 
 #### Servers (Bare-Metal)
 
-| Table | Key Fields | Purpose |
-|---|---|---|
-| `servers` | id, hostname, publicIp, regionId, status, setupPhase, totalCpus, totalRamMb, bridgeSubnet, diskTopology, numaTopology | Host server registry |
-| `regions` | id, name, slug | Geographic groupings |
-| `sshKeys` | name, encryptedPrivateKey, publicKey, fingerprint | Platform SSH keys (AES-256-GCM encrypted) |
-| `platformImages` | name, kind (kernel/rootfs), sha256, version | Kernel + rootfs artifact registry |
+| Table            | Key Fields                                                                                                            | Purpose                                   |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| `servers`        | id, hostname, publicIp, regionId, status, setupPhase, totalCpus, totalRamMb, bridgeSubnet, diskTopology, numaTopology | Host server registry                      |
+| `regions`        | id, name, slug                                                                                                        | Geographic groupings                      |
+| `sshKeys`        | name, encryptedPrivateKey, publicKey, fingerprint                                                                     | Platform SSH keys (AES-256-GCM encrypted) |
+| `platformImages` | name, kind (kernel/rootfs), sha256, version                                                                           | Kernel + rootfs artifact registry         |
 
 #### Snapshots & Backups
 
-| Table | Key Fields | Purpose |
-|---|---|---|
-| `cubeSnapshots` | cubeId, name, status, sizeBytes, storagePath, kind (auto/manual), storageBackendId | restic snapshot records |
-| `cubeBackups` | spaceId, originalCubeId, cubeConfig (JSONB), sizeBytes, storagePath, storageBackendId | Full .cube blob records |
-| `storageBackends` | endpoint, region, bucket, accessKeyIdEnc, secretAccessKeyEnc, usedBytes, capacityGb | S3-compatible buckets |
+| Table             | Key Fields                                                                            | Purpose                 |
+| ----------------- | ------------------------------------------------------------------------------------- | ----------------------- |
+| `cubeSnapshots`   | cubeId, name, status, sizeBytes, storagePath, kind (auto/manual), storageBackendId    | restic snapshot records |
+| `cubeBackups`     | spaceId, originalCubeId, cubeConfig (JSONB), sizeBytes, storagePath, storageBackendId | Full .cube blob records |
+| `storageBackends` | endpoint, region, bucket, accessKeyIdEnc, secretAccessKeyEnc, usedBytes, capacityGb   | S3-compatible buckets   |
 
 #### Billing & Payments
 
-| Table | Key Fields | Purpose |
-|---|---|---|
-| `billingEvents` | spaceId, cubeId, amount, type (pgEnum), polarMeterReportedAt | Ledger of all charges + credits |
-| `creditPurchases` | spaceId, providerOrderId, amount, surchargeAmount, status | One-time top-up orders |
-| `subscriptionIntents` | spaceId, planId, providerCheckoutId, status | Plan subscription checkouts |
-| `subscriptionCreditGrants` | spaceId, providerSubscriptionId, periodEnd, amount | Per-period included credit grants |
+| Table                      | Key Fields                                                   | Purpose                           |
+| -------------------------- | ------------------------------------------------------------ | --------------------------------- |
+| `billingEvents`            | spaceId, cubeId, amount, type (pgEnum), polarMeterReportedAt | Ledger of all charges + credits   |
+| `creditPurchases`          | spaceId, providerOrderId, amount, surchargeAmount, status    | One-time top-up orders            |
+| `subscriptionIntents`      | spaceId, planId, providerCheckoutId, status                  | Plan subscription checkouts       |
+| `subscriptionCreditGrants` | spaceId, providerSubscriptionId, periodEnd, amount           | Per-period included credit grants |
 
 #### Plans
 
-| Table | Key Fields | Purpose |
-|---|---|---|
-| `plans` | name, priceUsd, includedCreditUsd, maxConcurrentCubes, maxVcpus, maxRamMb, maxDiskGb, autoSnapshotCadenceHours, polarProductId, visibility | Plan catalog |
-| `planSpaceVisibility` | planId, spaceId | Custom plan assignment |
+| Table                 | Key Fields                                                                                                                                 | Purpose                |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------- |
+| `plans`               | name, priceUsd, includedCreditUsd, maxConcurrentCubes, maxVcpus, maxRamMb, maxDiskGb, autoSnapshotCadenceHours, polarProductId, visibility | Plan catalog           |
+| `planSpaceVisibility` | planId, spaceId                                                                                                                            | Custom plan assignment |
 
 #### Domains
 
-| Table | Key Fields | Purpose |
-|---|---|---|
-| `domainMappings` | cubeId, domain, port, status, cloudflareHostnameId, verificationStatus, tlsStatus | Custom domain routing |
-| `spaceDomainClaims` | spaceId, domain, token, status, verifiedAt | Space domain ownership claims |
+| Table               | Key Fields                                                                        | Purpose                       |
+| ------------------- | --------------------------------------------------------------------------------- | ----------------------------- |
+| `domainMappings`    | cubeId, domain, port, status, cloudflareHostnameId, verificationStatus, tlsStatus | Custom domain routing         |
+| `spaceDomainClaims` | spaceId, domain, token, status, verifiedAt                                        | Space domain ownership claims |
 
 #### Platform & Configuration
 
-| Table | Key Fields | Purpose |
-|---|---|---|
-| `platformSettings` | paymentFeePercent, creditTopupMinUsd, diskQosTiers (JSONB), polarCreditProductId, polarOverageMeterId | Singleton platform config |
-| `outboundWebhookEndpoints` | spaceId, url, encryptedSecret, events[], enabled, consecutiveFailures | Customer webhook subscriptions |
-| `outboundWebhookDeliveries` | endpointId, event, payload, status, responseStatus | Delivery history |
-| `auditLogs` | action, category, actorType, actorId, entityType, entityId, spaceId, metadata (JSONB) | Full mutation audit trail |
-| `jobLogs` | jobId, jobName, entityId, sequence, level, message, stdout, stderr, durationMs | Worker step logs |
-| `idempotencyKeys` | key, responseStatus, responseBody, expiresAt | API idempotency cache |
-| `emailEvents` | userId, type, timestamp | Email delivery events (bounces, complaints) |
-| `disposableEmailDomains` | domain | Blocklist for signup validation |
+| Table                       | Key Fields                                                                                            | Purpose                                     |
+| --------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| `platformSettings`          | paymentFeePercent, creditTopupMinUsd, diskQosTiers (JSONB), polarCreditProductId, polarOverageMeterId | Singleton platform config                   |
+| `outboundWebhookEndpoints`  | spaceId, url, encryptedSecret, events[], enabled, consecutiveFailures                                 | Customer webhook subscriptions              |
+| `outboundWebhookDeliveries` | endpointId, event, payload, status, responseStatus                                                    | Delivery history                            |
+| `auditLogs`                 | action, category, actorType, actorId, entityType, entityId, spaceId, metadata (JSONB)                 | Full mutation audit trail                   |
+| `jobLogs`                   | jobId, jobName, entityId, sequence, level, message, stdout, stderr, durationMs                        | Worker step logs                            |
+| `idempotencyKeys`           | key, responseStatus, responseBody, expiresAt                                                          | API idempotency cache                       |
+| `emailEvents`               | userId, type, timestamp                                                                               | Email delivery events (bounces, complaints) |
+| `disposableEmailDomains`    | domain                                                                                                | Blocklist for signup validation             |
 
 ### Key Relationships
 
@@ -481,42 +482,42 @@ user ─── spaceMemberships ─── spaces ─── plans
 
 #### Unauthenticated
 
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/images` | List available OS images |
-| GET | `/pricing` | Hourly rates + volume tier multipliers |
-| GET | `/regions` | Active regions |
-| GET | `/openapi.json` | OpenAPI 3.1 spec |
+| Method | Endpoint        | Description                            |
+| ------ | --------------- | -------------------------------------- |
+| GET    | `/images`       | List available OS images               |
+| GET    | `/pricing`      | Hourly rates + volume tier multipliers |
+| GET    | `/regions`      | Active regions                         |
+| GET    | `/openapi.json` | OpenAPI 3.1 spec                       |
 
 #### Cubes
 
-| Method | Endpoint | Permission | Description |
-|---|---|---|---|
-| GET | `/spaces/:id/cubes` | cube.view | Paginated cube list |
-| POST | `/spaces/:id/cubes` | cube.create | Create cube |
-| GET | `/spaces/:id/cubes/:cubeId` | cube.view | Cube detail |
-| DELETE | `/spaces/:id/cubes/:cubeId` | cube.manage | Delete cube |
-| POST | `/spaces/:id/cubes/:cubeId/sleep` | cube.manage | Sleep cube |
-| POST | `/spaces/:id/cubes/:cubeId/wake` | cube.manage | Wake cube |
-| PUT | `/spaces/:id/cubes/:cubeId/ssh-port` | cube.manage | Change SSH port |
+| Method | Endpoint                             | Permission  | Description         |
+| ------ | ------------------------------------ | ----------- | ------------------- |
+| GET    | `/spaces/:id/cubes`                  | cube.view   | Paginated cube list |
+| POST   | `/spaces/:id/cubes`                  | cube.create | Create cube         |
+| GET    | `/spaces/:id/cubes/:cubeId`          | cube.view   | Cube detail         |
+| DELETE | `/spaces/:id/cubes/:cubeId`          | cube.manage | Delete cube         |
+| POST   | `/spaces/:id/cubes/:cubeId/sleep`    | cube.manage | Sleep cube          |
+| POST   | `/spaces/:id/cubes/:cubeId/wake`     | cube.manage | Wake cube           |
+| PUT    | `/spaces/:id/cubes/:cubeId/ssh-port` | cube.manage | Change SSH port     |
 
 #### Cube Imports
 
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/spaces/:id/cubes/imports` | Initiate .cube file upload |
-| GET | `/spaces/:id/cubes/imports/:importId` | Poll import status |
-| DELETE | `/spaces/:id/cubes/imports/:importId` | Cancel import |
-| POST | `/spaces/:id/cubes/imports/:importId/complete` | Finalize + provision |
+| Method | Endpoint                                       | Description                |
+| ------ | ---------------------------------------------- | -------------------------- |
+| POST   | `/spaces/:id/cubes/imports`                    | Initiate .cube file upload |
+| GET    | `/spaces/:id/cubes/imports/:importId`          | Poll import status         |
+| DELETE | `/spaces/:id/cubes/imports/:importId`          | Cancel import              |
+| POST   | `/spaces/:id/cubes/imports/:importId/complete` | Finalize + provision       |
 
 #### Snapshots
 
-| Method | Endpoint | Permission |
-|---|---|---|
-| GET | `/spaces/:id/cubes/:cubeId/snapshots` | cube.view |
-| POST | `/spaces/:id/cubes/:cubeId/snapshots` | cube.manage |
+| Method | Endpoint                                          | Permission  |
+| ------ | ------------------------------------------------- | ----------- |
+| GET    | `/spaces/:id/cubes/:cubeId/snapshots`             | cube.view   |
+| POST   | `/spaces/:id/cubes/:cubeId/snapshots`             | cube.manage |
 | DELETE | `/spaces/:id/cubes/:cubeId/snapshots/:snapshotId` | cube.manage |
-| POST | `/spaces/:id/cubes/:cubeId/restore` | cube.manage |
+| POST   | `/spaces/:id/cubes/:cubeId/restore`               | cube.manage |
 
 #### Domains, TCP Mappings, Webhooks
 
@@ -524,9 +525,9 @@ All follow standard REST CRUD pattern under `/spaces/:id/cubes/:cubeId/domains`,
 
 #### Backups
 
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/spaces/:id/backups/:backupId/download` | Presigned S3 URL (15 min TTL) |
+| Method | Endpoint                                 | Description                   |
+| ------ | ---------------------------------------- | ----------------------------- |
+| GET    | `/spaces/:id/backups/:backupId/download` | Presigned S3 URL (15 min TTL) |
 
 ---
 
@@ -550,11 +551,11 @@ Admin-only routes (require `role === 'admin'`). Cover:
 
 ### Inbound Webhooks
 
-| Endpoint | Source | Verification |
-|---|---|---|
-| `POST /api/webhooks/polar` | Polar payment events | HMAC-SHA256 (`POLAR_WEBHOOK_SECRET`) |
-| `POST /api/webhooks/emailit` | Email delivery events | HMAC-SHA256 (`EMAILIT_WEBHOOK_SECRET`) |
-| `POST /api/internal/server-rebooted` | Host server boot | Internal key |
+| Endpoint                             | Source                | Verification                           |
+| ------------------------------------ | --------------------- | -------------------------------------- |
+| `POST /api/webhooks/polar`           | Polar payment events  | HMAC-SHA256 (`POLAR_WEBHOOK_SECRET`)   |
+| `POST /api/webhooks/emailit`         | Email delivery events | HMAC-SHA256 (`EMAILIT_WEBHOOK_SECRET`) |
+| `POST /api/internal/server-rebooted` | Host server boot      | Internal key                           |
 
 ---
 
@@ -562,27 +563,27 @@ Admin-only routes (require `role === 'admin'`). Cover:
 
 ### Pages
 
-| Route Group | Pages | Auth |
-|---|---|---|
-| `(landing)` | `/`, `/pricing`, `/security`, `/docs/api`, `/privacy`, `/terms`, `/aup`, `/cookies` | Public |
-| `(auth)` | `/login`, `/signup`, `/invite/[token]`, `/post-auth` | Unauthenticated |
-| `(dashboard)/[spaceId]` | `/cubes`, `/cubes/new`, `/cubes/[cubeId]` (detail tabs), `/billing`, `/billing/plans`, `/members`, `/settings`, `/backups`, `/webhooks` | Authenticated |
-| `(orbit)/orbit` | Full admin panel (20+ pages) | Admin only |
-| `(terminal)/[spaceId]/cubes/[cubeId]/terminal` | Full-viewport terminal | Authenticated |
+| Route Group                                    | Pages                                                                                                                                   | Auth            |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| `(landing)`                                    | `/`, `/pricing`, `/security`, `/docs/api`, `/privacy`, `/terms`, `/aup`, `/cookies`                                                     | Public          |
+| `(auth)`                                       | `/login`, `/signup`, `/invite/[token]`, `/post-auth`                                                                                    | Unauthenticated |
+| `(dashboard)/[spaceId]`                        | `/cubes`, `/cubes/new`, `/cubes/[cubeId]` (detail tabs), `/billing`, `/billing/plans`, `/members`, `/settings`, `/backups`, `/webhooks` | Authenticated   |
+| `(orbit)/orbit`                                | Full admin panel (20+ pages)                                                                                                            | Admin only      |
+| `(terminal)/[spaceId]/cubes/[cubeId]/terminal` | Full-viewport terminal                                                                                                                  | Authenticated   |
 
 ### Key Components
 
-| Component | Purpose |
-|---|---|
-| `cube-list.tsx` | Table of cubes with live status badges |
-| `cube-detail-*.tsx` | Tabbed cube detail (overview, connect, networking, snapshots, activity) |
-| `cube-terminal-client.tsx` | xterm.js terminal (handles stdin/stdout/resize/exit frames) |
-| `space-billing.tsx` | Credit balance, burn rate, billing history |
-| `domain-mappings.tsx` | Add/remove custom domains with status indicators |
-| `tcp-mappings.tsx` | TCP port mapping management |
-| `members-page.tsx` | Team member list + permission management |
-| `orbit/servers-table.tsx` | Fleet server management |
-| `billing/plan-selection-sheet.tsx` | Plan comparison + checkout |
+| Component                          | Purpose                                                                 |
+| ---------------------------------- | ----------------------------------------------------------------------- |
+| `cube-list.tsx`                    | Table of cubes with live status badges                                  |
+| `cube-detail-*.tsx`                | Tabbed cube detail (overview, connect, networking, snapshots, activity) |
+| `cube-terminal-client.tsx`         | xterm.js terminal (handles stdin/stdout/resize/exit frames)             |
+| `space-billing.tsx`                | Credit balance, burn rate, billing history                              |
+| `domain-mappings.tsx`              | Add/remove custom domains with status indicators                        |
+| `tcp-mappings.tsx`                 | TCP port mapping management                                             |
+| `members-page.tsx`                 | Team member list + permission management                                |
+| `orbit/servers-table.tsx`          | Fleet server management                                                 |
+| `billing/plan-selection-sheet.tsx` | Plan comparison + checkout                                              |
 
 ### State Management
 
@@ -616,34 +617,34 @@ Client Components (leaf nodes only)
 
 ### Services / Business Logic Layer
 
-| Module | Location | Responsibility |
-|---|---|---|
-| **Billing math** | `lib/billing.ts`, `lib/cost.ts`, `lib/cost-shared.ts` | Hourly rates, tier multipliers, cost projections |
-| **Plan limits** | `lib/plan/limits.ts`, `lib/plan/usage.ts` | Enforce per-plan caps, compute effective overrides |
-| **Cube actions** | `lib/cube-actions/` | Sleep, wake, domain, snapshots, TCP, SSH port business logic |
-| **SSH management** | `lib/ssh/` | Connect to host, run Firecracker, manage jailer, configure guest network |
-| **Storage** | `lib/storage/` | S3 operations, restic commands, rclone, cube archive format |
-| **Cloudflare** | `lib/cloudflare/` | Custom hostnames, DNS, cache purge |
-| **Email** | `lib/email/`, `lib/emailit/` | Template rendering, send via EmailIt API |
-| **Auth helpers** | `lib/api/auth-helpers.ts`, `lib/actions/auth-helpers.ts` | Session extraction, permission checks |
-| **Audit** | `lib/audit.ts` | Write audit log entries |
-| **Domain claims** | `lib/domains/` | TXT verification, coverage logic, cache purge |
+| Module             | Location                                                 | Responsibility                                                           |
+| ------------------ | -------------------------------------------------------- | ------------------------------------------------------------------------ |
+| **Billing math**   | `lib/billing.ts`, `lib/cost.ts`, `lib/cost-shared.ts`    | Hourly rates, tier multipliers, cost projections                         |
+| **Plan limits**    | `lib/plan/limits.ts`, `lib/plan/usage.ts`                | Enforce per-plan caps, compute effective overrides                       |
+| **Cube actions**   | `lib/cube-actions/`                                      | Sleep, wake, domain, snapshots, TCP, SSH port business logic             |
+| **SSH management** | `lib/ssh/`                                               | Connect to host, run Firecracker, manage jailer, configure guest network |
+| **Storage**        | `lib/storage/`                                           | S3 operations, restic commands, rclone, cube archive format              |
+| **Cloudflare**     | `lib/cloudflare/`                                        | Custom hostnames, DNS, cache purge                                       |
+| **Email**          | `lib/email/`, `lib/emailit/`                             | Template rendering, send via EmailIt API                                 |
+| **Auth helpers**   | `lib/api/auth-helpers.ts`, `lib/actions/auth-helpers.ts` | Session extraction, permission checks                                    |
+| **Audit**          | `lib/audit.ts`                                           | Write audit log entries                                                  |
+| **Domain claims**  | `lib/domains/`                                           | TXT verification, coverage logic, cache purge                            |
 
 ### Worker System (pg-boss)
 
 **78 background job handlers** organized into queues:
 
-| Queue Category | Key Jobs |
-|---|---|
+| Queue Category     | Key Jobs                                                                                                 |
+| ------------------ | -------------------------------------------------------------------------------------------------------- |
 | **Cube lifecycle** | provision, delete, sleep, wake, cold-restart, resize, transfer, error-recovery, state-sync, reachability |
-| **Snapshots** | create, restore, delete, export, prune, scheduler, stale-check |
-| **Backups** | create, delete, redeploy, stale-check |
-| **Billing** | hourly charge, topup reconcile, polar meter reconcile |
-| **Networking** | domain add/remove/cache-purge, TCP mapping add/remove/enable/disable/whitelist |
-| **Server setup** | 6-phase idempotent: bootstrap → install → pull_images → network → reboot → verify |
-| **Webhooks** | outbound delivery with retries |
-| **Email** | send, outbox reap, events prune |
-| **Maintenance** | restic prune/check, storage health-check/cleanup, terminal reaper, job-log prune |
+| **Snapshots**      | create, restore, delete, export, prune, scheduler, stale-check                                           |
+| **Backups**        | create, delete, redeploy, stale-check                                                                    |
+| **Billing**        | hourly charge, topup reconcile, polar meter reconcile                                                    |
+| **Networking**     | domain add/remove/cache-purge, TCP mapping add/remove/enable/disable/whitelist                           |
+| **Server setup**   | 6-phase idempotent: bootstrap → install → pull_images → network → reboot → verify                        |
+| **Webhooks**       | outbound delivery with retries                                                                           |
+| **Email**          | send, outbox reap, events prune                                                                          |
+| **Maintenance**    | restic prune/check, storage health-check/cleanup, terminal reaper, job-log prune                         |
 
 **Key architectural invariants:**
 
@@ -655,14 +656,14 @@ Client Components (leaf nodes only)
 
 ### Middleware / Auth Guards
 
-| Guard | Used In | Logic |
-|---|---|---|
-| `requireSession()` | API routes | Session from cookie/header; 401 if missing |
-| `requireAdmin()` | Orbit API routes | `user.role === 'admin'`; 403 otherwise |
-| `requireSpaceMember()` | Space API routes | Member of space; 403 otherwise |
-| `requirePermission()` | Feature API routes | Permission in `memberPermissions` or `isOwner`; 403 otherwise |
-| `requireCubeAccess()` | Cube API routes | No assignments = allowed; with assignments = check list |
-| `requireActionMembershipAndPermission()` | Server Actions | Same logic for server-side mutations |
+| Guard                                    | Used In            | Logic                                                         |
+| ---------------------------------------- | ------------------ | ------------------------------------------------------------- |
+| `requireSession()`                       | API routes         | Session from cookie/header; 401 if missing                    |
+| `requireAdmin()`                         | Orbit API routes   | `user.role === 'admin'`; 403 otherwise                        |
+| `requireSpaceMember()`                   | Space API routes   | Member of space; 403 otherwise                                |
+| `requirePermission()`                    | Feature API routes | Permission in `memberPermissions` or `isOwner`; 403 otherwise |
+| `requireCubeAccess()`                    | Cube API routes    | No assignments = allowed; with assignments = check list       |
+| `requireActionMembershipAndPermission()` | Server Actions     | Same logic for server-side mutations                          |
 
 ---
 
@@ -707,41 +708,41 @@ Client Components (leaf nodes only)
 
 ### Strengths
 
-| Area | Implementation |
-|---|---|
-| **SQL injection** | None possible — Drizzle ORM parameterized queries throughout |
-| **Webhook integrity** | HMAC-SHA256 verification on all inbound webhooks (Polar, EmailIt) |
-| **Outbound SSRF** | `lib/webhook-ssrf.ts` re-resolves hostname on delivery; blocks RFC1918/loopback/link-local/169.254.169.254 |
-| **Secrets storage** | SSH keys, S3 credentials, webhook secrets AES-256-GCM encrypted in DB |
-| **Session security** | Cookie-based sessions; 60s cache + DB reverification of ban/role status |
-| **Input validation** | Zod schemas on all API inputs; server-side only |
-| **Disposable email blocking** | DB blocklist + DNS MX lookup on signup |
-| **Cloud-init isolation** | Disabled by default; per-cube opt-in; no default distro user created |
-| **Unattended upgrades** | Security-only pocket; `krova-agent` + `sshd` pinned to no-restart |
-| **iptables default-deny** | Stateful default-deny on host INPUT; explicit allow-list |
+| Area                          | Implementation                                                                                             |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| **SQL injection**             | None possible — Drizzle ORM parameterized queries throughout                                               |
+| **Webhook integrity**         | HMAC-SHA256 verification on all inbound webhooks (Polar, EmailIt)                                          |
+| **Outbound SSRF**             | `lib/webhook-ssrf.ts` re-resolves hostname on delivery; blocks RFC1918/loopback/link-local/169.254.169.254 |
+| **Secrets storage**           | SSH keys, S3 credentials, webhook secrets AES-256-GCM encrypted in DB                                      |
+| **Session security**          | Cookie-based sessions; 60s cache + DB reverification of ban/role status                                    |
+| **Input validation**          | Zod schemas on all API inputs; server-side only                                                            |
+| **Disposable email blocking** | DB blocklist + DNS MX lookup on signup                                                                     |
+| **Cloud-init isolation**      | Disabled by default; per-cube opt-in; no default distro user created                                       |
+| **Unattended upgrades**       | Security-only pocket; `krova-agent` + `sshd` pinned to no-restart                                          |
+| **iptables default-deny**     | Stateful default-deny on host INPUT; explicit allow-list                                                   |
 
 ### Firecracker Security Model
 
-| Layer | Implementation |
-|---|---|
-| **Per-cube UID/GID** | Unique unprivileged uid (base 100,000) per cube via jailer |
-| **Chroot isolation** | Per-cube jailer chroot at `/var/lib/krova/jail/firecracker/<cubeId>/root/` |
-| **PID namespace** | `--new-pid-ns` — escape lands as unprivileged user in chroot |
-| **Seccomp** | Firecracker default restrictive seccomp filter; never `--no-seccomp` |
-| **KSM disabled** | No cross-VM page deduplication (side-channel risk) |
-| **nx_huge_pages=never** | KVM iTLB-multihit mitigation |
-| **CPU cgroup fairness** | `cpu.weight` + `io.max` per cube (work-conserving) |
-| **NUMA pinning** | Per-NUMA-node cpuset assignment |
+| Layer                   | Implementation                                                             |
+| ----------------------- | -------------------------------------------------------------------------- |
+| **Per-cube UID/GID**    | Unique unprivileged uid (base 100,000) per cube via jailer                 |
+| **Chroot isolation**    | Per-cube jailer chroot at `/var/lib/krova/jail/firecracker/<cubeId>/root/` |
+| **PID namespace**       | `--new-pid-ns` — escape lands as unprivileged user in chroot               |
+| **Seccomp**             | Firecracker default restrictive seccomp filter; never `--no-seccomp`       |
+| **KSM disabled**        | No cross-VM page deduplication (side-channel risk)                         |
+| **nx_huge_pages=never** | KVM iTLB-multihit mitigation                                               |
+| **CPU cgroup fairness** | `cpu.weight` + `io.max` per cube (work-conserving)                         |
+| **NUMA pinning**        | Per-NUMA-node cpuset assignment                                            |
 
 ### Known Risks & Gaps
 
-| Risk | Severity | Status |
-|---|---|---|
-| **SMT enabled by default** | Medium | Documented — operator can disable; costs 50% throughput |
-| **No E2E tests in CI gate** | Low | E2E script exists; not in PR gate |
-| **Per-space billing loop** | Low | If one space throws, subsequent spaces skip that billing window; reconcile cron compensates |
-| **No Renovate/Dependabot** | Low | Manual dependency updates |
-| **No SBOM** | Low | No compliance audit artifact |
+| Risk                        | Severity | Status                                                                                      |
+| --------------------------- | -------- | ------------------------------------------------------------------------------------------- |
+| **SMT enabled by default**  | Medium   | Documented — operator can disable; costs 50% throughput                                     |
+| **No E2E tests in CI gate** | Low      | E2E script exists; not in PR gate                                                           |
+| **Per-space billing loop**  | Low      | If one space throws, subsequent spaces skip that billing window; reconcile cron compensates |
+| **No Renovate/Dependabot**  | Low      | Manual dependency updates                                                                   |
+| **No SBOM**                 | Low      | No compliance audit artifact                                                                |
 
 ---
 
@@ -761,13 +762,13 @@ Client Components (leaf nodes only)
 
 ### Anti-Patterns / Weaknesses
 
-| Issue | Impact | Recommendation |
-|---|---|---|
-| **No domain package boundaries** | Moderate | A feature change touches `app/`, `lib/`, `db/schema/`, `components/` with no clear module boundary |
-| **Error messages inconsistent** | Low | Some mutations return generic "Plan change failed"; `polarErrorDetail()` pattern exists but not applied everywhere |
-| **Billing loop not per-space idempotent** | Low | Per-space billing in a flat loop; single throw skips subsequent spaces |
-| **Documentation drift risk** | Low | CLAUDE.md summaries reference markdown docs that may drift |
-| **No chaos/failure injection tests** | Low | No coverage for Polar API hang, Postgres unavailable, S3 down |
+| Issue                                     | Impact   | Recommendation                                                                                                     |
+| ----------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------ |
+| **No domain package boundaries**          | Moderate | A feature change touches `app/`, `lib/`, `db/schema/`, `components/` with no clear module boundary                 |
+| **Error messages inconsistent**           | Low      | Some mutations return generic "Plan change failed"; `polarErrorDetail()` pattern exists but not applied everywhere |
+| **Billing loop not per-space idempotent** | Low      | Per-space billing in a flat loop; single throw skips subsequent spaces                                             |
+| **Documentation drift risk**              | Low      | CLAUDE.md summaries reference markdown docs that may drift                                                         |
+| **No chaos/failure injection tests**      | Low      | No coverage for Polar API hang, Postgres unavailable, S3 down                                                      |
 
 ### Refactoring Opportunities
 
@@ -782,24 +783,24 @@ Client Components (leaf nodes only)
 
 ### Potential Bottlenecks
 
-| Area | Issue | Mitigation |
-|---|---|---|
-| **Billing cron** | Scans all `running` cubes at top of hour | Index on `(status, spaceId)` + per-space advisory lock + parallel space processing |
-| **Reachability cron** | 1-minute interval, all cubes | Batched 10 servers in parallel; vsock check is lightweight TCP CONNECT |
-| **Domain polling** | Cloudflare Custom Hostname status | 1-min fast poll + 30-min slow-poll for active rows; cached status in DB |
-| **Snapshot creation** | restic backup of running cube disk | Firecracker paused during snapshot → disk quiesced; S3 upload async |
-| **Terminal WebSocket** | High-throughput terminal output | Chunked ≤64 KB frames; Soketi handles fan-out; xterm.js renders efficiently |
+| Area                   | Issue                                    | Mitigation                                                                         |
+| ---------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------- |
+| **Billing cron**       | Scans all `running` cubes at top of hour | Index on `(status, spaceId)` + per-space advisory lock + parallel space processing |
+| **Reachability cron**  | 1-minute interval, all cubes             | Batched 10 servers in parallel; vsock check is lightweight TCP CONNECT             |
+| **Domain polling**     | Cloudflare Custom Hostname status        | 1-min fast poll + 30-min slow-poll for active rows; cached status in DB            |
+| **Snapshot creation**  | restic backup of running cube disk       | Firecracker paused during snapshot → disk quiesced; S3 upload async                |
+| **Terminal WebSocket** | High-throughput terminal output          | Chunked ≤64 KB frames; Soketi handles fan-out; xterm.js renders efficiently        |
 
 ### Database Optimization
 
-| Table | Strategy |
-|---|---|
-| `cubes` | Composite indexes: `(status, spaceId)`, `(status)`, `(serverId)`, `(transferState)`, per-server unique port+IP constraints |
-| `billingEvents` | Indexes: `cubeId`, `createdAt`, `(spaceId, type)`, `(spaceId, createdAt)` |
-| `domainMappings` | Partial unique index: `(domain)` where `verificationStatus = 'verified'` |
-| `auditLogs` | Periodic truncation via Orbit admin action |
-| `jobLogs` | Daily prune cron: errors >90d, info/warn >30d, per-entity cap 5000 rows |
-| `outboundWebhookDeliveries` | 30-day retention pruned daily |
+| Table                       | Strategy                                                                                                                   |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `cubes`                     | Composite indexes: `(status, spaceId)`, `(status)`, `(serverId)`, `(transferState)`, per-server unique port+IP constraints |
+| `billingEvents`             | Indexes: `cubeId`, `createdAt`, `(spaceId, type)`, `(spaceId, createdAt)`                                                  |
+| `domainMappings`            | Partial unique index: `(domain)` where `verificationStatus = 'verified'`                                                   |
+| `auditLogs`                 | Periodic truncation via Orbit admin action                                                                                 |
+| `jobLogs`                   | Daily prune cron: errors >90d, info/warn >30d, per-entity cap 5000 rows                                                    |
+| `outboundWebhookDeliveries` | 30-day retention pruned daily                                                                                              |
 
 ### Frontend Optimization
 
@@ -815,17 +816,17 @@ Client Components (leaf nodes only)
 
 ### Features Appearing Incomplete
 
-| Feature | Evidence | Status |
-|---|---|---|
-| **IPv6 public per-cube** | 6-phase plan in `docs/superpowers/plans/` | Planned — phases 1-6 documented; not yet shipped |
-| **Dedicated IPs** | `docs/superpowers/plans/2026-06-01-dedicated-ips.md` | Planned |
-| **CPU NUMA placement** | Design spec exists; `NUMA_PLACEMENT_ENABLED = true` toggle | Partial — toggle in config, handler implemented |
-| **Disk I/O QoS tiers** | `disk-qos-tiers` in platformSettings; cron deploys | Shipped (2026-06-05 deployment runbook) |
-| **Log aggregation / AI digest** | `docs/superpowers/plans/2026-06-04-log-aggregation-ai-digest.md` | Planned |
-| **Prepaid → PAYG billing** | `docs/superpowers/plans/2026-06-05-prepaid-payg-billing.md` | In design |
-| **Stripe migration** | `docs/audits/2026-06-05-polar-to-stripe-evaluation.md` | Evaluated, not decided |
-| **Custom domain self-hosted ingress** | Design spec exists | Planned |
-| **Homepage revamp** | Design spec exists | Planned |
+| Feature                               | Evidence                                                         | Status                                           |
+| ------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------ |
+| **IPv6 public per-cube**              | 6-phase plan in `docs/superpowers/plans/`                        | Planned — phases 1-6 documented; not yet shipped |
+| **Dedicated IPs**                     | `docs/superpowers/plans/2026-06-01-dedicated-ips.md`             | Planned                                          |
+| **CPU NUMA placement**                | Design spec exists; `NUMA_PLACEMENT_ENABLED = true` toggle       | Partial — toggle in config, handler implemented  |
+| **Disk I/O QoS tiers**                | `disk-qos-tiers` in platformSettings; cron deploys               | Shipped (2026-06-05 deployment runbook)          |
+| **Log aggregation / AI digest**       | `docs/superpowers/plans/2026-06-04-log-aggregation-ai-digest.md` | Planned                                          |
+| **Prepaid → PAYG billing**            | `docs/superpowers/plans/2026-06-05-prepaid-payg-billing.md`      | In design                                        |
+| **Stripe migration**                  | `docs/audits/2026-06-05-polar-to-stripe-evaluation.md`           | Evaluated, not decided                           |
+| **Custom domain self-hosted ingress** | Design spec exists                                               | Planned                                          |
+| **Homepage revamp**                   | Design spec exists                                               | Planned                                          |
 
 ### TODOs in Code (Notable)
 
@@ -1085,6 +1086,7 @@ Response { id, status: "pending", ... }
 Krova is a cloud infrastructure platform similar to DigitalOcean or AWS Lightsail, but with a key difference: every virtual machine (which Krova calls a "Cube") runs in its own hardware-isolated sandbox using the same technology that powers AWS Lambda. This means your workloads are protected from noisy neighbours and security vulnerabilities that can affect shared container platforms.
 
 **What can you do with it?**
+
 - Spin up a Linux server in under 2 minutes with full root SSH access
 - Scale resources up or down without interrupting your workload
 - Point your own domain at any Cube with automatic TLS, protected by Cloudflare
@@ -1092,6 +1094,7 @@ Krova is a cloud infrastructure platform similar to DigitalOcean or AWS Lightsai
 - Invite your team with fine-grained permissions
 
 **Why does it matter for your business?**
+
 - Pay only for what you use — billed by the minute, no hidden fees
 - No public IP by default — dramatically reduced attack surface
 - Volume discounts as your usage grows
@@ -1104,6 +1107,7 @@ Krova is a cloud infrastructure platform similar to DigitalOcean or AWS Lightsai
 **Project type:** B2B/B2D (developer-focused) SaaS infrastructure platform
 
 **Technical scope:**
+
 - Full-stack Next.js 16 application with a separate background worker process
 - 35 database tables, 77 migrations, comprehensive audit logging
 - 78 background job handlers covering the complete infrastructure lifecycle
@@ -1113,12 +1117,14 @@ Krova is a cloud infrastructure platform similar to DigitalOcean or AWS Lightsai
 **Development maturity:** Production-ready. Active audit trails in `docs/audits/` (2026-06-02, 2026-06-05), documented rollout runbooks, CI pipeline with unit + integration tests.
 
 **Active work streams (June 2026):**
+
 - IPv6 public addresses per cube (6-phase rollout planned)
 - Disk I/O QoS tiers (recently shipped)
 - Prepaid → PAYG billing model redesign (in design)
 - Homepage revamp
 
 **Risk areas:**
+
 - Polar → Stripe migration being evaluated (billing provider change = high complexity)
 - E2E tests not gated in CI
 
@@ -1150,54 +1156,49 @@ Krova is a cloud infrastructure platform similar to DigitalOcean or AWS Lightsai
 
 ### Strengths
 
-| Strength | Detail |
-|---|---|
-| **Strong security foundation** | Firecracker jailer isolation with per-cube UID/chroot/PID-namespace; host firewall; KSM disabled; seccomp filters |
+| Strength                         | Detail                                                                                                                                  |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| **Strong security foundation**   | Firecracker jailer isolation with per-cube UID/chroot/PID-namespace; host firewall; KSM disabled; seccomp filters                       |
 | **Production-grade reliability** | 78 idempotent job handlers; pg-boss at-least-once delivery; per-space advisory locks; stale-lock auto-recovery; guarded-connect pattern |
-| **Transparent billing** | Credit-based ledger with full audit trail; prorated charges; volume discounts; detailed burn-rate projections |
-| **Excellent documentation** | Architecture docs, security docs, rollout runbooks, design specs for every planned feature |
-| **Comprehensive test coverage** | Unit tests for all pure functions; migration smoke tests; integration tests; CI gates |
-| **Operational automation** | 6-phase automated server setup; fleet-wide image updates; maintenance crons for pruning, verification, reconciliation |
-| **Clean data model** | 35 well-normalized tables; encrypted credentials; full audit trail; no orphan objects (S3 cleanup cron) |
-| **Real-time UX** | Live cube status, in-browser terminal, job log streaming — no page reloads |
+| **Transparent billing**          | Credit-based ledger with full audit trail; prorated charges; volume discounts; detailed burn-rate projections                           |
+| **Excellent documentation**      | Architecture docs, security docs, rollout runbooks, design specs for every planned feature                                              |
+| **Comprehensive test coverage**  | Unit tests for all pure functions; migration smoke tests; integration tests; CI gates                                                   |
+| **Operational automation**       | 6-phase automated server setup; fleet-wide image updates; maintenance crons for pruning, verification, reconciliation                   |
+| **Clean data model**             | 35 well-normalized tables; encrypted credentials; full audit trail; no orphan objects (S3 cleanup cron)                                 |
+| **Real-time UX**                 | Live cube status, in-browser terminal, job log streaming — no page reloads                                                              |
 
 ### Weaknesses
 
-| Weakness | Impact |
-|---|---|
-| **No domain package boundaries** | Large flat `lib/` directory; feature changes touch many files across the codebase |
-| **E2E tests not in CI gate** | Critical user flows (cube provision, billing checkout, domain setup) not automatically regression-tested on PRs |
-| **Billing loop not fully isolated per space** | One failing space can skip subsequent spaces in the hourly billing loop |
-| **Stripe migration evaluation unresolved** | Polar → Stripe is under evaluation; a billing provider change is the highest-risk refactor in the system |
-| **No Renovate/Dependabot** | Dependency updates manual; supply chain risk grows over time |
+| Weakness                                      | Impact                                                                                                          |
+| --------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| **No domain package boundaries**              | Large flat `lib/` directory; feature changes touch many files across the codebase                               |
+| **E2E tests not in CI gate**                  | Critical user flows (cube provision, billing checkout, domain setup) not automatically regression-tested on PRs |
+| **Billing loop not fully isolated per space** | One failing space can skip subsequent spaces in the hourly billing loop                                         |
+| **Stripe migration evaluation unresolved**    | Polar → Stripe is under evaluation; a billing provider change is the highest-risk refactor in the system        |
+| **No Renovate/Dependabot**                    | Dependency updates manual; supply chain risk grows over time                                                    |
 
 ### Risks
 
-| Risk | Likelihood | Severity | Mitigation |
-|---|---|---|---|
-| **APP_SECRET loss** | Low | Critical | Encrypted credentials become unrecoverable; back up APP_SECRET separately |
-| **PostgreSQL single point of failure** | Low | High | pg-boss and the app both depend on Postgres; no read-replica or HA documented |
-| **Polar API outage** | Medium | Medium | Subscription events missed; `subscription.reconcile` cron heals within 1h |
-| **Cloudflare rate-limit on domain polling** | Low | Low | Per-domain cooldown + slow-poll implemented |
-| **Host server compromise** | Low | High | Firecracker jailer limits blast radius; per-cube isolation prevents lateral movement |
-| **SMT-enabled timing side-channels** | Low | Medium | Documented decision; operator can disable at cost of 50% throughput |
+| Risk                                        | Likelihood | Severity | Mitigation                                                                           |
+| ------------------------------------------- | ---------- | -------- | ------------------------------------------------------------------------------------ |
+| **APP_SECRET loss**                         | Low        | Critical | Encrypted credentials become unrecoverable; back up APP_SECRET separately            |
+| **PostgreSQL single point of failure**      | Low        | High     | pg-boss and the app both depend on Postgres; no read-replica or HA documented        |
+| **Polar API outage**                        | Medium     | Medium   | Subscription events missed; `subscription.reconcile` cron heals within 1h            |
+| **Cloudflare rate-limit on domain polling** | Low        | Low      | Per-domain cooldown + slow-poll implemented                                          |
+| **Host server compromise**                  | Low        | High     | Firecracker jailer limits blast radius; per-cube isolation prevents lateral movement |
+| **SMT-enabled timing side-channels**        | Low        | Medium   | Documented decision; operator can disable at cost of 50% throughput                  |
 
 ### Recommendations
 
 **Immediate (low-effort, high-value):**
+
 1. Add E2E tests for critical paths (cube provision, billing checkout) to the CI gate
 2. Enable Renovate or Dependabot for automated dependency updates
 3. Apply `polarErrorDetail()` consistently to all plan-change error paths
 
-**Short-term (moderate effort):**
-4. Per-space idempotent billing job with `singletonKey` (isolates billing failures)
-5. Document operational runbook: troubleshooting guide, rollback procedures, incident response
-6. Add SBOM generation (cyclonedx) for compliance readiness
+**Short-term (moderate effort):** 4. Per-space idempotent billing job with `singletonKey` (isolates billing failures) 5. Document operational runbook: troubleshooting guide, rollback procedures, incident response 6. Add SBOM generation (cyclonedx) for compliance readiness
 
-**Long-term (architectural):**
-7. Resolve Polar → Stripe decision; if migrating, do it as a phased dual-write with feature flags
-8. Extract `packages/` structure for shared domain logic (billing-types, plan-limits, cube-state) to enforce module boundaries
-9. PostgreSQL HA setup (read replica + automated failover) before significant scale
+**Long-term (architectural):** 7. Resolve Polar → Stripe decision; if migrating, do it as a phased dual-write with feature flags 8. Extract `packages/` structure for shared domain logic (billing-types, plan-limits, cube-state) to enforce module boundaries 9. PostgreSQL HA setup (read replica + automated failover) before significant scale
 
 ### Final Verdict
 
@@ -1205,4 +1206,4 @@ Krova is a **well-engineered, production-quality infrastructure platform** with 
 
 ---
 
-*End of analysis. Total codebase: ~1,100 files, 77 migrations, 35 DB tables, 78 worker handlers, 3 API surfaces.*
+_End of analysis. Total codebase: ~1,100 files, 77 migrations, 35 DB tables, 78 worker handlers, 3 API surfaces._

@@ -5,7 +5,12 @@ import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import useSWR, { mutate } from "swr";
 import { CheckIcon, XIcon } from "@phosphor-icons/react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -41,9 +46,15 @@ interface NotificationPanelProps {
 
 export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = React.useState<"all" | "unread" | "mentions">("all");
+  const [activeTab, setActiveTab] = React.useState<
+    "all" | "unread" | "mentions"
+  >("all");
 
-  const { data, isLoading, mutate: revalidate } = useSWR<NotificationsResponse>(
+  const {
+    data,
+    isLoading,
+    mutate: revalidate,
+  } = useSWR<NotificationsResponse>(
     open ? `/api/me/notifications?filter=${activeTab}` : null,
     fetcher,
     { refreshInterval: open ? 15000 : 0 },
@@ -93,24 +104,56 @@ export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="flex w-full flex-col p-0 sm:max-w-md">
-        <SheetHeader className="flex-row items-center justify-between border-b px-4 py-3">
-          <SheetTitle>Notifications</SheetTitle>
-          <Button variant="ghost" size="sm" onClick={markAllRead} className="text-xs">
-            <CheckIcon className="mr-1 size-3" />
-            Mark all read
-          </Button>
-        </SheetHeader>
+      <SheetContent
+        side="right"
+        className="flex w-full flex-col p-0 sm:max-w-md rounded-l-[20px]"
+      >
+        <SheetHeader className="relative border-b px-4 pt-3 pb-2 flex flex-col gap-1">
+          {/* Row 1: Title + Close button */}
+          <div className="flex items-center justify-between pr-6">
+            <SheetTitle>Notifications</SheetTitle>
+          </div>
 
-        <div className="border-b px-4 py-2">
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
-            <TabsList className="h-8">
-              <TabsTrigger value="all" className="text-xs px-3 h-7">All</TabsTrigger>
-              <TabsTrigger value="unread" className="text-xs px-3 h-7">Unread</TabsTrigger>
-              <TabsTrigger value="mentions" className="text-xs px-3 h-7">Mentions</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
+          {/* Row 2: Mark all as read */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={markAllRead}
+            className="text-xs w-fit h-7 px-2 cursor-pointer -ml-1 text-muted-foreground hover:text-foreground"
+          >
+            <CheckIcon className="mr-1 size-3" />
+            Mark all as read
+          </Button>
+
+          {/* Row 3: Tabs */}
+          <div className="pt-1">
+            <Tabs
+              value={activeTab}
+              onValueChange={(v) => setActiveTab(v as typeof activeTab)}
+            >
+              <TabsList className="h-8 rounded-[20px] p-2">
+                <TabsTrigger
+                  value="all"
+                  className="text-xs px-3 h-7 rounded-[20px] cursor-pointer"
+                >
+                  All
+                </TabsTrigger>
+                <TabsTrigger
+                  value="unread"
+                  className="text-xs px-3 h-7 rounded-[20px] cursor-pointer"
+                >
+                  Unread
+                </TabsTrigger>
+                <TabsTrigger
+                  value="mentions"
+                  className="text-xs px-3 h-7 rounded-[20px] cursor-pointer"
+                >
+                  Mentions
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+        </SheetHeader>
 
         <div className="flex-1 overflow-y-auto">
           {isLoading && (
@@ -120,8 +163,12 @@ export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
           )}
           {!isLoading && notifications.length === 0 && (
             <div className="flex flex-col items-center justify-center py-16 text-center">
-              <p className="text-sm font-medium text-muted-foreground">No notifications</p>
-              <p className="mt-1 text-xs text-muted-foreground">You&apos;re all caught up!</p>
+              <p className="text-sm font-medium text-muted-foreground">
+                No notifications
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                You&apos;re all caught up!
+              </p>
             </div>
           )}
           {notifications.map((n) => (
@@ -149,10 +196,14 @@ export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
               <div className="flex-1 min-w-0">
                 <p className="text-sm leading-snug">{n.title}</p>
                 {n.body && (
-                  <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{n.body}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
+                    {n.body}
+                  </p>
                 )}
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
+                  {formatDistanceToNow(new Date(n.createdAt), {
+                    addSuffix: true,
+                  })}
                 </p>
               </div>
 

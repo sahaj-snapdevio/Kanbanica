@@ -102,6 +102,8 @@ export const workspace = pgTable("workspace", {
   inviteLinkToken: text("invite_link_token").unique(),
   taskSeq: integer("task_seq").notNull().default(0),
   status: workspaceStatusEnum("status").notNull().default("ACTIVE"),
+  theme: text("theme").notNull().default("indigo"),           // accent color key — see Theme Settings
+  appearanceMode: text("appearance_mode").notNull().default("auto"), // "light" | "dark" | "auto"
   createdBy: text("created_by").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

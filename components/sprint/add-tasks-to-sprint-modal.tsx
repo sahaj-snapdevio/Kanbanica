@@ -34,12 +34,12 @@ interface AddTasksToSprintModalProps {
   onAdded: () => void;
 }
 
-const PRIORITY_COLOR: Record<string, string> = {
-  URGENT: "text-red-500",
-  HIGH: "text-orange-500",
-  MEDIUM: "text-yellow-500",
-  LOW: "text-blue-500",
-  NONE: "text-muted-foreground/30",
+const PRIORITY_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
+  NONE: { label: "No Priority", color: "text-muted-foreground", icon: "😴" },
+  LOW: { label: "Low", color: "text-blue-500", icon: "🐢" },
+  MEDIUM: { label: "Medium", color: "text-yellow-500", icon: "🚶" },
+  HIGH: { label: "High", color: "text-orange-500", icon: "🏃" },
+  URGENT: { label: "Urgent", color: "text-red-500", icon: "⚡" },
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -211,11 +211,15 @@ export function AddTasksToSprintModal({
                       #{task.seqNumber}
                     </span>
                     <span className="flex-1 text-sm truncate">{task.title}</span>
-                    {task.priority && task.priority !== "NONE" && (
-                      <span className={`text-xs font-medium shrink-0 ${PRIORITY_COLOR[task.priority] ?? ""}`}>
-                        {task.priority}
-                      </span>
-                    )}
+                    {task.priority && task.priority !== "NONE" && (() => {
+                      const cfg = PRIORITY_CONFIG[task.priority];
+                      return cfg ? (
+                        <span className={`flex items-center gap-1 text-xs font-medium shrink-0 ${cfg.color}`}>
+                          <span>{cfg.icon}</span>
+                          {cfg.label}
+                        </span>
+                      ) : null;
+                    })()}
                   </button>
                 ))}
               </div>

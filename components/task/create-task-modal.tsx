@@ -49,12 +49,12 @@ interface CreateTaskModalProps {
   onCreated?: (taskId: string) => void;
 }
 
-const PRIORITY_OPTIONS: { value: Priority; label: string; color: string; dot: string }[] = [
-  { value: "NONE", label: "No priority", color: "text-muted-foreground", dot: "bg-muted-foreground/40" },
-  { value: "LOW", label: "Low", color: "text-blue-500", dot: "bg-blue-500" },
-  { value: "MEDIUM", label: "Medium", color: "text-yellow-500", dot: "bg-yellow-500" },
-  { value: "HIGH", label: "High", color: "text-orange-500", dot: "bg-orange-500" },
-  { value: "URGENT", label: "Urgent", color: "text-red-500", dot: "bg-red-500" },
+const PRIORITY_OPTIONS: { value: Priority; label: string; color: string; icon: string }[] = [
+  { value: "NONE", label: "No Priority", color: "text-muted-foreground", icon: "😴" },
+  { value: "LOW", label: "Low", color: "text-blue-500", icon: "🐢" },
+  { value: "MEDIUM", label: "Medium", color: "text-yellow-500", icon: "🚶" },
+  { value: "HIGH", label: "High", color: "text-orange-500", icon: "🏃" },
+  { value: "URGENT", label: "Urgent", color: "text-red-500", icon: "⚡" },
 ];
 
 function userInitials(name: string) {
@@ -274,8 +274,17 @@ export function CreateTaskModal({
             <Popover open={priorityPopoverOpen} onOpenChange={setPriorityPopoverOpen}>
               <PopoverTrigger asChild>
                 <button className={cn("flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs transition-colors hover:bg-accent", currentPriority.color)}>
-                  <FlagIcon className="size-3.5" weight={priority !== "NONE" ? "fill" : "regular"} />
-                  {priority !== "NONE" ? currentPriority.label : "Priority"}
+                  {priority !== "NONE" ? (
+                    <>
+                      <span>{currentPriority.icon}</span>
+                      {currentPriority.label}
+                    </>
+                  ) : (
+                    <>
+                      <FlagIcon className="size-3.5" weight="regular" />
+                      Priority
+                    </>
+                  )}
                 </button>
               </PopoverTrigger>
               <PopoverContent className="w-40 p-1" align="start">
@@ -285,7 +294,7 @@ export function CreateTaskModal({
                     onClick={() => { setPriority(p.value); setPriorityPopoverOpen(false); }}
                     className={cn("flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent", p.color)}
                   >
-                    <span className={cn("size-2 rounded-full shrink-0", p.dot)} />
+                    <span>{p.icon}</span>
                     <span className="flex-1 text-left">{p.label}</span>
                     {p.value === priority && <CheckIcon className="size-3.5 shrink-0" />}
                   </button>

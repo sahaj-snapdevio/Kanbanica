@@ -173,6 +173,49 @@ L-- Pending Invites section (collapsible)
 
 ---
 
+### 2.4 Themes — `/[workspaceId]/settings/themes`
+
+**Access:** All workspace members (each user's theme choice is per-workspace)
+
+**What it controls:**
+
+| Setting | Options | Default |
+|---|---|---|
+| Appearance | Light / Dark / System | System |
+| Accent Theme Color | 10 color swatches (see below) | Indigo |
+
+**Accent theme options:**
+
+| Key | Name | Primary color |
+|---|---|---|
+| `indigo` | Indigo | `oklch(0.513 0.234 278)` |
+| `black` | Black | `oklch(0.18 0.018 277)` |
+| `purple` | Purple | `oklch(0.58 0.23 295)` |
+| `blue` | Blue | `oklch(0.56 0.21 250)` |
+| `pink` | Pink | `oklch(0.61 0.22 350)` |
+| `violet` | Violet | `oklch(0.53 0.23 280)` |
+| `orange` | Orange | `oklch(0.62 0.21 45)` |
+| `teal` | Teal | `oklch(0.52 0.16 180)` |
+| `bronze` | Bronze | `oklch(0.54 0.11 60)` |
+| `mint` | Mint | `oklch(0.54 0.15 160)` |
+
+**Behaviour:**
+- Changes apply as an **instant live preview** — DOM updates immediately when the user clicks a swatch or appearance card without waiting for a save.
+- Clicking **Save Changes** writes `theme` + `appearance_mode` to the DB (server action `updateWorkspaceTheme`) and also persists to `localStorage` (`kanbanica_theme_{workspaceId}` + `kanbanica_appearance_{workspaceId}`) for flash-free next load.
+- Clicking **Cancel** reverts the preview to the last saved values; a toast confirms "Changes discarded."
+- On page load: localStorage is checked first; if present it overrides the DB value (avoids a round-trip flash).
+- `System` mode listens to `window.matchMedia('(prefers-color-scheme: dark)')` and re-applies on system change without requiring a reload.
+
+**Implementation:**
+- Theme is applied via `data-theme="<key>"` attribute on `<html>` + `.dark` class toggle.
+- CSS variables for each theme are defined in `app/globals.css` using `[data-theme="X"]` selectors.
+- `ThemeProvider` (`components/theme/theme-provider.tsx`) wraps the workspace layout and exposes `useTheme()` context.
+- Theme is loaded server-side in `app/(app)/[workspaceId]/layout.tsx` from the DB and passed as `initialTheme` + `initialAppearanceMode` props to `ThemeProvider`.
+
+**Data written:** `workspace.theme`, `workspace.appearanceMode`
+
+---
+
 ### 2.3 Security — `/[workspaceId]/settings/security`
 
 **Access:** Owner only
@@ -251,6 +294,7 @@ L-- Add Members button -> inline search + permission picker
 | Workspace General | `/[workspaceId]/settings/general` |
 | Workspace Members | `/[workspaceId]/settings/members` |
 | Workspace Security | `/[workspaceId]/settings/security` |
+| Workspace Themes | `/[workspaceId]/settings/themes` |
 | Space General | `/[workspaceId]/[spaceId]/settings/general` |
 | Space Members | `/[workspaceId]/[spaceId]/settings/members` |
 
@@ -282,5 +326,6 @@ L----------------------------+--------------------------------------+
 |---|---|
 | Profile & Account, Sessions | Phase 3 — Authentication |
 | Workspace General, Members, Security + sidebar entry points | Phase 5 — Workspace |
+| Workspace Themes | Phase 5 — Workspace (added post-phase) |
 | Space General, Space Members | Phase 6 — Space |
 | Notification Preferences | Phase 15 — Notifications |
