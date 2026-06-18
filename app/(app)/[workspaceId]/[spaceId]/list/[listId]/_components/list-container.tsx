@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { useState, useTransition } from "react";
 import { useSearchParams } from "next/navigation";
 import {
@@ -8,9 +9,12 @@ import {
   CopyIcon,
   DotsThreeIcon,
   GearIcon,
+  LightningIcon,
   MagnifyingGlassIcon,
   PencilSimpleIcon,
   PlusIcon,
+  RowsIcon,
+  SquaresFourIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
 import { archiveList, duplicateList } from "@/app/actions/list";
@@ -63,10 +67,10 @@ interface ListContainerProps {
   isAdmin: boolean;
 }
 
-const VIEWS: { key: View; label: string }[] = [
-  { key: "list", label: "List" },
-  { key: "board", label: "Board" },
-  { key: "sprint", label: "Sprint" },
+const VIEWS: { key: View; label: string; icon: React.ReactNode }[] = [
+  { key: "list",   label: "List",   icon: <RowsIcon className="size-3.5" /> },
+  { key: "board",  label: "Board",  icon: <SquaresFourIcon className="size-3.5" /> },
+  { key: "sprint", label: "Sprint", icon: <LightningIcon className="size-3.5" weight="fill" /> },
 ];
 
 export function ListContainer({
@@ -195,7 +199,7 @@ export function ListContainer({
           <Popover>
             <PopoverTrigger asChild>
               <button className="flex size-7 items-center justify-center rounded-md hover:bg-accent transition-colors">
-                <DotsThreeIcon className="size-4 text-muted-foreground" />
+                <DotsThreeIcon className="size-4.5 text-foreground/70" weight="bold" />
               </button>
             </PopoverTrigger>
             <PopoverContent align="end" className="w-48 p-1">
@@ -230,17 +234,18 @@ export function ListContainer({
       <div className="flex items-center gap-2">
         {/* View tabs */}
         <div className="flex items-center gap-1 border-b flex-1">
-          {VIEWS.map(({ key, label }) => (
+          {VIEWS.map(({ key, label, icon }) => (
             <button
               key={key}
               onClick={() => switchView(key)}
               className={cn(
-                "px-3 py-1.5 text-sm font-medium border-b-2 -mb-px transition-colors",
+                "flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border-b-2 -mb-px transition-colors",
                 view === key
                   ? "border-primary text-foreground"
                   : "border-transparent text-muted-foreground hover:text-foreground",
               )}
             >
+              {icon}
               {label}
             </button>
           ))}

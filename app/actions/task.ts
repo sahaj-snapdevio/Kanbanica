@@ -860,3 +860,65 @@ export async function logTime(
   revalidateList(workspaceId, spaceId, listId);
   return { ok: true };
 }
+
+// ─── Bulk actions ─────────────────────────────────────────────────────────────
+
+export async function bulkUpdateStatus(
+  workspaceId: string,
+  spaceId: string,
+  listId: string,
+  taskIds: string[],
+  statusId: string,
+): Promise<{ ok: true } | { error: string }> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return { error: "Unauthorized" };
+  const permErr = await requireEditAccess(session.user.id, workspaceId, spaceId);
+  if (permErr) return permErr;
+
+  await db
+    .update(task)
+    .set({ statusId, updatedAt: new Date() })
+    .where(and(inArray(task.id, taskIds), eq(task.listId, listId)));
+
+  revalidateList(workspaceId, spaceId, listId);
+  return { ok: true };
+}
+
+export async function bulkDeleteTasks(
+  workspaceId: string,
+  spaceId: string,
+  listId: string,
+  taskIds: string[],
+): Promise<{ ok: true } | { error: string }> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return { error: "Unauthorized" };
+  const permErr = await requireFullAccess(session.user.id, workspaceId, spaceId);
+  if (permErr) return { error: "You don't have permission to delete tasks" };
+
+  await db
+    .delete(task)
+    .where(and(inArray(task.id, taskIds), eq(task.listId, listId)));
+
+  revalidateList(workspaceId, spaceId, listId);
+  return { ok: true };
+}
+
+export async function bulkArchiveTasks(
+  workspaceId: string,
+  spaceId: string,
+  listId: string,
+  taskIds: string[],
+): Promise<{ ok: true } | { error: string }> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return { error: "Unauthorized" };
+  const permErr = await requireEditAccess(session.user.id, workspaceId, spaceId);
+  if (permErr) return permErr;
+
+  await db
+    .update(task)
+    .set({ isArchived: true, archivedAt: new Date(), updatedAt: new Date() })
+    .where(and(inArray(task.id, taskIds), eq(task.listId, listId)));
+
+  revalidateList(workspaceId, spaceId, listId);
+  return { ok: true };
+}

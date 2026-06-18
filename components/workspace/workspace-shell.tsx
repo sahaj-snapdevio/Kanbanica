@@ -11,7 +11,9 @@ import {
   CheckIcon,
   CopyIcon,
   DotsThreeIcon,
+  FolderIcon,
   GearIcon,
+  ListIcon,
   LockSimpleIcon,
   MagnifyingGlassIcon,
   PencilSimpleIcon,
@@ -19,7 +21,6 @@ import {
   SignOutIcon,
   TrashIcon,
   XIcon,
-  ListIcon,
 } from "@phosphor-icons/react";
 import { SearchPalette } from "@/components/search/search-palette";
 import { archiveSpace, deleteSpace } from "@/app/actions/space";
@@ -313,9 +314,10 @@ export function WorkspaceShell({
               {spaces.map((s) => (
                 <div key={s.id}>
                   <div className="group flex items-center gap-2 px-2 py-1.5 font-medium text-sm">
-                    <span
-                      className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
-                      style={{ backgroundColor: s.color ?? "#9CA3AF" }}
+                    <FolderIcon
+                      className="size-4 shrink-0"
+                      weight="fill"
+                      style={{ color: s.color ?? "#9CA3AF" }}
                     />
                     <span className="flex-1 truncate">{s.name}</span>
                     {s.isPrivate && (
@@ -337,7 +339,7 @@ export function WorkspaceShell({
                           title="Space options"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <DotsThreeIcon className="size-4 text-muted-foreground" />
+                          <DotsThreeIcon className="size-4.5 text-muted-foreground" weight="bold" />
                         </button>
                       </PopoverTrigger>
                       <PopoverContent side="right" align="start" className="w-48 p-1">
@@ -393,15 +395,16 @@ export function WorkspaceShell({
                             href={href}
                             onClick={() => setSidebarOpen(false)}
                             className={cn(
-                              "flex flex-1 items-center gap-2 rounded-md py-1.5 pr-7 pl-7 text-sm transition-colors",
+                              "flex flex-1 items-center gap-2 rounded-md py-1.5 pr-7 pl-6 text-sm transition-colors",
                               active
                                 ? "bg-accent font-medium text-accent-foreground"
                                 : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
                             )}
                           >
-                            <span
-                              className="size-2 shrink-0 rounded-full"
-                              style={{ backgroundColor: l.color ?? "#9CA3AF" }}
+                            <ListIcon
+                              className="size-3.5 shrink-0"
+                              weight="bold"
+                              style={{ color: l.color ?? "#9CA3AF" }}
                             />
                             <span className="truncate">{l.name}</span>
                           </Link>
@@ -413,7 +416,7 @@ export function WorkspaceShell({
                                   title="List options"
                                   onClick={(e) => e.stopPropagation()}
                                 >
-                                  <DotsThreeIcon className="size-3.5 text-muted-foreground" />
+                                  <DotsThreeIcon className="size-4.5 text-foreground/70" weight="bold" />
                                 </button>
                               </PopoverTrigger>
                               <PopoverContent side="right" align="start" className="w-44 p-1">
@@ -461,7 +464,7 @@ export function WorkspaceShell({
                     {s.canManageList && (
                       <button
                         onClick={() => setCreateListForSpace({ spaceId: s.id })}
-                        className="flex w-full items-center gap-2 rounded-md py-1.5 pl-7 pr-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                        className="flex w-full items-center gap-2 rounded-md py-1.5 pl-6 pr-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                       >
                         <PlusIcon className="size-3" />
                         Add list

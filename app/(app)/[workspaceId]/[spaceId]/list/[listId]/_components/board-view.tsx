@@ -90,7 +90,7 @@ function CardContent({
       )}
     >
       <div {...dragListeners} className={cn(!overlay && "cursor-grab active:cursor-grabbing")}>
-        <p className="text-sm font-semibold leading-snug select-none line-clamp-2">{task.title}</p>
+        <p className="text-[15px] font-medium leading-snug select-none line-clamp-2">{task.title}</p>
         {task.tags.length > 0 && (
           <div className="mt-1.5 flex flex-wrap gap-1">
             {task.tags.map((tag) => (
@@ -202,7 +202,7 @@ function Column({
 
   return (
     <div
-      className="flex w-72 shrink-0 flex-col rounded-xl p-2 gap-2 self-start"
+      className="flex w-64 shrink-0 flex-col rounded-xl p-2 gap-2 max-h-[calc(100vh-11rem)]"
       style={{ backgroundColor: `${status.color}14` }}
     >
       {/* Column header */}
@@ -217,13 +217,13 @@ function Column({
         </span>
       </div>
 
-      {/* Droppable task list */}
+      {/* Droppable task list — flex-1 + overflow-y-auto gives each column its own scroll */}
       <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
         <div
           ref={setNodeRef}
           className={cn(
-            "flex flex-col gap-2 rounded-lg p-1 transition-all",
-            tasks.length === 0 ? "min-h-2" : "min-h-0",
+            "flex flex-col gap-2 rounded-lg p-1 transition-all flex-1 overflow-y-auto min-h-0 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border",
+            tasks.length === 0 && "min-h-8",
           )}
           style={isOver ? { boxShadow: `inset 0 0 0 2px ${status.color}` } : undefined}
         >
@@ -324,7 +324,7 @@ export function BoardView({ workspaceId, space, list, statuses, tasks }: BoardVi
       onDragOver={onDragOver}
       onDragEnd={onDragEnd}
     >
-      <div className="flex gap-3 overflow-x-auto pb-4">
+      <div className="flex gap-3 overflow-x-auto pb-4 items-start">
         {statuses.map((status) => (
           <Column
             key={status.id}

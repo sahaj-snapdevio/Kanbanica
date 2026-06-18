@@ -370,7 +370,7 @@ export function TaskDetailPanel({
             <Popover>
               <PopoverTrigger asChild>
                 <button className="flex size-8 items-center justify-center rounded-md hover:bg-accent">
-                  <DotsThreeIcon className="size-4" />
+                  <DotsThreeIcon className="size-4.5" weight="bold" />
                 </button>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-44 p-1">

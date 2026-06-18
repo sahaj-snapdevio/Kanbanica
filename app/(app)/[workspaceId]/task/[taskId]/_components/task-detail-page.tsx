@@ -581,7 +581,7 @@ export function TaskDetailPage({
           <Popover>
             <PopoverTrigger asChild>
               <button className="flex size-7 items-center justify-center rounded-md hover:bg-accent text-muted-foreground">
-                <DotsThreeIcon className="size-4" />
+                <DotsThreeIcon className="size-4.5" weight="bold" />
               </button>
             </PopoverTrigger>
             <PopoverContent align="end" className="w-44 p-1">

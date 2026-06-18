@@ -160,7 +160,7 @@ function TaskRow({ task, workspaceId }: { task: MyTask; workspaceId: string }) {
             <span className="text-xs text-muted-foreground/50 font-mono shrink-0 w-6">
               #{task.seqNumber}
             </span>
-            <span className="text-sm font-medium truncate">{task.title}</span>
+            <span className="text-[15px] font-medium truncate">{task.title}</span>
           </div>
           <span className="pl-8 text-xs text-muted-foreground/60 truncate">
             {task.space.name} › {task.list.name}
@@ -182,7 +182,7 @@ function TaskRow({ task, workspaceId }: { task: MyTask; workspaceId: string }) {
       {/* Due date */}
       <td className="py-2.5 px-4 w-28">
         {due ? (
-          <span className={cn("text-xs font-medium", due.overdue ? "text-red-500" : "text-muted-foreground")}>
+          <span className={cn("text-sm font-medium", due.overdue ? "text-red-500" : "text-muted-foreground")}>
             {due.label}
           </span>
         ) : (
@@ -193,7 +193,7 @@ function TaskRow({ task, workspaceId }: { task: MyTask; workspaceId: string }) {
       {/* Priority */}
       <td className="py-2.5 px-4 w-28">
         {task.priority !== "NONE" ? (
-          <span className={cn("flex items-center gap-1 text-xs font-medium", priority.color)}>
+          <span className={cn("flex items-center gap-1 text-sm font-medium", priority.color)}>
             <span>{priority.icon}</span>
             {priority.label}
           </span>
@@ -359,16 +359,16 @@ export function MyTasksView({ workspaceId }: MyTasksViewProps) {
           <table className="w-full border-collapse">
             <thead>
               <tr className="border-b border-border/60 bg-muted/20">
-                <th className="py-2 pl-10 pr-4 text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                <th className="py-2 pl-10 pr-4 text-left text-sm font-semibold text-muted-foreground">
                   Task
                 </th>
-                <th className="py-2 px-4 text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase w-32">
+                <th className="py-2 px-4 text-left text-sm font-semibold text-muted-foreground w-32">
                   Status
                 </th>
-                <th className="py-2 px-4 text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase w-28">
+                <th className="py-2 px-4 text-left text-sm font-semibold text-muted-foreground w-28">
                   Due Date
                 </th>
-                <th className="py-2 px-4 text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase w-28">
+                <th className="py-2 px-4 text-left text-sm font-semibold text-muted-foreground w-28">
                   Priority
                 </th>
               </tr>
