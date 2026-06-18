@@ -39,8 +39,17 @@ import {
   createSubtask,
 } from "@/app/actions/task";
 import { TaskActivityFeed } from "@/components/task/task-activity-feed";
-import { addAssignee, removeAssignee, toggleWatcher } from "@/app/actions/task-assignee";
-import { getWorkspaceTags, createTag, addTaskTag, removeTaskTag } from "@/app/actions/task-tag";
+import {
+  addAssignee,
+  removeAssignee,
+  toggleWatcher,
+} from "@/app/actions/task-assignee";
+import {
+  getWorkspaceTags,
+  createTag,
+  addTaskTag,
+  removeTaskTag,
+} from "@/app/actions/task-tag";
 import {
   createChecklist,
   deleteChecklist,
@@ -48,12 +57,20 @@ import {
   toggleChecklistItem,
   deleteChecklistItem,
 } from "@/app/actions/task-checklist";
-import { addDependency, removeDependency, searchTasksForDependency } from "@/app/actions/task-dependency";
+import {
+  addDependency,
+  removeDependency,
+  searchTasksForDependency,
+} from "@/app/actions/task-dependency";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -62,22 +79,64 @@ import { format } from "date-fns";
 
 type Priority = "NONE" | "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 
-const PRIORITY_CONFIG: Record<Priority, { label: string; color: string; dot: string; bg: string }> = {
-  NONE:   { label: "No priority", color: "text-muted-foreground", dot: "bg-muted-foreground/40", bg: "bg-muted/60" },
-  LOW:    { label: "Low",         color: "text-blue-500",         dot: "bg-blue-500",            bg: "bg-blue-50 dark:bg-blue-950/40" },
-  MEDIUM: { label: "Medium",      color: "text-yellow-500",       dot: "bg-yellow-500",          bg: "bg-yellow-50 dark:bg-yellow-950/40" },
-  HIGH:   { label: "High",        color: "text-orange-500",       dot: "bg-orange-500",          bg: "bg-orange-50 dark:bg-orange-950/40" },
-  URGENT: { label: "Urgent",      color: "text-red-500",          dot: "bg-red-500",             bg: "bg-red-50 dark:bg-red-950/40" },
+const PRIORITY_CONFIG: Record<
+  Priority,
+  { label: string; color: string; icon: string; bg: string }
+> = {
+  NONE: {
+    label: "No Priority",
+    color: "text-muted-foreground",
+    icon: "😴",
+    bg: "bg-muted/60",
+  },
+  LOW: {
+    label: "Low",
+    color: "text-blue-500",
+    icon: "🐢",
+    bg: "bg-blue-50 dark:bg-blue-950/40",
+  },
+  MEDIUM: {
+    label: "Medium",
+    color: "text-yellow-500",
+    icon: "🚶",
+    bg: "bg-yellow-50 dark:bg-yellow-950/40",
+  },
+  HIGH: {
+    label: "High",
+    color: "text-orange-500",
+    icon: "🏃",
+    bg: "bg-orange-50 dark:bg-orange-950/40",
+  },
+  URGENT: {
+    label: "Urgent",
+    color: "text-red-500",
+    icon: "⚡",
+    bg: "bg-red-50 dark:bg-red-950/40",
+  },
 };
 
 function userInitials(name: string | null, email: string | null) {
-  if (name) return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+  if (name)
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
   return (email ?? "?").slice(0, 2).toUpperCase();
 }
 
 // ─── Field row (label + value in grid) ───────────────────────────────────────
 
-function FieldRow({ label, icon, children }: { label: string; icon: React.ReactNode; children: React.ReactNode }) {
+function FieldRow({
+  label,
+  icon,
+  children,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex items-start gap-3 py-2 border-b border-border/40 last:border-0">
       <div className="flex items-center gap-2 w-36 shrink-0 text-sm text-muted-foreground pt-0.5">
@@ -97,31 +156,56 @@ interface TaskDetailPageProps {
   listName: string;
 }
 
-export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName }: TaskDetailPageProps) {
+export function TaskDetailPage({
+  workspaceId,
+  spaceId,
+  listId,
+  taskId,
+  listName,
+}: TaskDetailPageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const fromView = searchParams.get("from");
-  const [data, setData] = React.useState<Awaited<ReturnType<typeof getTaskDetail>> | null>(null);
+  const [data, setData] = React.useState<Awaited<
+    ReturnType<typeof getTaskDetail>
+  > | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [titleEditing, setTitleEditing] = React.useState(false);
   const [titleDraft, setTitleDraft] = React.useState("");
   const [descDraft, setDescDraft] = React.useState("");
-  const [members, setMembers] = React.useState<{ userId: string; name: string; email: string; image: string | null }[]>([]);
-  const [allTags, setAllTags] = React.useState<{ id: string; name: string; color: string }[]>([]);
+  const [members, setMembers] = React.useState<
+    { userId: string; name: string; email: string; image: string | null }[]
+  >([]);
+  const [allTags, setAllTags] = React.useState<
+    { id: string; name: string; color: string }[]
+  >([]);
   const [tagSearch, setTagSearch] = React.useState("");
   const [newChecklistName, setNewChecklistName] = React.useState("");
   const [addingChecklist, setAddingChecklist] = React.useState(false);
-  const [newItemTexts, setNewItemTexts] = React.useState<Record<string, string>>({});
+  const [newItemTexts, setNewItemTexts] = React.useState<
+    Record<string, string>
+  >({});
   const [depQuery, setDepQuery] = React.useState("");
-  const [depResults, setDepResults] = React.useState<{ id: string; title: string; seqNumber: number }[]>([]);
+  const [depResults, setDepResults] = React.useState<
+    { id: string; title: string; seqNumber: number }[]
+  >([]);
   const [timeInput, setTimeInput] = React.useState("");
   const [timeNote, setTimeNote] = React.useState("");
   const [saving, setSaving] = React.useState(false);
   const [showDepsSection, setShowDepsSection] = React.useState(false);
   const [subtaskInput, setSubtaskInput] = React.useState("");
-  const [attachments, setAttachments] = React.useState<{
-    id: string; fileName: string; fileSize: number; mimeType: string; url: string; commentId: string | null; uploadedBy: string; createdAt: Date;
-  }[]>([]);
+  const [attachments, setAttachments] = React.useState<
+    {
+      id: string;
+      fileName: string;
+      fileSize: number;
+      mimeType: string;
+      url: string;
+      commentId: string | null;
+      uploadedBy: string;
+      createdAt: Date;
+    }[]
+  >([]);
   const [uploadingFile, setUploadingFile] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [creatingSubtask, setCreatingSubtask] = React.useState(false);
@@ -136,14 +220,21 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
       getTaskDetail(workspaceId, spaceId, taskId),
       getWorkspaceMembers(workspaceId),
       getWorkspaceTags(workspaceId),
-      fetch(`/api/tasks/${taskId}/attachments`).then((r) => r.json()).catch(() => ({ attachments: [] })),
+      fetch(`/api/tasks/${taskId}/attachments`)
+        .then((r) => r.json())
+        .catch(() => ({ attachments: [] })),
     ]);
     setData(detail && !("error" in detail) ? detail : null);
     if (mem && !("error" in mem)) {
       setMembers(
         mem.members
           .filter((m): m is typeof m & { userId: string } => m.userId !== null)
-          .map((m) => ({ userId: m.userId!, name: m.name, email: m.email, image: m.image })),
+          .map((m) => ({
+            userId: m.userId!,
+            name: m.name,
+            email: m.email,
+            image: m.image,
+          })),
       );
     }
     if (tags && !("error" in tags)) setAllTags(tags.tags);
@@ -154,7 +245,9 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
   // Initial load shows spinner; subsequent refreshes are silent
   const load = () => fetchAll(false);
 
-  React.useEffect(() => { fetchAll(true); }, [taskId]);
+  React.useEffect(() => {
+    fetchAll(true);
+  }, [taskId]);
 
   React.useEffect(() => {
     if (data && !("error" in data)) {
@@ -163,8 +256,8 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
         typeof data.task.description === "string"
           ? data.task.description
           : data.task.description
-          ? JSON.stringify(data.task.description)
-          : "",
+            ? JSON.stringify(data.task.description)
+            : "",
       );
     }
   }, [data]);
@@ -190,31 +283,62 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
     );
   }
 
-  const { task: t, assignees, watchers, tags, checklists, dependencies, timeLogs, statuses, subtasks, parentTask, currentUserId } = data;
+  const {
+    task: t,
+    assignees,
+    watchers,
+    tags,
+    checklists,
+    dependencies,
+    timeLogs,
+    statuses,
+    subtasks,
+    parentTask,
+    currentUserId,
+  } = data;
   const backUrl = t.parentTaskId
     ? `/${workspaceId}/task/${t.parentTaskId}`
     : listBackUrl;
   const isWatching = watchers.some((w) => w.userId === currentUserId);
   const currentStatus = statuses.find((s) => s.id === t.statusId);
-  const priority = PRIORITY_CONFIG[t.priority as Priority] ?? PRIORITY_CONFIG.NONE;
-  const totalChecked = checklists.flatMap((c) => c.items).filter((i) => i.isChecked).length;
+  const priority =
+    PRIORITY_CONFIG[t.priority as Priority] ?? PRIORITY_CONFIG.NONE;
+  const totalChecked = checklists
+    .flatMap((c) => c.items)
+    .filter((i) => i.isChecked).length;
   const totalItems = checklists.flatMap((c) => c.items).length;
-  const checkProgress = totalItems > 0 ? Math.round((totalChecked / totalItems) * 100) : 0;
-  const filteredTags = allTags.filter((t) => t.name.toLowerCase().includes(tagSearch.toLowerCase()));
-  const exactTagMatch = allTags.some((t) => t.name.toLowerCase() === tagSearch.toLowerCase());
+  const checkProgress =
+    totalItems > 0 ? Math.round((totalChecked / totalItems) * 100) : 0;
+  const filteredTags = allTags.filter((t) =>
+    t.name.toLowerCase().includes(tagSearch.toLowerCase()),
+  );
+  const exactTagMatch = allTags.some(
+    (t) => t.name.toLowerCase() === tagSearch.toLowerCase(),
+  );
 
-  const dueDateStartStr = t.dueDateStart ? format(new Date(t.dueDateStart), "yyyy-MM-dd") : "";
-  const dueDateEndStr   = t.dueDateEnd   ? format(new Date(t.dueDateEnd),   "yyyy-MM-dd") : "";
+  const dueDateStartStr = t.dueDateStart
+    ? format(new Date(t.dueDateStart), "yyyy-MM-dd")
+    : "";
+  const dueDateEndStr = t.dueDateEnd
+    ? format(new Date(t.dueDateEnd), "yyyy-MM-dd")
+    : "";
 
   async function saveTitle() {
-    if (!titleDraft.trim() || titleDraft === t.title) { setTitleEditing(false); return; }
-    await updateTask(workspaceId, spaceId, listId, taskId, { title: titleDraft.trim() });
+    if (!titleDraft.trim() || titleDraft === t.title) {
+      setTitleEditing(false);
+      return;
+    }
+    await updateTask(workspaceId, spaceId, listId, taskId, {
+      title: titleDraft.trim(),
+    });
     setTitleEditing(false);
     load();
   }
 
   async function saveDescription() {
-    await updateTask(workspaceId, spaceId, listId, taskId, { description: descDraft });
+    await updateTask(workspaceId, spaceId, listId, taskId, {
+      description: descDraft,
+    });
     load();
   }
 
@@ -232,21 +356,29 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
 
   async function handleDueDateChange(field: "start" | "end", value: string) {
     const date = value ? new Date(value) : null;
-    if (field === "start") await updateTask(workspaceId, spaceId, listId, taskId, { dueDateStart: date });
-    else await updateTask(workspaceId, spaceId, listId, taskId, { dueDateEnd: date });
+    if (field === "start")
+      await updateTask(workspaceId, spaceId, listId, taskId, {
+        dueDateStart: date,
+      });
+    else
+      await updateTask(workspaceId, spaceId, listId, taskId, {
+        dueDateEnd: date,
+      });
     load();
   }
 
   async function handleToggleAssignee(userId: string) {
     const already = assignees.some((a) => a.userId === userId);
-    if (already) await removeAssignee(workspaceId, spaceId, listId, taskId, userId);
+    if (already)
+      await removeAssignee(workspaceId, spaceId, listId, taskId, userId);
     else await addAssignee(workspaceId, spaceId, listId, taskId, userId);
     load();
   }
 
   async function handleToggleTag(tagId: string) {
     const already = tags.some((tag) => tag.id === tagId);
-    if (already) await removeTaskTag(workspaceId, spaceId, listId, taskId, tagId);
+    if (already)
+      await removeTaskTag(workspaceId, spaceId, listId, taskId, tagId);
     else await addTaskTag(workspaceId, spaceId, listId, taskId, tagId);
     load();
   }
@@ -267,7 +399,13 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
 
   async function handleAddChecklist() {
     if (!newChecklistName.trim()) return;
-    await createChecklist(workspaceId, spaceId, listId, taskId, newChecklistName);
+    await createChecklist(
+      workspaceId,
+      spaceId,
+      listId,
+      taskId,
+      newChecklistName,
+    );
     setNewChecklistName("");
     setAddingChecklist(false);
     load();
@@ -288,9 +426,19 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
 
   async function handleDepSearch(q: string) {
     setDepQuery(q);
-    if (q.length < 2) { setDepResults([]); return; }
+    if (q.length < 2) {
+      setDepResults([]);
+      return;
+    }
     const res = await searchTasksForDependency(workspaceId, spaceId, q, taskId);
-    if ("tasks" in res) setDepResults(res.tasks?.map((t) => ({ id: t.id, title: t.title, seqNumber: t.seqNumber })) ?? []);
+    if ("tasks" in res)
+      setDepResults(
+        res.tasks?.map((t) => ({
+          id: t.id,
+          title: t.title,
+          seqNumber: t.seqNumber,
+        })) ?? [],
+      );
   }
 
   async function handleAddDep(dependsOnTaskId: string) {
@@ -308,7 +456,14 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
   async function handleLogTime() {
     const mins = parseInt(timeInput);
     if (!mins || mins <= 0) return;
-    await logTime(workspaceId, spaceId, listId, taskId, mins, timeNote || undefined);
+    await logTime(
+      workspaceId,
+      spaceId,
+      listId,
+      taskId,
+      mins,
+      timeNote || undefined,
+    );
     setTimeInput("");
     setTimeNote("");
     load();
@@ -327,20 +482,26 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
   }
 
   async function handleDelete() {
-    if (!confirm("Permanently delete this task? This cannot be undone.")) return;
+    if (!confirm("Permanently delete this task? This cannot be undone."))
+      return;
     await deleteTask(workspaceId, spaceId, listId, taskId);
     router.push(backUrl);
   }
 
   function copyLink() {
-    navigator.clipboard.writeText(`${window.location.origin}/${workspaceId}/task/${taskId}`);
+    navigator.clipboard.writeText(
+      `${window.location.origin}/${workspaceId}/task/${taskId}`,
+    );
   }
 
   async function handleFileUpload(file: File) {
     setUploadingFile(true);
     const fd = new FormData();
     fd.append("file", file);
-    const res = await fetch(`/api/tasks/${taskId}/attachments`, { method: "POST", body: fd });
+    const res = await fetch(`/api/tasks/${taskId}/attachments`, {
+      method: "POST",
+      body: fd,
+    });
     setUploadingFile(false);
     if (res.ok) {
       const { attachment } = await res.json();
@@ -380,7 +541,9 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
             <>
               <CaretRightIcon className="size-3.5" />
               <button
-                onClick={() => router.push(`/${workspaceId}/task/${parentTask.id}`)}
+                onClick={() =>
+                  router.push(`/${workspaceId}/task/${parentTask.id}`)
+                }
                 className="hover:text-foreground transition-colors truncate max-w-xs"
               >
                 {parentTask.title}
@@ -388,7 +551,9 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
             </>
           )}
           <CaretRightIcon className="size-3.5" />
-          <span className="text-foreground font-medium truncate max-w-xs">{t.title}</span>
+          <span className="text-foreground font-medium truncate max-w-xs">
+            {t.title}
+          </span>
         </div>
         <div className="ml-auto flex items-center gap-1">
           <button
@@ -406,7 +571,11 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
                 : "text-muted-foreground hover:bg-accent hover:text-foreground",
             )}
           >
-            {isWatching ? <EyeSlashIcon className="size-3.5" /> : <EyeIcon className="size-3.5" />}
+            {isWatching ? (
+              <EyeSlashIcon className="size-3.5" />
+            ) : (
+              <EyeIcon className="size-3.5" />
+            )}
             {isWatching ? "Unwatch" : "Watch"}
           </button>
           <Popover>
@@ -416,14 +585,26 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
               </button>
             </PopoverTrigger>
             <PopoverContent align="end" className="w-44 p-1">
-              <button onClick={handleDuplicate} disabled={saving} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent">
-                <CopyIcon className="size-3.5 text-muted-foreground" /> Duplicate
+              <button
+                onClick={handleDuplicate}
+                disabled={saving}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
+              >
+                <CopyIcon className="size-3.5 text-muted-foreground" />{" "}
+                Duplicate
               </button>
-              <button onClick={handleArchive} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent">
-                <ArchiveIcon className="size-3.5 text-muted-foreground" /> Archive
+              <button
+                onClick={handleArchive}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
+              >
+                <ArchiveIcon className="size-3.5 text-muted-foreground" />{" "}
+                Archive
               </button>
               <Separator className="my-1" />
-              <button onClick={handleDelete} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-destructive hover:bg-destructive/10">
+              <button
+                onClick={handleDelete}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-destructive hover:bg-destructive/10"
+              >
                 <TrashIcon className="size-3.5" /> Delete
               </button>
             </PopoverContent>
@@ -433,10 +614,8 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
 
       {/* Two-column body */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
-
         {/* ── Left: main content ── */}
         <div className="flex-1 min-w-0 overflow-y-auto px-8 py-6">
-
           {/* Title */}
           {titleEditing ? (
             <Input
@@ -462,12 +641,26 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
           {/* Fields grid */}
           <div className="rounded-lg border bg-card px-4 mb-6">
             {/* Status */}
-            <FieldRow label="Status" icon={<span className="size-3 rounded-full shrink-0" style={{ backgroundColor: currentStatus?.color ?? "#9CA3AF" }} />}>
-              <Popover open={statusPopoverOpen} onOpenChange={setStatusPopoverOpen}>
+            <FieldRow
+              label="Status"
+              icon={
+                <span
+                  className="size-3 rounded-full shrink-0"
+                  style={{ backgroundColor: currentStatus?.color ?? "#9CA3AF" }}
+                />
+              }
+            >
+              <Popover
+                open={statusPopoverOpen}
+                onOpenChange={setStatusPopoverOpen}
+              >
                 <PopoverTrigger asChild>
                   <button
                     className="inline-flex items-center gap-1.5 rounded-full px-3 py-0.5 text-xs font-semibold transition-colors hover:opacity-80"
-                    style={{ backgroundColor: `${currentStatus?.color ?? "#9CA3AF"}20`, color: currentStatus?.color ?? "#9CA3AF" }}
+                    style={{
+                      backgroundColor: `${currentStatus?.color ?? "#9CA3AF"}20`,
+                      color: currentStatus?.color ?? "#9CA3AF",
+                    }}
                   >
                     {currentStatus?.name ?? "No status"}
                   </button>
@@ -479,9 +672,14 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
                       onClick={() => handleStatusChange(s.id)}
                       className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
                     >
-                      <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
+                      <span
+                        className="size-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: s.color }}
+                      />
                       <span className="flex-1 text-left">{s.name}</span>
-                      {s.id === t.statusId && <CheckIcon className="size-3.5 text-primary" />}
+                      {s.id === t.statusId && (
+                        <CheckIcon className="size-3.5 text-primary" />
+                      )}
                     </button>
                   ))}
                 </PopoverContent>
@@ -489,30 +687,48 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
             </FieldRow>
 
             {/* Assignees */}
-            <FieldRow label="Assignees" icon={<UserIcon className="size-3.5" />}>
+            <FieldRow
+              label="Assignees"
+              icon={<UserIcon className="size-3.5" />}
+            >
               <div className="flex flex-wrap items-center gap-1.5">
                 {assignees.map((a) => (
-                  <div key={a.userId} className="flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs">
+                  <div
+                    key={a.userId}
+                    className="flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs"
+                  >
                     <Avatar className="size-4">
-                      <AvatarFallback className="text-[8px]">{userInitials(a.name, a.email)}</AvatarFallback>
+                      <AvatarFallback className="text-[8px]">
+                        {userInitials(a.name, a.email)}
+                      </AvatarFallback>
                     </Avatar>
                     <span>{a.name ?? a.email}</span>
-                    <button onClick={() => handleToggleAssignee(a.userId)} className="text-muted-foreground hover:text-foreground">
+                    <button
+                      onClick={() => handleToggleAssignee(a.userId)}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
                       <XIcon className="size-3" />
                     </button>
                   </div>
                 ))}
-                <Popover open={assigneePopoverOpen} onOpenChange={setAssigneePopoverOpen}>
+                <Popover
+                  open={assigneePopoverOpen}
+                  onOpenChange={setAssigneePopoverOpen}
+                >
                   <PopoverTrigger asChild>
                     <button className="flex size-6 items-center justify-center rounded-full border border-dashed border-border text-muted-foreground hover:border-primary hover:text-primary transition-colors">
                       <PlusIcon className="size-3.5" />
                     </button>
                   </PopoverTrigger>
                   <PopoverContent className="w-52 p-2" align="start">
-                    <p className="text-xs text-muted-foreground px-1 mb-1.5">Select members</p>
+                    <p className="text-xs text-muted-foreground px-1 mb-1.5">
+                      Select members
+                    </p>
                     <div className="space-y-0.5 max-h-48 overflow-y-auto">
                       {members.map((m) => {
-                        const selected = assignees.some((a) => a.userId === m.userId);
+                        const selected = assignees.some(
+                          (a) => a.userId === m.userId,
+                        );
                         return (
                           <button
                             key={m.userId}
@@ -520,10 +736,16 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
                             className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
                           >
                             <Avatar className="size-6 shrink-0">
-                              <AvatarFallback className="text-2xs">{userInitials(m.name, m.email)}</AvatarFallback>
+                              <AvatarFallback className="text-2xs">
+                                {userInitials(m.name, m.email)}
+                              </AvatarFallback>
                             </Avatar>
-                            <span className="flex-1 truncate text-left">{m.name}</span>
-                            {selected && <CheckIcon className="size-3.5 text-primary shrink-0" />}
+                            <span className="flex-1 truncate text-left">
+                              {m.name}
+                            </span>
+                            {selected && (
+                              <CheckIcon className="size-3.5 text-primary shrink-0" />
+                            )}
                           </button>
                         );
                       })}
@@ -534,7 +756,10 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
             </FieldRow>
 
             {/* Dates */}
-            <FieldRow label="Dates" icon={<CalendarBlankIcon className="size-3.5" />}>
+            <FieldRow
+              label="Dates"
+              icon={<CalendarBlankIcon className="size-3.5" />}
+            >
               <div className="flex items-center gap-2">
                 <input
                   type="date"
@@ -554,26 +779,42 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
 
             {/* Priority */}
             <FieldRow label="Priority" icon={<FlagIcon className="size-3.5" />}>
-              <Popover open={priorityPopoverOpen} onOpenChange={setPriorityPopoverOpen}>
+              <Popover
+                open={priorityPopoverOpen}
+                onOpenChange={setPriorityPopoverOpen}
+              >
                 <PopoverTrigger asChild>
-                  <button className={cn(
-                    "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors hover:opacity-80",
-                    priority.bg, priority.color
-                  )}>
-                    <span className={cn("size-2 rounded-full shrink-0", priority.dot)} />
+                  <button
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors hover:opacity-80",
+                      priority.bg,
+                      priority.color,
+                    )}
+                  >
+                    <span>{priority.icon}</span>
                     {priority.label}
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className="w-40 p-1" align="start">
-                  {(Object.entries(PRIORITY_CONFIG) as [Priority, typeof PRIORITY_CONFIG[Priority]][]).map(([key, cfg]) => (
+                <PopoverContent className="w-44 p-1" align="start">
+                  {(
+                    Object.entries(PRIORITY_CONFIG) as [
+                      Priority,
+                      (typeof PRIORITY_CONFIG)[Priority],
+                    ][]
+                  ).map(([key, cfg]) => (
                     <button
                       key={key}
                       onClick={() => handlePriorityChange(key)}
-                      className={cn("flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent", cfg.color)}
+                      className={cn(
+                        "flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent",
+                        cfg.color,
+                      )}
                     >
-                      <span className={cn("size-2 rounded-full shrink-0", cfg.dot)} />
+                      <span>{cfg.icon}</span>
                       <span className="flex-1 text-left">{cfg.label}</span>
-                      {key === t.priority && <CheckIcon className="size-3.5 shrink-0" />}
+                      {key === t.priority && (
+                        <CheckIcon className="size-3.5 shrink-0" />
+                      )}
                     </button>
                   ))}
                 </PopoverContent>
@@ -587,10 +828,16 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
                   <span
                     key={tag.id}
                     className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
-                    style={{ backgroundColor: `${tag.color}20`, color: tag.color }}
+                    style={{
+                      backgroundColor: `${tag.color}20`,
+                      color: tag.color,
+                    }}
                   >
                     {tag.name}
-                    <button onClick={() => handleToggleTag(tag.id)} className="opacity-60 hover:opacity-100">
+                    <button
+                      onClick={() => handleToggleTag(tag.id)}
+                      className="opacity-60 hover:opacity-100"
+                    >
                       <XIcon className="size-3" />
                     </button>
                   </span>
@@ -613,16 +860,31 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
                       {filteredTags.map((tag) => {
                         const selected = tags.some((t) => t.id === tag.id);
                         return (
-                          <button key={tag.id} onClick={() => handleToggleTag(tag.id)} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent">
-                            <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: tag.color }} />
-                            <span className="flex-1 truncate text-left text-xs">{tag.name}</span>
-                            {selected && <CheckIcon className="size-3.5 text-primary shrink-0" />}
+                          <button
+                            key={tag.id}
+                            onClick={() => handleToggleTag(tag.id)}
+                            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
+                          >
+                            <span
+                              className="size-2.5 rounded-full shrink-0"
+                              style={{ backgroundColor: tag.color }}
+                            />
+                            <span className="flex-1 truncate text-left text-xs">
+                              {tag.name}
+                            </span>
+                            {selected && (
+                              <CheckIcon className="size-3.5 text-primary shrink-0" />
+                            )}
                           </button>
                         );
                       })}
                       {tagSearch && !exactTagMatch && (
-                        <button onClick={() => handleCreateTag(tagSearch.trim())} className="flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-xs text-primary hover:bg-accent">
-                          <PlusIcon className="size-3.5" /> Create &ldquo;{tagSearch}&rdquo;
+                        <button
+                          onClick={() => handleCreateTag(tagSearch.trim())}
+                          className="flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-xs text-primary hover:bg-accent"
+                        >
+                          <PlusIcon className="size-3.5" /> Create &ldquo;
+                          {tagSearch}&rdquo;
                         </button>
                       )}
                     </div>
@@ -633,10 +895,15 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
 
             {/* Time logged */}
             {timeLogs.length > 0 && (
-              <FieldRow label="Track time" icon={<TimerIcon className="size-3.5" />}>
+              <FieldRow
+                label="Track time"
+                icon={<TimerIcon className="size-3.5" />}
+              >
                 <span className="text-sm font-medium">
-                  {Math.floor(timeLogs.reduce((s, l) => s + l.durationMinutes, 0) / 60)}h{" "}
-                  {timeLogs.reduce((s, l) => s + l.durationMinutes, 0) % 60}m
+                  {Math.floor(
+                    timeLogs.reduce((s, l) => s + l.durationMinutes, 0) / 60,
+                  )}
+                  h {timeLogs.reduce((s, l) => s + l.durationMinutes, 0) % 60}m
                 </span>
               </FieldRow>
             )}
@@ -649,7 +916,8 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
                 <h3 className="text-sm font-semibold">Subtasks</h3>
                 {subtasks && subtasks.length > 0 && (
                   <span className="text-xs text-muted-foreground">
-                    {subtasks.filter((s) => s.statusType === "CLOSED").length}/{subtasks.length} completed
+                    {subtasks.filter((s) => s.statusType === "CLOSED").length}/
+                    {subtasks.length} completed
                   </span>
                 )}
               </div>
@@ -658,7 +926,12 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
                 <>
                   <div className="flex items-center gap-2 mb-3">
                     <Progress
-                      value={Math.round((subtasks.filter((s) => s.statusType === "CLOSED").length / subtasks.length) * 100)}
+                      value={Math.round(
+                        (subtasks.filter((s) => s.statusType === "CLOSED")
+                          .length /
+                          subtasks.length) *
+                          100,
+                      )}
                       className="flex-1 h-1.5"
                     />
                   </div>
@@ -667,14 +940,26 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
                       <div
                         key={sub.id}
                         className="flex items-center gap-2 rounded-md border bg-card px-3 py-2 hover:bg-accent/30 cursor-pointer group"
-                        onClick={() => router.push(`/${workspaceId}/task/${sub.id}`)}
+                        onClick={() =>
+                          router.push(`/${workspaceId}/task/${sub.id}`)
+                        }
                       >
                         <span
                           className="size-2.5 rounded-full shrink-0"
-                          style={{ backgroundColor: sub.statusColor ?? "#9CA3AF" }}
+                          style={{
+                            backgroundColor: sub.statusColor ?? "#9CA3AF",
+                          }}
                         />
-                        <span className="font-mono text-xs text-muted-foreground shrink-0">#{sub.seqNumber}</span>
-                        <span className={cn("flex-1 text-sm truncate", sub.statusType === "CLOSED" && "line-through text-muted-foreground")}>
+                        <span className="font-mono text-xs text-muted-foreground shrink-0">
+                          #{sub.seqNumber}
+                        </span>
+                        <span
+                          className={cn(
+                            "flex-1 text-sm truncate",
+                            sub.statusType === "CLOSED" &&
+                              "line-through text-muted-foreground",
+                          )}
+                        >
                           {sub.title}
                         </span>
                         <CaretRightIcon className="size-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 shrink-0" />
@@ -692,7 +977,12 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
                   onKeyDown={async (e) => {
                     if (e.key === "Enter" && subtaskInput.trim()) {
                       setCreatingSubtask(true);
-                      await createSubtask(workspaceId, spaceId, taskId, subtaskInput.trim());
+                      await createSubtask(
+                        workspaceId,
+                        spaceId,
+                        taskId,
+                        subtaskInput.trim(),
+                      );
                       setSubtaskInput("");
                       setCreatingSubtask(false);
                       load();
@@ -709,7 +999,12 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
                   onClick={async () => {
                     if (!subtaskInput.trim()) return;
                     setCreatingSubtask(true);
-                    await createSubtask(workspaceId, spaceId, taskId, subtaskInput.trim());
+                    await createSubtask(
+                      workspaceId,
+                      spaceId,
+                      taskId,
+                      subtaskInput.trim(),
+                    );
                     setSubtaskInput("");
                     setCreatingSubtask(false);
                     load();
@@ -738,7 +1033,10 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
                 <h3 className="text-sm font-semibold">Attachments</h3>
                 {attachments.filter((a) => !a.commentId).length > 0 && (
                   <span className="text-xs text-muted-foreground">
-                    {attachments.filter((a) => !a.commentId).length} file{attachments.filter((a) => !a.commentId).length !== 1 ? "s" : ""}
+                    {attachments.filter((a) => !a.commentId).length} file
+                    {attachments.filter((a) => !a.commentId).length !== 1
+                      ? "s"
+                      : ""}
                   </span>
                 )}
               </div>
@@ -768,11 +1066,25 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
             <div
               className="rounded-lg border-2 border-dashed border-border/50 p-4 transition-colors hover:border-primary/30 hover:bg-accent/20 cursor-pointer"
               onClick={() => fileInputRef.current?.click()}
-              onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add("border-primary/60", "bg-accent/30"); }}
-              onDragLeave={(e) => { e.currentTarget.classList.remove("border-primary/60", "bg-accent/30"); }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.currentTarget.classList.add(
+                  "border-primary/60",
+                  "bg-accent/30",
+                );
+              }}
+              onDragLeave={(e) => {
+                e.currentTarget.classList.remove(
+                  "border-primary/60",
+                  "bg-accent/30",
+                );
+              }}
               onDrop={(e) => {
                 e.preventDefault();
-                e.currentTarget.classList.remove("border-primary/60", "bg-accent/30");
+                e.currentTarget.classList.remove(
+                  "border-primary/60",
+                  "bg-accent/30",
+                );
                 const file = e.dataTransfer.files[0];
                 if (file) handleFileUpload(file);
               }}
@@ -784,13 +1096,23 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
                   <p className="text-2xs opacity-60">Max 10 MB per file</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3" onClick={(e) => e.stopPropagation()}>
+                <div
+                  className="grid grid-cols-2 gap-2 sm:grid-cols-3"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   {attachments
                     .filter((a) => !a.commentId)
                     .map((att) => (
-                      <div key={att.id} className="group relative rounded-md border bg-card overflow-hidden">
+                      <div
+                        key={att.id}
+                        className="group relative rounded-md border bg-card overflow-hidden"
+                      >
                         {isImage(att.mimeType) ? (
-                          <a href={att.url} target="_blank" rel="noopener noreferrer">
+                          <a
+                            href={att.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
                             <img
                               src={att.url}
                               alt={att.fileName}
@@ -814,8 +1136,12 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
                           </a>
                         )}
                         <div className="px-2 py-1.5 border-t">
-                          <p className="text-xs truncate font-medium">{att.fileName}</p>
-                          <p className="text-2xs text-muted-foreground">{formatBytes(att.fileSize)}</p>
+                          <p className="text-xs truncate font-medium">
+                            {att.fileName}
+                          </p>
+                          <p className="text-2xs text-muted-foreground">
+                            {formatBytes(att.fileSize)}
+                          </p>
                         </div>
                         <button
                           onClick={() => handleDeleteAttachment(att.id)}
@@ -826,12 +1152,17 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
                       </div>
                     ))}
                   <button
-                    onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      fileInputRef.current?.click();
+                    }}
                     disabled={uploadingFile}
                     className="flex flex-col items-center justify-center h-full min-h-24 rounded-md border-2 border-dashed border-border/50 text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors disabled:opacity-50"
                   >
                     <PlusIcon className="size-5" />
-                    <span className="text-2xs mt-1">{uploadingFile ? "Uploading…" : "Add file"}</span>
+                    <span className="text-2xs mt-1">
+                      {uploadingFile ? "Uploading…" : "Add file"}
+                    </span>
                   </button>
                 </div>
               )}
@@ -845,30 +1176,65 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
             <div className="space-y-5 mb-6">
               {totalItems > 0 && (
                 <div className="flex items-center gap-3 mb-1">
-                  <span className="text-xs text-muted-foreground w-8 text-right">{checkProgress}%</span>
+                  <span className="text-xs text-muted-foreground w-8 text-right">
+                    {checkProgress}%
+                  </span>
                   <Progress value={checkProgress} className="flex-1 h-1.5" />
                 </div>
               )}
               {checklists.map((cl) => (
                 <div key={cl.id}>
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="font-semibold text-sm flex-1">{cl.name}</span>
-                    <button onClick={async () => { await deleteChecklist(workspaceId, spaceId, listId, cl.id); load(); }} className="text-muted-foreground hover:text-destructive">
+                    <span className="font-semibold text-sm flex-1">
+                      {cl.name}
+                    </span>
+                    <button
+                      onClick={async () => {
+                        await deleteChecklist(
+                          workspaceId,
+                          spaceId,
+                          listId,
+                          cl.id,
+                        );
+                        load();
+                      }}
+                      className="text-muted-foreground hover:text-destructive"
+                    >
                       <XIcon className="size-3.5" />
                     </button>
                   </div>
                   <div className="space-y-1 mb-2">
                     {cl.items.map((item) => (
-                      <div key={item.id} className="flex items-center gap-2 rounded-md py-1 px-1 hover:bg-accent/30 group">
+                      <div
+                        key={item.id}
+                        className="flex items-center gap-2 rounded-md py-1 px-1 hover:bg-accent/30 group"
+                      >
                         <Checkbox
                           checked={item.isChecked}
                           onCheckedChange={() => handleToggleItem(item.id)}
                           className="shrink-0"
                         />
-                        <span className={cn("flex-1 text-sm", item.isChecked && "line-through text-muted-foreground")}>
+                        <span
+                          className={cn(
+                            "flex-1 text-sm",
+                            item.isChecked &&
+                              "line-through text-muted-foreground",
+                          )}
+                        >
                           {item.title}
                         </span>
-                        <button onClick={async () => { await deleteChecklistItem(workspaceId, spaceId, listId, item.id); load(); }} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity">
+                        <button
+                          onClick={async () => {
+                            await deleteChecklistItem(
+                              workspaceId,
+                              spaceId,
+                              listId,
+                              item.id,
+                            );
+                            load();
+                          }}
+                          className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+                        >
                           <XIcon className="size-3.5" />
                         </button>
                       </div>
@@ -878,11 +1244,25 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
                     <Input
                       placeholder="Add item…"
                       value={newItemTexts[cl.id] ?? ""}
-                      onChange={(e) => setNewItemTexts((prev) => ({ ...prev, [cl.id]: e.target.value }))}
-                      onKeyDown={(e) => { if (e.key === "Enter") handleAddItem(cl.id); }}
+                      onChange={(e) =>
+                        setNewItemTexts((prev) => ({
+                          ...prev,
+                          [cl.id]: e.target.value,
+                        }))
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleAddItem(cl.id);
+                      }}
                       className="h-7 text-xs"
                     />
-                    <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => handleAddItem(cl.id)}>Add</Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => handleAddItem(cl.id)}
+                    >
+                      Add
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -896,10 +1276,20 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
               {dependencies.length > 0 && (
                 <div className="space-y-1 mb-3">
                   {dependencies.map((dep) => (
-                    <div key={dep.id} className="flex items-center gap-2 rounded-md border bg-card px-3 py-2">
-                      <span className="font-mono text-xs text-muted-foreground">#{dep.dependsOnSeq}</span>
-                      <span className="flex-1 text-sm truncate">{dep.dependsOnTitle}</span>
-                      <button onClick={() => handleRemoveDep(dep.dependsOnTaskId)} className="text-muted-foreground hover:text-destructive">
+                    <div
+                      key={dep.id}
+                      className="flex items-center gap-2 rounded-md border bg-card px-3 py-2"
+                    >
+                      <span className="font-mono text-xs text-muted-foreground">
+                        #{dep.dependsOnSeq}
+                      </span>
+                      <span className="flex-1 text-sm truncate">
+                        {dep.dependsOnTitle}
+                      </span>
+                      <button
+                        onClick={() => handleRemoveDep(dep.dependsOnTaskId)}
+                        className="text-muted-foreground hover:text-destructive"
+                      >
                         <XIcon className="size-3.5" />
                       </button>
                     </div>
@@ -921,7 +1311,9 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
                         onClick={() => handleAddDep(r.id)}
                         className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-accent"
                       >
-                        <span className="font-mono text-xs text-muted-foreground">#{r.seqNumber}</span>
+                        <span className="font-mono text-xs text-muted-foreground">
+                          #{r.seqNumber}
+                        </span>
                         <span className="truncate">{r.title}</span>
                       </button>
                     ))}
@@ -934,7 +1326,12 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
           {/* Action buttons */}
           <div className="flex flex-wrap gap-2">
             {!addingChecklist ? (
-              <Button variant="ghost" size="sm" className="text-muted-foreground h-8 text-xs" onClick={() => setAddingChecklist(true)}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground h-8 text-xs"
+                onClick={() => setAddingChecklist(true)}
+              >
                 <PlusIcon className="size-3.5 mr-1.5" /> Create checklist
               </Button>
             ) : (
@@ -944,17 +1341,39 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
                   placeholder="Checklist name…"
                   value={newChecklistName}
                   onChange={(e) => setNewChecklistName(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") handleAddChecklist(); if (e.key === "Escape") setAddingChecklist(false); }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleAddChecklist();
+                    if (e.key === "Escape") setAddingChecklist(false);
+                  }}
                   className="h-7 text-xs w-44"
                 />
-                <Button size="sm" className="h-7 text-xs" onClick={handleAddChecklist}>Add</Button>
-                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setAddingChecklist(false)}>Cancel</Button>
+                <Button
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={handleAddChecklist}
+                >
+                  Add
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-xs"
+                  onClick={() => setAddingChecklist(false)}
+                >
+                  Cancel
+                </Button>
               </div>
             )}
 
             {!showDepsSection && dependencies.length === 0 && (
-              <Button variant="ghost" size="sm" className="text-muted-foreground h-8 text-xs" onClick={() => setShowDepsSection(true)}>
-                <PlusIcon className="size-3.5 mr-1.5" /> Relate items or add dependencies
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground h-8 text-xs"
+                onClick={() => setShowDepsSection(true)}
+              >
+                <PlusIcon className="size-3.5 mr-1.5" /> Relate items or add
+                dependencies
               </Button>
             )}
           </div>
@@ -975,7 +1394,9 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
                 />
               </div>
               <div className="flex-1 space-y-1">
-                <label className="text-xs text-muted-foreground">Note (optional)</label>
+                <label className="text-xs text-muted-foreground">
+                  Note (optional)
+                </label>
                 <Input
                   placeholder="What did you work on?"
                   value={timeNote}
@@ -983,7 +1404,13 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
                   className="h-8 text-xs"
                 />
               </div>
-              <Button size="sm" className="h-8 text-xs shrink-0" onClick={handleLogTime}>Log</Button>
+              <Button
+                size="sm"
+                className="h-8 text-xs shrink-0"
+                onClick={handleLogTime}
+              >
+                Log
+              </Button>
             </div>
           </div>
         </div>
@@ -1003,7 +1430,8 @@ export function TaskDetailPage({ workspaceId, spaceId, listId, taskId, listName 
           {/* Task seq footer */}
           <div className="border-t px-5 py-3 shrink-0">
             <p className="text-xs text-muted-foreground">
-              <span className="font-mono">#{t.seqNumber}</span> · Created {format(new Date(t.createdAt), "MMM d, yyyy")}
+              <span className="font-mono">#{t.seqNumber}</span> · Created{" "}
+              {format(new Date(t.createdAt), "MMM d, yyyy")}
             </p>
           </div>
         </div>

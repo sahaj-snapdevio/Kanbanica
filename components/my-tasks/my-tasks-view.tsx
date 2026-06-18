@@ -34,11 +34,11 @@ interface Group {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const PRIORITY_CONFIG = {
-  URGENT: { label: "Urgent", color: "text-red-500",    dot: "bg-red-500" },
-  HIGH:   { label: "High",   color: "text-orange-500", dot: "bg-orange-500" },
-  MEDIUM: { label: "Medium", color: "text-yellow-500", dot: "bg-yellow-500" },
-  LOW:    { label: "Low",    color: "text-blue-500",   dot: "bg-blue-500" },
-  NONE:   { label: "—",      color: "text-muted-foreground/40", dot: "" },
+  URGENT: { label: "Urgent", color: "text-red-500",    icon: "⚡" },
+  HIGH:   { label: "High",   color: "text-orange-500", icon: "🏃" },
+  MEDIUM: { label: "Medium", color: "text-yellow-500", icon: "🚶" },
+  LOW:    { label: "Low",    color: "text-blue-500",   icon: "🐢" },
+  NONE:   { label: "—",      color: "text-muted-foreground/40", icon: "😴" },
 } as const;
 
 function formatDue(task: MyTask): { label: string; overdue: boolean } | null {
@@ -112,7 +112,12 @@ function groupByPriority(tasks: MyTask[]): Group[] {
     .filter((p) => (map.get(p)?.length ?? 0) > 0)
     .map((p) => {
       const cfg = PRIORITY_CONFIG[p];
-      return { key: p, label: cfg.label, tasks: map.get(p) ?? [] };
+      return {
+        key: p,
+        label: cfg.label,
+        icon: <span className="mr-1">{cfg.icon}</span>,
+        tasks: map.get(p) ?? [],
+      };
     });
 }
 
@@ -188,8 +193,8 @@ function TaskRow({ task, workspaceId }: { task: MyTask; workspaceId: string }) {
       {/* Priority */}
       <td className="py-2.5 px-4 w-28">
         {task.priority !== "NONE" ? (
-          <span className={cn("flex items-center gap-1.5 text-xs font-medium", priority.color)}>
-            <span className={cn("size-2 rounded-full shrink-0", priority.dot)} />
+          <span className={cn("flex items-center gap-1 text-xs font-medium", priority.color)}>
+            <span>{priority.icon}</span>
             {priority.label}
           </span>
         ) : (

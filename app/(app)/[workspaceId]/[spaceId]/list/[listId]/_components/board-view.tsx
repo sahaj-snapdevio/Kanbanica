@@ -59,12 +59,12 @@ interface BoardViewProps {
   headerless?: boolean;
 }
 
-const PRIORITY_COLORS: Record<Task["priority"], string> = {
-  NONE: "text-muted-foreground",
-  LOW: "text-blue-500",
-  MEDIUM: "text-yellow-500",
-  HIGH: "text-orange-500",
-  URGENT: "text-red-500",
+const PRIORITY_CONFIG: Record<Task["priority"], { label: string; color: string; icon: string }> = {
+  NONE:   { label: "No Priority", color: "text-muted-foreground", icon: "😴" },
+  LOW:    { label: "Low",    color: "text-blue-500",             icon: "🐢" },
+  MEDIUM: { label: "Medium", color: "text-yellow-500",           icon: "🚶" },
+  HIGH:   { label: "High",   color: "text-orange-500",           icon: "🏃" },
+  URGENT: { label: "Urgent", color: "text-red-500",              icon: "⚡" },
 };
 
 // ─── Card visual (no dnd hooks) ──────────────────────────────────────────────
@@ -107,11 +107,15 @@ function CardContent({
         <div className="mt-2 flex items-center justify-between gap-2">
           <span className="font-mono text-muted-foreground text-xs shrink-0">#{task.seqNumber}</span>
           <div className="flex items-center gap-2 min-w-0">
-            {task.priority !== "NONE" && (
-              <span className={cn("text-xs font-medium shrink-0", PRIORITY_COLORS[task.priority])}>
-                {task.priority}
-              </span>
-            )}
+            {task.priority !== "NONE" && (() => {
+              const cfg = PRIORITY_CONFIG[task.priority];
+              return cfg ? (
+                <span className={cn("flex items-center gap-1 text-xs font-medium shrink-0", cfg.color)}>
+                  <span>{cfg.icon}</span>
+                  {cfg.label}
+                </span>
+              ) : null;
+            })()}
             {task.assignees.length > 0 && (
               <div className="flex -space-x-1.5 ml-auto">
                 {task.assignees.slice(0, 3).map((a) => (

@@ -29,6 +29,13 @@
       "when": 1781698954711,
       "tag": "0003_thin_zarda",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1781757596003,
+      "tag": "0004_friendly_oracle",
+      "breakpoints": true
     }
   ]
 }
