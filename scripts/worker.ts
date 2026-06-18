@@ -8,7 +8,7 @@ async function main() {
   await import("@/lib/env");
   const { startWorker, stopWorker } = await import("@/lib/worker/boss");
 
-  console.log("Starting KROVA background worker...");
+  console.log("Starting KANBANICA background worker...");
   await startWorker();
 
   let shuttingDown = false;

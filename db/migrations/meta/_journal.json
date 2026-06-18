@@ -29,6 +29,20 @@
       "when": 1781698954711,
       "tag": "0003_thin_zarda",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1781756953296,
+      "tag": "0004_fast_captain_flint",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1781757090327,
+      "tag": "0005_broad_charles_xavier",
+      "breakpoints": true
     }
   ]
 }

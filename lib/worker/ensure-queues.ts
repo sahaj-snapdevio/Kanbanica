@@ -62,6 +62,11 @@ export const QUEUE_OPTIONS: Record<
     policy: "exclusive",
     retryLimit: 2,
   },
+  [JOB_NAMES.SUPPORT_TICKET_AUTO_CLOSE]: {
+    expireInSeconds: 600,
+    policy: "exclusive",
+    retryLimit: 1,
+  },
 };
 
 export async function ensureJobQueues(boss: PgBoss) {

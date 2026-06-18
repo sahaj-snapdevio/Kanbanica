@@ -1,4 +1,5 @@
 import { pgEnum, pgTable, text, timestamp, boolean, integer, json, index } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const supportTicketStatusEnum = pgEnum("support_ticket_status", ["OPEN", "IN_PROGRESS", "CLOSED"]);
 export const supportTicketCategoryEnum = pgEnum("support_ticket_category", [
@@ -63,3 +64,9 @@ export const helpArticle = pgTable(
   },
   (t) => [index("help_article_category_idx").on(t.category, t.isPublished)],
 );
+
+// Single-row sequence table for atomic ticket number generation
+export const supportTicketSequence = pgTable("support_ticket_sequence", {
+  id: integer("id").primaryKey().default(1),
+  value: integer("value").notNull().default(sql`0`),
+});

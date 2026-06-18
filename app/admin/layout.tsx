@@ -4,7 +4,7 @@ import { AdminSidebar } from "@/components/admin/admin-sidebar";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await getAdminSession();
-  if (!session) redirect("/");
+  if (!session) redirect("/admin/login");
 
   return (
     <div className="flex h-screen bg-background">
