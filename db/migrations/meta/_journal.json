@@ -43,6 +43,13 @@
       "when": 1781757090327,
       "tag": "0005_broad_charles_xavier",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1781757596003,
+      "tag": "0006_friendly_oracle",
+      "breakpoints": true
     }
   ]
 }

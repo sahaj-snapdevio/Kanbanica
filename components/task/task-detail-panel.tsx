@@ -82,12 +82,12 @@ interface TaskDetailPanelProps {
 
 // ─── Priority config ──────────────────────────────────────────────────────────
 
-const PRIORITY_CONFIG: Record<Priority, { label: string; color: string; dot: string }> = {
-  NONE: { label: "No priority", color: "text-muted-foreground", dot: "bg-muted-foreground/40" },
-  LOW: { label: "Low", color: "text-blue-500", dot: "bg-blue-500" },
-  MEDIUM: { label: "Medium", color: "text-yellow-500", dot: "bg-yellow-500" },
-  HIGH: { label: "High", color: "text-orange-500", dot: "bg-orange-500" },
-  URGENT: { label: "Urgent", color: "text-red-500", dot: "bg-red-500" },
+const PRIORITY_CONFIG: Record<Priority, { label: string; color: string; icon: string; bg: string }> = {
+  NONE: { label: "No Priority", color: "text-muted-foreground", icon: "😴", bg: "bg-muted/60" },
+  LOW: { label: "Low", color: "text-blue-500", icon: "🐢", bg: "bg-blue-50 dark:bg-blue-950/40" },
+  MEDIUM: { label: "Medium", color: "text-yellow-500", icon: "🚶", bg: "bg-yellow-50 dark:bg-yellow-950/40" },
+  HIGH: { label: "High", color: "text-orange-500", icon: "🏃", bg: "bg-orange-50 dark:bg-orange-950/40" },
+  URGENT: { label: "Urgent", color: "text-red-500", icon: "⚡", bg: "bg-red-50 dark:bg-red-950/40" },
 };
 
 // ─── Avatar helper ────────────────────────────────────────────────────────────
@@ -415,15 +415,15 @@ export function TaskDetailPanel({
               </Select>
 
               <Select value={t.priority} onValueChange={(v) => handlePriorityChange(v as Priority)}>
-                <SelectTrigger className={cn("h-7 w-auto text-xs px-2 gap-1.5", priority.color)}>
-                  <span className={cn("size-2 rounded-full shrink-0", priority.dot)} />
+                <SelectTrigger className={cn("h-7 w-auto text-xs px-2 gap-1.5", priority.color, priority.bg)}>
+                  <span>{priority.icon}</span>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {(Object.entries(PRIORITY_CONFIG) as [Priority, typeof PRIORITY_CONFIG[Priority]][]).map(([key, cfg]) => (
                     <SelectItem key={key} value={key}>
                       <span className={cn("flex items-center gap-1.5", cfg.color)}>
-                        <span className={cn("size-2 rounded-full", cfg.dot)} />
+                        <span>{cfg.icon}</span>
                         {cfg.label}
                       </span>
                     </SelectItem>

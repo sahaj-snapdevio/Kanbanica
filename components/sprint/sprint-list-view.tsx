@@ -66,12 +66,12 @@ interface SprintListViewProps {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const PRIORITY_CONFIG: Record<string, { label: string; color: string; dot: string }> = {
-  NONE:   { label: "—",      color: "text-muted-foreground/40", dot: "" },
-  LOW:    { label: "Low",    color: "text-blue-500",             dot: "bg-blue-500" },
-  MEDIUM: { label: "Medium", color: "text-yellow-500",           dot: "bg-yellow-500" },
-  HIGH:   { label: "High",   color: "text-orange-500",           dot: "bg-orange-500" },
-  URGENT: { label: "Urgent", color: "text-red-500",              dot: "bg-red-500" },
+const PRIORITY_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
+  NONE:   { label: "—",      color: "text-muted-foreground/40", icon: "😴" },
+  LOW:    { label: "Low",    color: "text-blue-500",             icon: "🐢" },
+  MEDIUM: { label: "Medium", color: "text-yellow-500",           icon: "🚶" },
+  HIGH:   { label: "High",   color: "text-orange-500",           icon: "🏃" },
+  URGENT: { label: "Urgent", color: "text-red-500",              icon: "⚡" },
 };
 
 function userInitials(name: string) {
@@ -172,8 +172,8 @@ function TaskRow({
       {/* Priority */}
       <td className="py-2.5 px-4 w-28">
         {task.priority && task.priority !== "NONE" ? (
-          <span className={cn("flex items-center gap-1.5 text-xs font-medium", priority.color)}>
-            <span className={cn("size-2 rounded-full shrink-0", priority.dot)} />
+          <span className={cn("flex items-center gap-1 text-xs font-medium", priority.color)}>
+            <span>{priority.icon}</span>
             {priority.label}
           </span>
         ) : (

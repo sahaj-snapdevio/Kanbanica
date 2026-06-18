@@ -31,6 +31,7 @@ The landing page must feel like a modern SaaS product -- not a boilerplate. Key 
 **Right:** `Sign in` (ghost button) + `Get Started Free` (filled indigo button with arrow icon).
 
 **Behaviour:**
+
 - Scroll threshold: add `border-b shadow-sm bg-white/95 backdrop-blur` at `scrollY > 8px`.
 - Mobile: hamburger menu that reveals a full-screen overlay with the same links.
 
@@ -41,11 +42,13 @@ The landing page must feel like a modern SaaS product -- not a boilerplate. Key 
 **Layout:** Centred text + below-the-fold app screenshot mock. Full viewport height on desktop.
 
 **Background:**
+
 - White base.
 - A large soft radial gradient blob centred behind the headline: `radial-gradient(ellipse 80% 50% at 50% -10%, rgba(99,102,241,0.15) 0%, transparent 70%)`.
 - A subtle dot-grid pattern as a full-section background overlay (SVG pattern, low opacity ~4%).
 
 **Content (top, centred):**
+
 - Small pill badge above headline: indigo border + light indigo bg + label `"Now in early access"` with a pulsing green dot on the left.
 - Headline (h1): large, bold, two lines:
   - Line 1 (dark): `Project management`
@@ -56,6 +59,7 @@ The landing page must feel like a modern SaaS product -- not a boilerplate. Key 
 - Trust line below CTAs: small muted text `"No credit card required -- Magic link sign-in"`.
 
 **App screenshot mock (below text, ~70% viewport width, centred):**
+
 - Rounded-xl container with `border shadow-2xl` and a subtle inner glow: `ring-1 ring-indigo-100`.
 - Fake browser chrome bar at top: three traffic-light dots + a URL-bar placeholder `"kanbanica.com/acme/engineering/backlog"`.
 - Inside: a realistic mock of the List View showing:
@@ -66,6 +70,7 @@ The landing page must feel like a modern SaaS product -- not a boilerplate. Key 
 - The mock fades out at the bottom via a `bg-gradient-to-b from-transparent to-white` overlay, so it blends into the next section.
 
 **Entrance animation:**
+
 - Headline and sub-headline: `fade-in-up` 0.6s, delay 0s.
 - CTA buttons: `fade-in-up` 0.6s, delay 0.15s.
 - App mock: `fade-in-up` 0.8s, delay 0.3s + a very subtle scale from 0.97 to 1.
@@ -89,6 +94,7 @@ The landing page must feel like a modern SaaS product -- not a boilerplate. Key 
 **Background:** Subtle grid-line pattern (1px lines, 3% opacity) as section background.
 
 **Cards:**
+
 - White background, `border border-[#e5e7eb]`, `rounded-xl`, `p-6`, `shadow-sm`.
 - Hover: `shadow-md` + `border-indigo-200` + `translate-y-[-2px]` transition.
 - Icon container: `size-10 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500` with the Lucide icon in white inside.
@@ -104,12 +110,14 @@ The landing page must feel like a modern SaaS product -- not a boilerplate. Key 
 **Layout:** White background. Section label + heading centred. Hierarchy hint row. 4-step grid.
 
 **Hierarchy hint row:**
+
 - `Workspace -> Space -> List -> Task` rendered as a horizontal breadcrumb chain.
 - Each label in a `rounded-lg border bg-[#f9fafb] px-3 py-1.5 font-medium` pill.
 - Arrows between them using `ChevronRight` icon.
 - Below the chain, a small example row in muted text: `"Acme Inc -> Engineering -> Backlog -> Fix login bug"`.
 
 **Step cards:**
+
 - White bg, `border rounded-xl p-6 shadow-sm`.
 - Large step number (`text-5xl font-bold`) in a gradient text `from-indigo-200 to-violet-200` (very light, decorative).
 - Step title: `text-sm font-semibold`.
@@ -140,6 +148,7 @@ Each tab panel is a card with a `border shadow-sm rounded-xl` and realistic mock
 **Layout:** White background, 3-column grid on desktop.
 
 **Cards:**
+
 - White bg, `border rounded-xl p-6 shadow-sm`.
 - Top: 5 gold stars (`fill-amber-400`).
 - Quote text: `text-sm leading-relaxed text-foreground/80` with proper curly quotes.
@@ -154,6 +163,7 @@ Each tab panel is a card with a `border shadow-sm rounded-xl` and realistic mock
 **Layout:** `bg-[#f9fafb]`, narrow centred column (`max-w-2xl`). 7 questions in a single accordion.
 
 **Accordion items:**
+
 - White bg cards, `border rounded-lg shadow-sm`.
 - Trigger: `text-sm font-semibold`, custom chevron that rotates on open.
 - Content: `text-sm text-muted-foreground leading-relaxed`.
@@ -165,11 +175,13 @@ Each tab panel is a card with a `border shadow-sm rounded-xl` and realistic mock
 **Layout:** Full-width section containing a `rounded-2xl` card -- NOT just a coloured div.
 
 **Card background:**
+
 - `bg-gradient-to-br from-indigo-600 via-indigo-600 to-violet-600` (rich indigo to violet gradient).
 - A subtle radial noise/grain texture overlay at 8% opacity (CSS SVG filter or a PNG overlay).
 - Two large decorative blurred circles at the corners: `size-64 bg-white/10 rounded-full blur-3xl` -- one top-left, one bottom-right.
 
 **Content (centred):**
+
 - Heading: `text-3xl font-bold text-white`.
 - Sub-text: `text-white/70`.
 - CTA button: white background, indigo text, `font-semibold`. On hover: slightly off-white bg.
@@ -182,6 +194,7 @@ Each tab panel is a card with a `border shadow-sm rounded-xl` and realistic mock
 **Layout:** `bg-[#f9fafb]`, `border-t`. 4-column grid (brand col + Product + Company + Legal).
 
 **Brand column:**
+
 - `Kanbanica` wordmark in indigo bold.
 - One-line tagline in muted text.
 
@@ -196,16 +209,18 @@ Each tab panel is a card with a `border shadow-sm rounded-xl` and realistic mock
 Use inline SVG `data:` URIs as CSS `background-image` values -- no external image files required.
 
 **Dot grid pattern (hero, features):**
+
 ```css
 background-image: url("data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='1' cy='1' r='1' fill='%236366f1' fill-opacity='0.04'/%3E%3C/svg%3E");
 background-size: 20px 20px;
 ```
 
 **Line grid pattern (features section):**
+
 ```css
 background-image:
-  linear-gradient(rgba(99,102,241,0.04) 1px, transparent 1px),
-  linear-gradient(90deg, rgba(99,102,241,0.04) 1px, transparent 1px);
+  linear-gradient(rgba(99, 102, 241, 0.04) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(99, 102, 241, 0.04) 1px, transparent 1px);
 background-size: 40px 40px;
 ```
 
@@ -215,13 +230,13 @@ background-size: 40px 40px;
 
 Use `tw-animate-css` classes (already installed). Apply via Intersection Observer so animations only fire when sections enter the viewport.
 
-| Element | Class | Delay |
-|---------|-------|-------|
-| Section headings | `animate-fade-in-up` | 0ms |
-| Feature cards | `animate-fade-in-up` | 0 / 80 / 160 / 240 / 320 / 400ms |
-| Step cards | `animate-fade-in-up` | 0 / 120 / 240 / 360ms |
-| Hero app mock | `animate-fade-in-up` + scale | 300ms |
-| Testimonial cards | `animate-fade-in-up` | 0 / 100 / 200ms |
+| Element           | Class                        | Delay                            |
+| ----------------- | ---------------------------- | -------------------------------- |
+| Section headings  | `animate-fade-in-up`         | 0ms                              |
+| Feature cards     | `animate-fade-in-up`         | 0 / 80 / 160 / 240 / 320 / 400ms |
+| Step cards        | `animate-fade-in-up`         | 0 / 120 / 240 / 360ms            |
+| Hero app mock     | `animate-fade-in-up` + scale | 300ms                            |
+| Testimonial cards | `animate-fade-in-up`         | 0 / 100 / 200ms                  |
 
 Implement via a `useInView` hook (Intersection Observer, no extra lib) that adds `opacity-100 translate-y-0` to elements that start at `opacity-0 translate-y-4`.
 
@@ -253,33 +268,39 @@ SSG for all marketing pages. `export const dynamic = 'force-static'` on each pag
 
 ```typescript
 export const metadata: Metadata = {
-  title: 'Kanbanica -- Project Management for Modern Teams',
-  description: 'Organise work across Workspaces, Spaces, Lists, and Tasks. Sprints, board views, comments, and smart notifications built in.',
+  title: "Kanbanica -- Project Management for Modern Teams",
+  description:
+    "Organise work across Workspaces, Spaces, Lists, and Tasks. Sprints, board views, comments, and smart notifications built in.",
   openGraph: {
-    title: 'Kanbanica',
-    description: '...',
-    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
-    type: 'website',
+    title: "Kanbanica",
+    description: "...",
+    images: [{ url: "/og-image.png", width: 1200, height: 630 }],
+    type: "website",
   },
-  twitter: { card: 'summary_large_image', title: 'Kanbanica', images: ['/og-image.png'] },
-  alternates: { canonical: 'https://kanbanica.com' },
-}
+  twitter: {
+    card: "summary_large_image",
+    title: "Kanbanica",
+    images: ["/og-image.png"],
+  },
+  alternates: { canonical: "https://kanbanica.com" },
+};
 ```
 
 ---
 
 ## Performance Targets
 
-| Metric | Target |
-|--------|--------|
-| LCP | < 2.5s on 4G throttled |
-| CLS | < 0.1 |
-| INP | < 200ms |
-| Lighthouse Performance | >= 90 |
-| Lighthouse SEO | 100 |
-| Lighthouse Accessibility | >= 95 |
+| Metric                   | Target                 |
+| ------------------------ | ---------------------- |
+| LCP                      | < 2.5s on 4G throttled |
+| CLS                      | < 0.1                  |
+| INP                      | < 200ms                |
+| Lighthouse Performance   | >= 90                  |
+| Lighthouse SEO           | 100                    |
+| Lighthouse Accessibility | >= 95                  |
 
 Rules:
+
 - No heavy animation libraries (no Framer Motion). Use CSS transitions + `tw-animate-css` only.
 - Hero app mock is pure HTML/CSS -- no images, no canvas.
 - All icons from `lucide-react` (tree-shaken, no icon sprite sheet).
@@ -289,10 +310,10 @@ Rules:
 
 ## Analytics Events
 
-| Event | Trigger |
-|-------|---------|
-| `cta_clicked` | Every primary CTA button click |
-| `faq_expanded` | FAQ accordion item opens |
+| Event             | Trigger                                        |
+| ----------------- | ---------------------------------------------- |
+| `cta_clicked`     | Every primary CTA button click                 |
+| `faq_expanded`    | FAQ accordion item opens                       |
 | `sign_up_started` | User navigates to `/sign-in` from landing page |
 
 ---
