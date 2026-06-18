@@ -227,7 +227,7 @@ Phase 19 ->  QA & Launch Prep
 
 - [ ] Start PostgreSQL locally:
   ```bash
-  docker run --name teamority-db -e POSTGRES_PASSWORD=dev -e POSTGRES_DB=teamority -p 5432:5432 -d postgres:16
+  docker run --name kanbanica-db -e POSTGRES_PASSWORD=dev -e POSTGRES_DB=kanbanica -p 5432:5432 -d postgres:16
   ```
 - [ ] Write Drizzle schema -- do in Phase 1 (see [database-schema.md](./database-schema.md))
 - [ ] `npx drizzle-kit generate`

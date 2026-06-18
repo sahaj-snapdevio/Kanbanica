@@ -58,7 +58,7 @@ export function LoginForm() {
 
   if (sent) {
     return (
-      <Card>
+      <Card className="rounded-xl">
         <CardContent className="flex flex-col items-center gap-4 pb-8 pt-8 text-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
             <CheckCircleIcon className="size-6 text-primary" weight="duotone" />
@@ -85,7 +85,7 @@ export function LoginForm() {
   }
 
   return (
-    <Card>
+    <Card className="rounded-xl">
       <CardHeader className="pb-4">
         <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
           <EnvelopeIcon className="size-5 text-primary" weight="duotone" />

@@ -3,6 +3,7 @@ import { and, eq, gte, lt } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { notification, user } from "@/db/schema";
 import { enqueueEmail } from "@/lib/email/index";
+import { PRODUCT_NAME } from "@/config/platform";
 
 interface DigestSendPayload {
   userId: string;
@@ -51,7 +52,7 @@ async function processDigest({ userId, windowStart, windowEnd }: DigestSendPaylo
 
   const html = `
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2 style="color: #1a1a1a;">Your Teamority Notification Digest</h2>
+      <h2 style="color: #1a1a1a;">Your ${PRODUCT_NAME} Notification Digest</h2>
       <p>Here are your notifications from the last 30 minutes:</p>
       <table style="width: 100%; border-collapse: collapse; border: 1px solid #eee;">
         <thead>
@@ -63,7 +64,7 @@ async function processDigest({ userId, windowStart, windowEnd }: DigestSendPaylo
         <tbody>${rows}</tbody>
       </table>
       <p style="color: #666; font-size: 12px; margin-top: 24px;">
-        You're receiving this digest because you have digest notifications enabled in Teamority.
+        You're receiving this digest because you have digest notifications enabled in ${PRODUCT_NAME}.
       </p>
     </div>
   `;
@@ -72,7 +73,7 @@ async function processDigest({ userId, windowStart, windowEnd }: DigestSendPaylo
 
   await enqueueEmail({
     to: userRow.email,
-    subject: "[Teamority] Your notification digest",
+    subject: `[${PRODUCT_NAME}] Your notification digest`,
     html,
     text,
   });

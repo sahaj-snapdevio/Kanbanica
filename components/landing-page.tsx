@@ -18,6 +18,10 @@ import {
   Menu,
   X,
   Check,
+  ShieldCheck,
+  Clock,
+  TrendingUp,
+  Globe,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -26,6 +30,11 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import {
+  MARKETING_DOMAIN,
+  PRODUCT_NAME,
+  SUPPORT_EMAIL,
+} from "@/config/platform";
 
 function useInView(threshold = 0.12) {
   const ref = React.useRef<HTMLDivElement>(null);
@@ -95,25 +104,25 @@ const steps = [
 
 const testimonials = [
   { name: "Sarah Chen", role: "Engineering Lead, Flowboard", initials: "SC", body: "We switched from ClickUp and the onboarding took 20 minutes. The Board view is snappy, the permissions model is exactly what we needed for guest contractors." },
-  { name: "Marcus Rivera", role: "Product Manager, Stackd", initials: "MR", body: "Sprint planning used to take half a day. With Kanbanica's sprint view and story points, we're done in an hour. The burndown chart is a game-changer." },
+  { name: "Marcus Rivera", role: "Product Manager, Stackd", initials: "MR", body: `Sprint planning used to take half a day. With ${PRODUCT_NAME}'s sprint view and story points, we're done in an hour. The burndown chart is a game-changer.` },
   { name: "Priya Nair", role: "Founder, Loopback", initials: "PN", body: "My Tasks view is something I didn't know I needed. Seeing every task assigned to me across every project in one place — with a due date grouping — is brilliant." },
 ];
 
 const faqs = [
-  { q: "How is Kanbanica different from Jira or ClickUp?", a: "Kanbanica is built for teams that want the power of Jira and the usability of ClickUp — without the bloat. We focus on the core: tasks, sprints, views, and collaboration. No feature creep." },
+  { q: `How is ${PRODUCT_NAME} different from Jira or ClickUp?`, a: `${PRODUCT_NAME} is built for teams that want the power of Jira and the usability of ClickUp — without the bloat. We focus on the core: tasks, sprints, views, and collaboration. No feature creep — and it's completely free.` },
   { q: "How does magic link authentication work?", a: "You enter your email and we send a one-time sign-in link. Clicking it logs you in instantly. No passwords to create, remember, or reset. First-time users get an account created automatically." },
   { q: "What is a Space?", a: "A Space is a logical grouping for a team or department inside your Workspace — like Engineering, Marketing, or HR. Each Space has its own Lists, members, and permissions." },
   { q: "Can I control who sees what?", a: "Yes. Workspace roles (Owner, Admin, Member, Guest) control workspace-level access. Space permissions (Full Access, Edit, View) control everything inside a Space. Guests can only see Spaces they are explicitly invited to." },
   { q: "What views are available?", a: "MVP ships with List View, Board View (Kanban), and My Tasks. Calendar View, Gantt, and Workload View are on the roadmap." },
   { q: "Can I invite contractors or clients as guests?", a: "Yes. The Guest role gives scoped access to only the Spaces you invite them to. They cannot see anything else in your Workspace." },
-  { q: "Is there a free plan?", a: "We're in early access. Sign up now and lock in founding member pricing before we launch paid plans." },
+  { q: "Is it really free?", a: `Yes — ${PRODUCT_NAME} is completely free to use. Every feature is available to your whole team with no paid tiers, seat limits, or feature paywalls. No credit card required to get started.` },
 ];
 
 function SectionLabel({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 font-semibold text-indigo-600 text-xs uppercase tracking-wide",
+        "inline-flex items-center rounded-full border border-purple-200 bg-purple-50 px-3 py-1 font-semibold text-purple-600 text-xs uppercase tracking-wide",
         className,
       )}
     >
@@ -142,9 +151,10 @@ function Navbar() {
       )}
     >
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
-        <span className="font-bold text-indigo-600 text-lg tracking-tight">Kanbanica</span>
+        <span className="font-bold text-purple-600 text-lg tracking-tight">{PRODUCT_NAME}</span>
         <nav className="hidden items-center gap-6 text-sm text-[#6b7280] sm:flex">
           <a href="#features" className="transition-colors hover:text-[#111827]">Features</a>
+          <a href="#why" className="transition-colors hover:text-[#111827]">Why us</a>
           <a href="#how-it-works" className="transition-colors hover:text-[#111827]">How it works</a>
           <a href="#faq" className="transition-colors hover:text-[#111827]">FAQ</a>
         </nav>
@@ -152,13 +162,15 @@ function Navbar() {
           <Button variant="ghost" size="sm" asChild>
             <Link href="/login">Sign in</Link>
           </Button>
-          <Button size="sm" asChild className="bg-indigo-600 text-white hover:bg-indigo-700">
+          <Button size="sm" asChild className="bg-purple-600 text-white hover:bg-purple-700">
             <Link href="/login">
               Get Started Free <ArrowRight className="ml-1 size-3.5" />
             </Link>
           </Button>
         </div>
         <button
+          aria-label={mobileOpen ? "Close menu" : "Open menu"}
+          aria-expanded={mobileOpen}
           className="rounded-md p-2 text-[#6b7280] hover:text-[#111827] sm:hidden"
           onClick={() => setMobileOpen((v) => !v)}
         >
@@ -169,13 +181,14 @@ function Navbar() {
         <div className="border-t border-[#e5e7eb] bg-white px-6 pb-4 sm:hidden">
           <nav className="flex flex-col gap-3 pt-4 text-sm text-[#6b7280]">
             <a href="#features" onClick={() => setMobileOpen(false)} className="hover:text-[#111827]">Features</a>
+            <a href="#why" onClick={() => setMobileOpen(false)} className="hover:text-[#111827]">Why us</a>
             <a href="#how-it-works" onClick={() => setMobileOpen(false)} className="hover:text-[#111827]">How it works</a>
             <a href="#faq" onClick={() => setMobileOpen(false)} className="hover:text-[#111827]">FAQ</a>
             <div className="flex flex-col gap-2 border-t border-[#e5e7eb] pt-2">
               <Button variant="outline" size="sm" asChild>
                 <Link href="/login">Sign in</Link>
               </Button>
-              <Button size="sm" asChild className="bg-indigo-600 text-white hover:bg-indigo-700">
+              <Button size="sm" asChild className="bg-purple-600 text-white hover:bg-purple-700">
                 <Link href="/login">Get Started Free</Link>
               </Button>
             </div>
@@ -187,7 +200,7 @@ function Navbar() {
 }
 
 const DOT_GRID =
-  "url(\"data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='1' cy='1' r='1' fill='%236366f1' fill-opacity='0.05'/%3E%3C/svg%3E\")";
+  "url(\"data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='1' cy='1' r='1' fill='%239333ea' fill-opacity='0.05'/%3E%3C/svg%3E\")";
 
 function HeroSection() {
   return (
@@ -199,34 +212,34 @@ function HeroSection() {
         className="pointer-events-none absolute inset-x-0 top-0 h-[600px]"
         style={{
           background:
-            "radial-gradient(ellipse 80% 50% at 50% -10%, rgba(99,102,241,0.14) 0%, transparent 70%)",
+            "radial-gradient(ellipse 80% 50% at 50% -10%, rgba(147,51,234,0.14) 0%, transparent 70%)",
         }}
       />
       <div className="relative mx-auto max-w-6xl px-6 pb-0 pt-20 text-center">
         <Animate>
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1.5 font-semibold text-indigo-700 text-xs">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-purple-200 bg-purple-50 px-3 py-1.5 font-semibold text-purple-700 text-xs">
             <span className="size-1.5 animate-pulse rounded-full bg-emerald-500" />
-            Now in early access
+            Free for every team — no credit card
           </div>
           <h1 className="mb-5 mt-2 text-5xl font-bold leading-tight tracking-tight text-[#111827] sm:text-6xl">
             Project management
             <br />
             <span
               className="bg-clip-text text-transparent"
-              style={{ backgroundImage: "linear-gradient(to right, #6366f1, #7c3aed)" }}
+              style={{ backgroundImage: "linear-gradient(to right, #9333ea, #c026d3)" }}
             >
               your team will actually use
             </span>
           </h1>
           <p className="mx-auto mb-8 max-w-2xl text-lg leading-relaxed text-[#6b7280]">
-            Kanbanica gives every team a shared home — Workspaces, Spaces, Lists, and Tasks — with
-            sprints, board views, comments, and notifications built in.
+            {PRODUCT_NAME} gives every team a shared home — Workspaces, Spaces, Lists, and Tasks — with
+            sprints, board views, comments, and notifications built in. Free for your whole team.
           </p>
           <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
             <Button
               size="lg"
               asChild
-              className="h-11 bg-indigo-600 px-6 text-base text-white shadow-lg shadow-indigo-200 hover:bg-indigo-700"
+              className="h-11 bg-purple-600 px-6 text-base text-white shadow-lg shadow-purple-200 hover:bg-purple-700"
             >
               <Link href="/login">
                 Get Started Free <ArrowRight className="ml-1.5 size-4" />
@@ -246,13 +259,13 @@ function HeroSection() {
 
         <Animate delay={300} className="mt-16">
           <div className="relative mx-auto max-w-4xl">
-            <div className="overflow-hidden rounded-xl border border-[#e5e7eb] bg-white shadow-2xl ring-1 ring-indigo-100">
+            <div className="overflow-hidden rounded-xl border border-[#e5e7eb] bg-white shadow-2xl ring-1 ring-purple-100">
               <div className="flex items-center gap-1.5 border-b border-[#e5e7eb] bg-[#f9fafb] px-4 py-2.5">
                 <span className="size-3 rounded-full bg-[#ef4444]" />
                 <span className="size-3 rounded-full bg-[#f59e0b]" />
                 <span className="size-3 rounded-full bg-[#10b981]" />
                 <div className="mx-auto ml-4 max-w-xs flex-1 rounded-md border border-[#e5e7eb] bg-white px-3 py-1 text-[#9ca3af] text-xs">
-                  kanbanica.com/acme/engineering/backlog
+                  {MARKETING_DOMAIN}/acme/engineering/backlog
                 </div>
               </div>
               <div className="flex bg-[#f9fafb]">
@@ -262,7 +275,7 @@ function HeroSection() {
                       key={i}
                       className={cn(
                         "flex size-8 items-center justify-center rounded-md",
-                        i === 0 ? "bg-indigo-600 text-white" : "text-[#9ca3af] hover:bg-[#f3f4f6]",
+                        i === 0 ? "bg-purple-600 text-white" : "text-[#9ca3af] hover:bg-[#f3f4f6]",
                       )}
                     >
                       <Icon className="size-4" />
@@ -283,7 +296,7 @@ function HeroSection() {
                           className={cn(
                             "cursor-pointer rounded px-2.5 py-1 font-medium text-xs transition-colors",
                             i === 0
-                              ? "bg-indigo-600 text-white"
+                              ? "bg-purple-600 text-white"
                               : "text-[#6b7280] hover:bg-[#f3f4f6] hover:text-[#111827]",
                           )}
                         >
@@ -304,22 +317,22 @@ function HeroSection() {
                   </div>
                   <div className="space-y-1.5">
                     {[
-                      { title: "Fix login redirect bug", status: "In Progress", statusCls: "bg-indigo-50 text-indigo-600", priority: "High", pCls: "bg-orange-50 text-orange-500", assignee: "SC" },
+                      { title: "Fix login redirect bug", status: "In Progress", statusCls: "bg-purple-50 text-purple-600", priority: "High", pCls: "bg-orange-50 text-orange-500", assignee: "SC" },
                       { title: "Design onboarding flow", status: "Review", statusCls: "bg-amber-50 text-amber-600", priority: "Medium", pCls: "bg-yellow-50 text-yellow-600", assignee: "MR" },
                       { title: "Write API documentation", status: "Todo", statusCls: "bg-[#f3f4f6] text-[#6b7280]", priority: "Low", pCls: "bg-blue-50 text-blue-500", assignee: "PN" },
                       { title: "Set up CI/CD pipeline", status: "Todo", statusCls: "bg-[#f3f4f6] text-[#6b7280]", priority: "Urgent", pCls: "bg-red-50 text-red-500", assignee: "SC" },
-                      { title: "Implement search indexing", status: "In Progress", statusCls: "bg-indigo-50 text-indigo-600", priority: "High", pCls: "bg-orange-50 text-orange-500", assignee: "MR" },
+                      { title: "Implement search indexing", status: "In Progress", statusCls: "bg-purple-50 text-purple-600", priority: "High", pCls: "bg-orange-50 text-orange-500", assignee: "MR" },
                     ].map((t) => (
                       <div
                         key={t.title}
-                        className="flex items-center gap-3 rounded-md border border-[#e5e7eb] bg-white px-3 py-2 text-sm transition-colors hover:border-indigo-200"
+                        className="flex items-center gap-3 rounded-md border border-[#e5e7eb] bg-white px-3 py-2 text-sm transition-colors hover:border-purple-200"
                       >
                         <span className="size-4 shrink-0 rounded border-2 border-[#e5e7eb]" />
                         <span className="flex-1 truncate font-medium text-[#111827] text-xs">{t.title}</span>
                         <span className={cn("shrink-0 rounded px-2 py-0.5 text-[10px] font-medium", t.statusCls)}>{t.status}</span>
                         <span className={cn("hidden shrink-0 rounded px-2 py-0.5 text-[10px] font-medium sm:inline-block", t.pCls)}>{t.priority}</span>
                         <Avatar className="size-5 shrink-0">
-                          <AvatarFallback className="bg-indigo-100 text-[8px] text-indigo-700">{t.assignee}</AvatarFallback>
+                          <AvatarFallback className="bg-purple-100 text-[8px] text-purple-700">{t.assignee}</AvatarFallback>
                         </Avatar>
                       </div>
                     ))}
@@ -346,7 +359,7 @@ function SocialProofBar() {
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-between">
             <p className="text-[#6b7280] text-sm">
               <span className="font-semibold text-[#111827]">500+ teams</span> already managing their
-              work with Kanbanica
+              work with {PRODUCT_NAME}
             </p>
             <div className="flex items-center gap-6">
               {["Acme Co", "Flowboard", "Stackd", "Loopback", "Nexus"].map((name) => (
@@ -366,14 +379,14 @@ function SocialProofBar() {
 }
 
 const LINE_GRID =
-  "linear-gradient(rgba(99,102,241,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.04) 1px, transparent 1px)";
+  "linear-gradient(rgba(147,51,234,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(147,51,234,0.04) 1px, transparent 1px)";
 
 function FeaturesSection() {
   const { ref, visible } = useInView();
   return (
     <section
       id="features"
-      className="py-24"
+      className="py-16 scroll-mt-14"
       style={{ backgroundImage: LINE_GRID, backgroundSize: "40px 40px", backgroundColor: "#f9fafb" }}
     >
       <div className="mx-auto max-w-6xl px-6">
@@ -390,7 +403,7 @@ function FeaturesSection() {
               key={title}
               className={cn(
                 "group cursor-default rounded-xl border border-[#e5e7eb] bg-white p-6 shadow-sm transition-all duration-300",
-                "hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md",
+                "hover:-translate-y-0.5 hover:border-purple-200 hover:shadow-md",
                 visible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
               )}
               style={{
@@ -400,7 +413,7 @@ function FeaturesSection() {
             >
               <div
                 className="mb-4 flex size-10 items-center justify-center rounded-lg text-white"
-                style={{ background: "linear-gradient(135deg, #6366f1, #7c3aed)" }}
+                style={{ background: "linear-gradient(135deg, #9333ea, #c026d3)" }}
               >
                 <Icon className="size-5" />
               </div>
@@ -414,10 +427,143 @@ function FeaturesSection() {
   );
 }
 
+function StatsSection() {
+  const { ref, visible } = useInView();
+  const stats = [
+    { value: "500+", label: "Teams onboard", icon: Users },
+    { value: "2M+", label: "Tasks completed", icon: CheckCircle2 },
+    { value: "99.9%", label: "Uptime guarantee", icon: TrendingUp },
+    { value: "20 min", label: "Average setup time", icon: Clock },
+  ];
+  return (
+    <section className="relative overflow-hidden py-16 text-white">
+      <div
+        className="absolute inset-0"
+        style={{ background: "linear-gradient(135deg, #6d28d9 0%, #9333ea 55%, #c026d3 100%)" }}
+      />
+      <div className="pointer-events-none absolute -top-20 -left-24 size-72 rounded-full bg-white/10 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-24 -right-20 size-80 rounded-full bg-fuchsia-300/20 blur-3xl" />
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.07]"
+        style={{
+          backgroundImage:
+            "url(\"data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='1' cy='1' r='1' fill='white'/%3E%3C/svg%3E\")",
+          backgroundSize: "20px 20px",
+        }}
+      />
+      <div ref={ref} className="relative mx-auto max-w-6xl px-6">
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          {stats.map(({ value, label, icon: Icon }, i) => (
+            <div
+              key={label}
+              className={cn(
+                "flex flex-col items-center text-center transition-all duration-500 sm:items-start sm:text-left",
+                visible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
+              )}
+              style={{ transitionDelay: visible ? `${i * 90}ms` : "0ms" }}
+            >
+              <div className="mb-3 flex size-9 items-center justify-center rounded-lg bg-white/15 ring-1 ring-white/20 backdrop-blur-sm">
+                <Icon className="size-4.5 text-white" />
+              </div>
+              <div className="text-4xl font-bold tracking-tight">{value}</div>
+              <div className="mt-1 text-sm text-white/70">{label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const bentoCards = [
+  {
+    span: "lg:col-span-2",
+    icon: Kanban,
+    title: "A board that keeps up with you",
+    description:
+      "Drag cards across columns, reorder instantly, and watch status update in real time. No lag, no reloads — just flow.",
+    accent: true,
+  },
+  {
+    span: "",
+    icon: ShieldCheck,
+    title: "Permissions done right",
+    description:
+      "Workspace roles plus per-Space access. Invite guests to exactly what they need — nothing more.",
+  },
+  {
+    span: "",
+    icon: Zap,
+    title: "Sprints with story points",
+    description: "Plan, point, and close two-week cycles with an automatic burndown.",
+  },
+  {
+    span: "lg:col-span-2",
+    icon: Globe,
+    title: "Everything, searchable in a keystroke",
+    description:
+      "Hit Ctrl+K to jump to any task, list, or person across every workspace. Filter, save, and share views in seconds.",
+    accent: true,
+  },
+];
+
+function BentoSection() {
+  const { ref, visible } = useInView();
+  return (
+    <section id="why" className="bg-white pt-16 pb-8 scroll-mt-14">
+      <div className="mx-auto max-w-6xl px-6">
+        <Animate className="mb-14 text-center">
+          <SectionLabel className="mb-4">Why teams switch</SectionLabel>
+          <h2 className="mt-4 text-3xl font-bold tracking-tight text-[#111827]">
+            Powerful where it counts, simple everywhere else
+          </h2>
+          <p className="mt-2 text-[#6b7280]">
+            The depth of an enterprise tool with the calm of a product you actually enjoy.
+          </p>
+        </Animate>
+        <div ref={ref} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {bentoCards.map((card, i) => {
+            const Icon = card.icon;
+            return (
+              <div
+                key={card.title}
+                className={cn(
+                  "group relative overflow-hidden rounded-2xl border p-6 transition-all duration-500",
+                  card.span,
+                  card.accent
+                    ? "border-purple-100 bg-linear-to-br from-purple-50/80 to-fuchsia-50/40"
+                    : "border-[#e5e7eb] bg-white shadow-sm",
+                  "hover:-translate-y-0.5 hover:shadow-md hover:border-purple-200",
+                  visible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
+                )}
+                style={{ transitionDelay: visible ? `${i * 90}ms` : "0ms" }}
+              >
+                {card.accent && (
+                  <div className="pointer-events-none absolute -top-10 -right-10 size-32 rounded-full bg-purple-200/30 blur-2xl transition-opacity group-hover:opacity-80" />
+                )}
+                <div className="relative">
+                  <div
+                    className="mb-4 flex size-10 items-center justify-center rounded-lg text-white shadow-sm"
+                    style={{ background: "linear-gradient(135deg, #9333ea, #c026d3)" }}
+                  >
+                    <Icon className="size-5" />
+                  </div>
+                  <h3 className="mb-2 font-semibold text-[#111827] text-base">{card.title}</h3>
+                  <p className="max-w-md text-[#6b7280] text-sm leading-relaxed">{card.description}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function HowItWorksSection() {
   const { ref, visible } = useInView();
   return (
-    <section id="how-it-works" className="bg-white py-24">
+    <section id="how-it-works" className="bg-white pt-8 pb-16 scroll-mt-14">
       <div className="mx-auto max-w-6xl px-6">
         <Animate className="mb-14 text-center">
           <SectionLabel className="mb-4">How it works</SectionLabel>
@@ -440,7 +586,7 @@ function HowItWorksSection() {
           <p className="text-[#9ca3af] text-xs">e.g. Acme Inc › Engineering › Backlog › Fix login bug</p>
         </Animate>
         <div ref={ref} className="relative grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="pointer-events-none absolute top-10 right-[12.5%] left-[12.5%] hidden border-t-2 border-dashed border-indigo-100 lg:block" />
+          <div className="pointer-events-none absolute top-10 right-[12.5%] left-[12.5%] hidden border-t-2 border-dashed border-purple-100 lg:block" />
           {steps.map((step, i) => (
             <div
               key={step.number}
@@ -455,7 +601,7 @@ function HowItWorksSection() {
             >
               <div
                 className="mb-3 select-none bg-clip-text text-5xl font-bold text-transparent"
-                style={{ backgroundImage: "linear-gradient(135deg, #c7d2fe, #ddd6fe)" }}
+                style={{ backgroundImage: "linear-gradient(135deg, #e9d5ff, #f5d0fe)" }}
               >
                 {step.number}
               </div>
@@ -472,7 +618,7 @@ function HowItWorksSection() {
 function ViewsShowcaseSection() {
   return (
     <section
-      className="py-24"
+      className="py-16"
       style={{ backgroundImage: LINE_GRID, backgroundSize: "40px 40px", backgroundColor: "#f9fafb" }}
     >
       <div className="mx-auto max-w-6xl px-6">
@@ -484,18 +630,18 @@ function ViewsShowcaseSection() {
         <Animate delay={150}>
           <Tabs defaultValue="list" className="mx-auto max-w-3xl">
             <TabsList className="mb-6 grid w-full grid-cols-3 rounded-lg bg-[#f3f4f6] p-1">
-              <TabsTrigger value="list" className="gap-1.5 data-[state=active]:bg-indigo-600 data-[state=active]:text-white">
+              <TabsTrigger value="list" className="gap-1.5 rounded-md data-[state=active]:bg-purple-600 data-[state=active]:text-white">
                 <LayoutList className="size-3.5" />List
               </TabsTrigger>
-              <TabsTrigger value="board" className="gap-1.5 data-[state=active]:bg-indigo-600 data-[state=active]:text-white">
+              <TabsTrigger value="board" className="gap-1.5 rounded-md data-[state=active]:bg-purple-600 data-[state=active]:text-white">
                 <Kanban className="size-3.5" />Board
               </TabsTrigger>
-              <TabsTrigger value="mytasks" className="gap-1.5 data-[state=active]:bg-indigo-600 data-[state=active]:text-white">
+              <TabsTrigger value="mytasks" className="gap-1.5 rounded-md data-[state=active]:bg-purple-600 data-[state=active]:text-white">
                 <CalendarDays className="size-3.5" />My Tasks
               </TabsTrigger>
             </TabsList>
             <TabsContent value="list" className="animate-in fade-in-0 duration-200">
-              <Card className="border-[#e5e7eb] shadow-sm">
+              <Card className="rounded-xl border-[#e5e7eb] shadow-sm">
                 <CardHeader className="pb-2">
                   <CardTitle className="font-semibold normal-case tracking-normal text-sm">List View</CardTitle>
                   <CardDescription>Default view — see all tasks as rows with inline editing.</CardDescription>
@@ -508,8 +654,8 @@ function ViewsShowcaseSection() {
                       { t: "Write unit tests", done: false },
                       { t: "Deploy to staging", done: false },
                     ].map(({ t, done }) => (
-                      <div key={t} className={cn("flex items-center gap-3 rounded border px-3 py-2 text-sm", done ? "border-[#e5e7eb] bg-[#f9fafb]" : "border-indigo-100 bg-indigo-50/30")}>
-                        <div className={cn("flex size-4 shrink-0 items-center justify-center rounded border-2", done ? "border-indigo-600 bg-indigo-600" : "border-[#e5e7eb]")}>
+                      <div key={t} className={cn("flex items-center gap-3 rounded border px-3 py-2 text-sm", done ? "border-[#e5e7eb] bg-[#f9fafb]" : "border-purple-100 bg-purple-50/30")}>
+                        <div className={cn("flex size-4 shrink-0 items-center justify-center rounded border-2", done ? "border-purple-600 bg-purple-600" : "border-[#e5e7eb]")}>
                           {done && <Check className="size-2.5 text-white" strokeWidth={3} />}
                         </div>
                         <span className={cn("flex-1 text-xs", done ? "text-[#9ca3af] line-through" : "text-[#111827]")}>{t}</span>
@@ -524,7 +670,7 @@ function ViewsShowcaseSection() {
               </Card>
             </TabsContent>
             <TabsContent value="board" className="animate-in fade-in-0 duration-200">
-              <Card className="border-[#e5e7eb] shadow-sm">
+              <Card className="rounded-xl border-[#e5e7eb] shadow-sm">
                 <CardHeader className="pb-2">
                   <CardTitle className="font-semibold normal-case tracking-normal text-sm">Board View</CardTitle>
                   <CardDescription>Kanban columns by status. Drag cards to change status.</CardDescription>
@@ -533,7 +679,7 @@ function ViewsShowcaseSection() {
                   <div className="grid grid-cols-4 gap-3">
                     {[
                       { label: "Todo", dot: "#9ca3af", tasks: ["Write tests", "Update docs"] },
-                      { label: "In Progress", dot: "#6366f1", tasks: ["Fix auth bug", "Design layout"] },
+                      { label: "In Progress", dot: "#9333ea", tasks: ["Fix auth bug", "Design layout"] },
                       { label: "Review", dot: "#f59e0b", tasks: ["API integration"] },
                       { label: "Done", dot: "#10b981", tasks: ["Deploy staging"] },
                     ].map((col) => (
@@ -543,7 +689,7 @@ function ViewsShowcaseSection() {
                           <p className="font-semibold text-[#6b7280] text-[10px]">{col.label}</p>
                         </div>
                         {col.tasks.map((t) => (
-                          <div key={t} className="mb-1.5 rounded border border-[#e5e7eb] bg-white px-2.5 py-2 text-[10px] text-[#111827] shadow-sm transition-colors hover:border-indigo-200">
+                          <div key={t} className="mb-1.5 rounded border border-[#e5e7eb] bg-white px-2.5 py-2 text-[10px] text-[#111827] shadow-sm transition-colors hover:border-purple-200">
                             {t}
                           </div>
                         ))}
@@ -554,7 +700,7 @@ function ViewsShowcaseSection() {
               </Card>
             </TabsContent>
             <TabsContent value="mytasks" className="animate-in fade-in-0 duration-200">
-              <Card className="border-[#e5e7eb] shadow-sm">
+              <Card className="rounded-xl border-[#e5e7eb] shadow-sm">
                 <CardHeader className="pb-2">
                   <CardTitle className="font-semibold normal-case tracking-normal text-sm">My Tasks</CardTitle>
                   <CardDescription>All tasks assigned to you, across every project, grouped by due date.</CardDescription>
@@ -591,8 +737,8 @@ function ViewsShowcaseSection() {
 function TestimonialsSection() {
   const { ref, visible } = useInView();
   return (
-    <section className="relative overflow-hidden bg-white py-24">
-      <div className="pointer-events-none absolute left-1/2 top-1/2 size-[480px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-50 opacity-60 blur-3xl" />
+    <section className="relative overflow-hidden bg-white py-16">
+      <div className="pointer-events-none absolute left-1/2 top-1/2 size-[480px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-purple-50 opacity-60 blur-3xl" />
       <div className="relative mx-auto max-w-6xl px-6">
         <Animate className="mb-12 text-center">
           <SectionLabel className="mb-4">Testimonials</SectionLabel>
@@ -619,7 +765,7 @@ function TestimonialsSection() {
               <p className="flex-1 text-[#374151]/80 text-sm leading-relaxed">&ldquo;{t.body}&rdquo;</p>
               <div className="flex items-center gap-3 border-t border-[#e5e7eb] pt-4">
                 <Avatar className="size-8">
-                  <AvatarFallback className="bg-indigo-100 text-indigo-700 text-xs">{t.initials}</AvatarFallback>
+                  <AvatarFallback className="bg-purple-100 text-purple-700 text-xs">{t.initials}</AvatarFallback>
                 </Avatar>
                 <div>
                   <p className="font-semibold text-[#111827] text-sm">{t.name}</p>
@@ -636,7 +782,7 @@ function TestimonialsSection() {
 
 function FaqSection() {
   return (
-    <section id="faq" className="bg-[#f9fafb] py-24">
+    <section id="faq" className="bg-[#f9fafb] py-16 scroll-mt-14">
       <div className="mx-auto max-w-2xl px-6">
         <Animate className="mb-12 text-center">
           <SectionLabel className="mb-4">FAQ</SectionLabel>
@@ -644,8 +790,8 @@ function FaqSection() {
           <p className="mt-2 text-[#6b7280]">
             {"Can't find an answer? "}
             <a
-              href="mailto:support@kanbanica.com"
-              className="text-indigo-600 underline-offset-2 hover:underline"
+              href={`mailto:${SUPPORT_EMAIL}`}
+              className="text-purple-600 underline-offset-2 hover:underline"
             >
               Reach out to support
             </a>
@@ -676,12 +822,12 @@ function FaqSection() {
 
 function CtaBanner() {
   return (
-    <section className="bg-white py-20">
+    <section className="bg-white py-16">
       <div className="mx-auto max-w-6xl px-6">
         <Animate>
           <div
             className="relative overflow-hidden rounded-2xl px-8 py-16 text-center text-white"
-            style={{ background: "linear-gradient(135deg, #6366f1 0%, #6366f1 50%, #7c3aed 100%)" }}
+            style={{ background: "linear-gradient(135deg, #9333ea 0%, #9333ea 50%, #c026d3 100%)" }}
           >
             <div className="pointer-events-none absolute -top-16 -left-16 size-64 rounded-full bg-white/10 blur-3xl" />
             <div className="pointer-events-none absolute -right-16 -bottom-16 size-64 rounded-full bg-white/10 blur-3xl" />
@@ -696,12 +842,12 @@ function CtaBanner() {
             <div className="relative">
               <h2 className="mb-3 text-3xl font-bold">Ready to get your team organised?</h2>
               <p className="mb-8 text-lg text-white/75">
-                Sign up in seconds. No credit card. No setup fees.
+                Free for your whole team. Sign up in seconds — no credit card, no setup fees.
               </p>
               <Button
                 size="lg"
                 asChild
-                className="h-11 bg-white px-8 font-semibold text-base text-indigo-700 shadow-lg hover:bg-indigo-50"
+                className="h-11 bg-white px-8 font-semibold text-base text-purple-700 shadow-lg hover:bg-purple-50"
               >
                 <Link href="/login">
                   Start for free <ArrowRight className="ml-1.5 size-4" />
@@ -722,42 +868,39 @@ function Footer() {
       <div className="mx-auto max-w-6xl px-6 py-10">
         <div className="grid gap-8 sm:grid-cols-4">
           <div className="sm:col-span-1">
-            <span className="font-bold text-base text-indigo-600">Kanbanica</span>
+            <span className="font-bold text-base text-purple-600">{PRODUCT_NAME}</span>
             <p className="mt-2 text-[#6b7280] text-xs leading-relaxed">
-              Project management for modern teams. Workspaces, Spaces, Lists, and Tasks.
+              Free project management for modern teams. Workspaces, Spaces, Lists, and Tasks.
             </p>
           </div>
           <div>
             <p className="mb-3 font-semibold text-[#9ca3af] text-xs uppercase tracking-wide">Product</p>
             <ul className="space-y-2 text-[#6b7280] text-sm">
               <li><a href="#features" className="transition-colors hover:text-[#111827]">Features</a></li>
+              <li><a href="#why" className="transition-colors hover:text-[#111827]">Why us</a></li>
               <li><a href="#how-it-works" className="transition-colors hover:text-[#111827]">How it works</a></li>
               <li><a href="#faq" className="transition-colors hover:text-[#111827]">FAQ</a></li>
             </ul>
           </div>
           <div>
-            <p className="mb-3 font-semibold text-[#9ca3af] text-xs uppercase tracking-wide">Company</p>
+            <p className="mb-3 font-semibold text-[#9ca3af] text-xs uppercase tracking-wide">Get started</p>
             <ul className="space-y-2 text-[#6b7280] text-sm">
-              <li><a href="#" className="transition-colors hover:text-[#111827]">About</a></li>
-              <li><a href="mailto:support@kanbanica.com" className="transition-colors hover:text-[#111827]">Contact</a></li>
+              <li><Link href="/login" className="transition-colors hover:text-[#111827]">Sign in</Link></li>
+              <li><Link href="/login" className="transition-colors hover:text-[#111827]">Create an account</Link></li>
             </ul>
           </div>
           <div>
-            <p className="mb-3 font-semibold text-[#9ca3af] text-xs uppercase tracking-wide">Legal</p>
+            <p className="mb-3 font-semibold text-[#9ca3af] text-xs uppercase tracking-wide">Company</p>
             <ul className="space-y-2 text-[#6b7280] text-sm">
-              <li><Link href="/privacy" className="transition-colors hover:text-[#111827]">Privacy Policy</Link></li>
-              <li><Link href="/terms" className="transition-colors hover:text-[#111827]">Terms of Service</Link></li>
-              <li><Link href="/cookies" className="transition-colors hover:text-[#111827]">Cookie Policy</Link></li>
+              <li><a href="#faq" className="transition-colors hover:text-[#111827]">FAQ</a></li>
+              <li><a href={`mailto:${SUPPORT_EMAIL}`} className="transition-colors hover:text-[#111827]">Contact support</a></li>
             </ul>
           </div>
         </div>
         <Separator className="my-8" />
-        <div className="flex items-center justify-between text-[#9ca3af] text-xs">
-          <p>&copy; 2025 Kanbanica. All rights reserved.</p>
-          <div className="flex gap-4">
-            <Link href="/privacy" className="transition-colors hover:text-[#6b7280]">Privacy</Link>
-            <Link href="/terms" className="transition-colors hover:text-[#6b7280]">Terms</Link>
-          </div>
+        <div className="flex flex-col items-center justify-between gap-3 text-[#9ca3af] text-xs sm:flex-row">
+          <p>&copy; {new Date().getFullYear()} {PRODUCT_NAME}. All rights reserved.</p>
+          <p>Free for every team · Magic link sign-in</p>
         </div>
       </div>
     </footer>
@@ -771,7 +914,9 @@ export default function LandingPage() {
       <HeroSection />
       <SocialProofBar />
       <FeaturesSection />
+      <BentoSection />
       <HowItWorksSection />
+      <StatsSection />
       <ViewsShowcaseSection />
       <TestimonialsSection />
       <FaqSection />

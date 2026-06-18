@@ -1,8 +1,8 @@
-# Teamority — Claude Code Context
+# Kanbanica — Claude Code Context
 
 ## What this project is
 
-Teamority is a project management SaaS (ClickUp-style). Teams use it to organize work in Workspaces, Spaces, Lists, and Tasks.
+Kanbanica is a project management SaaS (ClickUp-style). Teams use it to organize work in Workspaces, Spaces, Lists, and Tasks.
 
 Full product specs live in `docs/`. Read the relevant doc before implementing any feature.
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   ArchiveIcon,
@@ -26,6 +26,7 @@ import { ListFilterToolbar } from "@/components/list/list-filter-toolbar";
 import { type FilterState } from "@/app/actions/search";
 import { ListView } from "./list-view";
 import { BoardView } from "./board-view";
+import { BoardSkeleton } from "./board-skeleton";
 
 type View = "list" | "board" | "sprint";
 
@@ -81,6 +82,22 @@ export function ListContainer({
 }: ListContainerProps) {
   const searchParams = useSearchParams();
   const [view, setView] = useState<View>((searchParams.get("view") as View) ?? "list");
+  const [pendingView, setPendingView] = useState<View | null>(null);
+  const [isViewPending, startViewTransition] = useTransition();
+
+  // Defer the heavy Board mount so the tab click stays responsive. `pendingView`
+  // is set urgently (so a shaped skeleton paints immediately), while the actual
+  // view swap runs inside the transition and replaces the skeleton when ready.
+  function switchView(next: View) {
+    if (next === view) return;
+    setPendingView(next);
+    startViewTransition(() => {
+      setView(next);
+      setPendingView(null);
+    });
+  }
+
+  const showBoardSkeleton = isViewPending && pendingView === "board";
   const [sprintVersion, setSprintVersion] = useState(0);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -216,7 +233,7 @@ export function ListContainer({
           {VIEWS.map(({ key, label }) => (
             <button
               key={key}
-              onClick={() => setView(key)}
+              onClick={() => switchView(key)}
               className={cn(
                 "px-3 py-1.5 text-sm font-medium border-b-2 -mb-px transition-colors",
                 view === key
@@ -263,8 +280,10 @@ export function ListContainer({
         />
       )}
 
-      {/* Active view */}
-      {view === "list" && (
+      {/* Active view — while switching into Board, show a board-shaped skeleton
+          and suppress the outgoing view so they don't overlap. */}
+      {showBoardSkeleton && <BoardSkeleton columns={statuses.length || 4} />}
+      {!showBoardSkeleton && view === "list" && (
         <ListView
           workspaceId={workspaceId}
           spaceId={space.id}
@@ -274,7 +293,7 @@ export function ListContainer({
           isAdmin={isAdmin}
         />
       )}
-      {view === "board" && (
+      {!showBoardSkeleton && view === "board" && (
         <BoardView
           workspaceId={workspaceId}
           space={space}
@@ -284,7 +303,7 @@ export function ListContainer({
           headerless
         />
       )}
-      {view === "sprint" && (
+      {!showBoardSkeleton && view === "sprint" && (
         <>
           <SprintPanel
             workspaceId={workspaceId}

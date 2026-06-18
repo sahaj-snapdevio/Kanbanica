@@ -1,20 +1,31 @@
 import { redirect } from "next/navigation";
 import { getAdminSession } from "@/lib/admin-auth";
+import { PRODUCT_NAME } from "@/config/platform";
 import { AdminLoginForm } from "./_components/admin-login-form";
 
-export const metadata = { title: "Admin Sign In — Teamority" };
+export const metadata = { title: `Admin Sign In — ${PRODUCT_NAME}` };
 
 export default async function AdminLoginPage() {
   const session = await getAdminSession();
   if (session) redirect("/admin");
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#0f172a] p-4">
-      <div className="w-full max-w-sm">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 p-4">
+      {/* Ambient accent glow */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute left-1/2 top-0 z-0 h-120 w-120 -translate-x-1/2 -translate-y-1/3 rounded-full bg-emerald-500/15 blur-[120px]"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-0 opacity-[0.04] bg-[linear-gradient(to_right,white_1px,transparent_1px),linear-gradient(to_bottom,white_1px,transparent_1px)] bg-size-[32px_32px]"
+      />
+
+      <div className="relative z-10 w-full max-w-sm">
         <div className="mb-8 text-center">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-indigo-600 mb-4">
+          <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-linear-to-br from-emerald-400 to-emerald-600 shadow-lg shadow-emerald-500/30">
             <svg
-              className="w-6 h-6 text-white"
+              className="h-6 w-6 text-white"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -27,10 +38,17 @@ export default async function AdminLoginPage() {
               />
             </svg>
           </div>
-          <h1 className="text-xl font-semibold text-white">Admin Panel</h1>
-          <p className="mt-1 text-slate-400 text-sm">Platform operators only</p>
+          <h1 className="text-xl font-semibold tracking-tight text-white">
+            Admin Console
+          </h1>
+          <p className="mt-1 text-sm text-slate-400">
+            Restricted to platform operators
+          </p>
         </div>
         <AdminLoginForm />
+        <p className="mt-6 text-center text-xs text-slate-600">
+          {PRODUCT_NAME} · Internal Operations
+        </p>
       </div>
     </div>
   );
