@@ -92,7 +92,7 @@ export const MentionList = React.forwardRef<MentionListRef, MentionListProps>(
                 <span className="absolute bottom-0 right-0 size-2 rounded-full border-2 border-popover bg-muted-foreground/40" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{item.name}</p>
+                <p className="text-sm font-medium truncate text-foreground">{item.name}</p>
                 <p className="text-2xs text-muted-foreground truncate">{item.email}</p>
               </div>
             </button>

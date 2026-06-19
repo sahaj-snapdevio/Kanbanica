@@ -76,6 +76,7 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { TaskDescriptionEditor } from "@/components/task/task-description-editor";
 import { format } from "date-fns";
+import { TaskDetailSkeleton } from "./task-detail-skeleton";
 
 type Priority = "NONE" | "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 
@@ -265,11 +266,7 @@ export function TaskDetailPage({
   const listBackUrl = `/${workspaceId}/${spaceId}/list/${listId}${fromView ? `?view=${fromView}` : ""}`;
 
   if (loading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <p className="text-sm text-muted-foreground">Loading…</p>
-      </div>
-    );
+    return <TaskDetailSkeleton />;
   }
 
   if (!data || "error" in data) {
@@ -1145,9 +1142,9 @@ export function TaskDetailPage({
                         </div>
                         <button
                           onClick={() => handleDeleteAttachment(att.id)}
-                          className="absolute top-1 right-1 size-5 flex items-center justify-center rounded bg-background/80 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="absolute top-1.5 right-1.5 size-6 inline-flex items-center justify-center leading-none rounded-full bg-black/70 text-white hover:bg-red-500 opacity-0 group-hover:opacity-100 transition-all"
                         >
-                          <XIcon className="size-3" />
+                          <XIcon className="size-3.5 shrink-0" weight="bold" />
                         </button>
                       </div>
                     ))}
@@ -1381,8 +1378,8 @@ export function TaskDetailPage({
           {/* Time logging */}
           <div className="mt-6 pt-6 border-t">
             <h3 className="text-sm font-semibold mb-3">Log time</h3>
-            <div className="flex gap-2 items-end">
-              <div className="space-y-1">
+            <div className="flex gap-3 items-end">
+              <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-muted-foreground">Minutes</label>
                 <Input
                   type="number"
@@ -1393,7 +1390,7 @@ export function TaskDetailPage({
                   className="h-8 text-xs w-24"
                 />
               </div>
-              <div className="flex-1 space-y-1">
+              <div className="flex-1 flex flex-col gap-1.5">
                 <label className="text-xs text-muted-foreground">
                   Note (optional)
                 </label>

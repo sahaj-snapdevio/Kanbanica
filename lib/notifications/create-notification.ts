@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { notification, mutedEntity, userNotificationPreference } from "@/db/schema";
 import { and, eq, inArray, or, isNull } from "drizzle-orm";
 import type { NotificationTriggerType } from "./types";
+import { sendPushToUser } from "./push";
 
 export interface CreateNotificationParams {
   workspaceId: string;
@@ -15,6 +16,10 @@ export interface CreateNotificationParams {
   title: string;
   body?: string;
   muteCheckEntityIds?: string[];
+  // Push-specific overrides — separate from in-app title/body
+  pushTitle?: string;
+  pushBody?: string;
+  pushUrl?: string;
 }
 
 // Fire-and-forget — never await this in a mutation handler
@@ -35,6 +40,9 @@ async function _create(params: CreateNotificationParams) {
     title,
     body,
     muteCheckEntityIds,
+    pushTitle,
+    pushBody,
+    pushUrl,
   } = params;
 
   // Remove actor from recipients (no self-notifications), deduplicate
@@ -56,11 +64,12 @@ async function _create(params: CreateNotificationParams) {
   const finalRecipients = eligibleIds.filter((id) => !mutedUserIds.has(id));
   if (finalRecipients.length === 0) return;
 
-  // Check in-app preferences — only skip if user explicitly disabled in-app for this trigger
+  // Fetch per-trigger preferences for all eligible recipients
   const prefs = await db
     .select({
       userId: userNotificationPreference.userId,
       inAppEnabled: userNotificationPreference.inAppEnabled,
+      pushEnabled: userNotificationPreference.pushEnabled,
     })
     .from(userNotificationPreference)
     .where(
@@ -74,30 +83,51 @@ async function _create(params: CreateNotificationParams) {
       ),
     );
 
-  // Build a set of users who have explicitly disabled in-app for this trigger
-  const disabledInApp = new Set(
-    prefs.filter((p) => !p.inAppEnabled).map((p) => p.userId),
-  );
-  const notifRecipients = finalRecipients.filter((id) => !disabledInApp.has(id));
-  if (notifRecipients.length === 0) return;
+  // Build pref maps — default is enabled if no row exists
+  const prefMap = new Map(prefs.map((p) => [p.userId, p]));
+
+  const notifRecipients = finalRecipients.filter((id) => {
+    const pref = prefMap.get(id);
+    return pref ? pref.inAppEnabled : true; // default on
+  });
+
+  const pushRecipients = finalRecipients.filter((id) => {
+    const pref = prefMap.get(id);
+    return pref ? pref.pushEnabled : true; // default on
+  });
 
   const now = new Date();
   const expiresAt = addDays(now, 90);
 
-  await db.insert(notification).values(
-    notifRecipients.map((recipientId) => ({
-      id: createId(),
-      workspaceId,
-      recipientId,
-      actorId,
-      triggerType,
-      entityType,
-      entityId,
-      title,
-      body: body ?? null,
-      isRead: false,
-      createdAt: now,
-      expiresAt,
-    })),
-  );
+  if (notifRecipients.length > 0) {
+    await db.insert(notification).values(
+      notifRecipients.map((recipientId) => ({
+        id: createId(),
+        workspaceId,
+        recipientId,
+        actorId,
+        triggerType,
+        entityType,
+        entityId,
+        title,
+        body: body ?? null,
+        isRead: false,
+        createdAt: now,
+        expiresAt,
+      })),
+    );
+  }
+
+  // Send push notifications — fire-and-forget per recipient
+  if (pushRecipients.length > 0) {
+    await Promise.allSettled(
+      pushRecipients.map((userId) =>
+        sendPushToUser(userId, {
+          title: pushTitle ?? title,
+          body: pushBody ?? body ?? "",
+          url: pushUrl ?? `/${workspaceId}/task/${entityId}`,
+        }),
+      ),
+    );
+  }
 }

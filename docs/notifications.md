@@ -144,8 +144,10 @@ These are sent by the system on a schedule — no human actor. Shown with a syst
 
 - **Actions on each notification:**
   - Click -> navigate directly to the task / space / item
-  - Mark as read (individually)
-  - Mark all as read (bulk button at top)
+  - Mark as read (individually, on click)
+  - Dismiss (X on hover) — permanently deletes the notification
+  - **Mark all as read** — text button top-right of header, marks every notification read
+  - **Clear all** — text button top-right of header (secondary), permanently deletes all notifications
 
 - **Grouping:**
   - Notifications from the same task within a short window are grouped (e.g. "Jane and 2 others commented on Fix login bug" instead of 3 separate notifications)
@@ -353,7 +355,8 @@ L-- created_at          (timestamp)
 | GET | `/api/me/notifications` | Get notifications (paginated, filterable by read/unread/mentions) | Authenticated user |
 | PATCH | `/api/me/notifications/:id/read` | Mark notification as read | Notification recipient |
 | PATCH | `/api/me/notifications/read-all` | Mark all notifications as read | Authenticated user |
-| DELETE | `/api/me/notifications/:id` | Dismiss a notification | Notification recipient |
+| DELETE | `/api/me/notifications/:id` | Dismiss a single notification | Notification recipient |
+| DELETE | `/api/me/notifications` | Clear all notifications (hard delete all for this user) | Authenticated user |
 | GET | `/api/me/notification-preferences` | Get notification preferences | Authenticated user |
 | PATCH | `/api/me/notification-preferences` | Update notification preferences | Authenticated user |
 | GET | `/api/me/email-preferences` | Get email delivery preferences | Authenticated user |
@@ -378,8 +381,9 @@ L-- created_at          (timestamp)
 ## Data Lifecycle
 
 ### Archive
-- Notifications cannot be archived — they are either unread, read, or dismissed.
-- Dismissing a notification removes it from the panel (hard delete).
+- Notifications cannot be archived — they are either unread, read, dismissed, or cleared.
+- Dismissing a single notification removes it from the panel (hard delete).
+- **Clear all** removes every notification for the user (hard delete, no recovery).
 
 ### Soft Delete
 - Notifications use **hard delete** only — no soft delete or tombstone.

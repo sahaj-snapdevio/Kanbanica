@@ -5,6 +5,16 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { notification, user } from "@/db/schema";
 
+export async function DELETE(req: NextRequest) {
+  void req;
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  await db.delete(notification).where(eq(notification.recipientId, session.user.id));
+
+  return NextResponse.json({ ok: true });
+}
+
 export async function GET(req: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

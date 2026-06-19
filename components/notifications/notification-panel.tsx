@@ -4,14 +4,13 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import useSWR, { mutate } from "swr";
-import { CheckIcon, XIcon } from "@phosphor-icons/react";
+import { XIcon } from "@phosphor-icons/react";
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -65,7 +64,12 @@ export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
   async function markAllRead() {
     await fetch("/api/me/notifications/read-all", { method: "PATCH" });
     await revalidate();
-    // Also revalidate the bell count
+    await mutate("/api/me/notifications?filter=unread");
+  }
+
+  async function clearAll() {
+    await fetch("/api/me/notifications", { method: "DELETE" });
+    await revalidate();
     await mutate("/api/me/notifications?filter=unread");
   }
 
@@ -106,53 +110,46 @@ export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
       <SheetContent
         side="right"
-        className="flex w-full flex-col p-0 sm:max-w-md rounded-l-[20px]"
+        className="flex w-full flex-col p-0 sm:max-w-md rounded-l-4xl"
       >
-        <SheetHeader className="relative border-b px-4 pt-3 pb-2 flex flex-col gap-1">
-          {/* Row 1: Title + Close button */}
-          <div className="flex items-center justify-between pr-6">
+        <SheetHeader className="relative border-b pl-4 pr-10 pt-3 pb-2 flex flex-col gap-2">
+          {/* Row 1: Title + actions (pr-10 clears the Sheet close button) */}
+          <div className="flex items-center justify-between">
             <SheetTitle>Notifications</SheetTitle>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={markAllRead}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              >
+                Mark all as read
+              </button>
+              <span className="text-muted-foreground/40 text-xs select-none">|</span>
+              <button
+                onClick={clearAll}
+                className="text-xs text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
+              >
+                Clear all
+              </button>
+            </div>
           </div>
 
-          {/* Row 2: Mark all as read */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={markAllRead}
-            className="text-xs w-fit h-7 px-2 cursor-pointer -ml-1 text-muted-foreground hover:text-foreground"
+          {/* Row 2: Tabs */}
+          <Tabs
+            value={activeTab}
+            onValueChange={(v) => setActiveTab(v as typeof activeTab)}
           >
-            <CheckIcon className="mr-1 size-3" />
-            Mark all as read
-          </Button>
-
-          {/* Row 3: Tabs */}
-          <div className="pt-1">
-            <Tabs
-              value={activeTab}
-              onValueChange={(v) => setActiveTab(v as typeof activeTab)}
-            >
-              <TabsList className="h-8 rounded-[20px] p-2">
-                <TabsTrigger
-                  value="all"
-                  className="text-xs px-3 h-7 rounded-[20px] cursor-pointer"
-                >
-                  All
-                </TabsTrigger>
-                <TabsTrigger
-                  value="unread"
-                  className="text-xs px-3 h-7 rounded-[20px] cursor-pointer"
-                >
-                  Unread
-                </TabsTrigger>
-                <TabsTrigger
-                  value="mentions"
-                  className="text-xs px-3 h-7 rounded-[20px] cursor-pointer"
-                >
-                  Mentions
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
+            <TabsList className="h-8 rounded-4xl p-2">
+              <TabsTrigger value="all" className="text-xs px-3 h-7 rounded-4xl cursor-pointer">
+                All
+              </TabsTrigger>
+              <TabsTrigger value="unread" className="text-xs px-3 h-7 rounded-4xl cursor-pointer">
+                Unread
+              </TabsTrigger>
+              <TabsTrigger value="mentions" className="text-xs px-3 h-7 rounded-4xl cursor-pointer">
+                Mentions
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto">
@@ -196,7 +193,7 @@ export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
               <div className="flex-1 min-w-0">
                 <p className="text-sm leading-snug">{n.title}</p>
                 {n.body && (
-                  <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
+                  <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2 italic">
                     {n.body}
                   </p>
                 )}

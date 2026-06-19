@@ -849,3 +849,98 @@ export async function getActiveSprintView(
 
   return { sprint: activeSprint, tasks };
 }
+
+// ─── bulkMoveTasksToSprint ────────────────────────────────────────────────────
+// Moves selected tasks into a target sprint.
+// Any existing PLANNED/ACTIVE sprint assignment is removed first so the
+// "one task per active sprint" rule is respected.
+
+export async function bulkMoveTasksToSprint(
+  workspaceId: string,
+  spaceId: string,
+  listId: string,
+  taskIds: string[],
+  targetSprintId: string,
+): Promise<{ ok: true; moved: number } | { error: string }> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return { error: "Unauthorized" };
+
+  const err = await requireFullAccess(session.user.id, workspaceId, spaceId);
+  if (err) return err;
+
+  if (taskIds.length === 0) return { ok: true, moved: 0 };
+
+  // Verify target sprint exists, belongs to this list, and is not CLOSED.
+  const [target] = await db
+    .select({ id: sprint.id, status: sprint.status })
+    .from(sprint)
+    .where(and(eq(sprint.id, targetSprintId), eq(sprint.listId, listId)))
+    .limit(1);
+
+  if (!target) return { error: "Sprint not found" };
+  if (target.status === "CLOSED") return { error: "Cannot move tasks into a closed sprint" };
+
+  // For each task: remove from any current PLANNED/ACTIVE sprint, then add to target.
+  // Do this per-task so we can handle the "already in target" case cleanly.
+  let moved = 0;
+  for (const taskId of taskIds) {
+    // Find existing active/planned assignment (if any)
+    const existing = await db
+      .select({ id: taskSprint.id, sprintId: taskSprint.sprintId })
+      .from(taskSprint)
+      .innerJoin(sprint, eq(taskSprint.sprintId, sprint.id))
+      .where(
+        and(
+          eq(taskSprint.taskId, taskId),
+          inArray(sprint.status, ["PLANNED", "ACTIVE"]),
+        ),
+      )
+      .limit(1);
+
+    if (existing.length > 0) {
+      if (existing[0].sprintId === targetSprintId) continue; // already there
+      // Remove from current sprint
+      await db
+        .delete(taskSprint)
+        .where(and(eq(taskSprint.taskId, taskId), eq(taskSprint.sprintId, existing[0].sprintId)));
+    }
+
+    // Add to target sprint
+    await db.insert(taskSprint).values({
+      taskId,
+      sprintId: targetSprintId,
+      points: null,
+      addedAt: new Date(),
+    });
+    moved++;
+  }
+
+  revalidateList(workspaceId, spaceId, listId);
+  return { ok: true, moved };
+}
+
+// ─── bulkRemoveTasksFromSprint ────────────────────────────────────────────────
+// Removes selected tasks from a specific sprint (→ returns them to backlog).
+
+export async function bulkRemoveTasksFromSprint(
+  workspaceId: string,
+  spaceId: string,
+  listId: string,
+  sprintId: string,
+  taskIds: string[],
+): Promise<{ ok: true; removed: number } | { error: string }> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return { error: "Unauthorized" };
+
+  const err = await requireFullAccess(session.user.id, workspaceId, spaceId);
+  if (err) return err;
+
+  if (taskIds.length === 0) return { ok: true, removed: 0 };
+
+  const result = await db
+    .delete(taskSprint)
+    .where(and(eq(taskSprint.sprintId, sprintId), inArray(taskSprint.taskId, taskIds)));
+
+  revalidateList(workspaceId, spaceId, listId);
+  return { ok: true, removed: taskIds.length };
+}

@@ -23,6 +23,8 @@ import {
   checklist,
   checklistItem,
   user,
+  taskSprint,
+  sprint,
 } from "@/db/schema";
 import { canAccessSpace, getSpacePermission, hasPermissionLevel } from "@/lib/permissions";
 import { writeActivityLog } from "@/lib/activity-log";
@@ -401,6 +403,7 @@ export async function updateTask(
       .where(eq(taskWatcher.taskId, taskId));
     const dueDateWatcherIds = dueDateWatchers.map((w) => w.userId);
     if (dueDateWatcherIds.length > 0) {
+      const actorName = session.user.name ?? session.user.email ?? "Someone";
       createNotifications({
         workspaceId,
         actorId: session.user.id,
@@ -408,7 +411,7 @@ export async function updateTask(
         triggerType: "task_due_date_changed",
         entityType: "TASK",
         entityId: taskId,
-        title: `Task due date changed`,
+        title: `${actorName} changed due date of "${existing.title}"`,
         muteCheckEntityIds: [taskId],
       });
     }
@@ -434,7 +437,7 @@ export async function updateTaskStatus(
   if (permErr) return permErr;
 
   const [existing] = await db
-    .select({ statusId: task.statusId })
+    .select({ statusId: task.statusId, title: task.title })
     .from(task)
     .where(eq(task.id, taskId))
     .limit(1);
@@ -465,6 +468,7 @@ export async function updateTaskStatus(
 
   const watcherIds = taskWatchers.map((w) => w.userId);
   if (watcherIds.length > 0) {
+    const actorName = session.user.name ?? session.user.email ?? "Someone";
     createNotifications({
       workspaceId,
       actorId: session.user.id,
@@ -473,8 +477,8 @@ export async function updateTaskStatus(
       entityType: "TASK",
       entityId: taskId,
       title: newStatus?.type === "CLOSED"
-        ? `Task marked as complete`
-        : `Task status changed to "${newStatus?.name ?? statusId}"`,
+        ? `${actorName} completed "${existing.title}"`
+        : `${actorName} changed status of "${existing.title}" to "${newStatus?.name ?? statusId}"`,
       muteCheckEntityIds: [taskId],
     });
   }
@@ -921,4 +925,90 @@ export async function bulkArchiveTasks(
 
   revalidateList(workspaceId, spaceId, listId);
   return { ok: true };
+}
+
+// ─── bulkMoveTasks ────────────────────────────────────────────────────────────
+// Moves tasks to a different list. For each task:
+//   1. Status is remapped by name — falls back to first OPEN status.
+//   2. Any PLANNED/ACTIVE sprint assignment is cleared (sprint scoping is per-list).
+//   3. Activity log entry is written.
+
+export async function bulkMoveTasks(
+  workspaceId: string,
+  spaceId: string,
+  taskIds: string[],
+  targetListId: string,
+): Promise<{ ok: true; moved: number } | { error: string }> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return { error: "Unauthorized" };
+
+  const permErr = await requireEditAccess(session.user.id, workspaceId, spaceId);
+  if (permErr) return permErr;
+
+  if (taskIds.length === 0) return { ok: true, moved: 0 };
+
+  // Pre-fetch all statuses for the target list once
+  const targetStatuses = await db
+    .select({ id: listStatus.id, name: listStatus.name, type: listStatus.type, orderIndex: listStatus.orderIndex })
+    .from(listStatus)
+    .where(eq(listStatus.listId, targetListId))
+    .orderBy(asc(listStatus.orderIndex));
+
+  if (targetStatuses.length === 0) return { error: "Target list has no statuses" };
+
+  const firstOpen = targetStatuses.find((s) => s.type === "OPEN") ?? targetStatuses[0];
+
+  let moved = 0;
+  for (const taskId of taskIds) {
+    const [t] = await db
+      .select({ listId: task.listId, statusId: task.statusId })
+      .from(task)
+      .where(eq(task.id, taskId))
+      .limit(1);
+    if (!t) continue;
+    if (t.listId === targetListId) continue; // already there
+
+    // Map status by name
+    const [currentStatus] = await db
+      .select({ name: listStatus.name })
+      .from(listStatus)
+      .where(eq(listStatus.id, t.statusId))
+      .limit(1);
+
+    const newStatusId =
+      (currentStatus && targetStatuses.find((s) => s.name === currentStatus.name)?.id) ??
+      firstOpen.id;
+
+    // Update task
+    await db
+      .update(task)
+      .set({ listId: targetListId, statusId: newStatusId, updatedAt: new Date() })
+      .where(eq(task.id, taskId));
+
+    // Clear any PLANNED/ACTIVE sprint assignment
+    const activeSprints = await db
+      .select({ sprintId: taskSprint.sprintId })
+      .from(taskSprint)
+      .innerJoin(sprint, eq(taskSprint.sprintId, sprint.id))
+      .where(and(eq(taskSprint.taskId, taskId), inArray(sprint.status, ["PLANNED", "ACTIVE"])));
+
+    if (activeSprints.length > 0) {
+      await db
+        .delete(taskSprint)
+        .where(and(
+          eq(taskSprint.taskId, taskId),
+          inArray(taskSprint.sprintId, activeSprints.map((r) => r.sprintId)),
+        ));
+    }
+
+    await writeActivityLog(taskId, session.user.id, "task_moved", {
+      fromListId: t.listId,
+      toListId: targetListId,
+    });
+
+    moved++;
+  }
+
+  revalidatePath(`/${workspaceId}`);
+  return { ok: true, moved };
 }

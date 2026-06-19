@@ -5,7 +5,7 @@ import { and, eq, inArray, asc } from "drizzle-orm";
 import { createId } from "@paralleldrive/cuid2";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { comment, commentReaction, taskAttachment, taskWatcher, user } from "@/db/schema";
+import { comment, commentReaction, task, taskAttachment, taskWatcher, user } from "@/db/schema";
 import { canAccessSpace, getSpacePermission, hasPermissionLevel } from "@/lib/permissions";
 import { writeActivityLog } from "@/lib/activity-log";
 import { createNotifications } from "@/lib/notifications/create-notification";
@@ -203,6 +203,15 @@ export async function getTaskComments(
   return { comments: topLevel };
 }
 
+// Extract plain text from Tiptap JSON for push notification body preview
+function tiptapToPlainText(node: unknown, depth = 0): string {
+  if (!node || typeof node !== "object") return "";
+  const n = node as { type?: string; text?: string; content?: unknown[] };
+  if (n.text) return n.text;
+  if (n.content) return n.content.map((c) => tiptapToPlainText(c, depth + 1)).join("");
+  return "";
+}
+
 // ─── createComment ────────────────────────────────────────────────────────────
 
 export async function createComment(
@@ -218,6 +227,21 @@ export async function createComment(
 
   const err = await requireSpaceAccess(session.user.id, workspaceId, spaceId);
   if (err) return err;
+
+  // Fetch task title for push notification
+  const [taskRow] = await db
+    .select({ title: task.title })
+    .from(task)
+    .where(eq(task.id, taskId))
+    .limit(1);
+  const taskTitle = taskRow?.title ?? "Task";
+
+  const actorName = session.user.name ?? session.user.email ?? "Someone";
+  const commentText = tiptapToPlainText(body).trim();
+  const pushBody = commentText
+    ? `${actorName}: ${commentText.slice(0, 120)}${commentText.length > 120 ? "…" : ""}`
+    : actorName;
+  const pushUrl = `/${workspaceId}/task/${taskId}`;
 
   const id = createId();
   const now = new Date();
@@ -244,16 +268,22 @@ export async function createComment(
 
   const watcherIds = watchers.map((w) => w.userId);
 
+  const commentPreview = commentText ? commentText.slice(0, 160) : undefined;
+
   // Comment added notification to all watchers
   createNotifications({
     workspaceId,
     actorId: session.user.id,
     recipientIds: watcherIds,
     triggerType: "comment_added",
-    entityType: "COMMENT",
-    entityId: id,
-    title: `New comment on a task you're watching`,
+    entityType: "TASK",
+    entityId: taskId,
+    title: `${actorName} commented on "${taskTitle}"`,
+    body: commentPreview,
     muteCheckEntityIds: [taskId],
+    pushTitle: taskTitle,
+    pushBody,
+    pushUrl,
   });
 
   // Reply notification to parent comment author
@@ -270,10 +300,14 @@ export async function createComment(
         actorId: session.user.id,
         recipientIds: [parentComment.authorId],
         triggerType: "comment_reply",
-        entityType: "COMMENT",
-        entityId: id,
-        title: `Someone replied to your comment`,
+        entityType: "TASK",
+        entityId: taskId,
+        title: `${actorName} replied to your comment on "${taskTitle}"`,
+        body: commentPreview,
         muteCheckEntityIds: [taskId],
+        pushTitle: taskTitle,
+        pushBody,
+        pushUrl,
       });
     }
   }
@@ -286,10 +320,14 @@ export async function createComment(
       actorId: session.user.id,
       recipientIds: mentionedIds,
       triggerType: "mention_comment",
-      entityType: "COMMENT",
-      entityId: id,
-      title: `You were mentioned in a comment`,
+      entityType: "TASK",
+      entityId: taskId,
+      title: `${actorName} mentioned you in "${taskTitle}"`,
+      body: commentPreview,
       muteCheckEntityIds: [taskId],
+      pushTitle: taskTitle,
+      pushBody,
+      pushUrl,
     });
   }
 

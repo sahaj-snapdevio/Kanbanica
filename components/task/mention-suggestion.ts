@@ -6,7 +6,10 @@ import type { MentionMember } from "@/app/actions/mention";
 
 // Accepts a getter so the suggestion always reads the latest members list,
 // even though the Tiptap extension is instantiated only once.
-export function buildMentionSuggestion(getMembers: () => MentionMember[]) {
+export function buildMentionSuggestion(
+  getMembers: () => MentionMember[],
+  onActiveChange?: (active: boolean) => void,
+) {
   return {
     char: "@",
 
@@ -52,6 +55,7 @@ export function buildMentionSuggestion(getMembers: () => MentionMember[]) {
       return {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         onStart(props: any) {
+          onActiveChange?.(true);
           // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
           renderer = new ReactRenderer(MentionList, {
             props,
@@ -98,6 +102,7 @@ export function buildMentionSuggestion(getMembers: () => MentionMember[]) {
         },
 
         onExit() {
+          onActiveChange?.(false);
           popup[0]?.destroy();
           renderer.destroy();
         },

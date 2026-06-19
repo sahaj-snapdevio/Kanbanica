@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { createId } from "@paralleldrive/cuid2";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -43,4 +43,23 @@ export async function POST(req: NextRequest) {
   });
 
   return NextResponse.json({ id }, { status: 201 });
+}
+
+export async function DELETE(req: NextRequest) {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const endpoint = req.nextUrl.searchParams.get("endpoint");
+  if (!endpoint) return NextResponse.json({ error: "Missing endpoint" }, { status: 400 });
+
+  await db
+    .delete(pushSubscription)
+    .where(
+      and(
+        eq(pushSubscription.endpoint, endpoint),
+        eq(pushSubscription.userId, session.user.id),
+      ),
+    );
+
+  return NextResponse.json({ ok: true });
 }

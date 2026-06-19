@@ -6,7 +6,6 @@ import {
   CaretDownIcon,
   CaretRightIcon,
   CheckCircleIcon,
-  DotsThreeIcon,
   FileIcon,
   FilePdfIcon,
   PaperclipIcon,
@@ -150,9 +149,12 @@ function CommentEditor({
   const [submitting, setSubmitting] = React.useState(false);
   const [pendingFiles, setPendingFiles] = React.useState<File[]>([]);
   const [editorEmpty, setEditorEmpty] = React.useState(!initialContent);
+  const [plusOpen, setPlusOpen] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
-  // Stable ref so the editor's handleKeyDown always calls the latest handleSubmit
+  // Stable refs so the editor's handleKeyDown always calls the latest versions
   const submitRef = React.useRef<() => void>(() => undefined);
+  const splitListItemRef = React.useRef<() => void>(() => undefined);
+  const isMentionActiveRef = React.useRef(false);
 
   // Keep a ref so the mention suggestion always reads the latest members list,
   // even though the Tiptap extension is created only once on mount.
@@ -167,7 +169,10 @@ function CommentEditor({
         HTMLAttributes: { class: "mention" },
         renderText: ({ node }) =>
           `@${(node.attrs.label as string | null) ?? (node.attrs.id as string) ?? "someone"}`,
-        suggestion: buildMentionSuggestion(() => membersRef.current),
+        suggestion: buildMentionSuggestion(
+          () => membersRef.current,
+          (active) => { isMentionActiveRef.current = active; },
+        ),
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
@@ -179,11 +184,32 @@ function CommentEditor({
     autofocus: autoFocus,
     onUpdate: ({ editor: e }) => setEditorEmpty(e.isEmpty),
     editorProps: {
-      handleKeyDown: (_, event) => {
-        // Enter without Shift/Meta submits; Shift+Enter inserts a newline (default)
-        if (event.key === "Enter" && !event.shiftKey && !event.metaKey && !event.ctrlKey) {
-          submitRef.current();
-          return true;
+      handleKeyDown: (view, event) => {
+        if (event.key === "Enter" && !event.metaKey && !event.ctrlKey) {
+          // Let the mention suggestion handle Enter when popup is open
+          if (isMentionActiveRef.current) return false;
+          const { $from } = view.state.selection;
+          let inListItem = false;
+          let inFormattedBlock = false;
+          for (let d = $from.depth; d > 0; d--) {
+            const name = $from.node(d).type.name;
+            if (name === "listItem") { inListItem = true; break; }
+            if (name === "heading" || name === "blockquote" || name === "codeBlock") {
+              inFormattedBlock = true; break;
+            }
+          }
+          // Shift+Enter inside a list → new list item (same as plain Enter)
+          if (event.shiftKey && inListItem) {
+            splitListItemRef.current();
+            return true;
+          }
+          // Any Enter inside a formatted block → let Tiptap handle natively
+          if (inFormattedBlock || inListItem) return false;
+          // Plain Enter in a paragraph → submit
+          if (!event.shiftKey) {
+            submitRef.current();
+            return true;
+          }
         }
         return false;
       },
@@ -228,6 +254,7 @@ function CommentEditor({
   // Keep submitRef pointing at the latest handleSubmit so the editor keydown
   // closure (created once) always calls the current version.
   submitRef.current = () => void handleSubmit();
+  splitListItemRef.current = () => { editor?.chain().splitListItem("listItem").run(); };
 
   return (
     <div className="rounded-xl border bg-background shadow-sm focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary/40 transition-all">
@@ -266,10 +293,68 @@ function CommentEditor({
 
       {/* Toolbar */}
       <div className="flex items-center gap-0.5 border-t px-2 py-1.5">
-        {/* Left tools */}
-        <button className="size-7 flex items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
-          <PlusIcon className="size-3.5" />
-        </button>
+        {/* Plus — formatting menu */}
+        <Popover open={plusOpen} onOpenChange={setPlusOpen}>
+          <PopoverTrigger asChild>
+            <button className="size-7 flex items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
+              <PlusIcon className="size-3.5" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" side="top" className="w-52 p-1 mb-1">
+            <p className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Text</p>
+            {([
+              { icon: "T",  label: "Normal text", cmd: () => editor?.chain().focus().setParagraph().run() },
+              { icon: "H1", label: "Heading 1",   cmd: () => editor?.chain().focus().setHeading({ level: 1 }).run() },
+              { icon: "H2", label: "Heading 2",   cmd: () => editor?.chain().focus().setHeading({ level: 2 }).run() },
+              { icon: "H3", label: "Heading 3",   cmd: () => editor?.chain().focus().setHeading({ level: 3 }).run() },
+            ] as const).map(({ icon, label, cmd }) => (
+              <button
+                key={label}
+                onClick={() => { cmd(); setPlusOpen(false); }}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
+              >
+                <span className="flex size-6 shrink-0 items-center justify-center rounded border border-border bg-background text-xs font-semibold">
+                  {icon}
+                </span>
+                {label}
+              </button>
+            ))}
+
+            <p className="px-2 pb-1 pt-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Lists</p>
+            {([
+              { icon: "•—", label: "Bullet list",   cmd: () => editor?.chain().focus().toggleBulletList().run() },
+              { icon: "1.", label: "Numbered list",  cmd: () => editor?.chain().focus().toggleOrderedList().run() },
+            ] as const).map(({ icon, label, cmd }) => (
+              <button
+                key={label}
+                onClick={() => { cmd(); setPlusOpen(false); }}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
+              >
+                <span className="flex size-6 shrink-0 items-center justify-center rounded border border-border bg-background text-xs font-semibold">
+                  {icon}
+                </span>
+                {label}
+              </button>
+            ))}
+
+            <p className="px-2 pb-1 pt-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Blocks</p>
+            {([
+              { icon: "❝",   label: "Blockquote",  cmd: () => editor?.chain().focus().setBlockquote().run() },
+              { icon: "</>", label: "Code block",   cmd: () => editor?.chain().focus().setCodeBlock().run() },
+            ] as const).map(({ icon, label, cmd }) => (
+              <button
+                key={label}
+                onClick={() => { cmd(); setPlusOpen(false); }}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
+              >
+                <span className="flex size-6 shrink-0 items-center justify-center rounded border border-border bg-background text-xs font-semibold">
+                  {icon}
+                </span>
+                {label}
+              </button>
+            ))}
+          </PopoverContent>
+        </Popover>
 
         <div className="w-px h-4 bg-border mx-1" />
 
@@ -316,12 +401,11 @@ function CommentEditor({
         )}
 
         {/* Mention */}
-        <button className="size-7 flex items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
+        <button
+          onClick={() => editor?.chain().focus().insertContent("@").run()}
+          className="size-7 flex items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+        >
           <AtIcon className="size-4" />
-        </button>
-
-        <button className="size-7 flex items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
-          <DotsThreeIcon className="size-4.5" weight="bold" />
         </button>
 
         {/* Right: cancel + submit */}
@@ -338,34 +422,29 @@ function CommentEditor({
 
         {/* Submit group */}
         <div className={cn(
-          "flex items-center rounded-lg overflow-hidden border transition-colors",
+          "flex items-stretch rounded-lg overflow-hidden border transition-colors",
           canSubmit ? "border-primary bg-primary" : "border-border bg-muted/40",
         )}>
           <button
             onClick={handleSubmit}
             disabled={submitting || !canSubmit}
             className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors",
+              "flex items-center px-3 py-1.5 text-xs font-medium transition-colors",
               canSubmit
-                ? "text-primary-foreground hover:bg-primary/90"
+                ? "text-primary-foreground hover:bg-white/10"
                 : "text-muted-foreground cursor-not-allowed",
             )}
           >
-            {submitting ? (
-              <span>Sending…</span>
-            ) : (
-              <>
-                <span>Comment</span>
-              </>
-            )}
+            {submitting ? <span>Sending…</span> : <span>Comment</span>}
           </button>
-          <div className={cn("w-px h-4", canSubmit ? "bg-primary-foreground/30" : "bg-border")} />
+          <div className={cn("w-px shrink-0", canSubmit ? "bg-white/25" : "bg-border")} />
           <button
-            disabled={!canSubmit}
+            onClick={handleSubmit}
+            disabled={submitting || !canSubmit}
             className={cn(
-              "flex items-center justify-center px-1.5 py-1.5 transition-colors",
+              "flex items-center justify-center px-2 transition-colors",
               canSubmit
-                ? "text-primary-foreground hover:bg-primary/90"
+                ? "text-primary-foreground hover:bg-white/10"
                 : "text-muted-foreground cursor-not-allowed",
             )}
           >

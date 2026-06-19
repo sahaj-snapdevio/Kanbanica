@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { usePushSubscription } from "@/hooks/use-push-subscription";
 
 const TRIGGER_LABELS: Record<string, string> = {
   task_assigned: "Task assigned to me",
@@ -65,6 +66,8 @@ export default function NotificationSettingsPage() {
   const [digestTime, setDigestTime] = React.useState<string>("08:00");
   const [prefs, setPrefs] = React.useState<NotifPref[]>([]);
   const [saving, setSaving] = React.useState(false);
+  const [pushEnabling, setPushEnabling] = React.useState(false);
+  const { supported: pushSupported, permission, subscribed, enable: enablePush, disable: disablePush } = usePushSubscription();
 
   React.useEffect(() => {
     if (emailPrefData?.preference) {
@@ -121,6 +124,51 @@ export default function NotificationSettingsPage() {
           Control how and when you receive notifications.
         </p>
       </div>
+
+      {/* Browser push notifications */}
+      {pushSupported && (
+        <div className="space-y-3 rounded-lg border p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h3 className="font-medium">Browser Notifications</h3>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                {permission === "denied"
+                  ? "Notifications are blocked. Enable them in your browser settings."
+                  : subscribed
+                    ? "Push notifications are enabled for this browser."
+                    : "Get notified in real time, even when the app is in the background."}
+              </p>
+            </div>
+            {permission !== "denied" && (
+              <Button
+                size="sm"
+                variant={subscribed ? "outline" : "default"}
+                disabled={pushEnabling}
+                onClick={async () => {
+                  setPushEnabling(true);
+                  if (subscribed) {
+                    await disablePush();
+                  } else {
+                    await enablePush();
+                  }
+                  setPushEnabling(false);
+                }}
+              >
+                {pushEnabling
+                  ? "…"
+                  : subscribed
+                    ? "Disable"
+                    : "Enable"}
+              </Button>
+            )}
+          </div>
+          {subscribed && (
+            <p className="text-xs text-muted-foreground">
+              Per-event push toggles are controlled in the table below.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Email delivery section */}
       <div className="space-y-4 rounded-lg border p-4">

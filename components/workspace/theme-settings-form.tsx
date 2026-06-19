@@ -15,6 +15,12 @@ interface ThemeOption {
 
 const THEME_OPTIONS: ThemeOption[] = [
   {
+    id: "forest",
+    name: "Forest",
+    colorClass: "bg-[#174D38]",
+    bgPreview: "#174D38",
+  },
+  {
     id: "indigo",
     name: "Indigo",
     colorClass: "bg-indigo-600",

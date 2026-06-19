@@ -6,7 +6,7 @@ import { createId } from "@paralleldrive/cuid2";
 import { and, count, eq, inArray, max, ne } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { list, listStatus, task, taskAttachment, spaceMember } from "@/db/schema";
+import { list, listStatus, task, taskAttachment, spaceMember, space } from "@/db/schema";
 import { getWorkspaceMembership } from "@/lib/permissions";
 
 // ── Permission helpers ─────────────────────────────────────────────────────
@@ -399,4 +399,49 @@ export async function reorderListStatuses(
 
   revalidatePath(`/${workspaceId}`, "layout");
   return { ok: true };
+}
+
+// ─── getWorkspaceLists ────────────────────────────────────────────────────────
+
+export async function getWorkspaceLists(
+  workspaceId: string,
+  excludeListId: string,
+): Promise<{
+  spaces: {
+    id: string;
+    name: string;
+    color: string | null;
+    lists: { id: string; name: string; color: string | null }[];
+  }[];
+} | { error: string }> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return { error: "Unauthorized" };
+
+  const membership = await getWorkspaceMembership(session.user.id, workspaceId);
+  if (!membership) return { error: "Unauthorized" };
+
+  const rows = await db
+    .select({
+      spaceId:    space.id,
+      spaceName:  space.name,
+      spaceColor: space.color,
+      listId:     list.id,
+      listName:   list.name,
+      listColor:  list.color,
+    })
+    .from(space)
+    .innerJoin(list, and(eq(list.spaceId, space.id), eq(list.isArchived, false)))
+    .where(and(eq(space.workspaceId, workspaceId), eq(space.isArchived, false)))
+    .orderBy(space.name, list.name);
+
+  const spaceMap = new Map<string, { id: string; name: string; color: string | null; lists: { id: string; name: string; color: string | null }[] }>();
+  for (const r of rows) {
+    if (r.listId === excludeListId) continue;
+    if (!spaceMap.has(r.spaceId)) {
+      spaceMap.set(r.spaceId, { id: r.spaceId, name: r.spaceName, color: r.spaceColor, lists: [] });
+    }
+    spaceMap.get(r.spaceId)!.lists.push({ id: r.listId, name: r.listName, color: r.listColor });
+  }
+
+  return { spaces: [...spaceMap.values()].filter((s) => s.lists.length > 0) };
 }

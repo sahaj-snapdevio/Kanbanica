@@ -127,7 +127,7 @@ function SectionLabel({ children, className }: { children: React.ReactNode; clas
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border border-purple-200 bg-purple-50 px-3 py-1 font-semibold text-purple-600 text-xs uppercase tracking-wide",
+        "inline-flex items-center rounded-full border border-[#174D38]/30 bg-[#174D38]/10 px-3 py-1 font-semibold text-[#174D38] text-xs uppercase tracking-wide",
         className,
       )}
     >
@@ -151,23 +151,23 @@ function Navbar() {
       className={cn(
         "sticky top-0 z-40 transition-all duration-200",
         scrolled
-          ? "border-b border-[#e5e7eb] bg-white/95 shadow-sm backdrop-blur-sm"
+          ? "border-b border-[#CBCBCB] bg-white/95 shadow-sm backdrop-blur-sm"
           : "bg-transparent",
       )}
     >
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
-        <span className="font-bold text-purple-600 text-lg tracking-tight">{PRODUCT_NAME}</span>
+        <span className="font-bold text-[#174D38] text-lg tracking-tight">{PRODUCT_NAME}</span>
         <nav className="hidden items-center gap-6 text-sm text-[#6b7280] sm:flex">
-          <a href="#features" className="transition-colors hover:text-[#111827]">Features</a>
-          <a href="#why" className="transition-colors hover:text-[#111827]">Why us</a>
-          <a href="#how-it-works" className="transition-colors hover:text-[#111827]">How it works</a>
-          <a href="#faq" className="transition-colors hover:text-[#111827]">FAQ</a>
+          <a href="#features" className="transition-colors hover:text-[#174D38]">Features</a>
+          <a href="#why" className="transition-colors hover:text-[#174D38]">Why us</a>
+          <a href="#how-it-works" className="transition-colors hover:text-[#174D38]">How it works</a>
+          <a href="#faq" className="transition-colors hover:text-[#174D38]">FAQ</a>
         </nav>
         <div className="hidden items-center gap-2 sm:flex">
           <Button variant="ghost" size="sm" asChild>
             <Link href="/login">Sign in</Link>
           </Button>
-          <Button size="sm" asChild className="bg-purple-600 text-white hover:bg-purple-700">
+          <Button size="sm" asChild className="bg-[#174D38] text-white hover:bg-[#103526]">
             <Link href="/login">
               Get Started Free <ArrowRight className="ml-1 size-3.5" />
             </Link>
@@ -176,24 +176,24 @@ function Navbar() {
         <button
           aria-label={mobileOpen ? "Close menu" : "Open menu"}
           aria-expanded={mobileOpen}
-          className="rounded-md p-2 text-[#6b7280] hover:text-[#111827] sm:hidden"
+          className="rounded-md p-2 text-[#6b7280] hover:text-[#174D38] sm:hidden"
           onClick={() => setMobileOpen((v) => !v)}
         >
           {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
         </button>
       </div>
       {mobileOpen && (
-        <div className="border-t border-[#e5e7eb] bg-white px-6 pb-4 sm:hidden">
+        <div className="border-t border-[#CBCBCB] bg-white px-6 pb-4 sm:hidden">
           <nav className="flex flex-col gap-3 pt-4 text-sm text-[#6b7280]">
-            <a href="#features" onClick={() => setMobileOpen(false)} className="hover:text-[#111827]">Features</a>
-            <a href="#why" onClick={() => setMobileOpen(false)} className="hover:text-[#111827]">Why us</a>
-            <a href="#how-it-works" onClick={() => setMobileOpen(false)} className="hover:text-[#111827]">How it works</a>
-            <a href="#faq" onClick={() => setMobileOpen(false)} className="hover:text-[#111827]">FAQ</a>
-            <div className="flex flex-col gap-2 border-t border-[#e5e7eb] pt-2">
+            <a href="#features" onClick={() => setMobileOpen(false)} className="hover:text-[#174D38]">Features</a>
+            <a href="#why" onClick={() => setMobileOpen(false)} className="hover:text-[#174D38]">Why us</a>
+            <a href="#how-it-works" onClick={() => setMobileOpen(false)} className="hover:text-[#174D38]">How it works</a>
+            <a href="#faq" onClick={() => setMobileOpen(false)} className="hover:text-[#174D38]">FAQ</a>
+            <div className="flex flex-col gap-2 border-t border-[#CBCBCB] pt-2">
               <Button variant="outline" size="sm" asChild>
                 <Link href="/login">Sign in</Link>
               </Button>
-              <Button size="sm" asChild className="bg-purple-600 text-white hover:bg-purple-700">
+              <Button size="sm" asChild className="bg-[#174D38] text-white hover:bg-[#103526]">
                 <Link href="/login">Get Started Free</Link>
               </Button>
             </div>
@@ -205,7 +205,7 @@ function Navbar() {
 }
 
 const DOT_GRID =
-  "url(\"data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='1' cy='1' r='1' fill='%239333ea' fill-opacity='0.05'/%3E%3C/svg%3E\")";
+  "url(\"data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='1' cy='1' r='1' fill='%23174D38' fill-opacity='0.05'/%3E%3C/svg%3E\")";
 
 function HeroSection() {
   return (
@@ -217,21 +217,21 @@ function HeroSection() {
         className="pointer-events-none absolute inset-x-0 top-0 h-[600px]"
         style={{
           background:
-            "radial-gradient(ellipse 80% 50% at 50% -10%, rgba(147,51,234,0.14) 0%, transparent 70%)",
+            "radial-gradient(ellipse 80% 50% at 50% -10%, rgba(23,77,56,0.14) 0%, transparent 70%)",
         }}
       />
       <div className="relative mx-auto max-w-6xl px-6 pb-0 pt-20 text-center">
         <Animate>
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-purple-200 bg-purple-50 px-3 py-1.5 font-semibold text-purple-700 text-xs">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#174D38]/30 bg-[#174D38]/10 px-3 py-1.5 font-semibold text-[#174D38] text-xs">
             <span className="size-1.5 animate-pulse rounded-full bg-emerald-500" />
             Free for every team — no credit card
           </div>
-          <h1 className="mb-5 mt-2 text-5xl font-bold leading-tight tracking-tight text-[#111827] sm:text-6xl">
+          <h1 className="mb-5 mt-2 text-5xl font-bold leading-tight tracking-tight text-[#174D38] sm:text-6xl">
             Project management
             <br />
             <span
               className="bg-clip-text text-transparent"
-              style={{ backgroundImage: "linear-gradient(to right, #9333ea, #c026d3)" }}
+              style={{ backgroundImage: "linear-gradient(to right, #174D38, #4D1717)" }}
             >
               your team will actually use
             </span>
@@ -244,7 +244,7 @@ function HeroSection() {
             <Button
               size="lg"
               asChild
-              className="h-11 bg-purple-600 px-6 text-base text-white shadow-lg shadow-purple-200 hover:bg-purple-700"
+              className="h-11 bg-[#174D38] px-6 text-base text-white shadow-lg shadow-[#4D1717]/40 hover:bg-[#103526]"
             >
               <Link href="/login">
                 Get Started Free <ArrowRight className="ml-1.5 size-4" />
@@ -254,7 +254,7 @@ function HeroSection() {
               size="lg"
               variant="outline"
               asChild
-              className="h-11 border-[#e5e7eb] px-6 text-base hover:bg-[#f9fafb]"
+              className="h-11 border-[#CBCBCB] px-6 text-base hover:bg-[#F2F2F2]"
             >
               <a href="#features">See what is included</a>
             </Button>
@@ -264,23 +264,23 @@ function HeroSection() {
 
         <Animate delay={300} className="mt-16">
           <div className="relative mx-auto max-w-4xl">
-            <div className="overflow-hidden rounded-xl border border-[#e5e7eb] bg-white shadow-2xl ring-1 ring-purple-100">
-              <div className="flex items-center gap-1.5 border-b border-[#e5e7eb] bg-[#f9fafb] px-4 py-2.5">
+            <div className="overflow-hidden rounded-xl border border-[#CBCBCB] bg-white shadow-2xl ring-1 ring-[#174D38]/20">
+              <div className="flex items-center gap-1.5 border-b border-[#CBCBCB] bg-[#F2F2F2] px-4 py-2.5">
                 <span className="size-3 rounded-full bg-[#ef4444]" />
                 <span className="size-3 rounded-full bg-[#f59e0b]" />
                 <span className="size-3 rounded-full bg-[#10b981]" />
-                <div className="mx-auto ml-4 max-w-xs flex-1 rounded-md border border-[#e5e7eb] bg-white px-3 py-1 text-[#9ca3af] text-xs">
+                <div className="mx-auto ml-4 max-w-xs flex-1 rounded-md border border-[#CBCBCB] bg-white px-3 py-1 text-[#9ca3af] text-xs">
                   {MARKETING_DOMAIN}/acme/engineering/backlog
                 </div>
               </div>
-              <div className="flex bg-[#f9fafb]">
-                <div className="flex w-14 flex-col items-center gap-4 border-r border-[#e5e7eb] bg-white px-3.5 py-4">
+              <div className="flex bg-[#F2F2F2]">
+                <div className="flex w-14 flex-col items-center gap-4 border-r border-[#CBCBCB] bg-white px-3.5 py-4">
                   {[LayoutList, Kanban, Bell, Search, Users].map((Icon, i) => (
                     <div
                       key={i}
                       className={cn(
                         "flex size-8 items-center justify-center rounded-md",
-                        i === 0 ? "bg-purple-600 text-white" : "text-[#9ca3af] hover:bg-[#f3f4f6]",
+                        i === 0 ? "bg-[#174D38] text-white" : "text-[#9ca3af] hover:bg-[#E8E8E8]",
                       )}
                     >
                       <Icon className="size-4" />
@@ -292,7 +292,7 @@ function HeroSection() {
                     <div className="flex items-center gap-1 text-[#6b7280] text-xs">
                       <span>Engineering</span>
                       <ChevronRight className="size-3" />
-                      <span className="font-semibold text-[#111827]">Backlog</span>
+                      <span className="font-semibold text-[#174D38]">Backlog</span>
                     </div>
                     <div className="flex items-center gap-1">
                       {["List", "Board", "Calendar"].map((v, i) => (
@@ -301,8 +301,8 @@ function HeroSection() {
                           className={cn(
                             "cursor-pointer rounded px-2.5 py-1 font-medium text-xs transition-colors",
                             i === 0
-                              ? "bg-purple-600 text-white"
-                              : "text-[#6b7280] hover:bg-[#f3f4f6] hover:text-[#111827]",
+                              ? "bg-[#174D38] text-white"
+                              : "text-[#6b7280] hover:bg-[#E8E8E8] hover:text-[#174D38]",
                           )}
                         >
                           {v}
@@ -310,11 +310,11 @@ function HeroSection() {
                       ))}
                     </div>
                   </div>
-                  <div className="mb-3 flex items-center gap-2 border-b border-[#e5e7eb] pb-3">
+                  <div className="mb-3 flex items-center gap-2 border-b border-[#CBCBCB] pb-3">
                     {["Filter", "Group by: Status", "Sort"].map((label) => (
                       <span
                         key={label}
-                        className="rounded border border-dashed border-[#e5e7eb] px-2 py-1 text-[#9ca3af] text-xs"
+                        className="rounded border border-dashed border-[#CBCBCB] px-2 py-1 text-[#9ca3af] text-xs"
                       >
                         {label}
                       </span>
@@ -322,22 +322,22 @@ function HeroSection() {
                   </div>
                   <div className="space-y-1.5">
                     {[
-                      { title: "Fix login redirect bug", status: "In Progress", statusCls: "bg-purple-50 text-purple-600", priority: "High", pCls: "bg-orange-50 text-orange-500", assignee: "SC" },
+                      { title: "Fix login redirect bug", status: "In Progress", statusCls: "bg-[#174D38]/10 text-[#174D38]", priority: "High", pCls: "bg-orange-50 text-orange-500", assignee: "SC" },
                       { title: "Design onboarding flow", status: "Review", statusCls: "bg-amber-50 text-amber-600", priority: "Medium", pCls: "bg-yellow-50 text-yellow-600", assignee: "MR" },
-                      { title: "Write API documentation", status: "Todo", statusCls: "bg-[#f3f4f6] text-[#6b7280]", priority: "Low", pCls: "bg-blue-50 text-blue-500", assignee: "PN" },
-                      { title: "Set up CI/CD pipeline", status: "Todo", statusCls: "bg-[#f3f4f6] text-[#6b7280]", priority: "Urgent", pCls: "bg-red-50 text-red-500", assignee: "SC" },
-                      { title: "Implement search indexing", status: "In Progress", statusCls: "bg-purple-50 text-purple-600", priority: "High", pCls: "bg-orange-50 text-orange-500", assignee: "MR" },
+                      { title: "Write API documentation", status: "Todo", statusCls: "bg-[#E8E8E8] text-[#6b7280]", priority: "Low", pCls: "bg-blue-50 text-blue-500", assignee: "PN" },
+                      { title: "Set up CI/CD pipeline", status: "Todo", statusCls: "bg-[#E8E8E8] text-[#6b7280]", priority: "Urgent", pCls: "bg-red-50 text-red-500", assignee: "SC" },
+                      { title: "Implement search indexing", status: "In Progress", statusCls: "bg-[#174D38]/10 text-[#174D38]", priority: "High", pCls: "bg-orange-50 text-orange-500", assignee: "MR" },
                     ].map((t) => (
                       <div
                         key={t.title}
-                        className="flex items-center gap-3 rounded-md border border-[#e5e7eb] bg-white px-3 py-2 text-sm transition-colors hover:border-purple-200"
+                        className="flex items-center gap-3 rounded-md border border-[#CBCBCB] bg-white px-3 py-2 text-sm transition-colors hover:border-[#174D38]/40"
                       >
-                        <span className="size-4 shrink-0 rounded border-2 border-[#e5e7eb]" />
-                        <span className="flex-1 truncate font-medium text-[#111827] text-xs">{t.title}</span>
+                        <span className="size-4 shrink-0 rounded border-2 border-[#CBCBCB]" />
+                        <span className="flex-1 truncate font-medium text-[#174D38] text-xs">{t.title}</span>
                         <span className={cn("shrink-0 rounded px-2 py-0.5 text-[10px] font-medium", t.statusCls)}>{t.status}</span>
                         <span className={cn("hidden shrink-0 rounded px-2 py-0.5 text-[10px] font-medium sm:inline-block", t.pCls)}>{t.priority}</span>
                         <Avatar className="size-5 shrink-0">
-                          <AvatarFallback className="bg-purple-100 text-[8px] text-purple-700">{t.assignee}</AvatarFallback>
+                          <AvatarFallback className="bg-[#4D1717]/25 text-[8px] text-[#174D38]">{t.assignee}</AvatarFallback>
                         </Avatar>
                       </div>
                     ))}
@@ -358,19 +358,19 @@ function HeroSection() {
 
 function SocialProofBar() {
   return (
-    <div className="border-y border-[#e5e7eb] bg-[#f9fafb] py-5">
+    <div className="border-y border-[#CBCBCB] bg-[#F2F2F2] py-5">
       <div className="mx-auto max-w-6xl px-6">
         <Animate>
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-between">
             <p className="text-[#6b7280] text-sm">
-              <span className="font-semibold text-[#111827]">500+ teams</span> already managing their
+              <span className="font-semibold text-[#174D38]">500+ teams</span> already managing their
               work with {PRODUCT_NAME}
             </p>
             <div className="flex items-center gap-6">
               {["Acme Co", "Flowboard", "Stackd", "Loopback", "Nexus"].map((name) => (
                 <span
                   key={name}
-                  className="font-semibold text-[#d1d5db] text-xs uppercase tracking-widest"
+                  className="font-semibold text-[#CBCBCB] text-xs uppercase tracking-widest"
                 >
                   {name}
                 </span>
@@ -384,7 +384,7 @@ function SocialProofBar() {
 }
 
 const LINE_GRID =
-  "linear-gradient(rgba(147,51,234,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(147,51,234,0.04) 1px, transparent 1px)";
+  "linear-gradient(rgba(23,77,56,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(23,77,56,0.04) 1px, transparent 1px)";
 
 function FeaturesSection() {
   const { ref, visible } = useInView();
@@ -392,12 +392,12 @@ function FeaturesSection() {
     <section
       id="features"
       className="py-16 scroll-mt-14"
-      style={{ backgroundImage: LINE_GRID, backgroundSize: "40px 40px", backgroundColor: "#f9fafb" }}
+      style={{ backgroundImage: LINE_GRID, backgroundSize: "40px 40px", backgroundColor: "#F2F2F2" }}
     >
       <div className="mx-auto max-w-6xl px-6">
         <Animate className="mb-14 text-center">
           <SectionLabel className="mb-4">Features</SectionLabel>
-          <h2 className="mt-4 text-3xl font-bold tracking-tight text-[#111827]">
+          <h2 className="mt-4 text-3xl font-bold tracking-tight text-[#174D38]">
             Everything your team needs to ship
           </h2>
           <p className="mt-2 text-[#6b7280]">No bolt-ons. No plugins. Everything in the box.</p>
@@ -407,8 +407,8 @@ function FeaturesSection() {
             <div
               key={title}
               className={cn(
-                "group cursor-default rounded-xl border border-[#e5e7eb] bg-white p-6 shadow-sm transition-all duration-300",
-                "hover:-translate-y-0.5 hover:border-purple-200 hover:shadow-md",
+                "group cursor-default rounded-xl border border-[#CBCBCB] bg-white p-6 shadow-sm transition-all duration-300",
+                "hover:-translate-y-0.5 hover:border-[#174D38]/40 hover:shadow-md",
                 visible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
               )}
               style={{
@@ -418,11 +418,11 @@ function FeaturesSection() {
             >
               <div
                 className="mb-4 flex size-10 items-center justify-center rounded-lg text-white"
-                style={{ background: "linear-gradient(135deg, #9333ea, #c026d3)" }}
+                style={{ background: "linear-gradient(135deg, #174D38, #4D1717)" }}
               >
                 <Icon className="size-5" />
               </div>
-              <h3 className="mb-2 font-semibold text-[#111827] text-base">{title}</h3>
+              <h3 className="mb-2 font-semibold text-[#174D38] text-base">{title}</h3>
               <p className="text-[#6b7280] text-sm leading-relaxed">{description}</p>
             </div>
           ))}
@@ -444,10 +444,10 @@ function StatsSection() {
     <section className="relative overflow-hidden py-16 text-white">
       <div
         className="absolute inset-0"
-        style={{ background: "linear-gradient(135deg, #6d28d9 0%, #9333ea 55%, #c026d3 100%)" }}
+        style={{ background: "linear-gradient(135deg, #174D38 0%, #174D38 55%, #4D1717 100%)" }}
       />
       <div className="pointer-events-none absolute -top-20 -left-24 size-72 rounded-full bg-white/10 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-24 -right-20 size-80 rounded-full bg-fuchsia-300/20 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-24 -right-20 size-80 rounded-full bg-[#4D1717]/20 blur-3xl" />
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.07]"
         style={{
@@ -519,7 +519,7 @@ function BentoSection() {
       <div className="mx-auto max-w-6xl px-6">
         <Animate className="mb-14 text-center">
           <SectionLabel className="mb-4">Why teams switch</SectionLabel>
-          <h2 className="mt-4 text-3xl font-bold tracking-tight text-[#111827]">
+          <h2 className="mt-4 text-3xl font-bold tracking-tight text-[#174D38]">
             Powerful where it counts, simple everywhere else
           </h2>
           <p className="mt-2 text-[#6b7280]">
@@ -536,24 +536,24 @@ function BentoSection() {
                   "group relative overflow-hidden rounded-2xl border p-6 transition-all duration-500",
                   card.span,
                   card.accent
-                    ? "border-purple-100 bg-linear-to-br from-purple-50/80 to-fuchsia-50/40"
-                    : "border-[#e5e7eb] bg-white shadow-sm",
-                  "hover:-translate-y-0.5 hover:shadow-md hover:border-purple-200",
+                    ? "border-[#174D38]/20 bg-linear-to-br from-[#174D38]/10 to-[#4D1717]/10"
+                    : "border-[#CBCBCB] bg-white shadow-sm",
+                  "hover:-translate-y-0.5 hover:shadow-md hover:border-[#174D38]/40",
                   visible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
                 )}
                 style={{ transitionDelay: visible ? `${i * 90}ms` : "0ms" }}
               >
                 {card.accent && (
-                  <div className="pointer-events-none absolute -top-10 -right-10 size-32 rounded-full bg-purple-200/30 blur-2xl transition-opacity group-hover:opacity-80" />
+                  <div className="pointer-events-none absolute -top-10 -right-10 size-32 rounded-full bg-[#174D38]/20 blur-2xl transition-opacity group-hover:opacity-80" />
                 )}
                 <div className="relative">
                   <div
                     className="mb-4 flex size-10 items-center justify-center rounded-lg text-white shadow-sm"
-                    style={{ background: "linear-gradient(135deg, #9333ea, #c026d3)" }}
+                    style={{ background: "linear-gradient(135deg, #174D38, #4D1717)" }}
                   >
                     <Icon className="size-5" />
                   </div>
-                  <h3 className="mb-2 font-semibold text-[#111827] text-base">{card.title}</h3>
+                  <h3 className="mb-2 font-semibold text-[#174D38] text-base">{card.title}</h3>
                   <p className="max-w-md text-[#6b7280] text-sm leading-relaxed">{card.description}</p>
                 </div>
               </div>
@@ -572,7 +572,7 @@ function HowItWorksSection() {
       <div className="mx-auto max-w-6xl px-6">
         <Animate className="mb-14 text-center">
           <SectionLabel className="mb-4">How it works</SectionLabel>
-          <h2 className="mt-4 text-3xl font-bold tracking-tight text-[#111827]">
+          <h2 className="mt-4 text-3xl font-bold tracking-tight text-[#174D38]">
             Up and running in minutes
           </h2>
           <p className="mt-2 text-[#6b7280]">No configuration required. Just sign in and start organising.</p>
@@ -581,7 +581,7 @@ function HowItWorksSection() {
           <div className="flex flex-wrap items-center justify-center gap-2 text-sm">
             {["Workspace", "Space", "List", "Task"].map((label, i, arr) => (
               <React.Fragment key={label}>
-                <span className="rounded-lg border border-[#e5e7eb] bg-[#f9fafb] px-3 py-1.5 font-medium text-[#111827]">
+                <span className="rounded-lg border border-[#CBCBCB] bg-[#F2F2F2] px-3 py-1.5 font-medium text-[#174D38]">
                   {label}
                 </span>
                 {i < arr.length - 1 && <ChevronRight className="size-4 text-[#9ca3af]" />}
@@ -591,12 +591,12 @@ function HowItWorksSection() {
           <p className="text-[#9ca3af] text-xs">e.g. Acme Inc › Engineering › Backlog › Fix login bug</p>
         </Animate>
         <div ref={ref} className="relative grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="pointer-events-none absolute top-10 right-[12.5%] left-[12.5%] hidden border-t-2 border-dashed border-purple-100 lg:block" />
+          <div className="pointer-events-none absolute top-10 right-[12.5%] left-[12.5%] hidden border-t-2 border-dashed border-[#174D38]/20 lg:block" />
           {steps.map((step, i) => (
             <div
               key={step.number}
               className={cn(
-                "relative rounded-xl border border-[#e5e7eb] bg-white p-6 shadow-sm transition-all duration-500",
+                "relative rounded-xl border border-[#CBCBCB] bg-white p-6 shadow-sm transition-all duration-500",
                 visible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
               )}
               style={{
@@ -606,11 +606,11 @@ function HowItWorksSection() {
             >
               <div
                 className="mb-3 select-none bg-clip-text text-5xl font-bold text-transparent"
-                style={{ backgroundImage: "linear-gradient(135deg, #e9d5ff, #f5d0fe)" }}
+                style={{ backgroundImage: "linear-gradient(135deg, #BFD0C7, #D6BABA)" }}
               >
                 {step.number}
               </div>
-              <h3 className="mb-2 font-semibold text-[#111827] text-sm">{step.title}</h3>
+              <h3 className="mb-2 font-semibold text-[#174D38] text-sm">{step.title}</h3>
               <p className="text-[#6b7280] text-sm leading-relaxed">{step.description}</p>
             </div>
           ))}
@@ -624,29 +624,29 @@ function ViewsShowcaseSection() {
   return (
     <section
       className="py-16"
-      style={{ backgroundImage: LINE_GRID, backgroundSize: "40px 40px", backgroundColor: "#f9fafb" }}
+      style={{ backgroundImage: LINE_GRID, backgroundSize: "40px 40px", backgroundColor: "#F2F2F2" }}
     >
       <div className="mx-auto max-w-6xl px-6">
         <Animate className="mb-10 text-center">
           <SectionLabel className="mb-4">Views</SectionLabel>
-          <h2 className="mt-4 text-3xl font-bold tracking-tight text-[#111827]">See work your way</h2>
+          <h2 className="mt-4 text-3xl font-bold tracking-tight text-[#174D38]">See work your way</h2>
           <p className="mt-2 text-[#6b7280]">Switch views without leaving the page. Your filters carry across.</p>
         </Animate>
         <Animate delay={150}>
           <Tabs defaultValue="list" className="mx-auto max-w-3xl">
-            <TabsList className="mb-6 grid w-full grid-cols-3 rounded-lg bg-[#f3f4f6] p-1">
-              <TabsTrigger value="list" className="gap-1.5 rounded-md data-[state=active]:bg-purple-600 data-[state=active]:text-white">
+            <TabsList className="mb-6 grid w-full grid-cols-3 rounded-lg bg-[#E8E8E8] p-1">
+              <TabsTrigger value="list" className="gap-1.5 rounded-md data-[state=active]:bg-[#174D38] data-[state=active]:text-white">
                 <LayoutList className="size-3.5" />List
               </TabsTrigger>
-              <TabsTrigger value="board" className="gap-1.5 rounded-md data-[state=active]:bg-purple-600 data-[state=active]:text-white">
+              <TabsTrigger value="board" className="gap-1.5 rounded-md data-[state=active]:bg-[#174D38] data-[state=active]:text-white">
                 <Kanban className="size-3.5" />Board
               </TabsTrigger>
-              <TabsTrigger value="mytasks" className="gap-1.5 rounded-md data-[state=active]:bg-purple-600 data-[state=active]:text-white">
+              <TabsTrigger value="mytasks" className="gap-1.5 rounded-md data-[state=active]:bg-[#174D38] data-[state=active]:text-white">
                 <CalendarDays className="size-3.5" />My Tasks
               </TabsTrigger>
             </TabsList>
             <TabsContent value="list" className="animate-in fade-in-0 duration-200">
-              <Card className="rounded-xl border-[#e5e7eb] shadow-sm">
+              <Card className="rounded-xl border-[#CBCBCB] shadow-sm">
                 <CardHeader className="pb-2">
                   <CardTitle className="font-semibold normal-case tracking-normal text-sm">List View</CardTitle>
                   <CardDescription>Default view — see all tasks as rows with inline editing.</CardDescription>
@@ -659,11 +659,11 @@ function ViewsShowcaseSection() {
                       { t: "Write unit tests", done: false },
                       { t: "Deploy to staging", done: false },
                     ].map(({ t, done }) => (
-                      <div key={t} className={cn("flex items-center gap-3 rounded border px-3 py-2 text-sm", done ? "border-[#e5e7eb] bg-[#f9fafb]" : "border-purple-100 bg-purple-50/30")}>
-                        <div className={cn("flex size-4 shrink-0 items-center justify-center rounded border-2", done ? "border-purple-600 bg-purple-600" : "border-[#e5e7eb]")}>
+                      <div key={t} className={cn("flex items-center gap-3 rounded border px-3 py-2 text-sm", done ? "border-[#CBCBCB] bg-[#F2F2F2]" : "border-[#174D38]/20 bg-[#174D38]/5")}>
+                        <div className={cn("flex size-4 shrink-0 items-center justify-center rounded border-2", done ? "border-[#174D38] bg-[#174D38]" : "border-[#CBCBCB]")}>
                           {done && <Check className="size-2.5 text-white" strokeWidth={3} />}
                         </div>
-                        <span className={cn("flex-1 text-xs", done ? "text-[#9ca3af] line-through" : "text-[#111827]")}>{t}</span>
+                        <span className={cn("flex-1 text-xs", done ? "text-[#9ca3af] line-through" : "text-[#174D38]")}>{t}</span>
                         {done && <span className="text-[10px] text-[#9ca3af]">Completed</span>}
                       </div>
                     ))}
@@ -675,7 +675,7 @@ function ViewsShowcaseSection() {
               </Card>
             </TabsContent>
             <TabsContent value="board" className="animate-in fade-in-0 duration-200">
-              <Card className="rounded-xl border-[#e5e7eb] shadow-sm">
+              <Card className="rounded-xl border-[#CBCBCB] shadow-sm">
                 <CardHeader className="pb-2">
                   <CardTitle className="font-semibold normal-case tracking-normal text-sm">Board View</CardTitle>
                   <CardDescription>Kanban columns by status. Drag cards to change status.</CardDescription>
@@ -684,17 +684,17 @@ function ViewsShowcaseSection() {
                   <div className="grid grid-cols-4 gap-3">
                     {[
                       { label: "Todo", dot: "#9ca3af", tasks: ["Write tests", "Update docs"] },
-                      { label: "In Progress", dot: "#9333ea", tasks: ["Fix auth bug", "Design layout"] },
+                      { label: "In Progress", dot: "#174D38", tasks: ["Fix auth bug", "Design layout"] },
                       { label: "Review", dot: "#f59e0b", tasks: ["API integration"] },
                       { label: "Done", dot: "#10b981", tasks: ["Deploy staging"] },
                     ].map((col) => (
-                      <div key={col.label} className="rounded-md border border-[#e5e7eb] bg-[#f9fafb] p-2">
+                      <div key={col.label} className="rounded-md border border-[#CBCBCB] bg-[#F2F2F2] p-2">
                         <div className="mb-2 flex items-center gap-1.5 px-1">
                           <span className="size-2 shrink-0 rounded-full" style={{ background: col.dot }} />
                           <p className="font-semibold text-[#6b7280] text-[10px]">{col.label}</p>
                         </div>
                         {col.tasks.map((t) => (
-                          <div key={t} className="mb-1.5 rounded border border-[#e5e7eb] bg-white px-2.5 py-2 text-[10px] text-[#111827] shadow-sm transition-colors hover:border-purple-200">
+                          <div key={t} className="mb-1.5 rounded border border-[#CBCBCB] bg-white px-2.5 py-2 text-[10px] text-[#174D38] shadow-sm transition-colors hover:border-[#174D38]/40">
                             {t}
                           </div>
                         ))}
@@ -705,7 +705,7 @@ function ViewsShowcaseSection() {
               </Card>
             </TabsContent>
             <TabsContent value="mytasks" className="animate-in fade-in-0 duration-200">
-              <Card className="rounded-xl border-[#e5e7eb] shadow-sm">
+              <Card className="rounded-xl border-[#CBCBCB] shadow-sm">
                 <CardHeader className="pb-2">
                   <CardTitle className="font-semibold normal-case tracking-normal text-sm">My Tasks</CardTitle>
                   <CardDescription>All tasks assigned to you, across every project, grouped by due date.</CardDescription>
@@ -715,14 +715,14 @@ function ViewsShowcaseSection() {
                     {[
                       { group: "Overdue", color: "#ef4444", tasks: [{ t: "Update API docs", ctx: "Engineering › Docs" }] },
                       { group: "Due Today", color: "#f59e0b", tasks: [{ t: "Fix login bug", ctx: "Engineering › Backlog" }, { t: "Review PR #42", ctx: "Engineering › Sprint 3" }] },
-                      { group: "This Week", color: "#111827", tasks: [{ t: "Write sprint retrospective", ctx: "Engineering › Sprint 3" }, { t: "Onboard new member", ctx: "HR › Onboarding" }] },
+                      { group: "This Week", color: "#174D38", tasks: [{ t: "Write sprint retrospective", ctx: "Engineering › Sprint 3" }, { t: "Onboard new member", ctx: "HR › Onboarding" }] },
                     ].map((g) => (
                       <div key={g.group}>
                         <p className="mb-1.5 font-semibold text-xs" style={{ color: g.color }}>{g.group}</p>
                         {g.tasks.map(({ t, ctx }) => (
-                          <div key={t} className="mb-1 flex items-center gap-2 rounded border border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-xs">
-                            <span className="size-3.5 shrink-0 rounded border border-[#d1d5db]" />
-                            <span className="flex-1 text-[#111827]">{t}</span>
+                          <div key={t} className="mb-1 flex items-center gap-2 rounded border border-[#CBCBCB] bg-[#F2F2F2] px-3 py-2 text-xs">
+                            <span className="size-3.5 shrink-0 rounded border border-[#CBCBCB]" />
+                            <span className="flex-1 text-[#174D38]">{t}</span>
                             <span className="text-[#9ca3af] text-[10px]">{ctx}</span>
                           </div>
                         ))}
@@ -756,7 +756,7 @@ const comparisonFeatures = [
     icon: BarChart3,
     title: "Real-Time Dashboards",
     description: "Track team productivity, sprint progress, and project health at a glance.",
-    color: "bg-purple-100 text-purple-600",
+    color: "bg-[#4D1717]/25 text-[#174D38]",
   },
   {
     icon: MessagesSquare,
@@ -814,11 +814,11 @@ function BeforeAfterSection() {
           <div className="lg:col-span-2">
             <Animate from="left">
               <SectionLabel className="mb-4">The Difference</SectionLabel>
-              <h2 className="mt-4 text-3xl font-bold tracking-tight text-[#111827]">
+              <h2 className="mt-4 text-3xl font-bold tracking-tight text-[#174D38]">
                 From chaos to{" "}
                 <span
                   className="bg-clip-text text-transparent"
-                  style={{ backgroundImage: "linear-gradient(to right, #9333ea, #c026d3)" }}
+                  style={{ backgroundImage: "linear-gradient(to right, #174D38, #4D1717)" }}
                 >
                   clarity
                 </span>
@@ -841,7 +841,7 @@ function BeforeAfterSection() {
                         <Icon className="size-4" />
                       </div>
                       <div>
-                        <p className="font-semibold text-[#111827] text-sm">{f.title}</p>
+                        <p className="font-semibold text-[#174D38] text-sm">{f.title}</p>
                         <p className="text-[#6b7280] text-xs leading-relaxed">{f.description}</p>
                       </div>
                     </div>
@@ -855,7 +855,7 @@ function BeforeAfterSection() {
           <Animate from="right" className="lg:col-span-3">
             <div
               ref={containerRef}
-              className="relative cursor-ew-resize select-none overflow-hidden rounded-2xl border border-[#e5e7eb] shadow-xl"
+              className="relative cursor-ew-resize select-none overflow-hidden rounded-2xl border border-[#CBCBCB] shadow-xl"
               onMouseDown={handleMouseDown}
               onTouchMove={handleTouchMove}
               onTouchStart={(e) => handleMove(e.touches[0].clientX)}
@@ -933,18 +933,18 @@ function TestimonialsSection() {
   const { ref, visible } = useInView();
   return (
     <section className="relative overflow-hidden bg-white py-16">
-      <div className="pointer-events-none absolute left-1/2 top-1/2 size-[480px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-purple-50 opacity-60 blur-3xl" />
+      <div className="pointer-events-none absolute left-1/2 top-1/2 size-[480px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#174D38]/10 opacity-60 blur-3xl" />
       <div className="relative mx-auto max-w-6xl px-6">
         <Animate className="mb-12 text-center">
           <SectionLabel className="mb-4">Testimonials</SectionLabel>
-          <h2 className="mt-4 text-3xl font-bold tracking-tight text-[#111827]">Teams love it</h2>
+          <h2 className="mt-4 text-3xl font-bold tracking-tight text-[#174D38]">Teams love it</h2>
         </Animate>
         <div ref={ref} className="grid gap-5 sm:grid-cols-3">
           {testimonials.map((t, i) => (
             <div
               key={t.name}
               className={cn(
-                "flex flex-col gap-4 rounded-xl border border-[#e5e7eb] bg-white p-6 shadow-sm transition-all duration-500",
+                "flex flex-col gap-4 rounded-xl border border-[#CBCBCB] bg-white p-6 shadow-sm transition-all duration-500",
                 visible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
               )}
               style={{
@@ -957,13 +957,13 @@ function TestimonialsSection() {
                   <Star key={j} className="size-4 fill-amber-400 text-amber-400" />
                 ))}
               </div>
-              <p className="flex-1 text-[#374151]/80 text-sm leading-relaxed">&ldquo;{t.body}&rdquo;</p>
-              <div className="flex items-center gap-3 border-t border-[#e5e7eb] pt-4">
+              <p className="flex-1 text-[#174D38]/80 text-sm leading-relaxed">&ldquo;{t.body}&rdquo;</p>
+              <div className="flex items-center gap-3 border-t border-[#CBCBCB] pt-4">
                 <Avatar className="size-8">
-                  <AvatarFallback className="bg-purple-100 text-purple-700 text-xs">{t.initials}</AvatarFallback>
+                  <AvatarFallback className="bg-[#4D1717]/25 text-[#174D38] text-xs">{t.initials}</AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="font-semibold text-[#111827] text-sm">{t.name}</p>
+                  <p className="font-semibold text-[#174D38] text-sm">{t.name}</p>
                   <p className="text-[#6b7280] text-xs">{t.role}</p>
                 </div>
               </div>
@@ -987,7 +987,7 @@ function FaqItem({
   onToggle: () => void;
 }) {
   return (
-    <div className="border-b border-[#e5e7eb] last:border-b-0">
+    <div className="border-b border-[#CBCBCB] last:border-b-0">
       <button
         type="button"
         onClick={onToggle}
@@ -997,7 +997,7 @@ function FaqItem({
         <span
           className={cn(
             "font-semibold text-sm transition-colors duration-200",
-            isOpen ? "text-purple-600" : "text-[#111827]",
+            isOpen ? "text-[#174D38]" : "text-[#174D38]",
           )}
         >
           {question}
@@ -1011,13 +1011,13 @@ function FaqItem({
           <span
             className={cn(
               "absolute top-1/2 left-0 h-0.5 w-full -translate-y-1/2 rounded-full transition-colors duration-300",
-              isOpen ? "bg-purple-600" : "bg-[#6b7280]",
+              isOpen ? "bg-[#174D38]" : "bg-[#6b7280]",
             )}
           />
           <span
             className={cn(
               "absolute top-0 left-1/2 h-full w-0.5 -translate-x-1/2 rounded-full transition-all duration-300",
-              isOpen ? "bg-purple-600" : "bg-[#6b7280]",
+              isOpen ? "bg-[#174D38]" : "bg-[#6b7280]",
             )}
           />
         </div>
@@ -1043,23 +1043,23 @@ function FaqSection() {
   const [openIndex, setOpenIndex] = React.useState<number | null>(null);
 
   return (
-    <section id="faq" className="bg-[#f9fafb] py-16 scroll-mt-14">
+    <section id="faq" className="bg-[#F2F2F2] py-16 scroll-mt-14">
       <div className="mx-auto max-w-2xl px-6">
         <Animate className="mb-12 text-center">
           <SectionLabel className="mb-4">FAQ</SectionLabel>
-          <h2 className="mt-4 text-3xl font-bold tracking-tight text-[#111827]">Common questions</h2>
+          <h2 className="mt-4 text-3xl font-bold tracking-tight text-[#174D38]">Common questions</h2>
           <p className="mt-2 text-[#6b7280]">
             {"Can't find an answer? "}
             <a
               href={`mailto:${SUPPORT_EMAIL}`}
-              className="text-purple-600 underline-offset-2 hover:underline"
+              className="text-[#174D38] underline-offset-2 hover:underline"
             >
               Reach out to support
             </a>
           </p>
         </Animate>
         <Animate delay={100}>
-          <div className="rounded-xl border border-[#e5e7eb] bg-white px-6 shadow-sm">
+          <div className="rounded-xl border border-[#CBCBCB] bg-white px-6 shadow-sm">
             {faqs.map((faq, i) => (
               <FaqItem
                 key={i}
@@ -1083,7 +1083,7 @@ function CtaBanner() {
         <Animate>
           <div
             className="relative overflow-hidden rounded-2xl px-8 py-16 text-center text-white"
-            style={{ background: "linear-gradient(135deg, #9333ea 0%, #9333ea 50%, #c026d3 100%)" }}
+            style={{ background: "linear-gradient(135deg, #174D38 0%, #174D38 50%, #174D38 100%)" }}
           >
             <div className="pointer-events-none absolute -top-16 -left-16 size-64 rounded-full bg-white/10 blur-3xl" />
             <div className="pointer-events-none absolute -right-16 -bottom-16 size-64 rounded-full bg-white/10 blur-3xl" />
@@ -1103,7 +1103,7 @@ function CtaBanner() {
               <Button
                 size="lg"
                 asChild
-                className="h-11 bg-white px-8 font-semibold text-base text-purple-700 shadow-lg hover:bg-purple-50"
+                className="h-11 bg-white px-8 font-semibold text-base text-[#174D38] shadow-lg hover:bg-[#F2F2F2]"
               >
                 <Link href="/login">
                   Start for free <ArrowRight className="ml-1.5 size-4" />
@@ -1120,11 +1120,11 @@ function CtaBanner() {
 
 function Footer() {
   return (
-    <footer className="border-t border-[#e5e7eb] bg-[#f9fafb]">
+    <footer className="border-t border-[#CBCBCB] bg-[#F2F2F2]">
       <div className="mx-auto max-w-6xl px-6 py-10">
         <div className="grid gap-8 sm:grid-cols-4">
           <div className="sm:col-span-1">
-            <span className="font-bold text-base text-purple-600">{PRODUCT_NAME}</span>
+            <span className="font-bold text-base text-[#174D38]">{PRODUCT_NAME}</span>
             <p className="mt-2 text-[#6b7280] text-xs leading-relaxed">
               Free project management for modern teams. Workspaces, Spaces, Lists, and Tasks.
             </p>
@@ -1132,24 +1132,24 @@ function Footer() {
           <div>
             <p className="mb-3 font-semibold text-[#9ca3af] text-xs uppercase tracking-wide">Product</p>
             <ul className="space-y-2 text-[#6b7280] text-sm">
-              <li><a href="#features" className="transition-colors hover:text-[#111827]">Features</a></li>
-              <li><a href="#why" className="transition-colors hover:text-[#111827]">Why us</a></li>
-              <li><a href="#how-it-works" className="transition-colors hover:text-[#111827]">How it works</a></li>
-              <li><a href="#faq" className="transition-colors hover:text-[#111827]">FAQ</a></li>
+              <li><a href="#features" className="transition-colors hover:text-[#174D38]">Features</a></li>
+              <li><a href="#why" className="transition-colors hover:text-[#174D38]">Why us</a></li>
+              <li><a href="#how-it-works" className="transition-colors hover:text-[#174D38]">How it works</a></li>
+              <li><a href="#faq" className="transition-colors hover:text-[#174D38]">FAQ</a></li>
             </ul>
           </div>
           <div>
             <p className="mb-3 font-semibold text-[#9ca3af] text-xs uppercase tracking-wide">Get started</p>
             <ul className="space-y-2 text-[#6b7280] text-sm">
-              <li><Link href="/login" className="transition-colors hover:text-[#111827]">Sign in</Link></li>
-              <li><Link href="/login" className="transition-colors hover:text-[#111827]">Create an account</Link></li>
+              <li><Link href="/login" className="transition-colors hover:text-[#174D38]">Sign in</Link></li>
+              <li><Link href="/login" className="transition-colors hover:text-[#174D38]">Create an account</Link></li>
             </ul>
           </div>
           <div>
             <p className="mb-3 font-semibold text-[#9ca3af] text-xs uppercase tracking-wide">Company</p>
             <ul className="space-y-2 text-[#6b7280] text-sm">
-              <li><a href="#faq" className="transition-colors hover:text-[#111827]">FAQ</a></li>
-              <li><a href={`mailto:${SUPPORT_EMAIL}`} className="transition-colors hover:text-[#111827]">Contact support</a></li>
+              <li><a href="#faq" className="transition-colors hover:text-[#174D38]">FAQ</a></li>
+              <li><a href={`mailto:${SUPPORT_EMAIL}`} className="transition-colors hover:text-[#174D38]">Contact support</a></li>
             </ul>
           </div>
         </div>
@@ -1165,7 +1165,7 @@ function Footer() {
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-white text-[#111827]">
+    <div className="min-h-screen bg-white text-[#174D38]">
       <Navbar />
       <HeroSection />
       <SocialProofBar />
