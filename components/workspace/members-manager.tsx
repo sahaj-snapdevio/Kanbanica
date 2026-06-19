@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { CrownIcon, MagnifyingGlassIcon, PaperPlaneTiltIcon, UserPlusIcon } from "@phosphor-icons/react";
+import { CrownIcon, MagnifyingGlassIcon, PaperPlaneTiltIcon, TrashIcon, UserPlusIcon } from "@phosphor-icons/react";
 import {
   cancelInvite,
   changeMemberRole,
@@ -313,7 +313,6 @@ export function MembersManager({
             <TableHeader>
               <TableRow>
                 <TableHead>Member</TableHead>
-                <TableHead className="hidden sm:table-cell">Email</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead className="hidden md:table-cell">Joined</TableHead>
                 <TableHead className="w-20" />
@@ -324,19 +323,19 @@ export function MembersManager({
                 <TableRow key={member.id}>
                   <TableCell>
                     <div className="flex items-center gap-2.5">
-                      <Avatar className="size-7 shrink-0">
+                      <Avatar className="size-8 shrink-0">
                         <AvatarFallback className="text-xs">{initialsOf(member.name)}</AvatarFallback>
                       </Avatar>
-                      <span className="font-medium">
-                        {member.name}
-                        {member.userId === currentUserId && (
-                          <span className="text-muted-foreground font-normal"> (you)</span>
-                        )}
-                      </span>
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">
+                          {member.name}
+                          {member.userId === currentUserId && (
+                            <span className="text-muted-foreground font-normal"> (you)</span>
+                          )}
+                        </div>
+                        <div className="text-sm text-muted-foreground truncate">{member.email}</div>
+                      </div>
                     </div>
-                  </TableCell>
-                  <TableCell className="hidden sm:table-cell text-muted-foreground">
-                    {member.email}
                   </TableCell>
                   <TableCell>
                     {canManage(member) ? (
@@ -366,21 +365,20 @@ export function MembersManager({
                   </TableCell>
                   <TableCell className="text-right">
                     {canManage(member) && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive hover:text-destructive"
+                      <button
+                        className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
                         onClick={() => setRemoveTarget(member)}
+                        title="Remove member"
                       >
-                        Remove
-                      </Button>
+                        <TrashIcon className="size-4" />
+                      </button>
                     )}
                   </TableCell>
                 </TableRow>
               ))}
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                  <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
                     No members match your search
                   </TableCell>
                 </TableRow>
@@ -440,7 +438,6 @@ export function MembersManager({
               <TableHeader>
                 <TableRow>
                   <TableHead>Email</TableHead>
-                  <TableHead className="hidden sm:table-cell">Invited by</TableHead>
                   <TableHead className="hidden md:table-cell">Sent</TableHead>
                   <TableHead>Expires</TableHead>
                   <TableHead className="w-36" />
@@ -451,9 +448,9 @@ export function MembersManager({
                   const expired = invite.expiresAt && new Date(invite.expiresAt) < new Date();
                   return (
                     <TableRow key={invite.id}>
-                      <TableCell className="font-medium">{invite.email}</TableCell>
-                      <TableCell className="hidden sm:table-cell text-muted-foreground">
-                        {invite.invitedByName}
+                      <TableCell>
+                        <div className="font-medium">{invite.email}</div>
+                        <div className="text-sm text-muted-foreground">Invited by {invite.invitedByName}</div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-muted-foreground">
                         {format(new Date(invite.sentAt), "MMM d, yyyy")}

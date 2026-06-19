@@ -321,7 +321,7 @@ function CommentEditor({
         </button>
 
         <button className="size-7 flex items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
-          <DotsThreeIcon className="size-4" />
+          <DotsThreeIcon className="size-4.5" weight="bold" />
         </button>
 
         {/* Right: cancel + submit */}
