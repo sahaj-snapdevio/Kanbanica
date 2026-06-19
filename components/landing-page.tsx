@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   ArrowRight,
   CheckCircle2,
@@ -22,12 +23,16 @@ import {
   Clock,
   TrendingUp,
   Globe,
+  MoveHorizontal,
+  AlertTriangle,
+  Sparkles,
+  BarChart3,
+  MessagesSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import {
@@ -734,6 +739,196 @@ function ViewsShowcaseSection() {
   );
 }
 
+const comparisonFeatures = [
+  {
+    icon: AlertTriangle,
+    title: "Eliminate Chaos",
+    description: "No more scattered spreadsheets, overdue tasks, and missed deadlines.",
+    color: "bg-red-100 text-red-600",
+  },
+  {
+    icon: Sparkles,
+    title: "95% On-Time Delivery",
+    description: "Teams using Kanbanica complete 95% of tasks before their deadlines.",
+    color: "bg-emerald-100 text-emerald-600",
+  },
+  {
+    icon: BarChart3,
+    title: "Real-Time Dashboards",
+    description: "Track team productivity, sprint progress, and project health at a glance.",
+    color: "bg-purple-100 text-purple-600",
+  },
+  {
+    icon: MessagesSquare,
+    title: "Team Collaboration",
+    description: "Built-in chat, comments, and activity feeds keep everyone in sync.",
+    color: "bg-amber-100 text-amber-600",
+  },
+];
+
+function BeforeAfterSection() {
+  const [sliderPosition, setSliderPosition] = React.useState(50);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const isDragging = React.useRef(false);
+
+  const handleMove = React.useCallback((clientX: number) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const pct = Math.max(0, Math.min(100, (x / rect.width) * 100));
+    setSliderPosition(pct);
+  }, []);
+
+  const handleMouseDown = React.useCallback(() => {
+    isDragging.current = true;
+  }, []);
+
+  React.useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging.current) return;
+      handleMove(e.clientX);
+    };
+    const handleMouseUp = () => {
+      isDragging.current = false;
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [handleMove]);
+
+  const handleTouchMove = React.useCallback(
+    (e: React.TouchEvent) => {
+      handleMove(e.touches[0].clientX);
+    },
+    [handleMove],
+  );
+
+  return (
+    <section className="bg-white py-16">
+      <div className="mx-auto max-w-6xl px-6">
+        <div className="grid items-center gap-12 lg:grid-cols-5">
+          {/* Left content */}
+          <div className="lg:col-span-2">
+            <Animate from="left">
+              <SectionLabel className="mb-4">The Difference</SectionLabel>
+              <h2 className="mt-4 text-3xl font-bold tracking-tight text-[#111827]">
+                From chaos to{" "}
+                <span
+                  className="bg-clip-text text-transparent"
+                  style={{ backgroundImage: "linear-gradient(to right, #9333ea, #c026d3)" }}
+                >
+                  clarity
+                </span>
+              </h2>
+              <p className="mt-3 text-[#6b7280] text-sm leading-relaxed">
+                See the real difference {PRODUCT_NAME} makes. Drag the slider to compare a
+                disorganised workspace with one powered by {PRODUCT_NAME}.
+              </p>
+              <div className="mt-8 grid gap-4 sm:grid-cols-2">
+                {comparisonFeatures.map((f) => {
+                  const Icon = f.icon;
+                  return (
+                    <div key={f.title} className="flex gap-3">
+                      <div
+                        className={cn(
+                          "flex size-9 shrink-0 items-center justify-center rounded-lg",
+                          f.color,
+                        )}
+                      >
+                        <Icon className="size-4" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-[#111827] text-sm">{f.title}</p>
+                        <p className="text-[#6b7280] text-xs leading-relaxed">{f.description}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Animate>
+          </div>
+
+          {/* Right — Before/After Slider */}
+          <Animate from="right" className="lg:col-span-3">
+            <div
+              ref={containerRef}
+              className="relative cursor-ew-resize select-none overflow-hidden rounded-2xl border border-[#e5e7eb] shadow-xl"
+              onMouseDown={handleMouseDown}
+              onTouchMove={handleTouchMove}
+              onTouchStart={(e) => handleMove(e.touches[0].clientX)}
+            >
+              {/* After image (bottom layer, full) */}
+              <Image
+                src="/after-image.png"
+                alt="After — organized with Kanbanica"
+                width={1456}
+                height={816}
+                className="block w-full"
+                draggable={false}
+                priority
+              />
+
+              {/* Before image (top layer, clipped) */}
+              <div
+                className="absolute inset-0"
+                style={{
+                  clipPath: `polygon(${sliderPosition}% 0, 100% 0, 100% 100%, ${sliderPosition}% 100%)`,
+                }}
+              >
+                <Image
+                  src="/before-image.png"
+                  alt="Before — chaotic workflow"
+                  width={1456}
+                  height={816}
+                  className="block w-full"
+                  draggable={false}
+                  priority
+                />
+              </div>
+
+              {/* Floating labels */}
+              <span className="absolute top-3 left-3 z-10 rounded-full bg-emerald-500 px-3 py-1 font-bold text-[10px] text-white uppercase tracking-wider shadow-md">
+                After
+              </span>
+              <span className="absolute top-3 right-3 z-10 rounded-full bg-red-500 px-3 py-1 font-bold text-[10px] text-white uppercase tracking-wider shadow-md">
+                Before
+              </span>
+
+              {/* Divider line */}
+              <div
+                className="pointer-events-none absolute top-0 bottom-0 z-20 w-0.5 bg-white"
+                style={{ left: `${sliderPosition}%`, transform: "translateX(-50%)" }}
+              />
+
+              {/* Drag handle */}
+              <div
+                className="pointer-events-none absolute top-1/2 z-30 flex size-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white shadow-lg"
+                style={{ left: `${sliderPosition}%` }}
+              >
+                <MoveHorizontal className="size-4 text-[#6b7280]" />
+              </div>
+
+              {/* Invisible range input for accessibility */}
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={sliderPosition}
+                onChange={(e) => setSliderPosition(Number(e.target.value))}
+                className="absolute inset-0 z-40 h-full w-full cursor-ew-resize appearance-none opacity-0"
+                aria-label="Before and after comparison slider"
+              />
+            </div>
+          </Animate>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function TestimonialsSection() {
   const { ref, visible } = useInView();
   return (
@@ -780,7 +975,73 @@ function TestimonialsSection() {
   );
 }
 
+function FaqItem({
+  question,
+  answer,
+  isOpen,
+  onToggle,
+}: {
+  question: string;
+  answer: string;
+  isOpen: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="border-b border-[#e5e7eb] last:border-b-0">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center justify-between gap-4 py-5 text-left transition-colors"
+        aria-expanded={isOpen}
+      >
+        <span
+          className={cn(
+            "font-semibold text-sm transition-colors duration-200",
+            isOpen ? "text-purple-600" : "text-[#111827]",
+          )}
+        >
+          {question}
+        </span>
+        <div
+          className={cn(
+            "relative ml-6 h-4 w-4 shrink-0 transition-transform duration-300 ease-out md:h-6 md:w-6",
+            isOpen ? "rotate-45" : "rotate-0",
+          )}
+        >
+          <span
+            className={cn(
+              "absolute top-1/2 left-0 h-0.5 w-full -translate-y-1/2 rounded-full transition-colors duration-300",
+              isOpen ? "bg-purple-600" : "bg-[#6b7280]",
+            )}
+          />
+          <span
+            className={cn(
+              "absolute top-0 left-1/2 h-full w-0.5 -translate-x-1/2 rounded-full transition-all duration-300",
+              isOpen ? "bg-purple-600" : "bg-[#6b7280]",
+            )}
+          />
+        </div>
+      </button>
+      <div
+        className="grid transition-all duration-300 ease-out"
+        style={{
+          gridTemplateRows: isOpen ? "1fr" : "0fr",
+          opacity: isOpen ? 1 : 0,
+        }}
+      >
+        <div className="overflow-hidden">
+          <p className="pb-5 pr-10 text-[#6b7280] text-sm leading-relaxed">
+            {answer}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function FaqSection() {
+  const [openIndex, setOpenIndex] = React.useState<number | null>(null);
+
   return (
     <section id="faq" className="bg-[#f9fafb] py-16 scroll-mt-14">
       <div className="mx-auto max-w-2xl px-6">
@@ -798,22 +1059,17 @@ function FaqSection() {
           </p>
         </Animate>
         <Animate delay={100}>
-          <Accordion type="single" collapsible className="space-y-2">
+          <div className="rounded-xl border border-[#e5e7eb] bg-white px-6 shadow-sm">
             {faqs.map((faq, i) => (
-              <AccordionItem
+              <FaqItem
                 key={i}
-                value={`faq-${i}`}
-                className="rounded-lg border border-[#e5e7eb] bg-white px-1 shadow-sm"
-              >
-                <AccordionTrigger className="px-4 py-4 text-left font-semibold text-[#111827] text-sm hover:no-underline">
-                  {faq.q}
-                </AccordionTrigger>
-                <AccordionContent className="px-4 pb-4 text-[#6b7280] text-sm leading-relaxed">
-                  {faq.a}
-                </AccordionContent>
-              </AccordionItem>
+                question={faq.q}
+                answer={faq.a}
+                isOpen={openIndex === i}
+                onToggle={() => setOpenIndex(openIndex === i ? null : i)}
+              />
             ))}
-          </Accordion>
+          </div>
         </Animate>
       </div>
     </section>
@@ -918,6 +1174,7 @@ export default function LandingPage() {
       <HowItWorksSection />
       <StatsSection />
       <ViewsShowcaseSection />
+      <BeforeAfterSection />
       <TestimonialsSection />
       <FaqSection />
       <CtaBanner />

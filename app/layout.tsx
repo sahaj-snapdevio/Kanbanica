@@ -19,6 +19,9 @@ export const metadata: Metadata = {
     template: `%s | ${PRODUCT_NAME}`,
   },
   description: PRODUCT_DESCRIPTION,
+  icons: {
+    icon: "/kanbanica-logo 1.svg",
+  },
 };
 
 export default function RootLayout({
