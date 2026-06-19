@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   },
   description: PRODUCT_DESCRIPTION,
   icons: {
-    icon: "/kanbanica-logo 1.svg",
+    icon: "/width_497.png",
   },
 };
 
