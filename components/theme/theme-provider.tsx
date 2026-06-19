@@ -30,7 +30,21 @@ interface ThemeProviderProps {
 type ThemeVars = Record<string, string>;
 
 const LIGHT_THEME_VARS: Record<string, ThemeVars> = {
-  indigo: {},
+  // Forest = app default; empty means use the green :root values
+  forest: {},
+  indigo: {
+    "--primary": "oklch(0.513 0.234 278)",
+    "--primary-foreground": "oklch(0.99 0.002 277)",
+    "--ring": "oklch(0.654 0.195 278)",
+    "--sidebar": "oklch(0.175 0.042 278)",
+    "--sidebar-accent": "oklch(0.23 0.05 278)",
+    "--sidebar-border": "oklch(0.25 0.05 278)",
+    "--sidebar-primary": "oklch(0.654 0.195 278)",
+    "--accent": "oklch(0.942 0.022 277)",
+    "--accent-foreground": "oklch(0.38 0.12 277)",
+    "--secondary": "oklch(0.955 0.018 277)",
+    "--secondary-foreground": "oklch(0.38 0.12 277)",
+  },
   black: {
     "--primary": "oklch(0.18 0.018 277)",
     "--primary-foreground": "oklch(0.99 0.002 277)",
@@ -151,7 +165,21 @@ const LIGHT_THEME_VARS: Record<string, ThemeVars> = {
 };
 
 const DARK_THEME_VARS: Record<string, ThemeVars> = {
-  indigo: {},
+  // Forest = app default; empty means use the green :root values
+  forest: {},
+  indigo: {
+    "--primary": "oklch(0.654 0.195 278)",
+    "--primary-foreground": "oklch(0.155 0.018 277)",
+    "--ring": "oklch(0.513 0.234 278)",
+    "--sidebar": "oklch(0.13 0.032 278)",
+    "--sidebar-accent": "oklch(0.195 0.042 278)",
+    "--sidebar-border": "oklch(0.22 0.045 278)",
+    "--sidebar-primary": "oklch(0.654 0.195 278)",
+    "--accent": "oklch(0.255 0.038 277)",
+    "--accent-foreground": "oklch(0.88 0.025 277)",
+    "--secondary": "oklch(0.24 0.036 277)",
+    "--secondary-foreground": "oklch(0.84 0.04 277)",
+  },
   black: {
     "--primary": "oklch(0.94 0.012 277)",
     "--primary-foreground": "oklch(0.155 0.018 277)",

@@ -50,6 +50,13 @@
       "when": 1781757596003,
       "tag": "0006_friendly_oracle",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1781858699330,
+      "tag": "0007_next_living_lightning",
+      "breakpoints": true
     }
   ]
 }

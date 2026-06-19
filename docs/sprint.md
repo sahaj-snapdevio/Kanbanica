@@ -97,6 +97,43 @@ Workspace
 
 ---
 
+### 4a. Bulk Move Tasks (List & Sprint Views)
+
+Both the **List view** and **Sprint view** expose a floating bulk action bar when one or more tasks are selected via checkboxes. The bulk action bar includes a **Move** option for sprint-related operations.
+
+Both views expose a single **Move** button in the floating bulk action bar. Clicking it opens a popover with two sections: **Sprint** and **List**.
+
+#### Move → Sprint
+
+| Context | Behaviour |
+|---------|-----------|
+| List view | Shows all PLANNED and ACTIVE sprints for the current List. Selecting one adds the tasks to that sprint (removes from any current sprint first). |
+| Sprint view | Shows all OTHER PLANNED/ACTIVE sprints (current sprint excluded). Selecting one moves the tasks out of the current sprint into the target. |
+
+#### Move → List
+
+Available in both views. Shows all non-archived lists in the workspace, grouped by Space, excluding the current list.
+
+When moved to another list:
+- Status is remapped by name match (e.g. "In Progress" → "In Progress"). If no match, falls back to the first `OPEN`-type status in the target list.
+- Any active sprint assignment is cleared — the task returns to the backlog of the target list (sprint scoping is per-list).
+- All other task data (description, assignees, comments, attachments, tags, activity) is preserved.
+- Activity log records a `task_moved` event with `fromListId` / `toListId`.
+
+#### Backlog (Sprint view only)
+
+A separate **Backlog** button (distinct from Move) removes selected tasks from the current sprint and returns them to the current list's backlog without changing their list or status.
+
+#### Rules
+
+- Only PLANNED and ACTIVE sprints appear as move targets — CLOSED sprints are excluded.
+- The current sprint is excluded from the sprint list in the Sprint view.
+- The current list is excluded from the list picker.
+- Move to List requires **Edit** access (same as `moveTask`). Sprint move requires **Full Access**.
+- After any bulk move the view refreshes automatically.
+
+---
+
 ### 5. Story Points
 
 - Story points are a numeric effort estimate per task, used for sprint capacity planning

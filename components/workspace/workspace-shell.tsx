@@ -13,6 +13,7 @@ import {
   DotsThreeIcon,
   FolderIcon,
   GearIcon,
+  TrayIcon,
   ListIcon,
   LockSimpleIcon,
   MagnifyingGlassIcon,
@@ -22,6 +23,7 @@ import {
   TrashIcon,
   XIcon,
 } from "@phosphor-icons/react";
+import useSWR from "swr";
 import { SearchPalette } from "@/components/search/search-palette";
 import { archiveSpace, deleteSpace } from "@/app/actions/space";
 import { archiveList, duplicateList } from "@/app/actions/list";
@@ -37,6 +39,8 @@ import { CreateListModal } from "@/components/list/create-list-modal";
 import { EditListDialog } from "@/components/list/edit-list-dialog";
 import { DeleteListDialog } from "@/components/list/delete-list-dialog";
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import { PushNotificationBanner } from "@/components/notifications/push-notification-banner";
+import { usePushSubscription } from "@/hooks/use-push-subscription";
 
 interface WorkspaceSummary {
   id: string;
@@ -90,6 +94,16 @@ export function WorkspaceShell({
   const [createListForSpace, setCreateListForSpace] = React.useState<{ spaceId: string } | null>(null);
   const [editList, setEditList] = React.useState<{ spaceId: string; list: ListSummary } | null>(null);
   const [deleteList, setDeleteList] = React.useState<{ spaceId: string; list: ListSummary } | null>(null);
+
+  // Auto-subscribe to push notifications if permission was already granted
+  usePushSubscription();
+
+  const { data: notifData } = useSWR<{ unreadCount: number }>(
+    "/api/me/notifications?filter=unread",
+    (url: string) => fetch(url).then((r) => r.json()),
+    { refreshInterval: 30000 },
+  );
+  const unreadCount = notifData?.unreadCount ?? 0;
 
   const initials = user.name
     ? user.name
@@ -270,11 +284,18 @@ export function WorkspaceShell({
           <div className="space-y-0.5">
             {[
               {
+                href: `/${workspace.id}/notifications`,
+                label: "Inbox",
+                icon: <TrayIcon className="size-4 shrink-0" weight="fill" />,
+                badge: unreadCount > 0 ? unreadCount : null,
+              },
+              {
                 href: `/${workspace.id}/my-tasks`,
                 label: "My Tasks",
                 icon: <CheckCircleIcon className="size-4 shrink-0" weight="fill" />,
+                badge: null,
               },
-            ].map(({ href, label, icon }) => {
+            ].map(({ href, label, icon, badge }) => {
               const active = pathname === href;
               return (
                 <Link
@@ -289,7 +310,12 @@ export function WorkspaceShell({
                   )}
                 >
                   {icon}
-                  {label}
+                  <span className="flex-1">{label}</span>
+                  {badge !== null && (
+                    <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-blue-500 px-1 text-[10px] font-semibold text-white leading-none">
+                      {badge > 99 ? "99+" : badge}
+                    </span>
+                  )}
                 </Link>
               );
             })}
@@ -518,6 +544,7 @@ export function WorkspaceShell({
 
       {/* Main content */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <PushNotificationBanner workspaceId={workspace.id} />
         <main className="flex-1 overflow-auto">{children}</main>
       </div>
 

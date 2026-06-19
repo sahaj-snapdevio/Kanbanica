@@ -147,7 +147,7 @@ export function AddTasksToSprintModal({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-3 py-1">
+        <div className="min-w-0 w-full space-y-3 py-1">
           {/* Search */}
           <div className="relative">
             <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
@@ -178,7 +178,7 @@ export function AddTasksToSprintModal({
                 </p>
               </div>
             ) : (
-              <div className="max-h-72 overflow-y-auto">
+              <div className="w-full max-h-80 overflow-y-auto overflow-x-hidden">
                 {/* Select all header */}
                 <button
                   onClick={toggleAll}
@@ -199,7 +199,7 @@ export function AddTasksToSprintModal({
                   <button
                     key={task.id}
                     onClick={() => toggle(task.id)}
-                    className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-accent/50 transition-colors border-b last:border-b-0"
+                    className="flex w-full min-w-0 overflow-hidden items-center gap-3 px-3 py-2.5 text-left hover:bg-accent/50 transition-colors border-b last:border-b-0"
                   >
                     <input
                       type="checkbox"
@@ -210,7 +210,7 @@ export function AddTasksToSprintModal({
                     <span className="font-mono text-xs text-muted-foreground/60 shrink-0 w-8">
                       #{task.seqNumber}
                     </span>
-                    <span className="flex-1 text-sm truncate">{task.title}</span>
+                    <span className="flex-1 min-w-0 text-sm truncate">{task.title}</span>
                     {task.priority && task.priority !== "NONE" && (() => {
                       const cfg = PRIORITY_CONFIG[task.priority];
                       return cfg ? (
