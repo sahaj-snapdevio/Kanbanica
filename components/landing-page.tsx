@@ -30,7 +30,13 @@ import {
   MessagesSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -75,13 +81,19 @@ function Animate({
 }) {
   const { ref, visible } = useInView();
   const translate =
-    from === "left" ? "-translate-x-8" : from === "right" ? "translate-x-8" : "translate-y-8";
+    from === "left"
+      ? "-translate-x-8"
+      : from === "right"
+        ? "translate-x-8"
+        : "translate-y-8";
   return (
     <div
       ref={ref}
       className={cn(
         "transition-all duration-700 ease-out",
-        visible ? "opacity-100 translate-x-0 translate-y-0" : cn("opacity-0", translate),
+        visible
+          ? "opacity-100 translate-x-0 translate-y-0"
+          : cn("opacity-0", translate),
         className,
       )}
       style={{ transitionDelay: `${delay}ms` }}
@@ -92,38 +104,130 @@ function Animate({
 }
 
 const features = [
-  { icon: LayoutList, title: "Tasks & Subtasks", description: "Create tasks with rich descriptions, priorities, assignees, due dates, checklists, and nested subtasks. Everything your team needs in one place." },
-  { icon: Zap, title: "Sprints", description: "Run agile sprints with story points, burndown tracking, and automatic close logic. Keep your team moving in focused two-week cycles." },
-  { icon: Kanban, title: "Multiple Views", description: "Switch between List, Board, and Calendar views. Each view gives your team a different lens on the same work — no duplicate data entry." },
-  { icon: MessageSquare, title: "Comments & Activity", description: "Threaded comments, @mentions, emoji reactions, and a full activity timeline on every task. Your entire conversation history, always in context." },
-  { icon: Bell, title: "Smart Notifications", description: "In-app, email, and browser push notifications. Get alerted when tasks are assigned, comments are posted, or deadlines are approaching." },
-  { icon: Search, title: "Search & Filters", description: "Global search across all workspaces with Ctrl+K. Filter tasks by status, priority, assignee, due date, and tags — then save your filters." },
+  {
+    icon: LayoutList,
+    title: "Tasks & Subtasks",
+    description:
+      "Create tasks with rich descriptions, priorities, assignees, due dates, checklists, and nested subtasks. Everything your team needs in one place.",
+  },
+  {
+    icon: Zap,
+    title: "Sprints",
+    description:
+      "Run agile sprints with story points, burndown tracking, and automatic close logic. Keep your team moving in focused two-week cycles.",
+  },
+  {
+    icon: Kanban,
+    title: "Multiple Views",
+    description:
+      "Switch between List, Board, and Calendar views. Each view gives your team a different lens on the same work — no duplicate data entry.",
+  },
+  {
+    icon: MessageSquare,
+    title: "Comments & Activity",
+    description:
+      "Threaded comments, @mentions, emoji reactions, and a full activity timeline on every task. Your entire conversation history, always in context.",
+  },
+  {
+    icon: Bell,
+    title: "Smart Notifications",
+    description:
+      "In-app, email, and browser push notifications. Get alerted when tasks are assigned, comments are posted, or deadlines are approaching.",
+  },
+  {
+    icon: Search,
+    title: "Search & Filters",
+    description:
+      "Global search across all workspaces with Ctrl+K. Filter tasks by status, priority, assignee, due date, and tags — then save your filters.",
+  },
 ];
 
 const steps = [
-  { number: "01", title: "Create your Workspace", description: "Your Workspace is your company or team's home. Give it a name, upload a logo, and you're ready in seconds." },
-  { number: "02", title: "Invite your team", description: "Invite teammates via email or a shareable link. Assign roles — Owner, Admin, Member, or Guest — per person." },
-  { number: "03", title: "Organise into Spaces & Lists", description: "Create Spaces for each department or project area. Inside each Space, create Lists to group related tasks together." },
-  { number: "04", title: "Start working", description: "Create tasks, assign them, set due dates, and track progress across List, Board, and Calendar views." },
+  {
+    number: "01",
+    title: "Create your Workspace",
+    description:
+      "Your Workspace is your company or team's home. Give it a name, upload a logo, and you're ready in seconds.",
+  },
+  {
+    number: "02",
+    title: "Invite your team",
+    description:
+      "Invite teammates via email or a shareable link. Assign roles — Owner, Admin, Member, or Guest — per person.",
+  },
+  {
+    number: "03",
+    title: "Organise into Spaces & Lists",
+    description:
+      "Create Spaces for each department or project area. Inside each Space, create Lists to group related tasks together.",
+  },
+  {
+    number: "04",
+    title: "Start working",
+    description:
+      "Create tasks, assign them, set due dates, and track progress across List, Board, and Calendar views.",
+  },
 ];
 
 const testimonials = [
-  { name: "Sarah Chen", role: "Engineering Lead, Flowboard", initials: "SC", body: "We switched from ClickUp and the onboarding took 20 minutes. The Board view is snappy, the permissions model is exactly what we needed for guest contractors." },
-  { name: "Marcus Rivera", role: "Product Manager, Stackd", initials: "MR", body: `Sprint planning used to take half a day. With ${PRODUCT_NAME}'s sprint view and story points, we're done in an hour. The burndown chart is a game-changer.` },
-  { name: "Priya Nair", role: "Founder, Loopback", initials: "PN", body: "My Tasks view is something I didn't know I needed. Seeing every task assigned to me across every project in one place — with a due date grouping — is brilliant." },
+  {
+    name: "Sarah Chen",
+    role: "Engineering Lead, Flowboard",
+    initials: "SC",
+    body: "We switched from ClickUp and the onboarding took 20 minutes. The Board view is snappy, the permissions model is exactly what we needed for guest contractors.",
+  },
+  {
+    name: "Marcus Rivera",
+    role: "Product Manager, Stackd",
+    initials: "MR",
+    body: `Sprint planning used to take half a day. With ${PRODUCT_NAME}'s sprint view and story points, we're done in an hour. The burndown chart is a game-changer.`,
+  },
+  {
+    name: "Priya Nair",
+    role: "Founder, Loopback",
+    initials: "PN",
+    body: "My Tasks view is something I didn't know I needed. Seeing every task assigned to me across every project in one place — with a due date grouping — is brilliant.",
+  },
 ];
 
 const faqs = [
-  { q: `How is ${PRODUCT_NAME} different from Jira or ClickUp?`, a: `${PRODUCT_NAME} is built for teams that want the power of Jira and the usability of ClickUp — without the bloat. We focus on the core: tasks, sprints, views, and collaboration. No feature creep — and it's completely free.` },
-  { q: "How does magic link authentication work?", a: "You enter your email and we send a one-time sign-in link. Clicking it logs you in instantly. No passwords to create, remember, or reset. First-time users get an account created automatically." },
-  { q: "What is a Space?", a: "A Space is a logical grouping for a team or department inside your Workspace — like Engineering, Marketing, or HR. Each Space has its own Lists, members, and permissions." },
-  { q: "Can I control who sees what?", a: "Yes. Workspace roles (Owner, Admin, Member, Guest) control workspace-level access. Space permissions (Full Access, Edit, View) control everything inside a Space. Guests can only see Spaces they are explicitly invited to." },
-  { q: "What views are available?", a: "MVP ships with List View, Board View (Kanban), and My Tasks. Calendar View, Gantt, and Workload View are on the roadmap." },
-  { q: "Can I invite contractors or clients as guests?", a: "Yes. The Guest role gives scoped access to only the Spaces you invite them to. They cannot see anything else in your Workspace." },
-  { q: "Is it really free?", a: `Yes — ${PRODUCT_NAME} is completely free to use. Every feature is available to your whole team with no paid tiers, seat limits, or feature paywalls. No credit card required to get started.` },
+  {
+    q: `How is ${PRODUCT_NAME} different from Jira or ClickUp?`,
+    a: `${PRODUCT_NAME} is built for teams that want the power of Jira and the usability of ClickUp — without the bloat. We focus on the core: tasks, sprints, views, and collaboration. No feature creep — and it's completely free.`,
+  },
+  {
+    q: "How does magic link authentication work?",
+    a: "You enter your email and we send a one-time sign-in link. Clicking it logs you in instantly. No passwords to create, remember, or reset. First-time users get an account created automatically.",
+  },
+  {
+    q: "What is a Space?",
+    a: "A Space is a logical grouping for a team or department inside your Workspace — like Engineering, Marketing, or HR. Each Space has its own Lists, members, and permissions.",
+  },
+  {
+    q: "Can I control who sees what?",
+    a: "Yes. Workspace roles (Owner, Admin, Member, Guest) control workspace-level access. Space permissions (Full Access, Edit, View) control everything inside a Space. Guests can only see Spaces they are explicitly invited to.",
+  },
+  {
+    q: "What views are available?",
+    a: "MVP ships with List View, Board View (Kanban), and My Tasks. Calendar View, Gantt, and Workload View are on the roadmap.",
+  },
+  {
+    q: "Can I invite contractors or clients as guests?",
+    a: "Yes. The Guest role gives scoped access to only the Spaces you invite them to. They cannot see anything else in your Workspace.",
+  },
+  {
+    q: "Is it really free?",
+    a: `Yes — ${PRODUCT_NAME} is completely free to use. Every feature is available to your whole team with no paid tiers, seat limits, or feature paywalls. No credit card required to get started.`,
+  },
 ];
 
-function SectionLabel({ children, className }: { children: React.ReactNode; className?: string }) {
+function SectionLabel({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
     <span
       className={cn(
@@ -156,18 +260,45 @@ function Navbar() {
       )}
     >
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
-        <span className="font-bold text-[#174D38] text-lg tracking-tight">{PRODUCT_NAME}</span>
+        <span className="flex items-center gap-2 font-bold text-[#174D38] text-lg tracking-tight">
+          <Image
+            src="/width_497.png"
+            alt={`${PRODUCT_NAME} Logo`}
+            width={28}
+            height={28}
+            className="rounded"
+          />
+          {PRODUCT_NAME}
+        </span>
         <nav className="hidden items-center gap-6 text-sm text-[#6b7280] sm:flex">
-          <a href="#features" className="transition-colors hover:text-[#174D38]">Features</a>
-          <a href="#why" className="transition-colors hover:text-[#174D38]">Why us</a>
-          <a href="#how-it-works" className="transition-colors hover:text-[#174D38]">How it works</a>
-          <a href="#faq" className="transition-colors hover:text-[#174D38]">FAQ</a>
+          <a
+            href="#features"
+            className="transition-colors hover:text-[#174D38]"
+          >
+            Features
+          </a>
+          <a href="#why" className="transition-colors hover:text-[#174D38]">
+            Why us
+          </a>
+          <a
+            href="#how-it-works"
+            className="transition-colors hover:text-[#174D38]"
+          >
+            How it works
+          </a>
+          <a href="#faq" className="transition-colors hover:text-[#174D38]">
+            FAQ
+          </a>
         </nav>
         <div className="hidden items-center gap-2 sm:flex">
           <Button variant="ghost" size="sm" asChild>
             <Link href="/login">Sign in</Link>
           </Button>
-          <Button size="sm" asChild className="bg-[#174D38] text-white hover:bg-[#103526]">
+          <Button
+            size="sm"
+            asChild
+            className="bg-[#174D38] text-white hover:bg-[#103526]"
+          >
             <Link href="/login">
               Get Started Free <ArrowRight className="ml-1 size-3.5" />
             </Link>
@@ -185,15 +316,43 @@ function Navbar() {
       {mobileOpen && (
         <div className="border-t border-[#CBCBCB] bg-white px-6 pb-4 sm:hidden">
           <nav className="flex flex-col gap-3 pt-4 text-sm text-[#6b7280]">
-            <a href="#features" onClick={() => setMobileOpen(false)} className="hover:text-[#174D38]">Features</a>
-            <a href="#why" onClick={() => setMobileOpen(false)} className="hover:text-[#174D38]">Why us</a>
-            <a href="#how-it-works" onClick={() => setMobileOpen(false)} className="hover:text-[#174D38]">How it works</a>
-            <a href="#faq" onClick={() => setMobileOpen(false)} className="hover:text-[#174D38]">FAQ</a>
+            <a
+              href="#features"
+              onClick={() => setMobileOpen(false)}
+              className="hover:text-[#174D38]"
+            >
+              Features
+            </a>
+            <a
+              href="#why"
+              onClick={() => setMobileOpen(false)}
+              className="hover:text-[#174D38]"
+            >
+              Why us
+            </a>
+            <a
+              href="#how-it-works"
+              onClick={() => setMobileOpen(false)}
+              className="hover:text-[#174D38]"
+            >
+              How it works
+            </a>
+            <a
+              href="#faq"
+              onClick={() => setMobileOpen(false)}
+              className="hover:text-[#174D38]"
+            >
+              FAQ
+            </a>
             <div className="flex flex-col gap-2 border-t border-[#CBCBCB] pt-2">
               <Button variant="outline" size="sm" asChild>
                 <Link href="/login">Sign in</Link>
               </Button>
-              <Button size="sm" asChild className="bg-[#174D38] text-white hover:bg-[#103526]">
+              <Button
+                size="sm"
+                asChild
+                className="bg-[#174D38] text-white hover:bg-[#103526]"
+              >
                 <Link href="/login">Get Started Free</Link>
               </Button>
             </div>
@@ -231,14 +390,17 @@ function HeroSection() {
             <br />
             <span
               className="bg-clip-text text-transparent"
-              style={{ backgroundImage: "linear-gradient(to right, #174D38, #4D1717)" }}
+              style={{
+                backgroundImage: "linear-gradient(to right, #174D38, #4D1717)",
+              }}
             >
               your team will actually use
             </span>
           </h1>
           <p className="mx-auto mb-8 max-w-2xl text-lg leading-relaxed text-[#6b7280]">
-            {PRODUCT_NAME} gives every team a shared home — Workspaces, Spaces, Lists, and Tasks — with
-            sprints, board views, comments, and notifications built in. Free for your whole team.
+            {PRODUCT_NAME} gives every team a shared home — Workspaces, Spaces,
+            Lists, and Tasks — with sprints, board views, comments, and
+            notifications built in. Free for your whole team.
           </p>
           <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
             <Button
@@ -259,7 +421,9 @@ function HeroSection() {
               <a href="#features">See what is included</a>
             </Button>
           </div>
-          <p className="mt-4 text-[#9ca3af] text-xs">No credit card required · Magic link sign-in</p>
+          <p className="mt-4 text-[#9ca3af] text-xs">
+            No credit card required · Magic link sign-in
+          </p>
         </Animate>
 
         <Animate delay={300} className="mt-16">
@@ -280,7 +444,9 @@ function HeroSection() {
                       key={i}
                       className={cn(
                         "flex size-8 items-center justify-center rounded-md",
-                        i === 0 ? "bg-[#174D38] text-white" : "text-[#9ca3af] hover:bg-[#E8E8E8]",
+                        i === 0
+                          ? "bg-[#174D38] text-white"
+                          : "text-[#9ca3af] hover:bg-[#E8E8E8]",
                       )}
                     >
                       <Icon className="size-4" />
@@ -292,7 +458,9 @@ function HeroSection() {
                     <div className="flex items-center gap-1 text-[#6b7280] text-xs">
                       <span>Engineering</span>
                       <ChevronRight className="size-3" />
-                      <span className="font-semibold text-[#174D38]">Backlog</span>
+                      <span className="font-semibold text-[#174D38]">
+                        Backlog
+                      </span>
                     </div>
                     <div className="flex items-center gap-1">
                       {["List", "Board", "Calendar"].map((v, i) => (
@@ -322,22 +490,75 @@ function HeroSection() {
                   </div>
                   <div className="space-y-1.5">
                     {[
-                      { title: "Fix login redirect bug", status: "In Progress", statusCls: "bg-[#174D38]/10 text-[#174D38]", priority: "High", pCls: "bg-orange-50 text-orange-500", assignee: "SC" },
-                      { title: "Design onboarding flow", status: "Review", statusCls: "bg-amber-50 text-amber-600", priority: "Medium", pCls: "bg-yellow-50 text-yellow-600", assignee: "MR" },
-                      { title: "Write API documentation", status: "Todo", statusCls: "bg-[#E8E8E8] text-[#6b7280]", priority: "Low", pCls: "bg-blue-50 text-blue-500", assignee: "PN" },
-                      { title: "Set up CI/CD pipeline", status: "Todo", statusCls: "bg-[#E8E8E8] text-[#6b7280]", priority: "Urgent", pCls: "bg-red-50 text-red-500", assignee: "SC" },
-                      { title: "Implement search indexing", status: "In Progress", statusCls: "bg-[#174D38]/10 text-[#174D38]", priority: "High", pCls: "bg-orange-50 text-orange-500", assignee: "MR" },
+                      {
+                        title: "Fix login redirect bug",
+                        status: "In Progress",
+                        statusCls: "bg-[#174D38]/10 text-[#174D38]",
+                        priority: "High",
+                        pCls: "bg-orange-50 text-orange-500",
+                        assignee: "SC",
+                      },
+                      {
+                        title: "Design onboarding flow",
+                        status: "Review",
+                        statusCls: "bg-amber-50 text-amber-600",
+                        priority: "Medium",
+                        pCls: "bg-yellow-50 text-yellow-600",
+                        assignee: "MR",
+                      },
+                      {
+                        title: "Write API documentation",
+                        status: "Todo",
+                        statusCls: "bg-[#E8E8E8] text-[#6b7280]",
+                        priority: "Low",
+                        pCls: "bg-blue-50 text-blue-500",
+                        assignee: "PN",
+                      },
+                      {
+                        title: "Set up CI/CD pipeline",
+                        status: "Todo",
+                        statusCls: "bg-[#E8E8E8] text-[#6b7280]",
+                        priority: "Urgent",
+                        pCls: "bg-red-50 text-red-500",
+                        assignee: "SC",
+                      },
+                      {
+                        title: "Implement search indexing",
+                        status: "In Progress",
+                        statusCls: "bg-[#174D38]/10 text-[#174D38]",
+                        priority: "High",
+                        pCls: "bg-orange-50 text-orange-500",
+                        assignee: "MR",
+                      },
                     ].map((t) => (
                       <div
                         key={t.title}
                         className="flex items-center gap-3 rounded-md border border-[#CBCBCB] bg-white px-3 py-2 text-sm transition-colors hover:border-[#174D38]/40"
                       >
                         <span className="size-4 shrink-0 rounded border-2 border-[#CBCBCB]" />
-                        <span className="flex-1 truncate font-medium text-[#174D38] text-xs">{t.title}</span>
-                        <span className={cn("shrink-0 rounded px-2 py-0.5 text-[10px] font-medium", t.statusCls)}>{t.status}</span>
-                        <span className={cn("hidden shrink-0 rounded px-2 py-0.5 text-[10px] font-medium sm:inline-block", t.pCls)}>{t.priority}</span>
+                        <span className="flex-1 truncate font-medium text-[#174D38] text-xs">
+                          {t.title}
+                        </span>
+                        <span
+                          className={cn(
+                            "shrink-0 rounded px-2 py-0.5 text-[10px] font-medium",
+                            t.statusCls,
+                          )}
+                        >
+                          {t.status}
+                        </span>
+                        <span
+                          className={cn(
+                            "hidden shrink-0 rounded px-2 py-0.5 text-[10px] font-medium sm:inline-block",
+                            t.pCls,
+                          )}
+                        >
+                          {t.priority}
+                        </span>
                         <Avatar className="size-5 shrink-0">
-                          <AvatarFallback className="bg-[#4D1717]/25 text-[8px] text-[#174D38]">{t.assignee}</AvatarFallback>
+                          <AvatarFallback className="bg-[#4D1717]/25 text-[8px] text-[#174D38]">
+                            {t.assignee}
+                          </AvatarFallback>
                         </Avatar>
                       </div>
                     ))}
@@ -363,18 +584,20 @@ function SocialProofBar() {
         <Animate>
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-between">
             <p className="text-[#6b7280] text-sm">
-              <span className="font-semibold text-[#174D38]">500+ teams</span> already managing their
-              work with {PRODUCT_NAME}
+              <span className="font-semibold text-[#174D38]">500+ teams</span>{" "}
+              already managing their work with {PRODUCT_NAME}
             </p>
             <div className="flex items-center gap-6">
-              {["Acme Co", "Flowboard", "Stackd", "Loopback", "Nexus"].map((name) => (
-                <span
-                  key={name}
-                  className="font-semibold text-[#CBCBCB] text-xs uppercase tracking-widest"
-                >
-                  {name}
-                </span>
-              ))}
+              {["Acme Co", "Flowboard", "Stackd", "Loopback", "Nexus"].map(
+                (name) => (
+                  <span
+                    key={name}
+                    className="font-semibold text-[#CBCBCB] text-xs uppercase tracking-widest"
+                  >
+                    {name}
+                  </span>
+                ),
+              )}
             </div>
           </div>
         </Animate>
@@ -392,7 +615,11 @@ function FeaturesSection() {
     <section
       id="features"
       className="py-16 scroll-mt-14"
-      style={{ backgroundImage: LINE_GRID, backgroundSize: "40px 40px", backgroundColor: "#F2F2F2" }}
+      style={{
+        backgroundImage: LINE_GRID,
+        backgroundSize: "40px 40px",
+        backgroundColor: "#F2F2F2",
+      }}
     >
       <div className="mx-auto max-w-6xl px-6">
         <Animate className="mb-14 text-center">
@@ -400,7 +627,9 @@ function FeaturesSection() {
           <h2 className="mt-4 text-3xl font-bold tracking-tight text-[#174D38]">
             Everything your team needs to ship
           </h2>
-          <p className="mt-2 text-[#6b7280]">No bolt-ons. No plugins. Everything in the box.</p>
+          <p className="mt-2 text-[#6b7280]">
+            No bolt-ons. No plugins. Everything in the box.
+          </p>
         </Animate>
         <div ref={ref} className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {features.map(({ icon: Icon, title, description }, i) => (
@@ -409,21 +638,30 @@ function FeaturesSection() {
               className={cn(
                 "group cursor-default rounded-xl border border-[#CBCBCB] bg-white p-6 shadow-sm transition-all duration-300",
                 "hover:-translate-y-0.5 hover:border-[#174D38]/40 hover:shadow-md",
-                visible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
+                visible
+                  ? "translate-y-0 opacity-100"
+                  : "translate-y-4 opacity-0",
               )}
               style={{
                 transitionDelay: visible ? `${i * 80}ms` : "0ms",
-                transitionProperty: "opacity, transform, box-shadow, border-color",
+                transitionProperty:
+                  "opacity, transform, box-shadow, border-color",
               }}
             >
               <div
                 className="mb-4 flex size-10 items-center justify-center rounded-lg text-white"
-                style={{ background: "linear-gradient(135deg, #174D38, #4D1717)" }}
+                style={{
+                  background: "linear-gradient(135deg, #174D38, #4D1717)",
+                }}
               >
                 <Icon className="size-5" />
               </div>
-              <h3 className="mb-2 font-semibold text-[#174D38] text-base">{title}</h3>
-              <p className="text-[#6b7280] text-sm leading-relaxed">{description}</p>
+              <h3 className="mb-2 font-semibold text-[#174D38] text-base">
+                {title}
+              </h3>
+              <p className="text-[#6b7280] text-sm leading-relaxed">
+                {description}
+              </p>
             </div>
           ))}
         </div>
@@ -444,7 +682,10 @@ function StatsSection() {
     <section className="relative overflow-hidden py-16 text-white">
       <div
         className="absolute inset-0"
-        style={{ background: "linear-gradient(135deg, #174D38 0%, #174D38 55%, #4D1717 100%)" }}
+        style={{
+          background:
+            "linear-gradient(135deg, #174D38 0%, #174D38 55%, #4D1717 100%)",
+        }}
       />
       <div className="pointer-events-none absolute -top-20 -left-24 size-72 rounded-full bg-white/10 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-24 -right-20 size-80 rounded-full bg-[#4D1717]/20 blur-3xl" />
@@ -463,7 +704,9 @@ function StatsSection() {
               key={label}
               className={cn(
                 "flex flex-col items-center text-center transition-all duration-500 sm:items-start sm:text-left",
-                visible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
+                visible
+                  ? "translate-y-0 opacity-100"
+                  : "translate-y-4 opacity-0",
               )}
               style={{ transitionDelay: visible ? `${i * 90}ms` : "0ms" }}
             >
@@ -500,7 +743,8 @@ const bentoCards = [
     span: "",
     icon: Zap,
     title: "Sprints with story points",
-    description: "Plan, point, and close two-week cycles with an automatic burndown.",
+    description:
+      "Plan, point, and close two-week cycles with an automatic burndown.",
   },
   {
     span: "lg:col-span-2",
@@ -523,7 +767,8 @@ function BentoSection() {
             Powerful where it counts, simple everywhere else
           </h2>
           <p className="mt-2 text-[#6b7280]">
-            The depth of an enterprise tool with the calm of a product you actually enjoy.
+            The depth of an enterprise tool with the calm of a product you
+            actually enjoy.
           </p>
         </Animate>
         <div ref={ref} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -539,7 +784,9 @@ function BentoSection() {
                     ? "border-[#174D38]/20 bg-linear-to-br from-[#174D38]/10 to-[#4D1717]/10"
                     : "border-[#CBCBCB] bg-white shadow-sm",
                   "hover:-translate-y-0.5 hover:shadow-md hover:border-[#174D38]/40",
-                  visible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
+                  visible
+                    ? "translate-y-0 opacity-100"
+                    : "translate-y-4 opacity-0",
                 )}
                 style={{ transitionDelay: visible ? `${i * 90}ms` : "0ms" }}
               >
@@ -549,12 +796,18 @@ function BentoSection() {
                 <div className="relative">
                   <div
                     className="mb-4 flex size-10 items-center justify-center rounded-lg text-white shadow-sm"
-                    style={{ background: "linear-gradient(135deg, #174D38, #4D1717)" }}
+                    style={{
+                      background: "linear-gradient(135deg, #174D38, #4D1717)",
+                    }}
                   >
                     <Icon className="size-5" />
                   </div>
-                  <h3 className="mb-2 font-semibold text-[#174D38] text-base">{card.title}</h3>
-                  <p className="max-w-md text-[#6b7280] text-sm leading-relaxed">{card.description}</p>
+                  <h3 className="mb-2 font-semibold text-[#174D38] text-base">
+                    {card.title}
+                  </h3>
+                  <p className="max-w-md text-[#6b7280] text-sm leading-relaxed">
+                    {card.description}
+                  </p>
                 </div>
               </div>
             );
@@ -575,7 +828,9 @@ function HowItWorksSection() {
           <h2 className="mt-4 text-3xl font-bold tracking-tight text-[#174D38]">
             Up and running in minutes
           </h2>
-          <p className="mt-2 text-[#6b7280]">No configuration required. Just sign in and start organising.</p>
+          <p className="mt-2 text-[#6b7280]">
+            No configuration required. Just sign in and start organising.
+          </p>
         </Animate>
         <Animate delay={100} className="mb-12 flex flex-col items-center gap-3">
           <div className="flex flex-wrap items-center justify-center gap-2 text-sm">
@@ -584,20 +839,29 @@ function HowItWorksSection() {
                 <span className="rounded-lg border border-[#CBCBCB] bg-[#F2F2F2] px-3 py-1.5 font-medium text-[#174D38]">
                   {label}
                 </span>
-                {i < arr.length - 1 && <ChevronRight className="size-4 text-[#9ca3af]" />}
+                {i < arr.length - 1 && (
+                  <ChevronRight className="size-4 text-[#9ca3af]" />
+                )}
               </React.Fragment>
             ))}
           </div>
-          <p className="text-[#9ca3af] text-xs">e.g. Acme Inc › Engineering › Backlog › Fix login bug</p>
+          <p className="text-[#9ca3af] text-xs">
+            e.g. Acme Inc › Engineering › Backlog › Fix login bug
+          </p>
         </Animate>
-        <div ref={ref} className="relative grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div
+          ref={ref}
+          className="relative grid gap-6 sm:grid-cols-2 lg:grid-cols-4"
+        >
           <div className="pointer-events-none absolute top-10 right-[12.5%] left-[12.5%] hidden border-t-2 border-dashed border-[#174D38]/20 lg:block" />
           {steps.map((step, i) => (
             <div
               key={step.number}
               className={cn(
                 "relative rounded-xl border border-[#CBCBCB] bg-white p-6 shadow-sm transition-all duration-500",
-                visible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
+                visible
+                  ? "translate-y-0 opacity-100"
+                  : "translate-y-4 opacity-0",
               )}
               style={{
                 transitionDelay: visible ? `${i * 120}ms` : "0ms",
@@ -606,12 +870,18 @@ function HowItWorksSection() {
             >
               <div
                 className="mb-3 select-none bg-clip-text text-5xl font-bold text-transparent"
-                style={{ backgroundImage: "linear-gradient(135deg, #BFD0C7, #D6BABA)" }}
+                style={{
+                  backgroundImage: "linear-gradient(135deg, #BFD0C7, #D6BABA)",
+                }}
               >
                 {step.number}
               </div>
-              <h3 className="mb-2 font-semibold text-[#174D38] text-sm">{step.title}</h3>
-              <p className="text-[#6b7280] text-sm leading-relaxed">{step.description}</p>
+              <h3 className="mb-2 font-semibold text-[#174D38] text-sm">
+                {step.title}
+              </h3>
+              <p className="text-[#6b7280] text-sm leading-relaxed">
+                {step.description}
+              </p>
             </div>
           ))}
         </div>
@@ -624,32 +894,59 @@ function ViewsShowcaseSection() {
   return (
     <section
       className="py-16"
-      style={{ backgroundImage: LINE_GRID, backgroundSize: "40px 40px", backgroundColor: "#F2F2F2" }}
+      style={{
+        backgroundImage: LINE_GRID,
+        backgroundSize: "40px 40px",
+        backgroundColor: "#F2F2F2",
+      }}
     >
       <div className="mx-auto max-w-6xl px-6">
         <Animate className="mb-10 text-center">
           <SectionLabel className="mb-4">Views</SectionLabel>
-          <h2 className="mt-4 text-3xl font-bold tracking-tight text-[#174D38]">See work your way</h2>
-          <p className="mt-2 text-[#6b7280]">Switch views without leaving the page. Your filters carry across.</p>
+          <h2 className="mt-4 text-3xl font-bold tracking-tight text-[#174D38]">
+            See work your way
+          </h2>
+          <p className="mt-2 text-[#6b7280]">
+            Switch views without leaving the page. Your filters carry across.
+          </p>
         </Animate>
         <Animate delay={150}>
           <Tabs defaultValue="list" className="mx-auto max-w-3xl">
             <TabsList className="mb-6 grid w-full grid-cols-3 rounded-lg bg-[#E8E8E8] p-1">
-              <TabsTrigger value="list" className="gap-1.5 rounded-md data-[state=active]:bg-[#174D38] data-[state=active]:text-white">
-                <LayoutList className="size-3.5" />List
+              <TabsTrigger
+                value="list"
+                className="gap-1.5 rounded-md data-[state=active]:bg-[#174D38] data-[state=active]:text-white"
+              >
+                <LayoutList className="size-3.5" />
+                List
               </TabsTrigger>
-              <TabsTrigger value="board" className="gap-1.5 rounded-md data-[state=active]:bg-[#174D38] data-[state=active]:text-white">
-                <Kanban className="size-3.5" />Board
+              <TabsTrigger
+                value="board"
+                className="gap-1.5 rounded-md data-[state=active]:bg-[#174D38] data-[state=active]:text-white"
+              >
+                <Kanban className="size-3.5" />
+                Board
               </TabsTrigger>
-              <TabsTrigger value="mytasks" className="gap-1.5 rounded-md data-[state=active]:bg-[#174D38] data-[state=active]:text-white">
-                <CalendarDays className="size-3.5" />My Tasks
+              <TabsTrigger
+                value="mytasks"
+                className="gap-1.5 rounded-md data-[state=active]:bg-[#174D38] data-[state=active]:text-white"
+              >
+                <CalendarDays className="size-3.5" />
+                My Tasks
               </TabsTrigger>
             </TabsList>
-            <TabsContent value="list" className="animate-in fade-in-0 duration-200">
+            <TabsContent
+              value="list"
+              className="animate-in fade-in-0 duration-200"
+            >
               <Card className="rounded-xl border-[#CBCBCB] shadow-sm">
                 <CardHeader className="pb-2">
-                  <CardTitle className="font-semibold normal-case tracking-normal text-sm">List View</CardTitle>
-                  <CardDescription>Default view — see all tasks as rows with inline editing.</CardDescription>
+                  <CardTitle className="font-semibold normal-case tracking-normal text-sm">
+                    List View
+                  </CardTitle>
+                  <CardDescription>
+                    Default view — see all tasks as rows with inline editing.
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-1.5">
@@ -659,12 +956,45 @@ function ViewsShowcaseSection() {
                       { t: "Write unit tests", done: false },
                       { t: "Deploy to staging", done: false },
                     ].map(({ t, done }) => (
-                      <div key={t} className={cn("flex items-center gap-3 rounded border px-3 py-2 text-sm", done ? "border-[#CBCBCB] bg-[#F2F2F2]" : "border-[#174D38]/20 bg-[#174D38]/5")}>
-                        <div className={cn("flex size-4 shrink-0 items-center justify-center rounded border-2", done ? "border-[#174D38] bg-[#174D38]" : "border-[#CBCBCB]")}>
-                          {done && <Check className="size-2.5 text-white" strokeWidth={3} />}
+                      <div
+                        key={t}
+                        className={cn(
+                          "flex items-center gap-3 rounded border px-3 py-2 text-sm",
+                          done
+                            ? "border-[#CBCBCB] bg-[#F2F2F2]"
+                            : "border-[#174D38]/20 bg-[#174D38]/5",
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            "flex size-4 shrink-0 items-center justify-center rounded border-2",
+                            done
+                              ? "border-[#174D38] bg-[#174D38]"
+                              : "border-[#CBCBCB]",
+                          )}
+                        >
+                          {done && (
+                            <Check
+                              className="size-2.5 text-white"
+                              strokeWidth={3}
+                            />
+                          )}
                         </div>
-                        <span className={cn("flex-1 text-xs", done ? "text-[#9ca3af] line-through" : "text-[#174D38]")}>{t}</span>
-                        {done && <span className="text-[10px] text-[#9ca3af]">Completed</span>}
+                        <span
+                          className={cn(
+                            "flex-1 text-xs",
+                            done
+                              ? "text-[#9ca3af] line-through"
+                              : "text-[#174D38]",
+                          )}
+                        >
+                          {t}
+                        </span>
+                        {done && (
+                          <span className="text-[10px] text-[#9ca3af]">
+                            Completed
+                          </span>
+                        )}
                       </div>
                     ))}
                     <div className="flex cursor-pointer items-center gap-2 px-3 py-2 text-[#9ca3af] text-xs">
@@ -674,27 +1004,61 @@ function ViewsShowcaseSection() {
                 </CardContent>
               </Card>
             </TabsContent>
-            <TabsContent value="board" className="animate-in fade-in-0 duration-200">
+            <TabsContent
+              value="board"
+              className="animate-in fade-in-0 duration-200"
+            >
               <Card className="rounded-xl border-[#CBCBCB] shadow-sm">
                 <CardHeader className="pb-2">
-                  <CardTitle className="font-semibold normal-case tracking-normal text-sm">Board View</CardTitle>
-                  <CardDescription>Kanban columns by status. Drag cards to change status.</CardDescription>
+                  <CardTitle className="font-semibold normal-case tracking-normal text-sm">
+                    Board View
+                  </CardTitle>
+                  <CardDescription>
+                    Kanban columns by status. Drag cards to change status.
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-4 gap-3">
                     {[
-                      { label: "Todo", dot: "#9ca3af", tasks: ["Write tests", "Update docs"] },
-                      { label: "In Progress", dot: "#174D38", tasks: ["Fix auth bug", "Design layout"] },
-                      { label: "Review", dot: "#f59e0b", tasks: ["API integration"] },
-                      { label: "Done", dot: "#10b981", tasks: ["Deploy staging"] },
+                      {
+                        label: "Todo",
+                        dot: "#9ca3af",
+                        tasks: ["Write tests", "Update docs"],
+                      },
+                      {
+                        label: "In Progress",
+                        dot: "#174D38",
+                        tasks: ["Fix auth bug", "Design layout"],
+                      },
+                      {
+                        label: "Review",
+                        dot: "#f59e0b",
+                        tasks: ["API integration"],
+                      },
+                      {
+                        label: "Done",
+                        dot: "#10b981",
+                        tasks: ["Deploy staging"],
+                      },
                     ].map((col) => (
-                      <div key={col.label} className="rounded-md border border-[#CBCBCB] bg-[#F2F2F2] p-2">
+                      <div
+                        key={col.label}
+                        className="rounded-md border border-[#CBCBCB] bg-[#F2F2F2] p-2"
+                      >
                         <div className="mb-2 flex items-center gap-1.5 px-1">
-                          <span className="size-2 shrink-0 rounded-full" style={{ background: col.dot }} />
-                          <p className="font-semibold text-[#6b7280] text-[10px]">{col.label}</p>
+                          <span
+                            className="size-2 shrink-0 rounded-full"
+                            style={{ background: col.dot }}
+                          />
+                          <p className="font-semibold text-[#6b7280] text-[10px]">
+                            {col.label}
+                          </p>
                         </div>
                         {col.tasks.map((t) => (
-                          <div key={t} className="mb-1.5 rounded border border-[#CBCBCB] bg-white px-2.5 py-2 text-[10px] text-[#174D38] shadow-sm transition-colors hover:border-[#174D38]/40">
+                          <div
+                            key={t}
+                            className="mb-1.5 rounded border border-[#CBCBCB] bg-white px-2.5 py-2 text-[10px] text-[#174D38] shadow-sm transition-colors hover:border-[#174D38]/40"
+                          >
                             {t}
                           </div>
                         ))}
@@ -704,26 +1068,67 @@ function ViewsShowcaseSection() {
                 </CardContent>
               </Card>
             </TabsContent>
-            <TabsContent value="mytasks" className="animate-in fade-in-0 duration-200">
+            <TabsContent
+              value="mytasks"
+              className="animate-in fade-in-0 duration-200"
+            >
               <Card className="rounded-xl border-[#CBCBCB] shadow-sm">
                 <CardHeader className="pb-2">
-                  <CardTitle className="font-semibold normal-case tracking-normal text-sm">My Tasks</CardTitle>
-                  <CardDescription>All tasks assigned to you, across every project, grouped by due date.</CardDescription>
+                  <CardTitle className="font-semibold normal-case tracking-normal text-sm">
+                    My Tasks
+                  </CardTitle>
+                  <CardDescription>
+                    All tasks assigned to you, across every project, grouped by
+                    due date.
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     {[
-                      { group: "Overdue", color: "#ef4444", tasks: [{ t: "Update API docs", ctx: "Engineering › Docs" }] },
-                      { group: "Due Today", color: "#f59e0b", tasks: [{ t: "Fix login bug", ctx: "Engineering › Backlog" }, { t: "Review PR #42", ctx: "Engineering › Sprint 3" }] },
-                      { group: "This Week", color: "#174D38", tasks: [{ t: "Write sprint retrospective", ctx: "Engineering › Sprint 3" }, { t: "Onboard new member", ctx: "HR › Onboarding" }] },
+                      {
+                        group: "Overdue",
+                        color: "#ef4444",
+                        tasks: [
+                          { t: "Update API docs", ctx: "Engineering › Docs" },
+                        ],
+                      },
+                      {
+                        group: "Due Today",
+                        color: "#f59e0b",
+                        tasks: [
+                          { t: "Fix login bug", ctx: "Engineering › Backlog" },
+                          { t: "Review PR #42", ctx: "Engineering › Sprint 3" },
+                        ],
+                      },
+                      {
+                        group: "This Week",
+                        color: "#174D38",
+                        tasks: [
+                          {
+                            t: "Write sprint retrospective",
+                            ctx: "Engineering › Sprint 3",
+                          },
+                          { t: "Onboard new member", ctx: "HR › Onboarding" },
+                        ],
+                      },
                     ].map((g) => (
                       <div key={g.group}>
-                        <p className="mb-1.5 font-semibold text-xs" style={{ color: g.color }}>{g.group}</p>
+                        <p
+                          className="mb-1.5 font-semibold text-xs"
+                          style={{ color: g.color }}
+                        >
+                          {g.group}
+                        </p>
                         {g.tasks.map(({ t, ctx }) => (
-                          <div key={t} className="mb-1 flex items-center gap-2 rounded border border-[#CBCBCB] bg-[#F2F2F2] px-3 py-2 text-xs">
+                          <div
+                            key={t}
+                            className="mb-1 flex items-center gap-2 rounded border border-[#CBCBCB] bg-[#F2F2F2] px-3 py-2 text-xs"
+                          >
                             <span className="size-3.5 shrink-0 rounded border border-[#CBCBCB]" />
                             <span className="flex-1 text-[#174D38]">{t}</span>
-                            <span className="text-[#9ca3af] text-[10px]">{ctx}</span>
+                            <span className="text-[#9ca3af] text-[10px]">
+                              {ctx}
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -743,25 +1148,29 @@ const comparisonFeatures = [
   {
     icon: AlertTriangle,
     title: "Eliminate Chaos",
-    description: "No more scattered spreadsheets, overdue tasks, and missed deadlines.",
+    description:
+      "No more scattered spreadsheets, overdue tasks, and missed deadlines.",
     color: "bg-red-100 text-red-600",
   },
   {
     icon: Sparkles,
     title: "95% On-Time Delivery",
-    description: "Teams using Kanbanica complete 95% of tasks before their deadlines.",
+    description:
+      "Teams using Kanbanica complete 95% of tasks before their deadlines.",
     color: "bg-emerald-100 text-emerald-600",
   },
   {
     icon: BarChart3,
     title: "Real-Time Dashboards",
-    description: "Track team productivity, sprint progress, and project health at a glance.",
+    description:
+      "Track team productivity, sprint progress, and project health at a glance.",
     color: "bg-[#4D1717]/25 text-[#174D38]",
   },
   {
     icon: MessagesSquare,
     title: "Team Collaboration",
-    description: "Built-in chat, comments, and activity feeds keep everyone in sync.",
+    description:
+      "Built-in chat, comments, and activity feeds keep everyone in sync.",
     color: "bg-amber-100 text-amber-600",
   },
 ];
@@ -818,14 +1227,18 @@ function BeforeAfterSection() {
                 From chaos to{" "}
                 <span
                   className="bg-clip-text text-transparent"
-                  style={{ backgroundImage: "linear-gradient(to right, #174D38, #4D1717)" }}
+                  style={{
+                    backgroundImage:
+                      "linear-gradient(to right, #174D38, #4D1717)",
+                  }}
                 >
                   clarity
                 </span>
               </h2>
               <p className="mt-3 text-[#6b7280] text-sm leading-relaxed">
-                See the real difference {PRODUCT_NAME} makes. Drag the slider to compare a
-                disorganised workspace with one powered by {PRODUCT_NAME}.
+                See the real difference {PRODUCT_NAME} makes. Drag the slider to
+                compare a disorganised workspace with one powered by{" "}
+                {PRODUCT_NAME}.
               </p>
               <div className="mt-8 grid gap-4 sm:grid-cols-2">
                 {comparisonFeatures.map((f) => {
@@ -841,8 +1254,12 @@ function BeforeAfterSection() {
                         <Icon className="size-4" />
                       </div>
                       <div>
-                        <p className="font-semibold text-[#174D38] text-sm">{f.title}</p>
-                        <p className="text-[#6b7280] text-xs leading-relaxed">{f.description}</p>
+                        <p className="font-semibold text-[#174D38] text-sm">
+                          {f.title}
+                        </p>
+                        <p className="text-[#6b7280] text-xs leading-relaxed">
+                          {f.description}
+                        </p>
                       </div>
                     </div>
                   );
@@ -900,7 +1317,10 @@ function BeforeAfterSection() {
               {/* Divider line */}
               <div
                 className="pointer-events-none absolute top-0 bottom-0 z-20 w-0.5 bg-white"
-                style={{ left: `${sliderPosition}%`, transform: "translateX(-50%)" }}
+                style={{
+                  left: `${sliderPosition}%`,
+                  transform: "translateX(-50%)",
+                }}
               />
 
               {/* Drag handle */}
@@ -937,7 +1357,9 @@ function TestimonialsSection() {
       <div className="relative mx-auto max-w-6xl px-6">
         <Animate className="mb-12 text-center">
           <SectionLabel className="mb-4">Testimonials</SectionLabel>
-          <h2 className="mt-4 text-3xl font-bold tracking-tight text-[#174D38]">Teams love it</h2>
+          <h2 className="mt-4 text-3xl font-bold tracking-tight text-[#174D38]">
+            Teams love it
+          </h2>
         </Animate>
         <div ref={ref} className="grid gap-5 sm:grid-cols-3">
           {testimonials.map((t, i) => (
@@ -945,7 +1367,9 @@ function TestimonialsSection() {
               key={t.name}
               className={cn(
                 "flex flex-col gap-4 rounded-xl border border-[#CBCBCB] bg-white p-6 shadow-sm transition-all duration-500",
-                visible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
+                visible
+                  ? "translate-y-0 opacity-100"
+                  : "translate-y-4 opacity-0",
               )}
               style={{
                 transitionDelay: visible ? `${i * 100}ms` : "0ms",
@@ -954,16 +1378,25 @@ function TestimonialsSection() {
             >
               <div className="flex gap-0.5">
                 {Array.from({ length: 5 }).map((_, j) => (
-                  <Star key={j} className="size-4 fill-amber-400 text-amber-400" />
+                  <Star
+                    key={j}
+                    className="size-4 fill-amber-400 text-amber-400"
+                  />
                 ))}
               </div>
-              <p className="flex-1 text-[#174D38]/80 text-sm leading-relaxed">&ldquo;{t.body}&rdquo;</p>
+              <p className="flex-1 text-[#174D38]/80 text-sm leading-relaxed">
+                &ldquo;{t.body}&rdquo;
+              </p>
               <div className="flex items-center gap-3 border-t border-[#CBCBCB] pt-4">
                 <Avatar className="size-8">
-                  <AvatarFallback className="bg-[#4D1717]/25 text-[#174D38] text-xs">{t.initials}</AvatarFallback>
+                  <AvatarFallback className="bg-[#4D1717]/25 text-[#174D38] text-xs">
+                    {t.initials}
+                  </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="font-semibold text-[#174D38] text-sm">{t.name}</p>
+                  <p className="font-semibold text-[#174D38] text-sm">
+                    {t.name}
+                  </p>
                   <p className="text-[#6b7280] text-xs">{t.role}</p>
                 </div>
               </div>
@@ -1004,7 +1437,7 @@ function FaqItem({
         </span>
         <div
           className={cn(
-            "relative ml-6 h-4 w-4 shrink-0 transition-transform duration-300 ease-out md:h-6 md:w-6",
+            "relative ml-6 h-5 w-5 shrink-0 transition-transform duration-300 ease-out",
             isOpen ? "rotate-45" : "rotate-0",
           )}
         >
@@ -1047,7 +1480,9 @@ function FaqSection() {
       <div className="mx-auto max-w-2xl px-6">
         <Animate className="mb-12 text-center">
           <SectionLabel className="mb-4">FAQ</SectionLabel>
-          <h2 className="mt-4 text-3xl font-bold tracking-tight text-[#174D38]">Common questions</h2>
+          <h2 className="mt-4 text-3xl font-bold tracking-tight text-[#174D38]">
+            Common questions
+          </h2>
           <p className="mt-2 text-[#6b7280]">
             {"Can't find an answer? "}
             <a
@@ -1083,7 +1518,10 @@ function CtaBanner() {
         <Animate>
           <div
             className="relative overflow-hidden rounded-2xl px-8 py-16 text-center text-white"
-            style={{ background: "linear-gradient(135deg, #174D38 0%, #174D38 50%, #174D38 100%)" }}
+            style={{
+              background:
+                "linear-gradient(135deg, #174D38 0%, #174D38 50%, #174D38 100%)",
+            }}
           >
             <div className="pointer-events-none absolute -top-16 -left-16 size-64 rounded-full bg-white/10 blur-3xl" />
             <div className="pointer-events-none absolute -right-16 -bottom-16 size-64 rounded-full bg-white/10 blur-3xl" />
@@ -1096,9 +1534,12 @@ function CtaBanner() {
               }}
             />
             <div className="relative">
-              <h2 className="mb-3 text-3xl font-bold">Ready to get your team organised?</h2>
+              <h2 className="mb-3 text-3xl font-bold">
+                Ready to get your team organised?
+              </h2>
               <p className="mb-8 text-lg text-white/75">
-                Free for your whole team. Sign up in seconds — no credit card, no setup fees.
+                Free for your whole team. Sign up in seconds — no credit card,
+                no setup fees.
               </p>
               <Button
                 size="lg"
@@ -1109,7 +1550,9 @@ function CtaBanner() {
                   Start for free <ArrowRight className="ml-1.5 size-4" />
                 </Link>
               </Button>
-              <p className="mt-4 text-sm text-white/50">Magic link sign-in · No passwords</p>
+              <p className="mt-4 text-sm text-white/50">
+                Magic link sign-in · No passwords
+              </p>
             </div>
           </div>
         </Animate>
@@ -1124,38 +1567,113 @@ function Footer() {
       <div className="mx-auto max-w-6xl px-6 py-10">
         <div className="grid gap-8 sm:grid-cols-4">
           <div className="sm:col-span-1">
-            <span className="font-bold text-base text-[#174D38]">{PRODUCT_NAME}</span>
+            <span className="flex items-center gap-2 font-bold text-base text-[#174D38]">
+              <Image
+                src="/width_497.png"
+                alt={`${PRODUCT_NAME} Logo`}
+                width={24}
+                height={24}
+                className="rounded"
+              />
+              {PRODUCT_NAME}
+            </span>
             <p className="mt-2 text-[#6b7280] text-xs leading-relaxed">
-              Free project management for modern teams. Workspaces, Spaces, Lists, and Tasks.
+              Free project management for modern teams. Workspaces, Spaces,
+              Lists, and Tasks.
             </p>
           </div>
           <div>
-            <p className="mb-3 font-semibold text-[#9ca3af] text-xs uppercase tracking-wide">Product</p>
+            <p className="mb-3 font-semibold text-[#9ca3af] text-xs uppercase tracking-wide">
+              Product
+            </p>
             <ul className="space-y-2 text-[#6b7280] text-sm">
-              <li><a href="#features" className="transition-colors hover:text-[#174D38]">Features</a></li>
-              <li><a href="#why" className="transition-colors hover:text-[#174D38]">Why us</a></li>
-              <li><a href="#how-it-works" className="transition-colors hover:text-[#174D38]">How it works</a></li>
-              <li><a href="#faq" className="transition-colors hover:text-[#174D38]">FAQ</a></li>
+              <li>
+                <a
+                  href="#features"
+                  className="transition-colors hover:text-[#174D38]"
+                >
+                  Features
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#why"
+                  className="transition-colors hover:text-[#174D38]"
+                >
+                  Why us
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#how-it-works"
+                  className="transition-colors hover:text-[#174D38]"
+                >
+                  How it works
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#faq"
+                  className="transition-colors hover:text-[#174D38]"
+                >
+                  FAQ
+                </a>
+              </li>
             </ul>
           </div>
           <div>
-            <p className="mb-3 font-semibold text-[#9ca3af] text-xs uppercase tracking-wide">Get started</p>
+            <p className="mb-3 font-semibold text-[#9ca3af] text-xs uppercase tracking-wide">
+              Get started
+            </p>
             <ul className="space-y-2 text-[#6b7280] text-sm">
-              <li><Link href="/login" className="transition-colors hover:text-[#174D38]">Sign in</Link></li>
-              <li><Link href="/login" className="transition-colors hover:text-[#174D38]">Create an account</Link></li>
+              <li>
+                <Link
+                  href="/login"
+                  className="transition-colors hover:text-[#174D38]"
+                >
+                  Sign in
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/login"
+                  className="transition-colors hover:text-[#174D38]"
+                >
+                  Create an account
+                </Link>
+              </li>
             </ul>
           </div>
           <div>
-            <p className="mb-3 font-semibold text-[#9ca3af] text-xs uppercase tracking-wide">Company</p>
+            <p className="mb-3 font-semibold text-[#9ca3af] text-xs uppercase tracking-wide">
+              Company
+            </p>
             <ul className="space-y-2 text-[#6b7280] text-sm">
-              <li><a href="#faq" className="transition-colors hover:text-[#174D38]">FAQ</a></li>
-              <li><a href={`mailto:${SUPPORT_EMAIL}`} className="transition-colors hover:text-[#174D38]">Contact support</a></li>
+              <li>
+                <a
+                  href="#faq"
+                  className="transition-colors hover:text-[#174D38]"
+                >
+                  FAQ
+                </a>
+              </li>
+              <li>
+                <a
+                  href={`mailto:${SUPPORT_EMAIL}`}
+                  className="transition-colors hover:text-[#174D38]"
+                >
+                  Contact support
+                </a>
+              </li>
             </ul>
           </div>
         </div>
         <Separator className="my-8" />
         <div className="flex flex-col items-center justify-between gap-3 text-[#9ca3af] text-xs sm:flex-row">
-          <p>&copy; {new Date().getFullYear()} {PRODUCT_NAME}. All rights reserved.</p>
+          <p>
+            &copy; {new Date().getFullYear()} {PRODUCT_NAME}. All rights
+            reserved.
+          </p>
           <p>Free for every team · Magic link sign-in</p>
         </div>
       </div>

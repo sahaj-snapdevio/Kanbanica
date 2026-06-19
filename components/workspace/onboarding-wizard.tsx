@@ -1,16 +1,42 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { ArrowRightIcon, BuildingsIcon, StackIcon, UserIcon } from "@phosphor-icons/react";
+import {
+  ArrowRightIcon,
+  BuildingsIcon,
+  StackIcon,
+  UserIcon,
+} from "@phosphor-icons/react";
 import { toast } from "sonner";
-import { createOnboardingWorkspace, createOnboardingSpace, saveUserName } from "@/app/actions/onboarding";
+import {
+  createOnboardingWorkspace,
+  createOnboardingSpace,
+  saveUserName,
+} from "@/app/actions/onboarding";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
-const LOGO_EMOJIS = ["🚀", "🏢", "⭐", "🎯", "💼", "🔥", "🛠️", "📈", "🎨", "🌱"];
+const LOGO_EMOJIS = [
+  "🚀",
+  "🏢",
+  "⭐",
+  "🎯",
+  "💼",
+  "🔥",
+  "🛠️",
+  "📈",
+  "🎨",
+  "🌱",
+];
 
 const SPACE_COLORS = [
   "#6366F1",
@@ -29,7 +55,10 @@ interface OnboardingWizardProps {
   userName: string;
 }
 
-export function OnboardingWizard({ existingWorkspace, userName }: OnboardingWizardProps) {
+export function OnboardingWizard({
+  existingWorkspace,
+  userName,
+}: OnboardingWizardProps) {
   // Step 0 = collect name (only if blank), Step 1 = workspace, Step 2 = space
   const needsName = !userName.trim();
   const [step, setStep] = useState<"name" | "workspace" | "space">(
@@ -50,7 +79,10 @@ export function OnboardingWizard({ existingWorkspace, userName }: OnboardingWiza
     e.preventDefault();
     startTransition(async () => {
       const result = await saveUserName(displayName);
-      if ("error" in result) { toast.error(result.error); return; }
+      if ("error" in result) {
+        toast.error(result.error);
+        return;
+      }
       setStep("workspace");
     });
   }
@@ -58,8 +90,14 @@ export function OnboardingWizard({ existingWorkspace, userName }: OnboardingWiza
   function handleCreateWorkspace(e: React.FormEvent) {
     e.preventDefault();
     startTransition(async () => {
-      const result = await createOnboardingWorkspace({ name: workspaceName, logoEmoji });
-      if ("error" in result) { toast.error(result.error); return; }
+      const result = await createOnboardingWorkspace({
+        name: workspaceName,
+        logoEmoji,
+      });
+      if ("error" in result) {
+        toast.error(result.error);
+        return;
+      }
       setWorkspaceState({ id: result.workspaceId, name: workspaceName.trim() });
       setStep("space");
     });
@@ -129,8 +167,8 @@ export function OnboardingWizard({ existingWorkspace, userName }: OnboardingWiza
           </div>
           <CardTitle className="text-xl">Create your Workspace</CardTitle>
           <CardDescription>
-            Your Workspace is your company or team's home. Everything your team works on lives
-            here.
+            Your Workspace is your company or team's home. Everything your team
+            works on lives here.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -151,7 +189,9 @@ export function OnboardingWizard({ existingWorkspace, userName }: OnboardingWiza
             <div className="space-y-2">
               <Label>
                 Logo{" "}
-                <span className="font-normal text-muted-foreground">(optional)</span>
+                <span className="font-normal text-muted-foreground">
+                  (optional)
+                </span>
               </Label>
               <div className="flex flex-wrap gap-1.5">
                 {LOGO_EMOJIS.map((emoji) => (
@@ -159,7 +199,9 @@ export function OnboardingWizard({ existingWorkspace, userName }: OnboardingWiza
                     key={emoji}
                     type="button"
                     aria-pressed={logoEmoji === emoji}
-                    onClick={() => setLogoEmoji(logoEmoji === emoji ? null : emoji)}
+                    onClick={() =>
+                      setLogoEmoji(logoEmoji === emoji ? null : emoji)
+                    }
                     className={cn(
                       "flex h-9 w-9 items-center justify-center rounded-lg border text-lg transition-colors hover:bg-accent",
                       logoEmoji === emoji && "border-primary bg-primary/10",
@@ -194,8 +236,8 @@ export function OnboardingWizard({ existingWorkspace, userName }: OnboardingWiza
         </div>
         <CardTitle className="text-xl">Create your first Space</CardTitle>
         <CardDescription>
-          A Space is where your team's work lives — like a department or project area. You can
-          create more later.
+          A Space is where your team's work lives — like a department or project
+          area. You can create more later.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -224,7 +266,9 @@ export function OnboardingWizard({ existingWorkspace, userName }: OnboardingWiza
                   onClick={() => setSpaceColor(color)}
                   className={cn(
                     "h-7 w-7 rounded-full border-2 transition-transform hover:scale-110",
-                    spaceColor === color ? "border-foreground scale-110" : "border-transparent",
+                    spaceColor === color
+                      ? "border-foreground scale-110"
+                      : "border-transparent",
                   )}
                   style={{ backgroundColor: color }}
                 />
