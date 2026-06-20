@@ -886,7 +886,7 @@ export async function bulkMoveTasksToSprint(
   for (const taskId of taskIds) {
     // Find existing active/planned assignment (if any)
     const existing = await db
-      .select({ id: taskSprint.id, sprintId: taskSprint.sprintId })
+      .select({ taskId: taskSprint.taskId, sprintId: taskSprint.sprintId })
       .from(taskSprint)
       .innerJoin(sprint, eq(taskSprint.sprintId, sprint.id))
       .where(

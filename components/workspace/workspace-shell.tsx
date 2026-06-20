@@ -7,6 +7,7 @@ import {
   ArchiveIcon,
   BellIcon,
   CaretUpDownIcon,
+  ChatCircleIcon,
   CheckCircleIcon,
   CheckIcon,
   CopyIcon,
@@ -14,6 +15,7 @@ import {
   FolderIcon,
   GearIcon,
   TrayIcon,
+  HashIcon,
   ListIcon,
   LockSimpleIcon,
   MagnifyingGlassIcon,
@@ -21,6 +23,7 @@ import {
   PlusIcon,
   SignOutIcon,
   TrashIcon,
+  UserPlusIcon,
   XIcon,
 } from "@phosphor-icons/react";
 import useSWR from "swr";
@@ -41,6 +44,8 @@ import { DeleteListDialog } from "@/components/list/delete-list-dialog";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { PushNotificationBanner } from "@/components/notifications/push-notification-banner";
 import { usePushSubscription } from "@/hooks/use-push-subscription";
+import { CreateChannelModal } from "@/components/channel/create-channel-modal";
+import { AddChannelMemberModal } from "@/components/channel/add-channel-member-modal";
 
 interface WorkspaceSummary {
   id: string;
@@ -64,11 +69,18 @@ interface SpaceSummary {
   lists: ListSummary[];
 }
 
+interface ChannelSummary {
+  id: string;
+  name: string;
+  createdAt: Date;
+}
+
 interface WorkspaceShellProps {
   children: React.ReactNode;
   workspace: WorkspaceSummary;
   workspaces: WorkspaceSummary[];
   spaces: SpaceSummary[];
+  channels: ChannelSummary[];
   role: string;
   user: { name: string | null; email: string };
 }
@@ -82,6 +94,7 @@ export function WorkspaceShell({
   workspace,
   workspaces,
   spaces,
+  channels,
   role,
   user,
 }: WorkspaceShellProps) {
@@ -94,6 +107,8 @@ export function WorkspaceShell({
   const [createListForSpace, setCreateListForSpace] = React.useState<{ spaceId: string } | null>(null);
   const [editList, setEditList] = React.useState<{ spaceId: string; list: ListSummary } | null>(null);
   const [deleteList, setDeleteList] = React.useState<{ spaceId: string; list: ListSummary } | null>(null);
+  const [createChannelOpen, setCreateChannelOpen] = React.useState(false);
+  const [addMemberChannel, setAddMemberChannel] = React.useState<{ id: string; name: string } | null>(null);
 
   // Auto-subscribe to push notifications if permission was already granted
   usePushSubscription();
@@ -172,6 +187,22 @@ export function WorkspaceShell({
           workspaceId={workspace.id}
           spaceId={deleteList.spaceId}
           list={deleteList.list}
+        />
+      )}
+
+      <CreateChannelModal
+        open={createChannelOpen}
+        onOpenChange={setCreateChannelOpen}
+        workspaceId={workspace.id}
+      />
+
+      {addMemberChannel && (
+        <AddChannelMemberModal
+          open
+          onOpenChange={(open) => !open && setAddMemberChannel(null)}
+          workspaceId={workspace.id}
+          channelId={addMemberChannel.id}
+          existingMemberIds={[]}
         />
       )}
 
@@ -499,6 +530,67 @@ export function WorkspaceShell({
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* Channels section */}
+          <div>
+            <div className="flex items-center px-2 pb-1">
+              <p className="flex-1 font-medium text-muted-foreground text-xs uppercase tracking-wide">
+                Channels
+              </p>
+              <button
+                onClick={() => setAddMemberChannel(channels[0] ? { id: channels[0].id, name: channels[0].name } : null)}
+                className="flex size-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                title="Add Member"
+                disabled={channels.length === 0}
+              >
+                <UserPlusIcon className="size-3.5" />
+              </button>
+              <button
+                onClick={() => setCreateChannelOpen(true)}
+                className="flex size-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                title="Create Channel"
+              >
+                <PlusIcon className="size-3.5" />
+              </button>
+            </div>
+            <div className="space-y-0.5">
+              {channels.map((ch) => {
+                const href = `/${workspace.id}/channel/${ch.id}`;
+                const active = pathname === href;
+                return (
+                  <div key={ch.id} className="group/channel relative flex items-center">
+                    <Link
+                      href={href}
+                      onClick={() => setSidebarOpen(false)}
+                      className={cn(
+                        "flex flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
+                        active
+                          ? "bg-accent font-medium text-accent-foreground"
+                          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                      )}
+                    >
+                      <HashIcon className="size-4 shrink-0" weight="bold" />
+                      <span className="truncate">{ch.name}</span>
+                    </Link>
+                    <button
+                      onClick={() => setAddMemberChannel({ id: ch.id, name: ch.name })}
+                      className="absolute right-1 opacity-0 transition-opacity group-hover/channel:opacity-100 flex size-5 items-center justify-center rounded hover:bg-accent"
+                      title="Add members"
+                    >
+                      <UserPlusIcon className="size-3.5 text-muted-foreground" />
+                    </button>
+                  </div>
+                );
+              })}
+              <button
+                onClick={() => setCreateChannelOpen(true)}
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <PlusIcon className="size-3" />
+                Add Channel
+              </button>
             </div>
           </div>
         </nav>
