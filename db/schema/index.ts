@@ -13,3 +13,4 @@ export * from "@/db/schema/collaboration";
 export * from "@/db/schema/notification";
 export * from "@/db/schema/search";
 export * from "@/db/schema/support";
+export * from "@/db/schema/channel";

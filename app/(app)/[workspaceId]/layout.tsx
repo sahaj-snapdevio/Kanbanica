@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";
 import {
+  channel,
   list,
   space,
   spaceMember,
@@ -39,7 +40,7 @@ export default async function WorkspaceLayout({
     notFound();
   }
 
-  const [ws, allMemberships, spaceIds] = await Promise.all([
+  const [ws, allMemberships, spaceIds, channels] = await Promise.all([
     db
       .select({
         id: workspace.id,
@@ -69,6 +70,15 @@ export default async function WorkspaceLayout({
       )
       .orderBy(asc(workspaceMember.createdAt)),
     getAccessibleSpaceIds(userId, workspaceId),
+    db
+      .select({
+        id: channel.id,
+        name: channel.name,
+        createdAt: channel.createdAt,
+      })
+      .from(channel)
+      .where(eq(channel.workspaceId, workspaceId))
+      .orderBy(asc(channel.createdAt)),
   ]);
 
   if (!ws) {
@@ -174,6 +184,7 @@ export default async function WorkspaceLayout({
           lists: spaceListMap[s.id] ?? [],
           canManageList: spaceCanManageMap[s.id] ?? isAdminOrOwner,
         }))}
+        channels={channels}
         user={{ name: session.user.name ?? null, email: session.user.email }}
         workspace={ws}
         workspaces={allMemberships.map((m) => ({

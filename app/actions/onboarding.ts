@@ -210,8 +210,11 @@ export async function createOnboardingSpace(input: {
       await tx.insert(taskAssignee).values({ taskId, userId: user.id });
 
       const tagId = createId();
-      await tx.insert(tag).values({ id: tagId, workspaceId, name: "demo", color: "#9CA3AF" });
-      await tx.insert(taskTag).values({ taskId, tagId });
+      const [insertedTag] = await tx.insert(tag).values({ id: tagId, workspaceId, name: "demo", color: "#9CA3AF", createdAt: new Date() }).onConflictDoNothing().returning({ id: tag.id });
+      const finalTagId = insertedTag?.id ?? (await tx.select({ id: tag.id }).from(tag).where(and(eq(tag.workspaceId, workspaceId), eq(tag.name, "demo"))).limit(1).then(r => r[0]?.id));
+      if (finalTagId) {
+        await tx.insert(taskTag).values({ taskId, tagId: finalTagId }).onConflictDoNothing();
+      }
     }
   });
 
