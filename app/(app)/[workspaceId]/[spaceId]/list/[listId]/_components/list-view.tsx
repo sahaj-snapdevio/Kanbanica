@@ -28,6 +28,7 @@ import {
   deleteTask,
   duplicateTask,
   getWorkspaceMembers,
+  unarchiveTask,
   updateTask,
 } from "@/app/actions/task";
 import { addAssignee, removeAssignee } from "@/app/actions/task-assignee";
@@ -77,6 +78,8 @@ interface ListViewProps {
   statuses: Status[];
   tasks: Task[];
   isAdmin?: boolean;
+  archivedTasks?: { id: string; title: string; seqNumber: number }[];
+  onArchivedChanged?: () => Promise<void>;
 }
 
 type WorkspaceMember = { userId: string | null; name: string | null; email: string | null; image: string | null };
@@ -226,7 +229,7 @@ function TaskRow({
       <div className="w-36 shrink-0 px-2 flex items-stretch" onClick={(e) => e.stopPropagation()}>
         <Popover open={assigneeOpen} onOpenChange={(o) => { setAssigneeOpen(o); if (o) void loadMembers(); }}>
           <PopoverTrigger asChild>
-            <button className="flex flex-1 items-center gap-2 rounded px-2 py-2.5 hover:bg-accent transition-colors text-left">
+            <button className="flex flex-1 items-center gap-2 rounded px-2 py-2.5 hover:bg-accent transition-colors text-left cursor-pointer">
               {task.assignees.length > 0 ? (
                 <div className="flex -space-x-1.5">
                   {task.assignees.slice(0, 3).map((a) => (
@@ -295,7 +298,7 @@ function TaskRow({
         <Popover open={dateOpen} onOpenChange={setDateOpen}>
           <PopoverTrigger asChild>
             <button className={cn(
-              "flex flex-1 items-center gap-1.5 rounded px-2 py-2.5 text-sm font-medium hover:bg-accent transition-colors",
+              "flex flex-1 items-center gap-1.5 rounded px-2 py-2.5 text-sm font-medium hover:bg-accent transition-colors cursor-pointer",
               dueDate?.overdue ? "text-red-500" : "text-muted-foreground",
             )}>
               {dueDate ? dueDate.label : <CalendarBlankIcon className="size-4 text-muted-foreground/30" />}
@@ -337,7 +340,7 @@ function TaskRow({
       <div className="w-28 shrink-0 px-2 flex items-stretch" onClick={(e) => e.stopPropagation()}>
         <Popover open={priorityOpen} onOpenChange={setPriorityOpen}>
           <PopoverTrigger asChild>
-            <button className="flex flex-1 items-center gap-1.5 rounded px-2 py-2.5 hover:bg-accent transition-colors">
+            <button className="flex flex-1 items-center gap-1.5 rounded px-2 py-2.5 hover:bg-accent transition-colors cursor-pointer">
               {task.priority !== "NONE" ? (
                 <span className={cn("flex items-center gap-1.5 text-sm font-medium", priority.color)}>
                   <FlagIcon className="size-4 shrink-0" weight="fill" />
@@ -562,7 +565,7 @@ function StatusGroup({
       {!collapsed && (
         <div>
           {/* Column headers row */}
-          <div className="flex items-center border-y border-border bg-muted/40">
+          <div className="flex items-center">
             {/* Select-all checkbox */}
             <div
               className="flex w-10 shrink-0 items-center justify-center py-2 pl-3 cursor-pointer"
@@ -906,6 +909,8 @@ export function ListView({
   statuses,
   tasks,
   isAdmin,
+  archivedTasks,
+  onArchivedChanged,
 }: ListViewProps) {
   const [createForStatusId, setCreateForStatusId] = React.useState<string | null>(null);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
@@ -958,6 +963,35 @@ export function ListView({
             />
           ))}
         </div>
+
+        {/* Archived tasks section */}
+        {archivedTasks && archivedTasks.length > 0 && (
+          <div className="mt-4 border rounded-md overflow-hidden">
+            <div className="flex items-center gap-2 px-4 py-2.5 bg-muted/30 text-sm font-medium text-muted-foreground">
+              <ArchiveIcon className="size-4" />
+              Archived ({archivedTasks.length})
+            </div>
+            {archivedTasks.map((t) => (
+              <div
+                key={t.id}
+                className="group flex items-center gap-3 border-t px-4 py-2.5 hover:bg-accent/30 transition-colors"
+              >
+                <span className="text-xs text-muted-foreground/50 font-mono shrink-0">#{t.seqNumber}</span>
+                <span className="flex-1 text-sm text-muted-foreground line-through truncate">{t.title}</span>
+                <button
+                  onClick={async () => {
+                    await unarchiveTask(workspaceId, spaceId, listId, t.id);
+                    await onArchivedChanged?.();
+                  }}
+                  className="hidden group-hover:flex items-center gap-1.5 rounded px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                >
+                  <ArchiveIcon className="size-3.5" />
+                  Unarchive
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {selectedIds.size > 0 && (

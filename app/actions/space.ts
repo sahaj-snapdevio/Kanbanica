@@ -138,6 +138,25 @@ export async function archiveSpace(
   return { ok: true };
 }
 
+export async function unarchiveSpace(
+  workspaceId: string,
+  spaceId: string,
+): Promise<{ ok: true } | { error: string }> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return { error: "Unauthorized" };
+
+  const admin = await requireWorkspaceAdmin(session.user.id, workspaceId);
+  if (!admin) return { error: "Only Admin and Owner can unarchive Spaces" };
+
+  await db
+    .update(space)
+    .set({ isArchived: false, archivedAt: null, updatedAt: new Date() })
+    .where(and(eq(space.id, spaceId), eq(space.workspaceId, workspaceId)));
+
+  revalidatePath(`/${workspaceId}`, "layout");
+  return { ok: true };
+}
+
 export async function deleteSpace(
   workspaceId: string,
   spaceId: string,

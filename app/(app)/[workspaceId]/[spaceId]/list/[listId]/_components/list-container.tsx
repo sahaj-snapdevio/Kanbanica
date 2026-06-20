@@ -18,6 +18,7 @@ import {
   TrashIcon,
 } from "@phosphor-icons/react";
 import { archiveList, duplicateList } from "@/app/actions/list";
+import { getArchivedTasksForList } from "@/app/actions/task";
 import { EditListDialog } from "@/components/list/edit-list-dialog";
 import { DeleteListDialog } from "@/components/list/delete-list-dialog";
 import { StatusSettingsPanel } from "@/components/list/status-settings-panel";
@@ -109,6 +110,19 @@ export function ListContainer({
   const [createOpen, setCreateOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<FilterState>({});
+  const [showArchived, setShowArchived] = React.useState(false);
+  const [archivedTasks, setArchivedTasks] = React.useState<{ id: string; title: string; seqNumber: number }[]>([]);
+  const [archivedLoading, setArchivedLoading] = React.useState(false);
+
+  async function handleToggleArchived() {
+    if (!showArchived && archivedTasks.length === 0) {
+      setArchivedLoading(true);
+      const result = await getArchivedTasksForList(workspaceId, space.id, list.id);
+      if (!("error" in result)) setArchivedTasks(result.tasks);
+      setArchivedLoading(false);
+    }
+    setShowArchived(v => !v);
+  }
 
   const filteredTasks = tasks.filter((t) => {
     if (search.trim() && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
@@ -263,6 +277,20 @@ export function ListContainer({
           />
         </div>
 
+        {/* Show archived toggle */}
+        <button
+          onClick={() => void handleToggleArchived()}
+          className={cn(
+            "flex items-center gap-1.5 h-8 rounded-md border px-3 text-xs font-medium transition-colors shrink-0",
+            showArchived
+              ? "border-primary/40 bg-primary/10 text-primary"
+              : "border-border text-muted-foreground hover:bg-accent hover:text-foreground",
+          )}
+        >
+          <ArchiveIcon className="size-3.5" />
+          {archivedLoading ? "Loading…" : showArchived ? "Hide archived" : "Show archived"}
+        </button>
+
         {/* Add Task button */}
         <button
           onClick={() => setCreateOpen(true)}
@@ -296,6 +324,11 @@ export function ListContainer({
           statuses={statuses}
           tasks={filteredTasks}
           isAdmin={isAdmin}
+          archivedTasks={showArchived ? archivedTasks : []}
+          onArchivedChanged={async () => {
+            const result = await getArchivedTasksForList(workspaceId, space.id, list.id);
+            if (!("error" in result)) setArchivedTasks(result.tasks);
+          }}
         />
       )}
       {!showBoardSkeleton && view === "board" && (

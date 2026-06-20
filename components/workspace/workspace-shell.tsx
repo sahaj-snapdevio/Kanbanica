@@ -14,6 +14,7 @@ import {
   DotsThreeIcon,
   FolderIcon,
   GearIcon,
+  HeadsetIcon,
   TrayIcon,
   HashIcon,
   ListIcon,
@@ -28,8 +29,8 @@ import {
 } from "@phosphor-icons/react";
 import useSWR from "swr";
 import { SearchPalette } from "@/components/search/search-palette";
-import { archiveSpace, deleteSpace } from "@/app/actions/space";
-import { archiveList, duplicateList } from "@/app/actions/list";
+import { archiveSpace, deleteSpace, unarchiveSpace } from "@/app/actions/space";
+import { archiveList, duplicateList, unarchiveList } from "@/app/actions/list";
 import { SpaceActionDialog } from "@/components/workspace/space-action-dialog";
 import { authClient } from "@/lib/auth-client";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -67,6 +68,7 @@ interface SpaceSummary {
   isPrivate: boolean;
   canManageList: boolean;
   lists: ListSummary[];
+  archivedLists: ListSummary[];
 }
 
 interface ChannelSummary {
@@ -80,6 +82,7 @@ interface WorkspaceShellProps {
   workspace: WorkspaceSummary;
   workspaces: WorkspaceSummary[];
   spaces: SpaceSummary[];
+  archivedSpaces: SpaceSummary[];
   channels: ChannelSummary[];
   role: string;
   user: { name: string | null; email: string };
@@ -94,6 +97,7 @@ export function WorkspaceShell({
   workspace,
   workspaces,
   spaces,
+  archivedSpaces,
   channels,
   role,
   user,
@@ -130,6 +134,8 @@ export function WorkspaceShell({
     : user.email.slice(0, 2).toUpperCase();
   const displayName = user.name || user.email;
   const isAdmin = role === "OWNER" || role === "ADMIN";
+  const [expandedArchivedLists, setExpandedArchivedLists] = React.useState<Set<string>>(new Set());
+  const [showArchivedSpaces, setShowArchivedSpaces] = React.useState(false);
 
   // Ctrl+K / Cmd+K shortcut
   React.useEffect(() => {
@@ -324,6 +330,12 @@ export function WorkspaceShell({
                 href: `/${workspace.id}/my-tasks`,
                 label: "My Tasks",
                 icon: <CheckCircleIcon className="size-4 shrink-0" weight="fill" />,
+                badge: null,
+              },
+              {
+                href: `/${workspace.id}/support`,
+                label: "Support",
+                icon: <HeadsetIcon className="size-4 shrink-0" weight="fill" />,
                 badge: null,
               },
             ].map(({ href, label, icon, badge }) => {
@@ -527,11 +539,70 @@ export function WorkspaceShell({
                         Add list
                       </button>
                     )}
+                    {s.archivedLists.length > 0 && (
+                      <button
+                        onClick={() => setExpandedArchivedLists(prev => {
+                          const next = new Set(prev);
+                          next.has(s.id) ? next.delete(s.id) : next.add(s.id);
+                          return next;
+                        })}
+                        className="flex items-center gap-1.5 pl-6 pr-2 py-1 text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors w-full"
+                      >
+                        <ArchiveIcon className="size-3" />
+                        {expandedArchivedLists.has(s.id) ? "Hide" : `${s.archivedLists.length} archived`}
+                      </button>
+                    )}
+                    {expandedArchivedLists.has(s.id) && s.archivedLists.map((l) => (
+                      <div key={l.id} className="group flex items-center gap-2 pl-6 pr-2 py-1 text-xs text-muted-foreground/50">
+                        <ArchiveIcon className="size-3 shrink-0" />
+                        <span className="flex-1 truncate italic">{l.name}</span>
+                        {s.canManageList && (
+                          <button
+                            onClick={async () => { await unarchiveList(workspace.id, s.id, l.id); }}
+                            className="hidden group-hover:block text-[10px] px-1.5 py-0.5 rounded bg-accent hover:bg-accent/80 text-muted-foreground"
+                          >
+                            Unarchive
+                          </button>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
             </div>
           </div>
+
+          {archivedSpaces.length > 0 && (
+            <div>
+              <button
+                onClick={() => setShowArchivedSpaces(v => !v)}
+                className="flex items-center gap-1.5 px-2 pb-1 text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors w-full"
+              >
+                <ArchiveIcon className="size-3" />
+                <span className="flex-1 text-left uppercase tracking-wide font-medium">
+                  {showArchivedSpaces ? "Hide archived spaces" : `Archived spaces (${archivedSpaces.length})`}
+                </span>
+              </button>
+              {showArchivedSpaces && (
+                <div className="space-y-0.5">
+                  {archivedSpaces.map((s) => (
+                    <div key={s.id} className="group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground/50">
+                      <FolderIcon className="size-4 shrink-0" weight="fill" style={{ color: s.color ?? "#9CA3AF" }} />
+                      <span className="flex-1 truncate italic">{s.name}</span>
+                      {isAdmin && (
+                        <button
+                          onClick={async () => { await unarchiveSpace(workspace.id, s.id); }}
+                          className="hidden group-hover:block text-xs px-1.5 py-0.5 rounded bg-accent hover:bg-accent/80 text-muted-foreground"
+                        >
+                          Unarchive
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Channels section */}
           <div>

@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createId } from "@paralleldrive/cuid2";
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import {
@@ -1011,4 +1011,46 @@ export async function bulkMoveTasks(
 
   revalidatePath(`/${workspaceId}`);
   return { ok: true, moved };
+}
+
+// ─── Get task location (spaceId + listId) for inbox navigation ───────────────
+
+export async function getTaskLocation(
+  workspaceId: string,
+  taskId: string,
+): Promise<{ spaceId: string; listId: string } | { error: string }> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return { error: "Unauthorized" };
+
+  const [row] = await db
+    .select({ listId: task.listId, spaceId: list.spaceId })
+    .from(task)
+    .innerJoin(list, eq(task.listId, list.id))
+    .where(and(eq(task.id, taskId), eq(task.workspaceId, workspaceId)))
+    .limit(1);
+
+  if (!row) return { error: "Task not found" };
+  return { spaceId: row.spaceId, listId: row.listId };
+}
+
+// ─── Get archived tasks for list ──────────────────────────────────────────────
+
+export async function getArchivedTasksForList(
+  workspaceId: string,
+  spaceId: string,
+  listId: string,
+): Promise<{ tasks: { id: string; title: string; seqNumber: number }[] } | { error: string }> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return { error: "Unauthorized" };
+
+  const permErr = await requireViewAccess(session.user.id, workspaceId, spaceId);
+  if (permErr) return permErr;
+
+  const tasks = await db
+    .select({ id: task.id, title: task.title, seqNumber: task.seqNumber })
+    .from(task)
+    .where(and(eq(task.listId, listId), eq(task.isArchived, true), isNull(task.parentTaskId)))
+    .orderBy(asc(task.orderIndex));
+
+  return { tasks };
 }
