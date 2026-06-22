@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useState, useTransition } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArchiveIcon,
   CaretRightIcon,
@@ -83,6 +83,7 @@ export function ListContainer({
   canEdit,
   isAdmin,
 }: ListContainerProps) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [view, setView] = useState<View>((searchParams.get("view") as View) ?? "list");
   const [pendingView, setPendingView] = useState<View | null>(null);
@@ -190,7 +191,7 @@ export function ListContainer({
                     <CopyIcon className="size-3.5 shrink-0 text-muted-foreground" /> Duplicate
                   </button>
                   <div className="my-1 h-px bg-border" />
-                  <button onClick={async () => { await archiveList(workspaceId, space.id, list.id); }} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+                  <button onClick={async () => { const res = await archiveList(workspaceId, space.id, list.id); if (!("error" in res)) router.push(`/${workspaceId}`); }} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
                     <ArchiveIcon className="size-3.5 shrink-0" /> Archive List
                   </button>
                 </>

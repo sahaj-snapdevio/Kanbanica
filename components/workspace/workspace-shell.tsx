@@ -499,7 +499,8 @@ export function WorkspaceShell({
                                 <div className="my-1 h-px bg-border" />
                                 <button
                                   onClick={async () => {
-                                    await archiveList(workspace.id, s.id, l.id);
+                                    const res = await archiveList(workspace.id, s.id, l.id);
+                                    if (!("error" in res)) router.push(`/${workspace.id}`);
                                   }}
                                   className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                                 >

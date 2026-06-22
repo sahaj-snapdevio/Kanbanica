@@ -1002,12 +1002,11 @@ export function TaskDetailPage({
                     }
                   }}
                   disabled={creatingSubtask}
-                  className="h-8 text-xs"
+                  className="h-8 rounded-lg text-xs"
                 />
                 <Button
                   size="sm"
-                  variant="ghost"
-                  className="h-8 text-xs shrink-0"
+                  className="h-8 rounded-lg text-xs font-semibold shrink-0 px-3"
                   disabled={creatingSubtask || !subtaskInput.trim()}
                   onClick={async () => {
                     if (!subtaskInput.trim()) return;
@@ -1266,12 +1265,11 @@ export function TaskDetailPage({
                       onKeyDown={(e) => {
                         if (e.key === "Enter") handleAddItem(cl.id);
                       }}
-                      className="h-7 text-xs"
+                      className="h-7 rounded-lg text-xs"
                     />
                     <Button
                       size="sm"
-                      variant="ghost"
-                      className="h-7 px-2 text-xs"
+                      className="h-7 rounded-lg px-3 text-xs font-semibold"
                       onClick={() => handleAddItem(cl.id)}
                     >
                       Add
@@ -1314,7 +1312,7 @@ export function TaskDetailPage({
                   placeholder="Search task to depend on…"
                   value={depQuery}
                   onChange={(e) => handleDepSearch(e.target.value)}
-                  className="h-8 text-xs"
+                  className="h-8 rounded-lg text-xs"
                 />
                 {depResults.length > 0 && (
                   <div className="absolute z-10 mt-1 w-full rounded-md border bg-popover shadow-md">
@@ -1340,9 +1338,9 @@ export function TaskDetailPage({
           <div className="flex flex-wrap gap-2">
             {!addingChecklist ? (
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
-                className="text-muted-foreground h-8 text-xs"
+                className="h-8 rounded-lg text-xs font-semibold"
                 onClick={() => setAddingChecklist(true)}
               >
                 <PlusIcon className="size-3.5 mr-1.5" /> Create checklist
@@ -1358,11 +1356,11 @@ export function TaskDetailPage({
                     if (e.key === "Enter") handleAddChecklist();
                     if (e.key === "Escape") setAddingChecklist(false);
                   }}
-                  className="h-7 text-xs w-44"
+                  className="h-7 rounded-lg text-xs w-44"
                 />
                 <Button
                   size="sm"
-                  className="h-7 text-xs"
+                  className="h-7 rounded-lg px-3 text-xs font-semibold"
                   onClick={handleAddChecklist}
                 >
                   Add
@@ -1370,7 +1368,7 @@ export function TaskDetailPage({
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-7 text-xs"
+                  className="h-7 rounded-lg text-xs"
                   onClick={() => setAddingChecklist(false)}
                 >
                   Cancel
@@ -1380,13 +1378,12 @@ export function TaskDetailPage({
 
             {!showDepsSection && dependencies.length === 0 && (
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
-                className="text-muted-foreground h-8 text-xs"
+                className="h-8 rounded-lg text-xs font-semibold"
                 onClick={() => setShowDepsSection(true)}
               >
-                <PlusIcon className="size-3.5 mr-1.5" /> Relate items or add
-                dependencies
+                <PlusIcon className="size-3.5 mr-1.5" /> Relate items or add dependencies
               </Button>
             )}
           </div>
@@ -1403,7 +1400,7 @@ export function TaskDetailPage({
                   placeholder="30"
                   value={timeInput}
                   onChange={(e) => setTimeInput(e.target.value)}
-                  className="h-8 text-xs w-24"
+                  className="h-8 rounded-lg text-xs w-24"
                 />
               </div>
               <div className="flex-1 flex flex-col gap-1.5">
@@ -1414,12 +1411,12 @@ export function TaskDetailPage({
                   placeholder="What did you work on?"
                   value={timeNote}
                   onChange={(e) => setTimeNote(e.target.value)}
-                  className="h-8 text-xs"
+                  className="h-8 rounded-lg text-xs"
                 />
               </div>
               <Button
                 size="sm"
-                className="h-8 text-xs shrink-0"
+                className="h-8 rounded-lg px-3 text-xs font-semibold shrink-0"
                 onClick={handleLogTime}
               >
                 Log
