@@ -11,9 +11,10 @@ Every task must live inside a List. A List lives directly inside a Space.
 **Hierarchy position:**
 ```
 Workspace
-  └── Space
-        └── List       ← you are here
-              └── Task
+  └── Project
+        ├── List       ← you are here
+        │     └── Task
+        └── Sprint (sibling to List — see sprint.md)
 ```
 
 ---
@@ -282,7 +283,6 @@ ListStatus
   - All ActivityLog entries for tasks in this List
   - All ListStatus records for this List
   - All SavedFilters and UserListViewPreferences scoped to this List
-  - All Sprints and TaskSprint records in this List
   - All Notifications referencing tasks in this List
 - The List record itself is deleted — no tombstone.
 

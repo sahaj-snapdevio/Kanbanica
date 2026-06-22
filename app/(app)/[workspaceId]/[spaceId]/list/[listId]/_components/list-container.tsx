@@ -9,7 +9,6 @@ import {
   CopyIcon,
   DotsThreeIcon,
   GearIcon,
-  LightningIcon,
   PencilSimpleIcon,
   RowsIcon,
   SquaresFourIcon,
@@ -23,13 +22,11 @@ import { StatusSettingsPanel } from "@/components/list/status-settings-panel";
 import { CreateTaskModal } from "@/components/task/create-task-modal";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { SprintPanel } from "@/components/sprint/sprint-panel";
-import { SprintListView } from "@/components/sprint/sprint-list-view";
 import { ListView } from "./list-view";
 import { BoardView } from "./board-view";
 import { BoardSkeleton } from "./board-skeleton";
 
-type View = "list" | "board" | "sprint";
+type View = "list" | "board";
 
 interface Status {
   id: string;
@@ -43,7 +40,7 @@ interface Task {
   id: string;
   title: string;
   priority: "NONE" | "LOW" | "MEDIUM" | "HIGH" | "URGENT";
-  statusId: string;
+  statusId: string | null;
   seqNumber: number;
   orderIndex: number;
   dueDateStart: Date | null;
@@ -66,9 +63,8 @@ interface ListContainerProps {
 }
 
 const VIEWS: { key: View; label: string; icon: React.ReactNode }[] = [
-  { key: "list",   label: "List",   icon: <RowsIcon className="size-3.5" /> },
-  { key: "board",  label: "Board",  icon: <SquaresFourIcon className="size-3.5" /> },
-  { key: "sprint", label: "Sprint", icon: <LightningIcon className="size-3.5" weight="fill" /> },
+  { key: "list",  label: "List",  icon: <RowsIcon className="size-3.5" /> },
+  { key: "board", label: "Board", icon: <SquaresFourIcon className="size-3.5" /> },
 ];
 
 export function ListContainer({
@@ -102,7 +98,6 @@ export function ListContainer({
   }
 
   const showBoardSkeleton = isViewPending && pendingView === "board";
-  const [sprintVersion, setSprintVersion] = useState(0);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
@@ -259,27 +254,6 @@ export function ListContainer({
           members={members}
           tags={tags}
         />
-      )}
-      {!showBoardSkeleton && view === "sprint" && (
-        <>
-          <SprintPanel
-            workspaceId={workspaceId}
-            spaceId={space.id}
-            listId={list.id}
-            onDataChanged={() => setSprintVersion((v) => v + 1)}
-          />
-          <SprintListView
-            key={sprintVersion}
-            workspaceId={workspaceId}
-            spaceId={space.id}
-            listId={list.id}
-            statuses={statuses}
-            isAdmin={isAdmin}
-            canEdit={canEdit}
-            members={members}
-            tags={tags}
-          />
-        </>
       )}
     </div>
   );

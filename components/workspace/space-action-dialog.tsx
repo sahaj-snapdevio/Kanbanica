@@ -26,14 +26,14 @@ interface SpaceActionDialogProps {
 const CONFIG = {
   archive: {
     title: (name: string) => `Archive "${name}"?`,
-    description: "The Space will be hidden from the sidebar. All data is preserved and can be restored from Settings at any time.",
+    description: "The Project will be hidden from the sidebar. All data is preserved and can be restored from Settings at any time.",
     confirmLabel: "Archive",
     buttonVariant: "default" as const,
     successMessage: (name: string) => `"${name}" archived`,
   },
   delete: {
     title: (name: string) => `Delete "${name}"?`,
-    description: "This will permanently delete the Space and all its Lists, Tasks, Comments, and uploaded files. This cannot be undone.",
+    description: "This will permanently delete the Project and all its Lists, Tasks, Comments, and uploaded files. This cannot be undone.",
     confirmLabel: "Delete permanently",
     buttonVariant: "destructive" as const,
     successMessage: (name: string) => `"${name}" deleted`,

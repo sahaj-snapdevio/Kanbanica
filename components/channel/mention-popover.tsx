@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -113,7 +113,7 @@ export function MentionPopover({
             )}
           >
             <Avatar className="size-6 shrink-0">
-              <AvatarFallback className="text-[10px]">{getInitials(m.name)}</AvatarFallback>
+              <AvatarFallback className="text-2xs">{getInitials(m.name)}</AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium">{m.name}</p>

@@ -19,7 +19,7 @@ interface BacklogTask {
   title: string;
   seqNumber: number;
   priority: string | null;
-  statusId: string;
+  statusId: string | null;
   orderIndex: number;
 }
 
@@ -118,7 +118,7 @@ export function AddTasksToSprintModal({
       const ids = Array.from(selected);
       const results = await Promise.all(
         ids.map((taskId) =>
-          addTaskToSprint(workspaceId, spaceId, listId, sprintId, taskId),
+          addTaskToSprint(workspaceId, spaceId, sprintId, taskId),
         ),
       );
       const failed = results.filter((r) => "error" in r);

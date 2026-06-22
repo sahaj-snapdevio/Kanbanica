@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
@@ -395,7 +395,7 @@ export function TaskDetailPanel({
           <div className="flex-1 min-w-0 overflow-y-auto px-6 py-4 space-y-6">
             {/* Status + Priority row */}
             <div className="flex flex-wrap gap-2">
-              <Select value={t.statusId} onValueChange={handleStatusChange}>
+              <Select value={t.statusId ?? undefined} onValueChange={handleStatusChange}>
                 <SelectTrigger className="h-7 w-auto text-xs px-2 gap-1.5">
                   {currentStatus && (
                     <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: currentStatus.color }} />
@@ -642,7 +642,7 @@ export function TaskDetailPanel({
                             className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
                           >
                             <Avatar className="size-6 shrink-0">
-                              <AvatarFallback className="text-[10px]">{userInitials(m.name, m.email)}</AvatarFallback>
+                              <AvatarFallback className="text-2xs">{userInitials(m.name, m.email)}</AvatarFallback>
                             </Avatar>
                             <span className="flex-1 truncate text-left">{m.name || m.email}</span>
                             {isAssigned && <CheckIcon className="size-3.5 text-primary shrink-0" />}
@@ -679,7 +679,7 @@ export function TaskDetailPanel({
               <Label className="text-xs font-medium text-muted-foreground block mb-1.5">Due date</Label>
               <div className="space-y-1">
                 <div>
-                  <p className="text-[10px] text-muted-foreground mb-0.5">Start</p>
+                  <p className="text-2xs text-muted-foreground mb-0.5">Start</p>
                   <Popover open={startCalOpen} onOpenChange={setStartCalOpen}>
                     <PopoverTrigger asChild>
                       <button className="w-full flex items-center rounded-md border bg-background px-2 py-1.5 text-xs hover:bg-accent transition-colors text-left">
@@ -696,7 +696,7 @@ export function TaskDetailPanel({
                   </Popover>
                 </div>
                 <div>
-                  <p className="text-[10px] text-muted-foreground mb-0.5">End</p>
+                  <p className="text-2xs text-muted-foreground mb-0.5">End</p>
                   <Popover open={endCalOpen} onOpenChange={setEndCalOpen}>
                     <PopoverTrigger asChild>
                       <button className="w-full flex items-center rounded-md border bg-background px-2 py-1.5 text-xs hover:bg-accent transition-colors text-left">

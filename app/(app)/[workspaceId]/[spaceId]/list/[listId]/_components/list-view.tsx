@@ -105,7 +105,7 @@ interface Task {
   id: string;
   title: string;
   priority: "NONE" | "LOW" | "MEDIUM" | "HIGH" | "URGENT";
-  statusId: string;
+  statusId: string | null;
   seqNumber: number;
   orderIndex: number;
   dueDateStart: Date | null;
@@ -370,7 +370,7 @@ function TaskRow({
           {task.tags.slice(0, 2).map((tag) => (
             <span
               key={tag.id}
-              className="hidden lg:inline-flex shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide border"
+              className="hidden lg:inline-flex shrink-0 rounded-full px-2 py-0.5 text-2xs font-semibold tracking-wide border"
               style={{ backgroundColor: `${tag.color}10`, color: tag.color, borderColor: `${tag.color}30` }}
             >
               {tag.name}
@@ -392,7 +392,7 @@ function TaskRow({
                             <TooltipTrigger asChild>
                               <Avatar className="size-6 shrink-0 border border-background shadow-sm">
                                 {a.image && <AvatarImage src={a.image} alt={a.name} />}
-                                <AvatarFallback className="text-[10px] bg-primary text-primary-foreground font-semibold">
+                                <AvatarFallback className="text-2xs bg-primary text-primary-foreground font-semibold">
                                   {userInitials(a.name)}
                                 </AvatarFallback>
                               </Avatar>
@@ -403,7 +403,7 @@ function TaskRow({
                           </Tooltip>
                         ))}
                         {task.assignees.length > 3 && (
-                          <div className="flex size-6 items-center justify-center rounded-full border border-background bg-muted text-[10px] text-muted-foreground font-bold shadow-sm">
+                          <div className="flex size-6 items-center justify-center rounded-full border border-background bg-muted text-2xs text-muted-foreground font-bold shadow-sm">
                             +{task.assignees.length - 3}
                           </div>
                         )}
@@ -427,7 +427,7 @@ function TaskRow({
                   <p className="py-2 px-1 text-xs text-muted-foreground">No members found</p>
                 ) : (
                   <div className="max-h-52 overflow-y-auto">
-                    <p className="px-1 pb-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">People</p>
+                    <p className="px-1 pb-1 text-2xs font-semibold text-muted-foreground uppercase tracking-wide">People</p>
                     {filteredMembers.map((m) => {
                       const assigned = task.assignees.some((a) => a.userId === m.userId);
                       return (
@@ -461,13 +461,13 @@ function TaskRow({
                   {task.assignees.slice(0, 3).map((a) => (
                     <Avatar key={a.userId} className="size-6 shrink-0 border border-background shadow-sm">
                       {a.image && <AvatarImage src={a.image} alt={a.name} />}
-                      <AvatarFallback className="text-[10px] bg-primary text-primary-foreground font-semibold">
+                      <AvatarFallback className="text-2xs bg-primary text-primary-foreground font-semibold">
                         {userInitials(a.name)}
                       </AvatarFallback>
                     </Avatar>
                   ))}
                   {task.assignees.length > 3 && (
-                    <div className="flex size-6 items-center justify-center rounded-full border border-background bg-muted text-[10px] text-muted-foreground font-bold shadow-sm">
+                    <div className="flex size-6 items-center justify-center rounded-full border border-background bg-muted text-2xs text-muted-foreground font-bold shadow-sm">
                       +{task.assignees.length - 3}
                     </div>
                   )}
@@ -607,7 +607,7 @@ function TaskRow({
                 </button>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-48 p-1">
-                <p className="px-2 py-1 text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Move Status</p>
+                <p className="px-2 py-1 text-2xs font-bold text-muted-foreground uppercase tracking-wide">Move Status</p>
                 {statuses.map((s) => (
                   <button
                     key={s.id}
@@ -686,9 +686,9 @@ function TaskRow({
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-              <span className="text-[10px] text-gray-400 font-mono font-bold">#{task.seqNumber}</span>
+              <span className="text-2xs text-gray-400 font-mono font-bold">#{task.seqNumber}</span>
               {localPriority !== "NONE" && (
-                <span className={cn("inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded border border-current/10 bg-current/5", PRIORITY_CONFIG[localPriority].color)}>
+                <span className={cn("inline-flex items-center gap-1 text-2xs font-bold px-1.5 py-0.5 rounded border border-current/10 bg-current/5", PRIORITY_CONFIG[localPriority].color)}>
                   <span>{PRIORITY_CONFIG[localPriority].icon}</span>
                   {PRIORITY_CONFIG[localPriority].label}
                 </span>
@@ -733,7 +733,7 @@ function TaskRow({
             <Popover>
               <PopoverTrigger asChild>
                 <button className={cn(
-                  "flex items-center gap-1.5 px-2 py-1 rounded bg-muted/50 text-[10px] font-semibold transition-all cursor-pointer",
+                  "flex items-center gap-1.5 px-2 py-1 rounded bg-muted/50 text-2xs font-semibold transition-all cursor-pointer",
                   dueDate?.overdue ? "text-red-500 bg-red-50" : "text-foreground/70",
                 )}>
                   <CalendarBlankIcon className="size-3.5" />
@@ -867,7 +867,7 @@ function StatusGroup({
 
           {/* Pill Badge */}
           <span
-            className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border transition-all"
+            className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider border transition-all"
             style={{
               backgroundColor: `${status.color}12`,
               color: status.color,
@@ -892,7 +892,7 @@ function StatusGroup({
                 </button>
               </PopoverTrigger>
               <PopoverContent align="start" side="bottom" className="w-48 p-1 mt-1">
-                <p className="px-2 py-1 text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Group Options</p>
+                <p className="px-2 py-1 text-2xs font-bold text-muted-foreground uppercase tracking-wide">Group Options</p>
                 <button
                   onClick={() => { setMenuOpen(false); setRenameName(status.name); setRenameOpen(true); }}
                   className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs font-semibold hover:bg-accent cursor-pointer text-left"
@@ -1072,7 +1072,7 @@ function BulkActionBar({
   async function loadSprints() {
     if (sprints !== null) return;
     setLoadingSprints(true);
-    const res = await getSprints(workspaceId, spaceId, listId);
+    const res = await getSprints(workspaceId, spaceId);
     setLoadingSprints(false);
     if ("error" in res) return;
     setSprints(res.sprints.filter((s) => s.status !== "CLOSED"));
@@ -1184,7 +1184,7 @@ function BulkActionBar({
         </PopoverTrigger>
         <PopoverContent align="center" side="top" className="w-56 p-1 mb-1 max-h-72 overflow-y-auto bg-neutral-800 border border-neutral-700 text-white">
           {/* Sprint section */}
-          <p className="px-2 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Sprint</p>
+          <p className="px-2 py-1 text-2xs font-bold text-gray-400 uppercase tracking-wide">Sprint</p>
           {loadingSprints && <p className="px-2 py-1.5 text-xs text-gray-400">Loading…</p>}
           {!loadingSprints && sprints?.length === 0 && (
             <p className="px-2 py-1.5 text-xs text-gray-400">No active sprints</p>
@@ -1213,14 +1213,14 @@ function BulkActionBar({
           <div className="h-px bg-neutral-700 my-1" />
 
           {/* List section */}
-          <p className="px-2 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">List</p>
+          <p className="px-2 py-1 text-2xs font-bold text-gray-400 uppercase tracking-wide">List</p>
           {loadingLists && <p className="px-2 py-1.5 text-xs text-gray-400">Loading…</p>}
           {!loadingLists && listSpaces?.length === 0 && (
             <p className="px-2 py-1.5 text-xs text-gray-400">No other lists available</p>
           )}
           {!loadingLists && listSpaces?.map((sp) => (
             <div key={sp.id}>
-              <p className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold text-gray-400 uppercase">
+              <p className="flex items-center gap-1.5 px-2 py-1 text-2xs font-bold text-gray-400 uppercase">
                 <span className="size-1.5 rounded-full shrink-0" style={{ backgroundColor: sp.color ?? "#6B7280" }} />
                 {sp.name}
               </p>
@@ -1344,7 +1344,7 @@ export function ListView({
 
     // Status filter
     if (statusFilter.length > 0) {
-      list = list.filter((t) => statusFilter.includes(t.statusId));
+      list = list.filter((t) => statusFilter.includes(t.statusId ?? ""));
     }
 
     // Sort
@@ -1589,7 +1589,7 @@ export function ListView({
                   <PopoverContent align="start" className="w-64 p-3 space-y-4">
                     {/* Status filter */}
                     <div>
-                      <p className="mb-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Status</p>
+                      <p className="mb-1.5 text-2xs font-bold text-gray-400 uppercase tracking-wide">Status</p>
                       <div className="flex flex-col gap-1 max-h-32 overflow-y-auto">
                         {statuses.map(s => (
                           <label key={s.id} className="flex items-center gap-2 text-xs text-foreground cursor-pointer py-0.5 hover:bg-accent/30 rounded">
@@ -1609,7 +1609,7 @@ export function ListView({
 
                     {/* Priority filter */}
                     <div>
-                      <p className="mb-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Priority</p>
+                      <p className="mb-1.5 text-2xs font-bold text-gray-400 uppercase tracking-wide">Priority</p>
                       <div className="flex flex-col gap-1">
                         {["URGENT", "HIGH", "MEDIUM", "LOW", "NONE"].map(p => (
                           <label key={p} className="flex items-center gap-2 text-xs text-foreground cursor-pointer py-0.5 hover:bg-accent/30 rounded">
@@ -1630,7 +1630,7 @@ export function ListView({
                     {/* Assignee filter */}
                     {members.length > 0 && (
                       <div>
-                        <p className="mb-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Assignee</p>
+                        <p className="mb-1.5 text-2xs font-bold text-gray-400 uppercase tracking-wide">Assignee</p>
                         <div className="flex flex-col gap-1 max-h-36 overflow-y-auto">
                           <label className="flex items-center gap-2 text-xs text-foreground cursor-pointer py-0.5 hover:bg-accent/30 rounded">
                             <input

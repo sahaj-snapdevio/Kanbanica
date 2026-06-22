@@ -13,7 +13,7 @@ interface PageProps {
   params: Promise<{ workspaceId: string; spaceId: string }>;
 }
 
-export const metadata = { title: `Space Members — ${PRODUCT_NAME}` };
+export const metadata = { title: `Project Members — ${PRODUCT_NAME}` };
 
 export default async function SpaceMembersPage({ params }: PageProps) {
   const session = await auth.api.getSession({ headers: await headers() });

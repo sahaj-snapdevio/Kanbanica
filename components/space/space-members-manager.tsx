@@ -136,7 +136,7 @@ export function SpaceMembersManager({
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Add member to Space</DialogTitle>
+              <DialogTitle>Add member to Project</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-2">
               <div className="space-y-1.5">
@@ -193,7 +193,7 @@ export function SpaceMembersManager({
 
       {members.length === 0 ? (
         <p className="text-sm text-muted-foreground py-6 text-center">
-          No explicit members yet. Public Spaces are visible to all workspace members with View access.
+          No explicit members yet. Public Projects are visible to all workspace members with View access.
         </p>
       ) : (
         <div className="divide-y rounded-md border">
@@ -245,7 +245,7 @@ export function SpaceMembersManager({
                   <AlertDialogHeader>
                     <AlertDialogTitle>Remove member?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      {member.user.name ?? member.user.email} will lose explicit access to this Space. They remain a workspace member.
+                      {member.user.name ?? member.user.email} will lose explicit access to this Project. They remain a workspace member.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>

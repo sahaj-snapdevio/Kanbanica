@@ -8,6 +8,7 @@ import {
   list,
   space,
   spaceMember,
+  sprint,
   workspace,
   workspaceMember,
 } from "@/db/schema";
@@ -192,6 +193,21 @@ export default async function WorkspaceLayout({
     }
   }
 
+  // Fetch active + planned sprints for all accessible spaces
+  const sprintsBySpace: Record<string, { id: string; name: string; status: "PLANNED" | "ACTIVE" | "CLOSED" }[]> = {};
+  if (spaces.length > 0) {
+    const spaceIdList = spaces.map((s) => s.id);
+    const sprintRows = await db
+      .select({ id: sprint.id, name: sprint.name, status: sprint.status, spaceId: sprint.spaceId })
+      .from(sprint)
+      .where(and(inArray(sprint.spaceId, spaceIdList), inArray(sprint.status, ["ACTIVE", "PLANNED"])))
+      .orderBy(asc(sprint.createdAt));
+    for (const sp of sprintRows) {
+      if (!sprintsBySpace[sp.spaceId]) sprintsBySpace[sp.spaceId] = [];
+      sprintsBySpace[sp.spaceId].push({ id: sp.id, name: sp.name, status: sp.status });
+    }
+  }
+
   return (
     <ThemeProvider
       initialAppearanceMode={ws.appearanceMode as "light" | "dark" | "auto"}
@@ -205,11 +221,13 @@ export default async function WorkspaceLayout({
           lists: spaceListMap[s.id] ?? [],
           archivedLists: archivedListsBySpace[s.id] ?? [],
           canManageList: spaceCanManageMap[s.id] ?? isAdminOrOwner,
+          sprints: sprintsBySpace[s.id] ?? [],
         }))}
         archivedSpaces={archivedSpaces.map((s) => ({
           ...s,
           lists: [],
           archivedLists: [],
+          sprints: [],
           canManageList: isAdminOrOwner,
         }))}
         channels={channels}

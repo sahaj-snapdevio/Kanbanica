@@ -41,7 +41,7 @@ export default async function SpaceSettingsLayout({ children, params }: SpaceSet
     <div className="max-w-3xl mx-auto p-6">
       <div className="mb-6">
         <h1 className="text-xl font-semibold">{s.name} — Settings</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Manage this Space</p>
+        <p className="text-sm text-muted-foreground mt-0.5">Manage this Project</p>
       </div>
       <SpaceSettingsNav workspaceId={workspaceId} spaceId={spaceId} />
       {children}

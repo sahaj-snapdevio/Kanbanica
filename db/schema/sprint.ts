@@ -1,6 +1,5 @@
 import { pgEnum, pgTable, text, timestamp, integer, boolean, index, unique } from "drizzle-orm/pg-core";
-import { workspace } from "./workspace";
-import { list } from "./list";
+import { space } from "./space";
 import { task } from "./task";
 
 export const sprintStatusEnum = pgEnum("sprint_status", ["PLANNED", "ACTIVE", "CLOSED"]);
@@ -10,12 +9,9 @@ export const sprint = pgTable(
   "sprint",
   {
     id: text("id").primaryKey(),
-    listId: text("list_id")
+    spaceId: text("space_id")
       .notNull()
-      .references(() => list.id, { onDelete: "cascade" }),
-    workspaceId: text("workspace_id")
-      .notNull()
-      .references(() => workspace.id, { onDelete: "cascade" }),
+      .references(() => space.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     goal: text("goal"),
     status: sprintStatusEnum("status").notNull().default("PLANNED"),
@@ -31,7 +27,7 @@ export const sprint = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("sprint_list_id_idx").on(t.listId)],
+  (t) => [index("sprint_space_id_idx").on(t.spaceId)],
 );
 
 export const taskSprint = pgTable("task_sprint", {

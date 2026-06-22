@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
@@ -84,10 +84,14 @@ interface SprintTask {
   title: string;
   seqNumber: number;
   priority: string | null;
-  statusId: string;
+  statusId: string | null;
+  listId: string | null;
   orderIndex: number;
   dueDateStart: Date | null;
   dueDateEnd: Date | null;
+  statusName: string | null;
+  statusColor: string | null;
+  statusType: "OPEN" | "ACTIVE" | "CLOSED" | null;
   tags: { id: string; name: string; color: string }[];
   assignees: { userId: string; name: string; image: string | null }[];
 }
@@ -104,8 +108,8 @@ interface SprintInfo {
 interface SprintListViewProps {
   workspaceId: string;
   spaceId: string;
-  listId: string;
-  statuses: Status[];
+  listId?: string;
+  statuses?: Status[];
   isAdmin?: boolean;
   canEdit?: boolean;
   members?: { userId: string; name: string | null; email: string | null }[];
@@ -149,7 +153,6 @@ function TaskRow({
   statusColor,
   workspaceId,
   spaceId,
-  listId,
   statuses,
   isAdmin,
   canEdit,
@@ -160,7 +163,6 @@ function TaskRow({
   statusColor: string;
   workspaceId: string;
   spaceId: string;
-  listId: string;
   statuses: Status[];
   isAdmin?: boolean;
   canEdit?: boolean;
@@ -197,8 +199,8 @@ function TaskRow({
   async function handleToggleAssignee(userId: string | null) {
     if (!userId) return;
     const isAssigned = task.assignees.some((a) => a.userId === userId);
-    if (isAssigned) await removeAssignee(workspaceId, spaceId, listId, task.id, userId);
-    else await addAssignee(workspaceId, spaceId, listId, task.id, userId);
+    if (isAssigned) await removeAssignee(workspaceId, spaceId, task.listId, task.id, userId);
+    else await addAssignee(workspaceId, spaceId, task.listId, task.id, userId);
     router.refresh();
   }
 
@@ -206,7 +208,7 @@ function TaskRow({
     const prev = localDueDate;
     setLocalDueDate(date);
     setDateOpen(false);
-    const res = await updateTask(workspaceId, spaceId, listId, task.id, { dueDateStart: date, dueDateEnd: date });
+    const res = await updateTask(workspaceId, spaceId, task.listId, task.id, { dueDateStart: date, dueDateEnd: date });
     if ("error" in res) { setLocalDueDate(prev); toast.error("Failed to update due date"); }
     else router.refresh();
   }
@@ -215,14 +217,14 @@ function TaskRow({
     const prev = localPriority;
     setLocalPriority(p);
     setPriorityOpen(false);
-    const res = await updateTask(workspaceId, spaceId, listId, task.id, { priority: p as "NONE" | "LOW" | "MEDIUM" | "HIGH" | "URGENT" });
+    const res = await updateTask(workspaceId, spaceId, task.listId, task.id, { priority: p as "NONE" | "LOW" | "MEDIUM" | "HIGH" | "URGENT" });
     if ("error" in res) { setLocalPriority(prev); toast.error("Failed to update priority"); }
     else router.refresh();
   }
 
   async function confirmDelete() {
     setDeleting(true);
-    await deleteTask(workspaceId, spaceId, listId, task.id);
+    await deleteTask(workspaceId, spaceId, task.listId, task.id);
     setDeleting(false);
     setDeleteOpen(false);
   }
@@ -267,7 +269,7 @@ function TaskRow({
           {task.tags.slice(0, 2).map((tag) => (
             <span
               key={tag.id}
-              className="hidden lg:inline-flex shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide border"
+              className="hidden lg:inline-flex shrink-0 rounded-full px-2 py-0.5 text-2xs font-semibold tracking-wide border"
               style={{ backgroundColor: `${tag.color}10`, color: tag.color, borderColor: `${tag.color}30` }}
             >
               {tag.name}
@@ -286,11 +288,11 @@ function TaskRow({
                       {task.assignees.slice(0, 3).map((a) => (
                         <Avatar key={a.userId} className="size-6 shrink-0 border border-white shadow-sm">
                           {a.image && <AvatarImage src={a.image} alt={a.name} />}
-                          <AvatarFallback className="text-[10px] bg-primary text-primary-foreground font-semibold">{userInitials(a.name)}</AvatarFallback>
+                          <AvatarFallback className="text-2xs bg-primary text-primary-foreground font-semibold">{userInitials(a.name)}</AvatarFallback>
                         </Avatar>
                       ))}
                       {task.assignees.length > 3 && (
-                        <div className="flex size-6 items-center justify-center rounded-full border border-white bg-gray-100 text-[10px] text-gray-500 font-bold shadow-sm">+{task.assignees.length - 3}</div>
+                        <div className="flex size-6 items-center justify-center rounded-full border border-white bg-gray-100 text-2xs text-gray-500 font-bold shadow-sm">+{task.assignees.length - 3}</div>
                       )}
                     </div>
                   ) : (
@@ -306,7 +308,7 @@ function TaskRow({
                   <p className="py-2 px-1 text-xs text-muted-foreground">No members found</p>
                 ) : (
                   <div className="max-h-52 overflow-y-auto">
-                    <p className="px-1 pb-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">People</p>
+                    <p className="px-1 pb-1 text-2xs font-semibold text-muted-foreground uppercase tracking-wide">People</p>
                     {filteredMembers.map((m) => {
                       const assigned = task.assignees.some((a) => a.userId === m.userId);
                       return (
@@ -331,10 +333,10 @@ function TaskRow({
                   {task.assignees.slice(0, 3).map((a) => (
                     <Avatar key={a.userId} className="size-6 shrink-0 border border-white shadow-sm">
                       {a.image && <AvatarImage src={a.image} alt={a.name} />}
-                      <AvatarFallback className="text-[10px] bg-primary text-primary-foreground font-semibold">{userInitials(a.name)}</AvatarFallback>
+                      <AvatarFallback className="text-2xs bg-primary text-primary-foreground font-semibold">{userInitials(a.name)}</AvatarFallback>
                     </Avatar>
                   ))}
-                  {task.assignees.length > 3 && <div className="flex size-6 items-center justify-center rounded-full border border-white bg-gray-100 text-[10px] text-gray-500 font-bold shadow-sm">+{task.assignees.length - 3}</div>}
+                  {task.assignees.length > 3 && <div className="flex size-6 items-center justify-center rounded-full border border-white bg-gray-100 text-2xs text-gray-500 font-bold shadow-sm">+{task.assignees.length - 3}</div>}
                 </div>
               ) : (
                 <UserIcon className="size-4 text-gray-300" weight="bold" />
@@ -424,7 +426,7 @@ function TaskRow({
               <PencilSimpleIcon className="size-4" />
             </button>
             {canEdit && (
-              <button onClick={async (e) => { e.stopPropagation(); await duplicateTask(workspaceId, spaceId, listId, task.id); router.refresh(); }} title="Duplicate Task" className="flex size-7 items-center justify-center rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors cursor-pointer">
+              <button onClick={async (e) => { e.stopPropagation(); await duplicateTask(workspaceId, spaceId, task.listId, task.id); router.refresh(); }} title="Duplicate Task" className="flex size-7 items-center justify-center rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors cursor-pointer">
                 <CopyIcon className="size-4" />
               </button>
             )}
@@ -436,9 +438,9 @@ function TaskRow({
                 </button>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-48 p-1">
-                <p className="px-2 py-1 text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Move Status</p>
+                <p className="px-2 py-1 text-2xs font-bold text-muted-foreground uppercase tracking-wide">Move Status</p>
                 {statuses.map((s) => (
-                  <button key={s.id} onClick={async () => { await updateTaskStatus(workspaceId, spaceId, listId, task.id, s.id); router.refresh(); }} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs font-semibold hover:bg-accent text-left cursor-pointer">
+                  <button key={s.id} onClick={async () => { await updateTaskStatus(workspaceId, spaceId, task.listId, task.id, s.id); router.refresh(); }} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs font-semibold hover:bg-accent text-left cursor-pointer">
                     <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
                     <span className="truncate">{s.name}</span>
                   </button>
@@ -458,7 +460,7 @@ function TaskRow({
                   </button>
                 </PopoverTrigger>
                 <PopoverContent align="end" className="w-40 p-1">
-                  <button onClick={async (e) => { e.stopPropagation(); await archiveTask(workspaceId, spaceId, listId, task.id); router.refresh(); }} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs font-semibold hover:bg-accent cursor-pointer">
+                  <button onClick={async (e) => { e.stopPropagation(); await archiveTask(workspaceId, spaceId, task.listId, task.id); router.refresh(); }} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs font-semibold hover:bg-accent cursor-pointer">
                     <ArchiveIcon className="size-3.5 text-muted-foreground" /> Archive
                   </button>
                 </PopoverContent>
@@ -508,7 +510,7 @@ function QuickCreateRow({
   onOpenChange: (v: boolean) => void;
   workspaceId: string;
   spaceId: string;
-  listId: string;
+  listId?: string;
   sprintId: string;
   statusId: string;
   onCreated: () => void;
@@ -526,9 +528,9 @@ function QuickCreateRow({
     if (!trimmed) { onOpenChange(false); return; }
     setSaving(true);
     try {
-      const res = await createTask(workspaceId, spaceId, listId, { title: trimmed, statusId });
+      const res = await createTask(workspaceId, spaceId, listId ?? null, { title: trimmed, statusId });
       if ("error" in res) return;
-      await addTaskToSprint(workspaceId, spaceId, listId, sprintId, res.taskId);
+      await addTaskToSprint(workspaceId, spaceId, sprintId, res.taskId);
       setTitle("");
       onCreated();
       setTimeout(() => inputRef.current?.focus(), 0);
@@ -603,7 +605,7 @@ function StatusGroup({
   tasks: SprintTask[];
   workspaceId: string;
   spaceId: string;
-  listId: string;
+  listId?: string;
   sprintId: string;
   statuses: Status[];
   isAdmin?: boolean;
@@ -626,7 +628,7 @@ function StatusGroup({
     const trimmed = renameName.trim();
     if (!trimmed || trimmed === status.name) { setRenameOpen(false); return; }
     setSaving(true);
-    const res = await updateListStatus(workspaceId, spaceId, listId, status.id, { name: trimmed });
+    const res = await updateListStatus(workspaceId, spaceId, listId ?? "", status.id, { name: trimmed });
     setSaving(false);
     if ("error" in res) { toast.error(res.error); return; }
     setRenameOpen(false);
@@ -636,7 +638,7 @@ function StatusGroup({
   async function handleCreateStatus() {
     if (!newStatusName.trim()) return;
     setSaving(true);
-    const res = await createListStatus(workspaceId, spaceId, listId, {
+    const res = await createListStatus(workspaceId, spaceId, listId ?? "", {
       name: newStatusName.trim(),
       color: newStatusColor,
       type: "OPEN",
@@ -675,7 +677,7 @@ function StatusGroup({
         </div>
 
         <span
-          className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border transition-all"
+          className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider border transition-all"
           style={{ backgroundColor: `${status.color}12`, color: status.color, borderColor: `${status.color}25` }}
         >
           <span className="size-1.5 rounded-full shrink-0" style={{ backgroundColor: status.color }} />
@@ -752,10 +754,10 @@ function StatusGroup({
                 {someSelected && !allSelected && <div className="size-1.5 rounded-sm bg-primary" />}
               </div>
             </div>
-            <div className="flex-1 py-2 pr-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Name</div>
-            <div className="w-36 shrink-0 py-2 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Assignee</div>
-            <div className="w-28 shrink-0 py-2 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Due date</div>
-            <div className="w-28 shrink-0 py-2 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Priority</div>
+            <div className="flex-1 py-2 pr-4 text-2xs font-bold text-gray-400 uppercase tracking-wider">Name</div>
+            <div className="w-36 shrink-0 py-2 px-4 text-2xs font-bold text-gray-400 uppercase tracking-wider">Assignee</div>
+            <div className="w-28 shrink-0 py-2 px-4 text-2xs font-bold text-gray-400 uppercase tracking-wider">Due date</div>
+            <div className="w-28 shrink-0 py-2 px-4 text-2xs font-bold text-gray-400 uppercase tracking-wider">Priority</div>
             <div className="w-40 shrink-0" />
           </div>
 
@@ -766,7 +768,6 @@ function StatusGroup({
               statusColor={status.color}
               workspaceId={workspaceId}
               spaceId={spaceId}
-              listId={listId}
               statuses={statuses}
               isAdmin={isAdmin}
               canEdit={canEdit}
@@ -869,7 +870,7 @@ function BulkActionBar({
   statuses: Status[];
   workspaceId: string;
   spaceId: string;
-  listId: string;
+  listId?: string;
   currentSprintId: string;
   isAdmin?: boolean;
   onClear: () => void;
@@ -884,7 +885,7 @@ function BulkActionBar({
   async function loadSprints() {
     if (sprints !== null) return;
     setLoadingSprints(true);
-    const res = await getSprints(workspaceId, spaceId, listId);
+    const res = await getSprints(workspaceId, spaceId);
     setLoadingSprints(false);
     if ("error" in res) return;
     setSprints(res.sprints.filter((s) => s.status !== "CLOSED" && s.id !== currentSprintId));
@@ -893,7 +894,7 @@ function BulkActionBar({
   async function loadLists() {
     if (listSpaces !== null) return;
     setLoadingLists(true);
-    const res = await getWorkspaceLists(workspaceId, listId);
+    const res = await getWorkspaceLists(workspaceId, listId ?? "");
     setLoadingLists(false);
     if ("error" in res) return;
     setListSpaces(res.spaces);
@@ -911,7 +912,7 @@ function BulkActionBar({
 
   async function handleBulkStatus(statusId: string) {
     setBusy(true);
-    const res = await bulkUpdateStatus(workspaceId, spaceId, listId, [...selectedIds], statusId);
+    const res = await bulkUpdateStatus(workspaceId, spaceId, listId ?? "", [...selectedIds], statusId);
     setBusy(false);
     if ("error" in res) { toast.error(res.error); return; }
     toast.success(`Updated ${count} task${count > 1 ? "s" : ""}`);
@@ -920,7 +921,7 @@ function BulkActionBar({
 
   async function handleMoveToSprint(sprintId: string, sprintName: string) {
     setBusy(true);
-    const res = await bulkMoveTasksToSprint(workspaceId, spaceId, listId, [...selectedIds], sprintId);
+    const res = await bulkMoveTasksToSprint(workspaceId, spaceId, listId ?? "", [...selectedIds], sprintId);
     setBusy(false);
     if ("error" in res) { toast.error(res.error); return; }
     toast.success(`Moved ${res.moved} task${res.moved !== 1 ? "s" : ""} to ${sprintName}`);
@@ -930,7 +931,7 @@ function BulkActionBar({
 
   async function handleMoveToBacklog() {
     setBusy(true);
-    const res = await bulkRemoveTasksFromSprint(workspaceId, spaceId, listId, currentSprintId, [...selectedIds]);
+    const res = await bulkRemoveTasksFromSprint(workspaceId, spaceId, currentSprintId, [...selectedIds]);
     setBusy(false);
     if ("error" in res) { toast.error(res.error); return; }
     toast.success(`Moved ${count} task${count > 1 ? "s" : ""} to backlog`);
@@ -940,7 +941,7 @@ function BulkActionBar({
 
   async function handleBulkArchive() {
     setBusy(true);
-    const res = await bulkArchiveTasks(workspaceId, spaceId, listId, [...selectedIds]);
+    const res = await bulkArchiveTasks(workspaceId, spaceId, listId ?? "", [...selectedIds]);
     setBusy(false);
     if ("error" in res) { toast.error(res.error); return; }
     toast.success(`Archived ${count} task${count > 1 ? "s" : ""}`);
@@ -950,7 +951,7 @@ function BulkActionBar({
   async function handleBulkDelete() {
     if (!confirm(`Delete ${count} task${count > 1 ? "s" : ""}? This cannot be undone.`)) return;
     setBusy(true);
-    const res = await bulkDeleteTasks(workspaceId, spaceId, listId, [...selectedIds]);
+    const res = await bulkDeleteTasks(workspaceId, spaceId, listId ?? "", [...selectedIds]);
     setBusy(false);
     if ("error" in res) { toast.error(res.error); return; }
     toast.success(`Deleted ${count} task${count > 1 ? "s" : ""}`);
@@ -1100,7 +1101,7 @@ function BulkActionBar({
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
-export function SprintListView({ workspaceId, spaceId, listId, statuses, isAdmin, canEdit, members = [] }: SprintListViewProps) {
+export function SprintListView({ workspaceId, spaceId, listId = "", statuses = [], isAdmin, canEdit, members = [] }: SprintListViewProps) {
   const [sprintInfo, setSprintInfo] = React.useState<SprintInfo | null>(null);
   const [tasks, setTasks] = React.useState<SprintTask[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -1127,10 +1128,10 @@ export function SprintListView({ workspaceId, spaceId, listId, statuses, isAdmin
   const fetchData = React.useCallback(async () => {
     setLoading(true);
     try {
-      const res = await getActiveSprintView(workspaceId, spaceId, listId);
+      const res = await getActiveSprintView(workspaceId, spaceId);
       if ("error" in res) return;
       setSprintInfo(res.sprint);
-      setTasks(res.tasks);
+      setTasks(res.tasks as SprintTask[]);
     } finally {
       setLoading(false);
     }
@@ -1142,7 +1143,7 @@ export function SprintListView({ workspaceId, spaceId, listId, statuses, isAdmin
   const filteredTasks = React.useMemo(() => {
     return tasks.filter((t) => {
       if (searchQuery.trim() && !t.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-      if (statusFilter.length && !statusFilter.includes(t.statusId)) return false;
+      if (statusFilter.length && !statusFilter.includes(t.statusId ?? "")) return false;
       if (priorityFilter.length && !priorityFilter.includes(t.priority ?? "NONE")) return false;
       if (assigneeFilter.length) {
         const hasUnassigned = assigneeFilter.includes("unassigned");
@@ -1156,16 +1157,35 @@ export function SprintListView({ workspaceId, spaceId, listId, statuses, isAdmin
     });
   }, [tasks, searchQuery, statusFilter, priorityFilter, assigneeFilter]);
 
+  const effectiveStatuses = React.useMemo(() => {
+    if (statuses.length > 0) return statuses;
+    const seen = new Set<string>();
+    const derived: Status[] = [];
+    for (const t of tasks) {
+      if (t.statusId && !seen.has(t.statusId)) {
+        seen.add(t.statusId);
+        derived.push({
+          id: t.statusId,
+          name: t.statusName ?? t.statusId,
+          color: t.statusColor ?? "#94a3b8",
+          type: (t.statusType ?? "OPEN") as "OPEN" | "ACTIVE" | "CLOSED",
+          orderIndex: derived.length,
+        });
+      }
+    }
+    return derived;
+  }, [statuses, tasks]);
+
   const tasksByStatus = React.useMemo(() => {
     const map = new Map<string, SprintTask[]>();
-    for (const s of statuses) map.set(s.id, []);
+    for (const s of effectiveStatuses) map.set(s.id, []);
     for (const t of filteredTasks) {
-      const group = map.get(t.statusId);
+      const group = t.statusId ? map.get(t.statusId) : undefined;
       if (group) group.push(t);
-      else map.get(statuses[0]?.id ?? "")?.push(t);
+      else map.get(effectiveStatuses[0]?.id ?? "")?.push(t);
     }
     return map;
-  }, [statuses, filteredTasks]);
+  }, [effectiveStatuses, filteredTasks]);
 
   // ── Loading skeleton ──────────────────────────────────────────────────────
   if (loading) {
@@ -1223,7 +1243,7 @@ export function SprintListView({ workspaceId, spaceId, listId, statuses, isAdmin
         workspaceId={workspaceId}
         spaceId={spaceId}
         listId={listId}
-        statuses={statuses}
+        statuses={effectiveStatuses}
       />
 
       {/* Toolbar */}
@@ -1257,7 +1277,7 @@ export function SprintListView({ workspaceId, spaceId, listId, statuses, isAdmin
               <div>
                 <p className="mb-1.5 text-2xs font-bold text-gray-400 uppercase tracking-wide">Status</p>
                 <div className="flex flex-col gap-1 max-h-32 overflow-y-auto">
-                  {statuses.map((s) => (
+                  {effectiveStatuses.map((s) => (
                     <label key={s.id} className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer py-0.5 hover:bg-gray-50 rounded">
                       <input
                         type="checkbox"
@@ -1379,7 +1399,7 @@ export function SprintListView({ workspaceId, spaceId, listId, statuses, isAdmin
         {/* Status groups */}
         {!sprintCollapsed && (
           <div>
-            {statuses.map((status, i) => (
+            {effectiveStatuses.map((status, i) => (
               <React.Fragment key={status.id}>
                 {i > 0 && <div className="h-2" />}
                 <StatusGroup
@@ -1389,7 +1409,7 @@ export function SprintListView({ workspaceId, spaceId, listId, statuses, isAdmin
                   spaceId={spaceId}
                   listId={listId}
                   sprintId={sprintInfo.id}
-                  statuses={statuses}
+                  statuses={effectiveStatuses}
                   isAdmin={isAdmin}
                   canEdit={canEdit}
                   selectedIds={selectedIds}
@@ -1406,7 +1426,7 @@ export function SprintListView({ workspaceId, spaceId, listId, statuses, isAdmin
         <BulkActionBar
           count={selectedIds.size}
           selectedIds={selectedIds}
-          statuses={statuses}
+          statuses={effectiveStatuses}
           workspaceId={workspaceId}
           spaceId={spaceId}
           listId={listId}

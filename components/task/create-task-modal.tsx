@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import {
@@ -240,7 +240,7 @@ export function CreateTaskModal({
                         className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
                       >
                         <Avatar className="size-6 shrink-0">
-                          <AvatarFallback className="text-[10px]">{userInitials(m.name)}</AvatarFallback>
+                          <AvatarFallback className="text-2xs">{userInitials(m.name)}</AvatarFallback>
                         </Avatar>
                         <span className="flex-1 truncate text-left">{m.name}</span>
                         {selected && <CheckIcon className="size-3.5 text-primary shrink-0" />}

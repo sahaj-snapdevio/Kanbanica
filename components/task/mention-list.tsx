@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -101,8 +101,8 @@ export const MentionList = React.forwardRef<MentionListRef, MentionListProps>(
 
         {/* Footer hint */}
         <div className="border-t px-3 py-1.5 flex items-center gap-2 text-2xs text-muted-foreground">
-          <span><kbd className="font-mono bg-muted px-1 py-0.5 rounded text-[10px]">↑↓</kbd> navigate</span>
-          <span><kbd className="font-mono bg-muted px-1 py-0.5 rounded text-[10px]">↵</kbd> select</span>
+          <span><kbd className="font-mono bg-muted px-1 py-0.5 rounded text-2xs">↑↓</kbd> navigate</span>
+          <span><kbd className="font-mono bg-muted px-1 py-0.5 rounded text-2xs">↵</kbd> select</span>
         </div>
       </div>
     );

@@ -51,7 +51,7 @@ interface Task {
   id: string;
   title: string;
   priority: "NONE" | "LOW" | "MEDIUM" | "HIGH" | "URGENT";
-  statusId: string;
+  statusId: string | null;
   seqNumber: number;
   orderIndex: number;
   tags: { id: string; name: string; color: string }[];
@@ -291,7 +291,7 @@ export function BoardView({ workspaceId, space, list, statuses, tasks, members =
   const processedTasks = React.useMemo(() => {
     let result = localTasks.filter((t) => {
       if (searchQuery.trim() && !t.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-      if (statusFilter.length && !statusFilter.includes(t.statusId)) return false;
+      if (statusFilter.length && !statusFilter.includes(t.statusId ?? "")) return false;
       if (priorityFilter.length && !priorityFilter.includes(t.priority)) return false;
       if (assigneeFilter.length) {
         const hasUnassigned = assigneeFilter.includes("unassigned");
@@ -322,7 +322,7 @@ export function BoardView({ workspaceId, space, list, statuses, tasks, members =
   const tasksByStatus = React.useMemo(() => {
     const map: Record<string, Task[]> = Object.fromEntries(statuses.map((s) => [s.id, []]));
     for (const t of processedTasks) {
-      if (map[t.statusId]) map[t.statusId].push(t);
+      if (t.statusId && map[t.statusId]) map[t.statusId].push(t);
     }
     return map;
   }, [processedTasks, statuses]);

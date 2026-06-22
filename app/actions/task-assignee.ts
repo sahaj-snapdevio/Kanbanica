@@ -17,7 +17,7 @@ function revalidateTask(workspaceId: string, spaceId: string, listId: string) {
 export async function addAssignee(
   workspaceId: string,
   spaceId: string,
-  listId: string,
+  listId: string | null,
   taskId: string,
   assigneeUserId: string,
 ): Promise<{ ok: true } | { error: string }> {
@@ -68,14 +68,14 @@ export async function addAssignee(
   }
 
   await writeActivityLog(taskId, session.user.id, "assignee_added", { userId: assigneeUserId });
-  revalidateTask(workspaceId, spaceId, listId);
+  if (listId) revalidateTask(workspaceId, spaceId, listId);
   return { ok: true };
 }
 
 export async function removeAssignee(
   workspaceId: string,
   spaceId: string,
-  listId: string,
+  listId: string | null,
   taskId: string,
   assigneeUserId: string,
 ): Promise<{ ok: true } | { error: string }> {
@@ -90,7 +90,7 @@ export async function removeAssignee(
     .where(and(eq(taskAssignee.taskId, taskId), eq(taskAssignee.userId, assigneeUserId)));
 
   await writeActivityLog(taskId, session.user.id, "assignee_removed", { userId: assigneeUserId });
-  revalidateTask(workspaceId, spaceId, listId);
+  if (listId) revalidateTask(workspaceId, spaceId, listId);
   return { ok: true };
 }
 

@@ -2,7 +2,7 @@
 
 ## What this project is
 
-Kanbanica is a project management SaaS (ClickUp-style). Teams use it to organize work in Workspaces, Spaces, Lists, and Tasks.
+Kanbanica is a project management SaaS (ClickUp-style). Teams use it to organize work in Workspaces, Projects, Lists, Sprints, and Tasks.
 
 Full product specs live in `docs/`. Read the relevant doc before implementing any feature.
 
@@ -58,7 +58,7 @@ server/                    ← server actions
 
 ### Routing
 - All workspace routes use `[workspaceId]` (uuid) — NOT slug. Slug is a vanity alias only.
-- Route shape: `/[workspaceId]/[spaceId]/list/[listId]`
+- Route shape: `/[workspaceId]/[spaceId]/list/[listId]` or `/[workspaceId]/[spaceId]/sprint/[sprintId]`
 
 ### Auth
 - Magic link only — no passwords, no OAuth.
@@ -73,9 +73,9 @@ server/                    ← server actions
 - Hard deletes are immediate with no recovery unless otherwise stated in the feature doc.
 
 ### Permissions
-- Two-level model: Workspace Role + Space Permission.
-- Check workspace role first, then space permission for anything inside a space.
-- Guests can only see Spaces they are explicitly invited to.
+- Two-level model: Workspace Role + Project Permission.
+- Check workspace role first, then project permission for anything inside a project.
+- Guests can only see Projects they are explicitly invited to.
 - See `docs/permission-model.md` for the full matrix.
 
 ### API
@@ -107,11 +107,12 @@ server/                    ← server actions
 |---------|-----|
 | Auth | `docs/authentication.md` |
 | Workspace | `docs/workspace.md` |
-| Space | `docs/space.md` |
+| Project (Space) | `docs/space.md` |
 | List | `docs/list.md` |
 | Task | `docs/task.md` |
 | Subtask | `docs/subtask.md` |
 | Sprint | `docs/sprint.md` |
+| Pinned Tasks | `docs/pinned-tasks.md` |
 | Views | `docs/views.md` |
 | Collaboration | `docs/collaboration.md` |
 | Notifications | `docs/notifications.md` |
@@ -121,6 +122,7 @@ server/                    ← server actions
 | Admin Panel | `docs/admin-panel.md` |
 | Empty States | `docs/empty-states.md` |
 | Design System | `docs/design-system.md` |
+| UI Redesign Guide | `docs/ui-redesign.md` |
 | Database Schema | `docs/database-schema.md` |
 
 ---
@@ -128,5 +130,7 @@ server/                    ← server actions
 ## Development Plan
 
 Phases are in `docs/development-plan.md`. Work through them in order. Do not skip phases.
+
+**Retroactive changes** to already-implemented code are tracked in `docs/revision-plan.md`. Work through that file alongside the development plan.
 
 Current phase: **Phase 7 (skipped) → Phase 8 — List**

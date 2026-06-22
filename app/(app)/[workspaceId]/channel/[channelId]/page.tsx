@@ -137,11 +137,11 @@ export default function ChannelPage() {
               {channelMembers.map((m) => (
                 <div key={m.userId} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm">
                   <Avatar className="size-6 shrink-0">
-                    <AvatarFallback className="text-[10px]">{getInitials(m.name)}</AvatarFallback>
+                    <AvatarFallback className="text-2xs">{getInitials(m.name)}</AvatarFallback>
                   </Avatar>
                   <span className="flex-1 truncate">{m.name}</span>
                   {m.role === "ADMIN" && (
-                    <span className="text-[10px] font-medium text-muted-foreground uppercase">Admin</span>
+                    <span className="text-2xs font-medium text-muted-foreground uppercase">Admin</span>
                   )}
                 </div>
               ))}

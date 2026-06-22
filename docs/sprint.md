@@ -2,7 +2,7 @@
 
 ## Overview
 
-A Sprint is an optional agile execution layer that sits inside a List. It represents a time-boxed iteration — a fixed period during which a selected set of tasks must be completed.
+A Sprint is an optional agile execution layer that sits directly inside a Project (alongside Lists). It represents a time-boxed iteration — a fixed period during which a selected set of tasks must be completed.
 
 Sprints are optional. Teams that do not follow agile methodology can ignore them entirely and work directly with Lists and Tasks.
 
@@ -11,25 +11,26 @@ Sprints are optional. Teams that do not follow agile methodology can ignore them
 **Hierarchy position:**
 ```
 Workspace
-  └── Space
-        └── List
-                    └── Sprint (optional)   ← you are here
-                          └── Task (assigned to sprint)
+  └── Project
+        ├── List (default + user-created)
+        │     └── Task
+        └── Sprint (optional)   ← you are here
+              └── Task (assigned from any List in this Project)
 ```
 
-> Tasks belong to a List. A Sprint is a time-boxed container that pulls tasks from that List into a focused iteration. Tasks are not moved — they are assigned to the sprint while staying in the List.
+> Tasks belong to a List. A Sprint is a time-boxed container that pulls tasks from **any List within the same Project** into a focused iteration. Tasks are not moved — they are assigned to the sprint while staying in their List.
 
 ---
 
 ## User Stories
 
 - As a Member with Full Access, I want to create a Sprint with a goal, start date, and end date so the team knows what we are committing to this iteration.
-- As a Member, I want to add tasks from the backlog into the Sprint so we have a clear scope.
+- As a Member, I want to add tasks from any List in the Project into the Sprint so we have a clear scope.
 - As a Member, I want to assign story points to tasks so we can estimate sprint capacity.
 - As a Member, I want to see sprint progress (how many tasks are done vs total) so I know if we are on track.
 - As a Member, I want to close a Sprint and decide what happens to incomplete tasks — move to backlog or carry over to next sprint.
 - As a Member, I want to view past sprints to review what was completed and what was carried over.
-- As a Member, I want only one Sprint to be active at a time per List so there is no confusion about what the team is working on now.
+- As a Member, I want only one Sprint to be active at a time per Project so there is no confusion about what the team is working on now.
 
 ---
 
@@ -61,7 +62,7 @@ Workspace
 - On creation:
   - Sprint status is set to **Planned**
   - No tasks are added yet — tasks are added separately
-- A List can have multiple sprints but **only one Active sprint at a time**
+- A Project can have multiple sprints but **only one Active sprint at a time**
 
 ---
 
@@ -79,7 +80,7 @@ Workspace
 
 - **Who can start:** Members with **Full Access**, Admin, Owner
 - Changes Sprint status from **Planned** → **Active**
-- Can only start if no other Sprint in the same List is already Active
+- Can only start if no other Sprint in the same Project is already Active
 - On start:
   - Sprint start date is locked (cannot be changed after start)
   - Notification sent to all members who have tasks in the Sprint
@@ -88,7 +89,7 @@ Workspace
 
 ### 4. Add Tasks to Sprint
 
-- Tasks are added to a Sprint from the List's backlog (tasks not yet in any sprint)
+- Tasks are added to a Sprint from the Project backlog — tasks in any List within the Project that are not yet in any sprint
 - **Who can add:** Members with **Edit** or **Full Access**, Admin, Owner
 - A task can only be in **one Sprint at a time**
 - Tasks remain in their original List — sprint assignment is an overlay, not a move
@@ -107,8 +108,8 @@ Both views expose a single **Move** button in the floating bulk action bar. Clic
 
 | Context | Behaviour |
 |---------|-----------|
-| List view | Shows all PLANNED and ACTIVE sprints for the current List. Selecting one adds the tasks to that sprint (removes from any current sprint first). |
-| Sprint view | Shows all OTHER PLANNED/ACTIVE sprints (current sprint excluded). Selecting one moves the tasks out of the current sprint into the target. |
+| List view | Shows all PLANNED and ACTIVE sprints for the current Project. Selecting one adds the tasks to that sprint (removes from any current sprint first). |
+| Sprint view | Shows all OTHER PLANNED/ACTIVE sprints in the Project (current sprint excluded). Selecting one moves the tasks out of the current sprint into the target. |
 
 #### Move → List
 
@@ -222,18 +223,19 @@ If any incomplete tasks remain (user skipped step 1 or only some were closed), u
 
 ### 9. Backlog
 
-- The Backlog is the list of all tasks in the List that are **not assigned to any Sprint**
+- The Backlog is the list of all tasks across **all Lists in the Project** that are **not assigned to any Sprint**
 - Always visible alongside the Sprint view
 - Tasks move from Backlog → Sprint (when added) and Sprint → Backlog (when removed or carried over on close)
+- Backlog tasks are grouped by their originating List for clarity
 - Backlog tasks can be created, edited, and managed like any other task
 
 ---
 
 ## Sprint Board View
 
-When a Sprint is Active, the List's Board View shows only tasks in the active Sprint grouped by status — giving the team a focused Kanban of current sprint work only.
+The Sprint has its own Board View showing all tasks assigned to the active Sprint grouped by status — giving the team a focused Kanban of current sprint work only. Tasks may come from different Lists within the Project.
 
-Backlog tasks are hidden from the Board View during an active sprint (accessible via a toggle: `Show Backlog`).
+The Project Backlog is accessible via a toggle: `Show Backlog` — it displays all unassigned tasks from all Lists in the Project.
 
 ---
 
@@ -242,7 +244,7 @@ Backlog tasks are hidden from the Board View during an active sprint (accessible
 ```
 Sprint
 ├── id                      (uuid, primary key)
-├── list_id                 (foreign key → List)
+├── space_id                (foreign key → Space/Project)
 ├── name                    (string, required)
 ├── goal                    (text, nullable)
 ├── status                  (enum: planned | active | closed)
@@ -274,9 +276,9 @@ TaskSprint
 
 | Method | Endpoint | Description | Access |
 |--------|----------|-------------|--------|
-| POST | `/api/lists/:listId/sprints` | Create a Sprint | Full Access / Admin+ |
-| GET | `/api/lists/:listId/sprints` | Get all Sprints for a List | Space member |
-| GET | `/api/sprints/:id` | Get Sprint details and progress | Space member |
+| POST | `/api/spaces/:spaceId/sprints` | Create a Sprint | Full Access / Admin+ |
+| GET | `/api/spaces/:spaceId/sprints` | Get all Sprints for a Project | Project member |
+| GET | `/api/sprints/:id` | Get Sprint details and progress | Project member |
 | PATCH | `/api/sprints/:id` | Update Sprint (name, goal, end date) | Full Access / Admin+ |
 | DELETE | `/api/sprints/:id` | Delete a Planned sprint | Full Access / Admin+ |
 | POST | `/api/sprints/:id/start` | Start Sprint | Full Access / Admin+ |
@@ -284,7 +286,7 @@ TaskSprint
 | POST | `/api/sprints/:id/tasks` | Add task to Sprint | Edit / Full Access / Admin+ |
 | DELETE | `/api/sprints/:id/tasks/:taskId` | Remove task from Sprint | Edit / Full Access / Admin+ |
 | PATCH | `/api/sprints/:id/tasks/:taskId` | Update story points | Edit / Full Access / Admin+ |
-| GET | `/api/lists/:listId/backlog` | Get all backlog tasks (not in any sprint) | Space member |
+| GET | `/api/spaces/:spaceId/backlog` | Get all backlog tasks in the Project (not in any sprint) | Project member |
 
 ---
 
@@ -292,11 +294,11 @@ TaskSprint
 
 | Screen | Description | Access |
 |--------|-------------|--------|
-| Sprint panel (inside List) | Shows Active sprint progress, backlog, planned sprints | All Space members |
+| Sprint view (inside Project, sibling to Lists) | Shows Active sprint progress, project backlog, planned sprints | All Project members |
 | Create Sprint modal | Name, goal, start date, duration (weeks), auto-create toggle, auto-close toggle | Full Access / Admin+ |
 | Close Sprint modal | Handle incomplete tasks before closing | Full Access / Admin+ |
-| Sprint History page | List of all closed sprints with stats | All Space members |
-| Sprint Board View | Kanban of active sprint tasks only | All Space members |
+| Sprint History page | List of all closed sprints with stats | All Project members |
+| Sprint Board View | Kanban of active sprint tasks only (from any List in the Project) | All Project members |
 
 ---
 
@@ -333,22 +335,23 @@ TaskSprint
 
 ## Business Rules
 
-1. Sprint is optional — a List can be used with or without sprints.
-2. Only one Sprint can be **Active** per List at any time.
-3. A Sprint cannot be started if another Sprint in the same List is already Active.
-4. A task can only belong to one Sprint at a time within the same List.
-5. Tasks are never physically moved out of their List — sprint assignment is a separate relationship.
-6. Story points are stored per TaskSprint, not on the Task — so carry-over tasks can be re-estimated in the new sprint.
-7. Closing a Sprint shows a two-step modal: (1) optional "Mark all as Done" shortcut, (2) handle any remaining incomplete tasks — move to backlog, move to next sprint, or leave as-is. If all tasks are closed after step 1, step 2 is skipped automatically.
-8. A Closed Sprint cannot be reopened.
-9. Only Planned sprints can be deleted — Active and Closed sprints cannot be deleted.
-10. Sprint end date does not auto-close the sprint unless **Auto-close on next sprint** is enabled.
-11. When **Auto-create next sprint** is enabled, a new Planned sprint is created automatically when the end date is reached — it is never auto-started.
-12. When **Auto-close on next sprint** is enabled, incomplete tasks are handled according to `auto_incomplete_strategy` — no manual decision prompt since the action is automated. Default strategy is `move_to_backlog`.
-13. If `auto_incomplete_strategy = move_to_next_sprint` but no planned sprint exists at close time, the system falls back to `move_to_backlog` and logs a warning in the activity feed: `"Sprint auto-closed — no planned sprint found, incomplete tasks moved to backlog instead."`
-14. **Auto-close on next sprint** can only be enabled when **Auto-create next sprint** is also enabled — it has no meaning otherwise.
-15. Sprint History is read-only — no edits after closing.
-16. Sprints are scoped to a List — they cannot span multiple Lists.
+1. Sprint is optional — a Project can be used with or without sprints.
+2. Only one Sprint can be **Active** per Project at any time.
+3. A Sprint cannot be started if another Sprint in the same Project is already Active.
+4. A task can only belong to one Sprint at a time.
+5. Tasks are never physically moved out of their List — sprint assignment is a separate relationship overlay.
+6. A Sprint can contain tasks from multiple Lists within the same Project.
+7. Story points are stored per TaskSprint, not on the Task — so carry-over tasks can be re-estimated in the new sprint.
+8. Closing a Sprint shows a two-step modal: (1) optional "Mark all as Done" shortcut, (2) handle any remaining incomplete tasks — move to backlog, move to next sprint, or leave as-is. If all tasks are closed after step 1, step 2 is skipped automatically.
+9. A Closed Sprint cannot be reopened.
+10. Only Planned sprints can be deleted — Active and Closed sprints cannot be deleted.
+11. Sprint end date does not auto-close the sprint unless **Auto-close on next sprint** is enabled.
+12. When **Auto-create next sprint** is enabled, a new Planned sprint is created automatically when the end date is reached — it is never auto-started.
+13. When **Auto-close on next sprint** is enabled, incomplete tasks are handled according to `auto_incomplete_strategy` — no manual decision prompt since the action is automated. Default strategy is `move_to_backlog`.
+14. If `auto_incomplete_strategy = move_to_next_sprint` but no planned sprint exists at close time, the system falls back to `move_to_backlog` and logs a warning in the activity feed: `"Sprint auto-closed — no planned sprint found, incomplete tasks moved to backlog instead."`
+15. **Auto-close on next sprint** can only be enabled when **Auto-create next sprint** is also enabled — it has no meaning otherwise.
+16. Sprint History is read-only — no edits after closing.
+17. Sprints are scoped to a Project — they cannot span multiple Projects.
 
 ---
 
@@ -394,6 +397,7 @@ await boss.schedule(JOB_NAMES.SPRINT_AUTO_CLOSE, '*/15 * * * *', {})
    WHERE s.status = 'ACTIVE'
      AND s.end_date < CURRENT_DATE
      AND s.auto_close_on_next = true
+   -- Note: sprints are now scoped to space_id (Project), not list_id
    ```
 2. For each eligible sprint, run the close transaction (see below)
 3. If `auto_create_next = true`, create the next sprint (status: PLANNED, start_date = closed sprint end_date + 1 day, same duration)
@@ -512,9 +516,9 @@ Add `@@index([sprintId])` on `TaskSprint` to make this query fast as sprint task
 Before starting a sprint, check inside a transaction:
 ```typescript
 const existing = await tx.sprint.findFirst({
-  where: { listId, status: 'ACTIVE' }
+  where: { spaceId, status: 'ACTIVE' }  // scoped to Project, not List
 })
-if (existing) throw new ConflictError('A sprint is already active in this list')
+if (existing) throw new ConflictError('A sprint is already active in this project')
 ```
 
 This check must be inside the transaction that also sets `status = 'ACTIVE'` to prevent a race condition where two sprints are started simultaneously.
@@ -528,10 +532,11 @@ export async function startSprint(sprintId: string, actorId: string) {
     if (sprint.status !== 'PLANNED') throw new Error('Only a PLANNED sprint can be started')
 
     // One-active enforcement inside the transaction (not a pre-check)
+    // Scoped to Project (spaceId), not a single List
     const activeExists = await tx.sprint.findFirst({
-      where: { listId: sprint.listId, status: 'ACTIVE' }
+      where: { spaceId: sprint.spaceId, status: 'ACTIVE' }
     })
-    if (activeExists) throw new ConflictError('A sprint is already active in this list')
+    if (activeExists) throw new ConflictError('A sprint is already active in this project')
 
     await tx.sprint.update({
       where: { id: sprintId },
@@ -594,14 +599,21 @@ Return `409 Conflict` with `{ error: "Task is already in an active sprint. Remov
 
 ### Backlog Query -- Tasks Not in Any Active Sprint
 
-"Backlog" = tasks in the List that have no `TaskSprint` record linking them to a PLANNED or ACTIVE sprint.
+"Backlog" = tasks in **any List in the Project** that have no `TaskSprint` record linking them to a PLANNED or ACTIVE sprint.
 
 ```typescript
-export async function getBacklog(listId: string) {
-  // Tasks where no TaskSprint exists for a non-closed sprint
+export async function getBacklog(spaceId: string) {
+  // Find all list IDs in this project first
+  const lists = await db.list.findMany({
+    where: { spaceId, isArchived: false },
+    select: { id: true }
+  })
+  const listIds = lists.map(l => l.id)
+
+  // Tasks across all lists in the project with no active/planned sprint assignment
   return db.task.findMany({
     where: {
-      listId,
+      listId: { in: listIds },
       isArchived: false,
       parentTaskId: null,  // top-level tasks only; subtasks are not sprint-assignable
       NOT: {
@@ -612,7 +624,8 @@ export async function getBacklog(listId: string) {
         }
       }
     },
-    orderBy: { orderIndex: 'asc' }
+    include: { list: { select: { id: true, name: true } } },  // include list for grouping in UI
+    orderBy: [{ listId: 'asc' }, { orderIndex: 'asc' }]
   })
 }
 ```
@@ -675,9 +688,9 @@ New sprint: `status = PLANNED`, `startDate = closedSprint.endDate + 1 day`, `dur
 ```
 src/
   app/api/
-    lists/[listId]/
-      sprints/route.ts          <- POST (create sprint), GET (list sprints)
-      backlog/route.ts          <- GET (tasks not in any active sprint)
+    spaces/[spaceId]/
+      sprints/route.ts          <- POST (create sprint), GET (list sprints for project)
+      backlog/route.ts          <- GET (tasks across all lists in project not in any sprint)
     sprints/[id]/
       route.ts                  <- GET, PATCH, DELETE
       start/route.ts            <- POST

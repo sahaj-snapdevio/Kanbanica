@@ -168,7 +168,7 @@ export function SearchPalette({ workspaceId, open, onClose }: SearchPaletteProps
                       >
                         <span
                           className="mt-0.5 inline-flex h-2 w-2 shrink-0 rounded-full"
-                          style={{ backgroundColor: t.statusColor }}
+                          style={{ backgroundColor: t.statusColor ?? undefined }}
                         />
                         <div className="flex-1 min-w-0">
                           <p className="truncate text-sm font-medium">{t.title}</p>
@@ -189,7 +189,7 @@ export function SearchPalette({ workspaceId, open, onClose }: SearchPaletteProps
                           )}
                           <span
                             className="rounded-full px-2 py-0.5 text-2xs font-medium"
-                            style={{ backgroundColor: t.statusColor + "33", color: t.statusColor }}
+                            style={{ backgroundColor: t.statusColor ? t.statusColor + "33" : undefined, color: t.statusColor ?? undefined }}
                           >
                             {t.statusName}
                           </span>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import { toast } from "sonner";
 import {
   CaretDownIcon,
   CaretRightIcon,
@@ -43,10 +44,22 @@ interface SprintProgress {
   closed: number;
 }
 
+interface SprintTask {
+  id: string;
+  title: string;
+  seqNumber: number;
+  priority: string | null;
+  statusId: string | null;
+  statusName: string | null;
+  statusColor: string | null;
+  statusType: "OPEN" | "ACTIVE" | "CLOSED" | null;
+  storyPoints: number | null;
+}
+
 interface SprintPanelProps {
   workspaceId: string;
   spaceId: string;
-  listId: string;
+  listId?: string;
   onDataChanged?: () => void;
 }
 
@@ -71,13 +84,11 @@ function getDaysRemaining(endDate: Date | null): number | null {
 function QuickCreateSprintTask({
   workspaceId,
   spaceId,
-  listId,
   sprintId,
   onCreated,
 }: {
   workspaceId: string;
   spaceId: string;
-  listId: string;
   sprintId: string;
   onCreated: () => void;
 }) {
@@ -101,13 +112,15 @@ function QuickCreateSprintTask({
     if (!trimmed) { cancel(); return; }
     setSaving(true);
     try {
-      const res = await createTask(workspaceId, spaceId, listId, { title: trimmed });
-      if ("error" in res) return;
-      await addTaskToSprint(workspaceId, spaceId, listId, sprintId, res.taskId);
+      const res = await createTask(workspaceId, spaceId, null, { title: trimmed });
+      if ("error" in res) { toast.error(res.error); return; }
+      const sprintRes = await addTaskToSprint(workspaceId, spaceId, sprintId, res.taskId);
+      if ("error" in sprintRes) { toast.error(sprintRes.error); return; }
       setTitle("");
       onCreated();
-      // keep input open for rapid entry
       setTimeout(() => inputRef.current?.focus(), 0);
+    } catch {
+      toast.error("Something went wrong creating the task.");
     } finally {
       setSaving(false);
     }
@@ -167,6 +180,7 @@ function QuickCreateSprintTask({
 function ActiveSprintCard({
   sprint,
   progress,
+  tasks,
   workspaceId,
   spaceId,
   listId,
@@ -176,6 +190,7 @@ function ActiveSprintCard({
 }: {
   sprint: SprintRow;
   progress: SprintProgress | null;
+  tasks: SprintTask[];
   workspaceId: string;
   spaceId: string;
   listId: string;
@@ -236,21 +251,45 @@ function ActiveSprintCard({
           )}
         </div>
         <div className="flex items-center gap-1.5">
-          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={onAddTasks}>
-            <PlusIcon className="size-3 mr-1" />
-            Add tasks
-          </Button>
+          {listId && (
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={onAddTasks}>
+              <PlusIcon className="size-3 mr-1" />
+              Add tasks
+            </Button>
+          )}
           <Button size="sm" variant="outline" className="h-7 text-xs" onClick={onClose}>
             Close Sprint
           </Button>
         </div>
       </div>
 
+      {/* Task list */}
+      {tasks.length > 0 && (
+        <div className="border-t pt-2 space-y-0.5 max-h-60 overflow-y-auto">
+          {tasks.map((t) => (
+            <a
+              key={t.id}
+              href={`/${workspaceId}/task/${t.id}`}
+              className="flex items-center gap-2 rounded-md px-1.5 py-1.5 hover:bg-accent/50 transition-colors group"
+            >
+              <span
+                className="size-2 rounded-full shrink-0 ring-1 ring-black/10"
+                style={{ backgroundColor: t.statusColor ?? "#94a3b8" }}
+              />
+              <span className="text-2xs text-muted-foreground shrink-0 font-mono">#{t.seqNumber}</span>
+              <span className="text-xs truncate text-foreground/80 group-hover:text-foreground">{t.title}</span>
+              {t.statusName && (
+                <span className="ml-auto text-2xs text-muted-foreground shrink-0">{t.statusName}</span>
+              )}
+            </a>
+          ))}
+        </div>
+      )}
+
       {/* Inline create task */}
       <QuickCreateSprintTask
         workspaceId={workspaceId}
         spaceId={spaceId}
-        listId={listId}
         sprintId={sprint.id}
         onCreated={onRefresh}
       />
@@ -302,12 +341,14 @@ function PlannedSprintRow({
             <PlusIcon className="size-3" />
             New task
           </button>
-          <button
-            onClick={() => onAddTasks(sprint.id)}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors opacity-0 group-hover:opacity-100 px-1"
-          >
-            Add tasks
-          </button>
+          {listId && (
+            <button
+              onClick={() => onAddTasks(sprint.id)}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors opacity-0 group-hover:opacity-100 px-1"
+            >
+              Add tasks
+            </button>
+          )}
           {!hasActiveSprint && (
             <Button
               size="sm"
@@ -343,7 +384,6 @@ function PlannedSprintRow({
           <QuickCreateSprintTask
             workspaceId={workspaceId}
             spaceId={spaceId}
-            listId={listId}
             sprintId={sprint.id}
             onCreated={() => { onRefresh(); }}
           />
@@ -359,6 +399,7 @@ export function SprintPanel({ workspaceId, spaceId, listId, onDataChanged }: Spr
   const [expanded, setExpanded] = useState(true);
   const [sprints, setSprints] = useState<SprintRow[]>([]);
   const [progressMap, setProgressMap] = useState<Record<string, SprintProgress>>({});
+  const [tasksMap, setTasksMap] = useState<Record<string, SprintTask[]>>({});
   const [backlogCount, setBacklogCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -374,10 +415,10 @@ export function SprintPanel({ workspaceId, spaceId, listId, onDataChanged }: Spr
     setLoading(true);
     setError(null);
     try {
-      const [sprintsResult, backlogResult] = await Promise.all([
-        getSprints(workspaceId, spaceId, listId),
-        getBacklogTasks(workspaceId, spaceId, listId),
-      ]);
+      const sprintsResult = await getSprints(workspaceId, spaceId);
+      const backlogResult = listId
+        ? await getBacklogTasks(workspaceId, spaceId, listId)
+        : { tasks: [] };
 
       if ("error" in sprintsResult) throw new Error(sprintsResult.error);
       if ("error" in backlogResult) throw new Error(backlogResult.error);
@@ -392,14 +433,17 @@ export function SprintPanel({ workspaceId, spaceId, listId, onDataChanged }: Spr
           activeRows.map((s) => getSprintWithTasks(workspaceId, spaceId, s.id)),
         );
         const map: Record<string, SprintProgress> = {};
+        const tmap: Record<string, SprintTask[]> = {};
         for (let i = 0; i < activeRows.length; i++) {
           const res = progressResults[i];
           if ("tasks" in res) {
             const closed = res.tasks.filter((t) => t.statusType === "CLOSED").length;
             map[activeRows[i].id] = { total: res.tasks.length, closed };
+            tmap[activeRows[i].id] = res.tasks;
           }
         }
         setProgressMap(map);
+        setTasksMap(tmap);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load sprints.");
@@ -416,13 +460,13 @@ export function SprintPanel({ workspaceId, spaceId, listId, onDataChanged }: Spr
   }
 
   async function handleStartSprint(sprintId: string) {
-    const result = await startSprint(workspaceId, spaceId, listId, sprintId);
+    const result = await startSprint(workspaceId, spaceId, sprintId);
     if ("error" in result) { setError(result.error); return; }
     refresh();
   }
 
   async function handleDeleteSprint(sprintId: string) {
-    const result = await deleteSprint(workspaceId, spaceId, listId, sprintId);
+    const result = await deleteSprint(workspaceId, spaceId, sprintId);
     if ("error" in result) { setError(result.error); return; }
     refresh();
   }
@@ -434,10 +478,9 @@ export function SprintPanel({ workspaceId, spaceId, listId, onDataChanged }: Spr
         onOpenChange={setCreateOpen}
         workspaceId={workspaceId}
         spaceId={spaceId}
-        listId={listId}
         onCreated={() => { setCreateOpen(false); refresh(); }}
       />
-      {addTasksTarget && (
+      {addTasksTarget && listId && (
         <AddTasksToSprintModal
           open={true}
           onOpenChange={(open) => { if (!open) setAddTasksTarget(null); }}
@@ -455,7 +498,7 @@ export function SprintPanel({ workspaceId, spaceId, listId, onDataChanged }: Spr
           onOpenChange={(open) => { if (!open) setCloseTarget(null); }}
           workspaceId={workspaceId}
           spaceId={spaceId}
-          listId={listId}
+          listId={listId ?? ""}
           sprintId={closeTarget.id}
           sprintName={closeTarget.name}
           onClosed={() => { setCloseTarget(null); refresh(); }}
@@ -505,9 +548,10 @@ export function SprintPanel({ workspaceId, spaceId, listId, onDataChanged }: Spr
                         key={s.id}
                         sprint={s}
                         progress={progressMap[s.id] ?? null}
+                        tasks={tasksMap[s.id] ?? []}
                         workspaceId={workspaceId}
                         spaceId={spaceId}
-                        listId={listId}
+                        listId={listId ?? ""}
                         onClose={() => setCloseTarget(s)}
                         onAddTasks={() => setAddTasksTarget(s)}
                         onRefresh={refresh}
@@ -528,7 +572,7 @@ export function SprintPanel({ workspaceId, spaceId, listId, onDataChanged }: Spr
                         hasActiveSprint={activeSprints.length > 0}
                         workspaceId={workspaceId}
                         spaceId={spaceId}
-                        listId={listId}
+                        listId={listId ?? ""}
                         onStart={handleStartSprint}
                         onDelete={handleDeleteSprint}
                         onAddTasks={(id) => setAddTasksTarget(sprints.find((sp) => sp.id === id) ?? null)}
