@@ -332,12 +332,6 @@ export function WorkspaceShell({
                 icon: <CheckCircleIcon className="size-4 shrink-0" weight="fill" />,
                 badge: null,
               },
-              {
-                href: `/${workspace.id}/support`,
-                label: "Support",
-                icon: <HeadsetIcon className="size-4 shrink-0" weight="fill" />,
-                badge: null,
-              },
             ].map(({ href, label, icon, badge }) => {
               const active = pathname === href;
               return (
@@ -604,8 +598,8 @@ export function WorkspaceShell({
             </div>
           )}
 
-          {/* Channels section */}
-          <div>
+          {/* Channels section — post-MVP, hidden for now */}
+          {/* <div>
             <div className="flex items-center px-2 pb-1">
               <p className="flex-1 font-medium text-muted-foreground text-xs uppercase tracking-wide">
                 Channels
@@ -663,7 +657,7 @@ export function WorkspaceShell({
                 Add Channel
               </button>
             </div>
-          </div>
+          </div> */}
         </nav>
 
         {/* Bottom user menu */}
@@ -691,6 +685,13 @@ export function WorkspaceShell({
               >
                 <BellIcon className="size-4" />
                 Notification settings
+              </Link>
+              <Link
+                href={`/${workspace.id}/support`}
+                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent"
+              >
+                <HeadsetIcon className="size-4" />
+                Support
               </Link>
               <Separator className="my-1" />
               <button
