@@ -21,7 +21,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ClickUpCalendar } from "@/components/ui/clickup-calendar";
 import { createSprint } from "@/app/actions/sprint";
+import { format } from "date-fns";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -39,19 +42,10 @@ type IncompleteStrategy = "move_to_backlog" | "move_to_next_sprint" | "leave_as_
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function addWeeks(dateStr: string, weeks: number): string {
-  const d = new Date(dateStr + "T00:00:00");
+function addWeeks(date: Date, weeks: number): Date {
+  const d = new Date(date);
   d.setDate(d.getDate() + weeks * 7);
-  return d.toISOString().slice(0, 10);
-}
-
-function formatDisplayDate(dateStr: string): string {
-  const d = new Date(dateStr + "T00:00:00");
-  return d.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  return d;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -66,7 +60,8 @@ export function CreateSprintModal({
 }: CreateSprintModalProps) {
   const [name, setName] = useState("");
   const [goal, setGoal] = useState("");
-  const [startDate, setStartDate] = useState("");
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [startDateOpen, setStartDateOpen] = useState(false);
   const [durationWeeks, setDurationWeeks] = useState<DurationWeeks>(2);
   const [autoCreateNext, setAutoCreateNext] = useState(false);
   const [autoCloseOnNext, setAutoCloseOnNext] = useState(false);
@@ -75,14 +70,14 @@ export function CreateSprintModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const endDate = startDate ? addWeeks(startDate, durationWeeks) : "";
+  const endDate = startDate ? addWeeks(startDate, durationWeeks) : null;
 
   // Reset on open
   useEffect(() => {
     if (open) {
       setName("");
       setGoal("");
-      setStartDate("");
+      setStartDate(null);
       setDurationWeeks(2);
       setAutoCreateNext(false);
       setAutoCloseOnNext(false);
@@ -115,7 +110,7 @@ export function CreateSprintModal({
       const result = await createSprint(workspaceId, spaceId, listId, {
         name: name.trim(),
         goal: goal.trim() || undefined,
-        startDate: new Date(startDate + "T00:00:00"),
+        startDate: startDate!,
         durationWeeks,
         autoCreateNext,
         autoCloseOnNext,
@@ -187,19 +182,26 @@ export function CreateSprintModal({
           {/* Start Date + Duration */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="sprint-start">
+              <Label>
                 Start Date <span className="text-destructive">*</span>
               </Label>
-              <div className="relative">
-                <CalendarBlankIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
-                <Input
-                  id="sprint-start"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="pl-8"
-                />
-              </div>
+              <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
+                <PopoverTrigger asChild>
+                  <button className="flex h-10 w-full items-center gap-2 border border-input px-3 text-sm transition-colors hover:bg-accent">
+                    <CalendarBlankIcon className="size-3.5 text-muted-foreground shrink-0" />
+                    <span className={startDate ? "text-foreground" : "text-muted-foreground"}>
+                      {startDate ? format(startDate, "MMM d, yyyy") : "Pick a date"}
+                    </span>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <ClickUpCalendar
+                    selectedDate={startDate}
+                    onSelect={(date) => { setStartDate(date); setStartDateOpen(false); }}
+                    onClose={() => setStartDateOpen(false)}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div className="space-y-1.5">
@@ -227,7 +229,7 @@ export function CreateSprintModal({
           {endDate && (
             <div className="rounded-md bg-muted/50 px-3 py-2 text-sm flex items-center justify-between">
               <span className="text-muted-foreground">End date</span>
-              <span className="font-medium">{formatDisplayDate(endDate)}</span>
+              <span className="font-medium">{format(endDate, "MMM d, yyyy")}</span>
             </div>
           )}
 

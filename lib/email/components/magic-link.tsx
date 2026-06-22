@@ -19,7 +19,7 @@ export function MagicLinkEmail({
       <Text style={emailStyles.heading}>Sign in to {productName}</Text>
       <Text style={emailStyles.paragraph}>
         Use the button below to sign in as{" "}
-        <strong style={{ color: "#171717" }}>{email}</strong>.
+        <strong style={{ color: "#111827" }}>{email}</strong>.
       </Text>
       <Section style={{ margin: "24px 0" }}>
         <Button href={magicLinkUrl} style={emailStyles.button}>

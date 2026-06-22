@@ -42,7 +42,6 @@ import { CreateSpaceModal } from "@/components/workspace/create-space-modal";
 import { CreateListModal } from "@/components/list/create-list-modal";
 import { EditListDialog } from "@/components/list/edit-list-dialog";
 import { DeleteListDialog } from "@/components/list/delete-list-dialog";
-import { NotificationBell } from "@/components/notifications/notification-bell";
 import { PushNotificationBanner } from "@/components/notifications/push-notification-banner";
 import { usePushSubscription } from "@/hooks/use-push-subscription";
 import { CreateChannelModal } from "@/components/channel/create-channel-modal";
@@ -294,8 +293,6 @@ export function WorkspaceShell({
           </button>
         </div>
 
-        {/* Right side — notification bell */}
-        <NotificationBell />
       </header>
 
       {/* Body: sidebar + main content */}
@@ -311,7 +308,7 @@ export function WorkspaceShell({
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-12 left-0 z-30 flex w-60 shrink-0 flex-col border-r bg-card transition-transform duration-200 lg:static lg:inset-y-auto lg:h-full",
+          "fixed inset-y-12 left-0 z-30 flex w-60 shrink-0 flex-col border-r bg-[#F9F9F9] dark:bg-card transition-transform duration-200 lg:static lg:inset-y-auto lg:h-full",
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         )}
       >
@@ -502,7 +499,8 @@ export function WorkspaceShell({
                                 <div className="my-1 h-px bg-border" />
                                 <button
                                   onClick={async () => {
-                                    await archiveList(workspace.id, s.id, l.id);
+                                    const res = await archiveList(workspace.id, s.id, l.id);
+                                    if (!("error" in res)) router.push(`/${workspace.id}`);
                                   }}
                                   className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                                 >
@@ -672,13 +670,15 @@ export function WorkspaceShell({
               </button>
             </PopoverTrigger>
             <PopoverContent align="start" side="top" className="w-56 p-1">
-              <Link
-                href={`/${workspace.id}/settings/general`}
-                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent"
-              >
-                <GearIcon className="size-4" />
-                Workspace settings
-              </Link>
+              {isAdmin && (
+                <Link
+                  href={`/${workspace.id}/settings/general`}
+                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent"
+                >
+                  <GearIcon className="size-4" />
+                  Workspace settings
+                </Link>
+              )}
               <Link
                 href={`/${workspace.id}/notifications/settings`}
                 className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent"

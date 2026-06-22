@@ -5,20 +5,19 @@ import { useRouter } from "next/navigation";
 import {
   ArchiveIcon,
   CalendarBlankIcon,
+  CalendarPlusIcon,
   CaretDownIcon,
   CaretRightIcon,
   CaretLeftIcon,
   CheckIcon,
   CopyIcon,
   DotsThreeIcon,
-  FlagIcon,
   LightningIcon,
   PencilSimpleIcon,
   PlusIcon,
   TrashIcon,
   UserIcon,
   XIcon,
-  DotsSixVerticalIcon,
   ArrowsOutCardinalIcon,
   ArrowsDownUpIcon,
   GearIcon,
@@ -91,6 +90,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { ClickUpCalendar } from "@/components/ui/clickup-calendar";
 
 interface Status {
   id: string;
@@ -130,11 +130,11 @@ interface ListViewProps {
 type WorkspaceMember = { userId: string | null; name: string | null; email: string | null; image: string | null };
 
 const PRIORITY_CONFIG = {
-  NONE:   { label: "Clear Priority", color: "text-gray-400",  iconClass: "text-gray-300" },
-  LOW:    { label: "Low",    color: "text-gray-500",  iconClass: "text-gray-400" },
-  MEDIUM: { label: "Medium", color: "text-yellow-600", iconClass: "text-yellow-500" },
-  HIGH:   { label: "High",   color: "text-orange-500", iconClass: "text-orange-500" },
-  URGENT: { label: "Urgent", color: "text-red-500",    iconClass: "text-red-500" },
+  NONE:   { label: "No Priority", color: "text-gray-400",   icon: "😴" },
+  LOW:    { label: "Low",         color: "text-gray-500",   icon: "🐢" },
+  MEDIUM: { label: "Medium",      color: "text-yellow-600", icon: "🚶" },
+  HIGH:   { label: "High",        color: "text-orange-500", icon: "🏃" },
+  URGENT: { label: "Urgent",      color: "text-red-500",    icon: "⚡" },
 } as const;
 
 function userInitials(name: string) {
@@ -152,125 +152,6 @@ function formatDueDate(date: Date | null) {
 
 // ─── ClickUp Calendar component ───────────────────────────────────────────────
 
-interface ClickUpCalendarProps {
-  selectedDate: Date | null;
-  onSelect: (date: Date | null) => void;
-  onClose: () => void;
-}
-
-export function ClickUpCalendar({ selectedDate, onSelect, onClose }: ClickUpCalendarProps) {
-  const [currentMonth, setCurrentMonth] = React.useState<Date>(() => selectedDate || new Date());
-
-  const handlePrevMonth = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setCurrentMonth((prev) => subMonths(prev, 1));
-  };
-
-  const handleNextMonth = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setCurrentMonth((next) => addMonths(next, 1));
-  };
-
-  const monthStart = startOfMonth(currentMonth);
-  const monthEnd = endOfMonth(monthStart);
-  const startDate = startOfWeek(monthStart, { weekStartsOn: 1 }); // Monday
-  const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
-
-  const days = eachDayOfInterval({ start: startDate, end: endDate });
-
-  return (
-    <div className="p-3 w-[260px] select-none bg-white rounded-2xl shadow-xl border border-gray-100 flex flex-col gap-3 text-sm animate-in fade-in-50 zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-      {/* Month Navigation */}
-      <div className="flex items-center justify-between">
-        <button
-          onClick={handlePrevMonth}
-          className="p-1 rounded-lg hover:bg-gray-50 text-gray-500 hover:text-gray-900 transition-colors cursor-pointer"
-        >
-          <CaretLeftIcon className="size-4" weight="bold" />
-        </button>
-        <span className="font-semibold text-gray-800">
-          {format(currentMonth, "MMMM yyyy")}
-        </span>
-        <button
-          onClick={handleNextMonth}
-          className="p-1 rounded-lg hover:bg-gray-50 text-gray-500 hover:text-gray-900 transition-colors cursor-pointer"
-        >
-          <CaretRightIcon className="size-4" weight="bold" />
-        </button>
-      </div>
-
-      {/* Weekdays Header */}
-      <div className="grid grid-cols-7 text-center text-xs font-semibold text-gray-400">
-        <span>M</span>
-        <span>T</span>
-        <span>W</span>
-        <span>T</span>
-        <span>F</span>
-        <span>S</span>
-        <span>S</span>
-      </div>
-
-      {/* Days Grid */}
-      <div className="grid grid-cols-7 gap-1 text-center">
-        {days.map((day) => {
-          const isCurrentM = isSameMonth(day, currentMonth);
-          const isSel = selectedDate ? isSameDay(day, selectedDate) : false;
-          const isTod = isToday(day);
-
-          return (
-            <button
-              key={day.toString()}
-              onClick={(e) => {
-                e.stopPropagation();
-                onSelect(day);
-                onClose();
-              }}
-              className={cn(
-                "h-7 w-7 mx-auto rounded-full flex items-center justify-center text-xs transition-all relative font-medium cursor-pointer",
-                !isCurrentM && "text-gray-300",
-                isCurrentM && "text-gray-700 hover:bg-gray-50",
-                isTod && "border border-primary text-primary font-bold",
-                isSel && "bg-primary text-white hover:bg-primary/95"
-              )}
-            >
-              {format(day, "d")}
-              {isTod && !isSel && (
-                <span className="absolute bottom-1 size-1 rounded-full bg-primary" />
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Footer / Shortcuts */}
-      <div className="h-px bg-gray-100 my-1" />
-      <div className="flex flex-col gap-1.5">
-        <div className="grid grid-cols-2 gap-1.5">
-          <button
-            onClick={(e) => { e.stopPropagation(); onSelect(new Date()); onClose(); }}
-            className="px-2 py-1 bg-gray-50 text-gray-600 rounded-lg text-xs font-semibold hover:bg-gray-100 transition-colors cursor-pointer"
-          >
-            Today
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); onSelect(addDays(new Date(), 1)); onClose(); }}
-            className="px-2 py-1 bg-gray-50 text-gray-600 rounded-lg text-xs font-semibold hover:bg-gray-100 transition-colors cursor-pointer"
-          >
-            Tomorrow
-          </button>
-        </div>
-        {selectedDate && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onSelect(null); onClose(); }}
-            className="w-full py-1 text-red-500 hover:bg-red-50 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
-          >
-            Clear Date
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
 
 // ─── Task row ─────────────────────────────────────────────────────────────────
 
@@ -300,8 +181,17 @@ function TaskRow({
   statuses: Status[];
 }) {
   const router = useRouter();
-  const priority = PRIORITY_CONFIG[task.priority];
-  const dueDate = formatDueDate(task.dueDateStart);
+
+  // Optimistic local state — updates instantly on user action, syncs when server refreshes
+  const [localPriority, setLocalPriority] = React.useState<Task["priority"]>(task.priority);
+  const [localDueDate, setLocalDueDate] = React.useState<Date | null>(task.dueDateStart ?? null);
+
+  // Keep in sync if parent prop changes (e.g. after refresh)
+  React.useEffect(() => { setLocalPriority(task.priority); }, [task.priority]);
+  React.useEffect(() => { setLocalDueDate(task.dueDateStart ?? null); }, [task.dueDateStart]);
+
+  const priority = PRIORITY_CONFIG[localPriority];
+  const dueDate = formatDueDate(localDueDate);
 
   const {
     attributes,
@@ -328,10 +218,19 @@ function TaskRow({
     e.stopPropagation();
     await archiveTask(workspaceId, spaceId, listId, task.id);
   }
-  async function handleDelete(e: React.MouseEvent) {
+  const [deleteOpen, setDeleteOpen] = React.useState(false);
+  const [deleting, setDeleting] = React.useState(false);
+
+  function handleDeleteClick(e: React.MouseEvent) {
     e.stopPropagation();
-    if (!confirm(`Delete "${task.title}"? This cannot be undone.`)) return;
+    setDeleteOpen(true);
+  }
+
+  async function confirmDelete() {
+    setDeleting(true);
     await deleteTask(workspaceId, spaceId, listId, task.id);
+    setDeleting(false);
+    setDeleteOpen(false);
   }
 
   // ── Inline editing ────────────────────────────────────────────────────────
@@ -360,15 +259,29 @@ function TaskRow({
   }
 
   async function handleSetDueDate(date: Date | null) {
-    await updateTask(workspaceId, spaceId, listId, task.id, { dueDateStart: date, dueDateEnd: date });
+    const prev = localDueDate;
+    setLocalDueDate(date);
     setDateOpen(false);
-    router.refresh();
+    const res = await updateTask(workspaceId, spaceId, listId, task.id, { dueDateStart: date, dueDateEnd: date });
+    if ("error" in res) {
+      setLocalDueDate(prev);
+      toast.error(`Failed to update due date: ${res.error}`);
+    } else {
+      router.refresh();
+    }
   }
 
   async function handleSetPriority(p: Task["priority"]) {
-    await updateTask(workspaceId, spaceId, listId, task.id, { priority: p });
+    const prev = localPriority;
+    setLocalPriority(p);
     setPriorityOpen(false);
-    router.refresh();
+    const res = await updateTask(workspaceId, spaceId, listId, task.id, { priority: p });
+    if ("error" in res) {
+      setLocalPriority(prev);
+      toast.error(`Failed to update priority: ${res.error}`);
+    } else {
+      router.refresh();
+    }
   }
 
   const filteredMembers = (members ?? []).filter(
@@ -379,15 +292,44 @@ function TaskRow({
 
   return (
     <>
+      {/* Delete confirmation dialog */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent showCloseButton={false} className="sm:max-w-sm text-center" onClick={(e) => e.stopPropagation()}>
+          {/* Icon */}
+          <div className="flex justify-center">
+            <div className="flex size-12 items-center justify-center rounded-full bg-red-100">
+              <TrashIcon className="size-6 text-red-500" />
+            </div>
+          </div>
+          {/* Title & body */}
+          <div className="space-y-1.5">
+            <DialogTitle className="text-center text-base">Delete task?</DialogTitle>
+            <p className="text-sm text-muted-foreground text-center leading-relaxed">
+              <span className="font-medium text-foreground">&ldquo;{task.title}&rdquo;</span> will be permanently deleted and cannot be recovered.
+            </p>
+          </div>
+          {/* Buttons */}
+          <div className="flex gap-3 mt-1">
+            <Button variant="outline" className="flex-1" onClick={() => setDeleteOpen(false)} disabled={deleting}>
+              Cancel
+            </Button>
+            <Button variant="destructive" className="flex-1" onClick={confirmDelete} disabled={deleting}>
+              {deleting ? "Deleting…" : "Delete"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Desktop/Tablet Row layout */}
       <div
         ref={setNodeRef}
         style={style}
         {...attributes}
+        {...listeners}
         className={cn(
-          "group/row hidden md:flex items-center border-b border-gray-100 transition-all duration-200 cursor-pointer text-gray-700 bg-white min-h-[40px] text-sm",
+          "group/row hidden md:flex items-center border-b border-border transition-all duration-200 cursor-pointer text-foreground bg-card min-h-[40px] text-sm",
           isDragging && "opacity-40 shadow-none border-dashed",
-          selected ? "bg-blue-50/30" : "hover:bg-[#F8FAFC]",
+          selected ? "bg-primary/5" : "hover:bg-accent/30",
         )}
         onClick={onOpen}
       >
@@ -400,16 +342,8 @@ function TaskRow({
           style={{ backgroundColor: statusColor }}
         />
 
-        {/* Drag handle & Checkbox */}
-        <div className="flex items-center gap-1.5 pl-3 py-1.5 shrink-0 w-16">
-          <div
-            {...listeners}
-            className="opacity-0 group-hover/row:opacity-100 flex size-5 items-center justify-center cursor-grab text-gray-400 hover:text-gray-600 transition-opacity"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <DotsSixVerticalIcon className="size-4" />
-          </div>
-
+        {/* Checkbox */}
+        <div className="flex items-center pl-3 py-1.5 shrink-0 w-10">
           <div
             className={cn(
               "flex size-4 items-center justify-center rounded border transition-opacity duration-200 cursor-pointer",
@@ -421,7 +355,7 @@ function TaskRow({
               "flex size-4 items-center justify-center rounded border transition-colors",
               selected
                 ? "border-primary bg-primary text-primary-foreground"
-                : "border-gray-300 hover:border-gray-400 bg-white",
+                : "border-border hover:border-primary/40 bg-background",
             )}>
               {selected && <CheckIcon className="size-2.5" weight="bold" />}
             </div>
@@ -431,7 +365,7 @@ function TaskRow({
         {/* Task Name & ID */}
         <div className="flex flex-1 items-center gap-2.5 min-w-0 py-1.5 pr-4 pl-1">
           <span className="text-2xs text-gray-400 font-mono shrink-0 select-none">#{task.seqNumber}</span>
-          <span className="text-[13px] font-medium text-gray-800 truncate group-hover/row:text-primary transition-colors">{task.title}</span>
+          <span className="text-[13px] font-medium text-foreground truncate group-hover/row:text-primary transition-colors">{task.title}</span>
           {task.tags.slice(0, 2).map((tag) => (
             <span
               key={tag.id}
@@ -444,155 +378,174 @@ function TaskRow({
         </div>
 
         {/* Assignee */}
-        <div className="w-36 shrink-0 px-4 flex items-center" onClick={(e) => e.stopPropagation()}>
-          <Popover open={assigneeOpen} onOpenChange={(o) => { setAssigneeOpen(o); if (o) void loadMembers(); }}>
-            <PopoverTrigger asChild>
-              <button className="flex items-center gap-2 rounded border border-transparent py-1 hover:bg-gray-50 hover:border-gray-200 transition-all text-left cursor-pointer select-none">
-                {task.assignees.length > 0 ? (
-                  <TooltipProvider>
-                    <div className="flex -space-x-1.5">
-                      {task.assignees.slice(0, 3).map((a) => (
-                        <Tooltip key={a.userId}>
-                          <TooltipTrigger asChild>
-                            <div className="relative size-6 shrink-0">
-                              <Avatar className="size-6 border border-white shadow-sm">
+        <div className="w-36 shrink-0 self-stretch flex items-center px-2" onClick={(e) => e.stopPropagation()}>
+          {canEdit ? (
+            <Popover open={assigneeOpen} onOpenChange={(o) => { setAssigneeOpen(o); if (o) void loadMembers(); }}>
+              <PopoverTrigger asChild>
+                <button className="flex items-center gap-2 w-full h-full px-2 rounded-md border border-transparent hover:border-border hover:bg-accent/30 transition-all text-left cursor-pointer select-none">
+                  {task.assignees.length > 0 ? (
+                    <TooltipProvider>
+                      <div className="flex -space-x-1.5">
+                        {task.assignees.slice(0, 3).map((a) => (
+                          <Tooltip key={a.userId}>
+                            <TooltipTrigger asChild>
+                              <Avatar className="size-6 shrink-0 border border-background shadow-sm">
                                 {a.image && <AvatarImage src={a.image} alt={a.name} />}
                                 <AvatarFallback className="text-[10px] bg-primary text-primary-foreground font-semibold">
                                   {userInitials(a.name)}
                                 </AvatarFallback>
                               </Avatar>
-                              {/* Simulated presence indicator dot */}
-                              <span className="absolute bottom-0 right-0 block size-1.5 rounded-full bg-emerald-500 ring-[1px] ring-white" />
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent side="top" className="px-2 py-1 text-2xs">
-                            <p>{a.name}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      ))}
-                      {task.assignees.length > 3 && (
-                        <div className="flex size-6 items-center justify-center rounded-full border border-white bg-gray-100 text-[10px] text-gray-500 font-bold shadow-sm">
-                          +{task.assignees.length - 3}
-                        </div>
-                      )}
-                    </div>
-                  </TooltipProvider>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="px-2 py-1 text-2xs">
+                              <p>{a.name}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        ))}
+                        {task.assignees.length > 3 && (
+                          <div className="flex size-6 items-center justify-center rounded-full border border-background bg-muted text-[10px] text-muted-foreground font-bold shadow-sm">
+                            +{task.assignees.length - 3}
+                          </div>
+                        )}
+                      </div>
+                    </TooltipProvider>
+                  ) : (
+                    <UserIcon className="size-4 text-gray-400 group-hover/row:text-gray-600" weight="bold" />
+                  )}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="start" side="bottom" className="w-72 p-2">
+                <Input
+                  placeholder="Search members…"
+                  value={memberSearch}
+                  onChange={(e) => setMemberSearch(e.target.value)}
+                  className="h-8 text-xs mb-2"
+                />
+                {members === null ? (
+                  <p className="py-2 px-1 text-xs text-muted-foreground">Loading…</p>
+                ) : filteredMembers.length === 0 ? (
+                  <p className="py-2 px-1 text-xs text-muted-foreground">No members found</p>
                 ) : (
-                  <div className="size-6 rounded-full border border-dashed border-gray-300 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:border-gray-400 transition-all">
-                    <UserIcon className="size-3.5" />
+                  <div className="max-h-52 overflow-y-auto">
+                    <p className="px-1 pb-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">People</p>
+                    {filteredMembers.map((m) => {
+                      const assigned = task.assignees.some((a) => a.userId === m.userId);
+                      return (
+                        <button
+                          key={m.userId}
+                          onClick={() => void handleToggleAssignee(m.userId)}
+                          className={cn(
+                            "flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors cursor-pointer",
+                            assigned ? "bg-primary/10" : "hover:bg-accent",
+                          )}
+                        >
+                          <Avatar className="size-6 shrink-0">
+                            {m.image && <AvatarImage src={m.image} />}
+                            <AvatarFallback className="text-2xs bg-primary/10 text-primary font-semibold">
+                              {userInitials(m.name ?? m.email ?? "?")}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="flex-1 min-w-0 text-left truncate">{m.name ?? m.email}</span>
+                          {assigned && <CheckIcon className="size-3.5 text-primary shrink-0" weight="bold" />}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="start" side="bottom" className="w-72 p-2">
-              <Input
-                placeholder="Search members…"
-                value={memberSearch}
-                onChange={(e) => setMemberSearch(e.target.value)}
-                className="h-8 text-xs mb-2"
-              />
-              {members === null ? (
-                <p className="py-2 px-1 text-xs text-muted-foreground">Loading…</p>
-              ) : filteredMembers.length === 0 ? (
-                <p className="py-2 px-1 text-xs text-muted-foreground">No members found</p>
-              ) : (
-                <div className="max-h-52 overflow-y-auto">
-                  <p className="px-1 pb-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">People</p>
-                  {filteredMembers.map((m) => {
-                    const assigned = task.assignees.some((a) => a.userId === m.userId);
-                    return (
-                      <button
-                        key={m.userId}
-                        onClick={() => void handleToggleAssignee(m.userId)}
-                        className={cn(
-                          "flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors cursor-pointer",
-                          assigned ? "bg-primary/10" : "hover:bg-accent",
-                        )}
-                      >
-                        <Avatar className="size-6 shrink-0">
-                          {m.image && <AvatarImage src={m.image} />}
-                          <AvatarFallback className="text-2xs bg-primary/10 text-primary font-semibold">
-                            {userInitials(m.name ?? m.email ?? "?")}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="flex-1 min-w-0 text-left truncate">{m.name ?? m.email}</span>
-                        {assigned && <CheckIcon className="size-3.5 text-primary shrink-0" weight="bold" />}
-                      </button>
-                    );
-                  })}
+              </PopoverContent>
+            </Popover>
+          ) : (
+            <div className="flex items-center gap-2 px-2">
+              {task.assignees.length > 0 ? (
+                <div className="flex -space-x-1.5">
+                  {task.assignees.slice(0, 3).map((a) => (
+                    <Avatar key={a.userId} className="size-6 shrink-0 border border-background shadow-sm">
+                      {a.image && <AvatarImage src={a.image} alt={a.name} />}
+                      <AvatarFallback className="text-[10px] bg-primary text-primary-foreground font-semibold">
+                        {userInitials(a.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                  ))}
+                  {task.assignees.length > 3 && (
+                    <div className="flex size-6 items-center justify-center rounded-full border border-background bg-muted text-[10px] text-muted-foreground font-bold shadow-sm">
+                      +{task.assignees.length - 3}
+                    </div>
+                  )}
                 </div>
+              ) : (
+                <UserIcon className="size-4 text-gray-300" weight="bold" />
               )}
-            </PopoverContent>
-          </Popover>
+            </div>
+          )}
         </div>
 
         {/* Due date */}
-        <div className="w-28 shrink-0 px-4 flex items-center" onClick={(e) => e.stopPropagation()}>
-          <Popover open={dateOpen} onOpenChange={setDateOpen}>
-            <PopoverTrigger asChild>
-              <button className={cn(
-                "flex items-center gap-1.5 rounded border border-transparent px-2 py-1 hover:bg-gray-50 hover:border-gray-200 transition-all text-xs font-semibold text-left cursor-pointer select-none",
-                dueDate?.overdue ? "text-red-500" : "text-gray-600 hover:text-gray-800",
-              )}>
-                {dueDate ? (
-                  <>
-                    <CalendarBlankIcon className="size-3.5" />
-                    <span>{dueDate.label}</span>
-                  </>
-                ) : (
-                  <div className="flex items-center gap-1.5 text-gray-400 hover:text-gray-600 transition-colors">
-                    <CalendarBlankIcon className="size-3.5" />
-                    <span>Set date</span>
-                  </div>
-                )}
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="start" side="bottom" className="p-0 border-0 shadow-none bg-transparent">
-              <ClickUpCalendar
-                selectedDate={task.dueDateStart}
-                onSelect={handleSetDueDate}
-                onClose={() => setDateOpen(false)}
-              />
-            </PopoverContent>
-          </Popover>
+        <div className="w-28 shrink-0 self-stretch flex items-center px-2" onClick={(e) => e.stopPropagation()}>
+          {canEdit ? (
+            <Popover open={dateOpen} onOpenChange={setDateOpen}>
+              <PopoverTrigger asChild>
+                <button className={cn(
+                  "flex items-center gap-1.5 w-full h-full px-2 rounded-md border border-transparent hover:border-border hover:bg-accent/30 transition-all text-xs font-semibold text-left cursor-pointer select-none",
+                  dueDate?.overdue ? "text-red-500" : "text-gray-600",
+                )}>
+                  {dueDate ? (
+                    <>
+                      <CalendarBlankIcon className="size-3.5" />
+                      <span>{dueDate.label}</span>
+                    </>
+                  ) : (
+                    <CalendarPlusIcon className="size-4 text-gray-400 group-hover/row:text-gray-600" weight="bold" />
+                  )}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" side="bottom" className="p-0 border-0 shadow-none bg-transparent">
+                <ClickUpCalendar
+                  selectedDate={localDueDate}
+                  onSelect={handleSetDueDate}
+                  onClose={() => setDateOpen(false)}
+                />
+              </PopoverContent>
+            </Popover>
+          ) : (
+            <div className={cn("flex items-center gap-1.5 px-2 text-xs font-semibold", dueDate?.overdue ? "text-red-500" : "text-gray-400")}>
+              {dueDate ? (
+                <>
+                  <CalendarBlankIcon className="size-3.5" />
+                  <span>{dueDate.label}</span>
+                </>
+              ) : null}
+            </div>
+          )}
         </div>
 
         {/* Priority */}
-        <div className="w-28 shrink-0 px-4 flex items-center" onClick={(e) => e.stopPropagation()}>
-          <Popover open={priorityOpen} onOpenChange={setPriorityOpen}>
-            <PopoverTrigger asChild>
-              <button className="flex items-center gap-1.5 rounded border border-transparent px-2 py-1 hover:bg-gray-50 hover:border-gray-200 transition-all text-left cursor-pointer select-none">
-                {task.priority !== "NONE" ? (
-                  <span className={cn("flex items-center gap-1.5 text-xs font-bold", PRIORITY_CONFIG[task.priority].color)}>
-                    <FlagIcon className="size-3.5 shrink-0" weight="fill" />
-                    {PRIORITY_CONFIG[task.priority].label}
-                  </span>
-                ) : (
-                  <div className="flex items-center gap-1.5 text-gray-400 hover:text-gray-600 transition-colors">
-                    <FlagIcon className="size-3.5 text-gray-300" />
-                    <span className="text-xs">No Priority</span>
-                  </div>
-                )}
-              </button>
-            </PopoverTrigger>
+        <div className="w-28 shrink-0 self-stretch flex items-center px-2" onClick={(e) => e.stopPropagation()}>
+          {canEdit ? (
+            <Popover open={priorityOpen} onOpenChange={setPriorityOpen}>
+              <PopoverTrigger asChild>
+                <button className="flex items-center gap-1.5 w-full h-full px-2 rounded-md border border-transparent hover:border-border hover:bg-accent/30 transition-all text-left cursor-pointer select-none">
+                  {localPriority !== "NONE" ? (
+                    <span className={cn("flex items-center gap-1.5 text-xs font-bold", PRIORITY_CONFIG[localPriority].color)}>
+                      <span>{PRIORITY_CONFIG[localPriority].icon}</span>
+                      {PRIORITY_CONFIG[localPriority].label}
+                    </span>
+                  ) : (
+                    <span className="text-base text-muted-foreground/50 group-hover/row:text-muted-foreground">{PRIORITY_CONFIG.NONE.icon}</span>
+                  )}
+                </button>
+              </PopoverTrigger>
             <PopoverContent align="start" side="bottom" className="w-44 p-1">
               <p className="px-2 py-1 text-2xs font-bold text-muted-foreground uppercase tracking-wide">Priority</p>
-              {([
-                { value: "URGENT", label: "Urgent", color: "text-red-500"    },
-                { value: "HIGH",   label: "High",   color: "text-orange-500" },
-                { value: "MEDIUM", label: "Medium", color: "text-yellow-600" },
-                { value: "LOW",    label: "Low",    color: "text-gray-500"   },
-              ] as const).map(({ value, label, color }) => (
+              {(["URGENT", "HIGH", "MEDIUM", "LOW"] as const).map((value) => (
                 <button
                   key={value}
                   onClick={() => void handleSetPriority(value)}
                   className={cn(
                     "flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs font-semibold hover:bg-accent cursor-pointer",
-                    task.priority === value && "bg-accent",
+                    localPriority === value && "bg-accent",
                   )}
                 >
-                  <FlagIcon className={cn("size-3.5 shrink-0", color)} weight="fill" />
-                  <span className={color}>{label}</span>
+                  <span>{PRIORITY_CONFIG[value].icon}</span>
+                  <span className={PRIORITY_CONFIG[value].color}>{PRIORITY_CONFIG[value].label}</span>
                 </button>
               ))}
               <div className="h-px bg-border my-1" />
@@ -604,7 +557,17 @@ function TaskRow({
                 Clear
               </button>
             </PopoverContent>
-          </Popover>
+            </Popover>
+          ) : (
+            <div className="flex items-center gap-1.5 px-2">
+              {localPriority !== "NONE" ? (
+                <span className={cn("flex items-center gap-1.5 text-xs font-bold", PRIORITY_CONFIG[localPriority].color)}>
+                  <span>{PRIORITY_CONFIG[localPriority].icon}</span>
+                  {PRIORITY_CONFIG[localPriority].label}
+                </span>
+              ) : null}
+            </div>
+          )}
         </div>
 
         {/* Row hover actions */}
@@ -614,26 +577,28 @@ function TaskRow({
             <button
               onClick={onOpen}
               title="Edit Task"
-              className="flex size-7 items-center justify-center rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors cursor-pointer"
+              className="flex size-7 items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
             >
               <PencilSimpleIcon className="size-4" />
             </button>
 
             {/* Duplicate */}
-            <button
-              onClick={handleDuplicate}
-              title="Duplicate Task"
-              className="flex size-7 items-center justify-center rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors cursor-pointer"
-            >
-              <CopyIcon className="size-4" />
-            </button>
+            {canEdit && (
+              <button
+                onClick={handleDuplicate}
+                title="Duplicate Task"
+                className="flex size-7 items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              >
+                <CopyIcon className="size-4" />
+              </button>
+            )}
 
-            {/* Move status menu */}
+            {/* Move status menu — available to all members */}
             <Popover>
               <PopoverTrigger asChild>
                 <button
                   title="Move Task Status"
-                  className="flex size-7 items-center justify-center rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors cursor-pointer"
+                  className="flex size-7 items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                 >
                   <ArrowsOutCardinalIcon className="size-4" />
                 </button>
@@ -656,38 +621,32 @@ function TaskRow({
               </PopoverContent>
             </Popover>
 
-            {/* Delete / Archive */}
-            {isAdmin ? (
+            {/* Delete (admin only) */}
+            {isAdmin && (
               <button
-                onClick={handleDelete}
+                onClick={handleDeleteClick}
                 title="Delete Task"
                 className="flex size-7 items-center justify-center rounded-md hover:bg-red-50 text-red-500 hover:text-red-700 transition-colors cursor-pointer"
               >
                 <TrashIcon className="size-4" />
               </button>
-            ) : (
-              <button
-                onClick={handleArchive}
-                title="Archive Task"
-                className="flex size-7 items-center justify-center rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors cursor-pointer"
-              >
-                <ArchiveIcon className="size-4" />
-              </button>
             )}
 
-            {/* More menu dropdown */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <button className="flex size-7 items-center justify-center rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors cursor-pointer">
-                  <DotsThreeIcon className="size-4.5" weight="bold" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-40 p-1">
-                <button onClick={handleArchive} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs font-semibold hover:bg-accent text-left cursor-pointer">
-                  <ArchiveIcon className="size-3.5 text-muted-foreground shrink-0" /> Archive
-                </button>
-              </PopoverContent>
-            </Popover>
+            {/* More menu — archive lives here */}
+            {canEdit && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="flex size-7 items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+                    <DotsThreeIcon className="size-4.5" weight="bold" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-40 p-1">
+                  <button onClick={handleArchive} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs font-semibold hover:bg-accent text-left cursor-pointer">
+                    <ArchiveIcon className="size-3.5 text-muted-foreground shrink-0" /> Archive
+                  </button>
+                </PopoverContent>
+              </Popover>
+            )}
           </div>
         </div>
       </div>
@@ -698,7 +657,7 @@ function TaskRow({
         style={style}
         {...attributes}
         className={cn(
-          "md:hidden flex flex-col p-4 border-b border-gray-100 gap-3 hover:bg-slate-50/50 bg-white transition-all cursor-pointer relative",
+          "md:hidden flex flex-col p-4 border-b border-border gap-3 hover:bg-accent/30 bg-card transition-all cursor-pointer relative",
           isDragging && "opacity-40 shadow-none border-dashed",
         )}
         onClick={onOpen}
@@ -716,7 +675,7 @@ function TaskRow({
               "flex size-4 items-center justify-center rounded border transition-colors",
               selected
                 ? "border-primary bg-primary text-primary-foreground"
-                : "border-gray-300 hover:border-gray-400 bg-white",
+                : "border-border hover:border-primary/40 bg-background",
             )}>
               {selected && <CheckIcon className="size-2.5" weight="bold" />}
             </div>
@@ -725,38 +684,38 @@ function TaskRow({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 mb-1 flex-wrap">
               <span className="text-[10px] text-gray-400 font-mono font-bold">#{task.seqNumber}</span>
-              {task.priority !== "NONE" && (
-                <span className={cn("inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded border border-current/10 bg-current/5", PRIORITY_CONFIG[task.priority].color)}>
-                  <FlagIcon className="size-3" weight="fill" />
-                  {PRIORITY_CONFIG[task.priority].label}
+              {localPriority !== "NONE" && (
+                <span className={cn("inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded border border-current/10 bg-current/5", PRIORITY_CONFIG[localPriority].color)}>
+                  <span>{PRIORITY_CONFIG[localPriority].icon}</span>
+                  {PRIORITY_CONFIG[localPriority].label}
                 </span>
               )}
             </div>
-            <p className="text-[13px] font-medium text-gray-800 line-clamp-2">{task.title}</p>
+            <p className="text-[13px] font-medium text-foreground line-clamp-2">{task.title}</p>
           </div>
 
           {/* Quick options */}
           <div onClick={(e) => e.stopPropagation()} className="shrink-0">
             <Popover>
               <PopoverTrigger asChild>
-                <button className="flex size-7 items-center justify-center rounded hover:bg-gray-100 text-gray-500 cursor-pointer">
+                <button className="flex size-7 items-center justify-center rounded hover:bg-accent text-muted-foreground cursor-pointer">
                   <DotsThreeIcon className="size-4.5" weight="bold" />
                 </button>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-44 p-1">
                 <button onClick={onOpen} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs font-semibold hover:bg-accent text-left cursor-pointer">
-                  <PencilSimpleIcon className="size-3.5 text-gray-500" /> Edit
+                  <PencilSimpleIcon className="size-3.5 text-muted-foreground" /> Edit
                 </button>
                 <button onClick={handleDuplicate} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs font-semibold hover:bg-accent text-left cursor-pointer">
-                  <CopyIcon className="size-3.5 text-gray-500" /> Duplicate
+                  <CopyIcon className="size-3.5 text-muted-foreground" /> Duplicate
                 </button>
                 {isAdmin ? (
-                  <button onClick={handleDelete} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-50 text-left cursor-pointer">
+                  <button onClick={handleDeleteClick} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-50 text-left cursor-pointer">
                     <TrashIcon className="size-3.5" /> Delete
                   </button>
                 ) : (
                   <button onClick={handleArchive} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs font-semibold hover:bg-accent text-left cursor-pointer">
-                    <ArchiveIcon className="size-3.5 text-gray-500" /> Archive
+                    <ArchiveIcon className="size-3.5 text-muted-foreground" /> Archive
                   </button>
                 )}
               </PopoverContent>
@@ -771,8 +730,8 @@ function TaskRow({
             <Popover>
               <PopoverTrigger asChild>
                 <button className={cn(
-                  "flex items-center gap-1.5 px-2 py-1 rounded bg-gray-50 text-[10px] font-semibold transition-all cursor-pointer",
-                  dueDate?.overdue ? "text-red-500 bg-red-50" : "text-gray-600",
+                  "flex items-center gap-1.5 px-2 py-1 rounded bg-muted/50 text-[10px] font-semibold transition-all cursor-pointer",
+                  dueDate?.overdue ? "text-red-500 bg-red-50" : "text-foreground/70",
                 )}>
                   <CalendarBlankIcon className="size-3.5" />
                   <span>{dueDate ? dueDate.label : "Set date"}</span>
@@ -780,7 +739,7 @@ function TaskRow({
               </PopoverTrigger>
               <PopoverContent align="start" className="p-0 border-0 bg-transparent shadow-none">
                 <ClickUpCalendar
-                  selectedDate={task.dueDateStart}
+                  selectedDate={localDueDate}
                   onSelect={handleSetDueDate}
                   onClose={() => {}}
                 />
@@ -793,7 +752,7 @@ function TaskRow({
             {task.assignees.length > 0 && (
               <div className="flex -space-x-1.5">
                 {task.assignees.slice(0, 3).map((a) => (
-                  <Avatar key={a.userId} className="size-5.5 border border-white">
+                  <Avatar key={a.userId} className="size-5.5 border border-background">
                     {a.image && <AvatarImage src={a.image} />}
                     <AvatarFallback className="text-[8px] bg-primary text-primary-foreground font-semibold">
                       {userInitials(a.name)}
@@ -801,7 +760,7 @@ function TaskRow({
                   </Avatar>
                 ))}
                 {task.assignees.length > 3 && (
-                  <div className="flex size-5.5 items-center justify-center rounded-full border border-white bg-gray-100 text-[8px] font-bold text-gray-500">
+                  <div className="flex size-5.5 items-center justify-center rounded-full border border-background bg-muted text-[8px] font-bold text-muted-foreground">
                     +{task.assignees.length - 3}
                   </div>
                 )}
@@ -892,10 +851,10 @@ function StatusGroup({
         {/* Status Group Header */}
         <div
           onClick={() => setCollapsed(!collapsed)}
-          className="group/header flex items-center gap-2.5 py-1.5 px-3 hover:bg-slate-50/80 transition-colors cursor-pointer select-none border-b border-gray-100"
+          className="group/header flex items-center gap-2.5 py-1.5 px-3 hover:bg-accent/30 transition-colors cursor-pointer select-none border-b border-border"
         >
           {/* Arrow */}
-          <div className="flex size-5 items-center justify-center rounded hover:bg-gray-100 transition-colors shrink-0 text-gray-400 group-hover/header:text-gray-600">
+          <div className="flex size-5 items-center justify-center rounded hover:bg-accent transition-colors shrink-0 text-muted-foreground group-hover/header:text-foreground">
             {collapsed ? (
               <CaretRightIcon weight="fill" className="size-3" />
             ) : (
@@ -925,8 +884,8 @@ function StatusGroup({
           <div className="ml-2 flex items-center gap-1 opacity-0 group-hover/header:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
             <Popover open={menuOpen} onOpenChange={setMenuOpen}>
               <PopoverTrigger asChild>
-                <button className="flex size-6 items-center justify-center rounded hover:bg-gray-100 transition-colors cursor-pointer">
-                  <DotsThreeIcon className="size-4.5 text-gray-500" weight="bold" />
+                <button className="flex size-6 items-center justify-center rounded hover:bg-accent transition-colors cursor-pointer">
+                  <DotsThreeIcon className="size-4.5 text-muted-foreground" weight="bold" />
                 </button>
               </PopoverTrigger>
               <PopoverContent align="start" side="bottom" className="w-48 p-1 mt-1">
@@ -961,10 +920,10 @@ function StatusGroup({
             </Popover>
 
             <button
-              className="flex size-6 items-center justify-center rounded hover:bg-gray-100 transition-colors cursor-pointer"
+              className="flex size-6 items-center justify-center rounded hover:bg-accent transition-colors cursor-pointer"
               onClick={() => onCreateTask(status.id)}
             >
-              <PlusIcon className="size-3.5 text-gray-500" />
+              <PlusIcon className="size-3.5 text-muted-foreground" />
             </button>
           </div>
         </div>
@@ -976,11 +935,11 @@ function StatusGroup({
               ref={setNodeRef}
               className={cn(
                 "flex flex-col transition-all min-h-[4px]",
-                isOver && "bg-slate-50/50 border-y border-dashed border-gray-200"
+                isOver && "bg-accent/20 border-y border-dashed border-border"
               )}
             >
               {tasks.length === 0 ? (
-                <div className="py-3 pl-16 text-xs text-gray-400 italic bg-white border-b border-gray-50 select-none">
+                <div className="py-3 pl-16 text-xs text-muted-foreground italic bg-card border-b border-border/50 select-none">
                   No tasks in status
                 </div>
               ) : (
@@ -1005,7 +964,7 @@ function StatusGroup({
               {/* Add Task Button */}
               <button
                 onClick={() => onCreateTask(status.id)}
-                className="flex items-center gap-1.5 pl-16 pr-4 py-2 text-xs font-semibold text-gray-400 hover:text-primary hover:bg-[#F8FAFC]/50 transition-colors border-b border-gray-100 bg-white cursor-pointer select-none text-left"
+                className="flex items-center gap-1.5 pl-16 pr-4 py-2 text-xs font-semibold text-muted-foreground hover:text-primary hover:bg-accent/30 transition-colors border-b border-border bg-card cursor-pointer select-none text-left"
               >
                 <PlusIcon className="size-3.5 shrink-0" />
                 Add Task
@@ -1019,7 +978,7 @@ function StatusGroup({
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
         <DialogContent className="sm:max-w-xs">
           <DialogHeader>
-            <DialogTitle className="text-sm font-bold text-gray-800">Rename Status</DialogTitle>
+            <DialogTitle className="text-sm font-bold text-foreground">Rename Status</DialogTitle>
           </DialogHeader>
           <Input
             value={renameName}
@@ -1039,7 +998,7 @@ function StatusGroup({
       <Dialog open={newStatusOpen} onOpenChange={setNewStatusOpen}>
         <DialogContent className="sm:max-w-xs">
           <DialogHeader>
-            <DialogTitle className="text-sm font-bold text-gray-800">New Status</DialogTitle>
+            <DialogTitle className="text-sm font-bold text-foreground">New Status</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <Input
@@ -1594,10 +1553,10 @@ export function ListView({
         onDragEnd={onDragEnd}
       >
         {/* ClickUp-style unified workspace container */}
-        <div className="w-full bg-white border border-[#E5E7EB] rounded-2xl p-5 shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] overflow-hidden flex flex-col gap-4">
-          
+        <div className="w-full bg-card border border-border rounded-2xl p-5 shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] overflow-hidden flex flex-col gap-4">
+
           {/* Sticky Toolbar + Table Header Section */}
-          <div className="sticky top-0 z-30 bg-white pb-2 border-b border-gray-100 flex flex-col gap-3">
+          <div className="sticky top-0 z-30 bg-card pb-2 border-b border-border flex flex-col gap-3">
             {/* Action Bar / Toolbar */}
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <div className="flex items-center gap-2 flex-wrap">
@@ -1609,14 +1568,14 @@ export function ListView({
                     placeholder="Search tasks…"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="h-8 w-44 rounded-lg border border-gray-200 bg-white pl-8 pr-3 text-xs focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all focus:w-56"
+                    className="h-8 w-44 rounded-lg border border-border bg-background pl-8 pr-3 text-xs focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all focus:w-56"
                   />
                 </div>
 
                 {/* Filter Popover */}
                 <Popover>
                   <PopoverTrigger asChild>
-                    <button className="flex items-center gap-1.5 h-8 rounded-lg border border-gray-200 px-3 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer select-none">
+                    <button className="flex items-center gap-1.5 h-8 rounded-lg border border-border px-3 text-xs font-semibold text-foreground/70 hover:bg-accent/30 transition-colors cursor-pointer select-none">
                       <FunnelIcon className="size-3.5 text-gray-500" />
                       Filters
                       {(priorityFilter.length > 0 || assigneeFilter.length > 0 || statusFilter.length > 0) && (
@@ -1630,7 +1589,7 @@ export function ListView({
                       <p className="mb-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Status</p>
                       <div className="flex flex-col gap-1 max-h-32 overflow-y-auto">
                         {statuses.map(s => (
-                          <label key={s.id} className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer py-0.5 hover:bg-gray-50 rounded">
+                          <label key={s.id} className="flex items-center gap-2 text-xs text-foreground cursor-pointer py-0.5 hover:bg-accent/30 rounded">
                             <input
                               type="checkbox"
                               checked={statusFilter.includes(s.id)}
@@ -1650,7 +1609,7 @@ export function ListView({
                       <p className="mb-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Priority</p>
                       <div className="flex flex-col gap-1">
                         {["URGENT", "HIGH", "MEDIUM", "LOW", "NONE"].map(p => (
-                          <label key={p} className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer py-0.5 hover:bg-gray-50 rounded">
+                          <label key={p} className="flex items-center gap-2 text-xs text-foreground cursor-pointer py-0.5 hover:bg-accent/30 rounded">
                             <input
                               type="checkbox"
                               checked={priorityFilter.includes(p)}
@@ -1670,7 +1629,7 @@ export function ListView({
                       <div>
                         <p className="mb-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Assignee</p>
                         <div className="flex flex-col gap-1 max-h-36 overflow-y-auto">
-                          <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer py-0.5 hover:bg-gray-50 rounded">
+                          <label className="flex items-center gap-2 text-xs text-foreground cursor-pointer py-0.5 hover:bg-accent/30 rounded">
                             <input
                               type="checkbox"
                               checked={assigneeFilter.includes("unassigned")}
@@ -1682,7 +1641,7 @@ export function ListView({
                             <span>Unassigned</span>
                           </label>
                           {members.map(m => (
-                            <label key={m.userId} className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer py-0.5 hover:bg-gray-50 rounded">
+                            <label key={m.userId} className="flex items-center gap-2 text-xs text-foreground cursor-pointer py-0.5 hover:bg-accent/30 rounded">
                               <input
                                 type="checkbox"
                                 checked={assigneeFilter.includes(m.userId)}
@@ -1711,31 +1670,31 @@ export function ListView({
                 {/* Sort */}
                 <Popover>
                   <PopoverTrigger asChild>
-                    <button className="flex items-center gap-1.5 h-8 rounded-lg border border-gray-200 px-3 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer select-none">
+                    <button className="flex items-center gap-1.5 h-8 rounded-lg border border-border px-3 text-xs font-semibold text-foreground/70 hover:bg-accent/30 transition-colors cursor-pointer select-none">
                       <ArrowsDownUpIcon className="size-3.5 text-gray-500" />
                       Sort: {sortBy ? (sortBy.charAt(0).toUpperCase() + sortBy.slice(1)) : "None"}
                     </button>
                   </PopoverTrigger>
                   <PopoverContent align="start" className="w-44 p-1 flex flex-col gap-0.5">
-                    <button onClick={() => setSortBy(null)} className={cn("px-2 py-1.5 text-xs font-semibold text-left rounded hover:bg-gray-50 cursor-pointer", !sortBy && "bg-gray-100 text-gray-900")}>None</button>
-                    <button onClick={() => { setSortBy("name"); setSortOrder(o => o === "asc" ? "desc" : "asc"); }} className={cn("px-2 py-1.5 text-xs font-semibold text-left rounded hover:bg-gray-50 cursor-pointer", sortBy === "name" && "bg-gray-100 text-gray-900")}>Task Name</button>
-                    <button onClick={() => { setSortBy("due"); setSortOrder(o => o === "asc" ? "desc" : "asc"); }} className={cn("px-2 py-1.5 text-xs font-semibold text-left rounded hover:bg-gray-50 cursor-pointer", sortBy === "due" && "bg-gray-100 text-gray-900")}>Due Date</button>
-                    <button onClick={() => { setSortBy("priority"); setSortOrder(o => o === "asc" ? "desc" : "asc"); }} className={cn("px-2 py-1.5 text-xs font-semibold text-left rounded hover:bg-gray-50 cursor-pointer", sortBy === "priority" && "bg-gray-100 text-gray-900")}>Priority</button>
+                    <button onClick={() => setSortBy(null)} className={cn("px-2 py-1.5 text-xs font-semibold text-left rounded hover:bg-accent/30 cursor-pointer", !sortBy && "bg-accent text-foreground")}>None</button>
+                    <button onClick={() => { setSortBy("name"); setSortOrder(o => o === "asc" ? "desc" : "asc"); }} className={cn("px-2 py-1.5 text-xs font-semibold text-left rounded hover:bg-accent/30 cursor-pointer", sortBy === "name" && "bg-accent text-foreground")}>Task Name</button>
+                    <button onClick={() => { setSortBy("due"); setSortOrder(o => o === "asc" ? "desc" : "asc"); }} className={cn("px-2 py-1.5 text-xs font-semibold text-left rounded hover:bg-accent/30 cursor-pointer", sortBy === "due" && "bg-accent text-foreground")}>Due Date</button>
+                    <button onClick={() => { setSortBy("priority"); setSortOrder(o => o === "asc" ? "desc" : "asc"); }} className={cn("px-2 py-1.5 text-xs font-semibold text-left rounded hover:bg-accent/30 cursor-pointer", sortBy === "priority" && "bg-accent text-foreground")}>Priority</button>
                   </PopoverContent>
                 </Popover>
 
                 {/* Group By */}
                 <Popover>
                   <PopoverTrigger asChild>
-                    <button className="flex items-center gap-1.5 h-8 rounded-lg border border-gray-200 px-3 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer select-none">
+                    <button className="flex items-center gap-1.5 h-8 rounded-lg border border-border px-3 text-xs font-semibold text-foreground/70 hover:bg-accent/30 transition-colors cursor-pointer select-none">
                       <GearIcon className="size-3.5 text-gray-500" />
                       Group By: {groupBy.charAt(0).toUpperCase() + groupBy.slice(1)}
                     </button>
                   </PopoverTrigger>
                   <PopoverContent align="start" className="w-44 p-1 flex flex-col gap-0.5">
-                    <button onClick={() => setGroupBy("status")} className={cn("px-2 py-1.5 text-xs font-semibold text-left rounded hover:bg-gray-50 cursor-pointer", groupBy === "status" && "bg-gray-100 text-gray-900")}>Status</button>
-                    <button onClick={() => setGroupBy("priority")} className={cn("px-2 py-1.5 text-xs font-semibold text-left rounded hover:bg-gray-50 cursor-pointer", groupBy === "priority" && "bg-gray-100 text-gray-900")}>Priority</button>
-                    <button onClick={() => setGroupBy("assignee")} className={cn("px-2 py-1.5 text-xs font-semibold text-left rounded hover:bg-gray-50 cursor-pointer", groupBy === "assignee" && "bg-gray-100 text-gray-900")}>Assignee</button>
+                    <button onClick={() => setGroupBy("status")} className={cn("px-2 py-1.5 text-xs font-semibold text-left rounded hover:bg-accent/30 cursor-pointer", groupBy === "status" && "bg-accent text-foreground")}>Status</button>
+                    <button onClick={() => setGroupBy("priority")} className={cn("px-2 py-1.5 text-xs font-semibold text-left rounded hover:bg-accent/30 cursor-pointer", groupBy === "priority" && "bg-accent text-foreground")}>Priority</button>
+                    <button onClick={() => setGroupBy("assignee")} className={cn("px-2 py-1.5 text-xs font-semibold text-left rounded hover:bg-accent/30 cursor-pointer", groupBy === "assignee" && "bg-accent text-foreground")}>Assignee</button>
                   </PopoverContent>
                 </Popover>
               </div>
@@ -1751,7 +1710,7 @@ export function ListView({
             </div>
 
             {/* Global Sticky Table Header (Desktop Only) */}
-            <div className="hidden md:flex items-center border-t border-gray-100 pt-3 text-[10px] font-bold text-gray-400 select-none uppercase tracking-wider">
+            <div className="hidden md:flex items-center border-t border-border pt-3 text-2xs font-bold text-gray-400 select-none uppercase tracking-wider">
               {/* Left indicator spacer */}
               <div className="w-[3px] self-stretch shrink-0 bg-transparent" />
               
@@ -1767,7 +1726,7 @@ export function ListView({
                       ? "border-primary bg-primary text-primary-foreground"
                       : someSelected
                         ? "border-primary bg-primary/20"
-                        : "border-gray-300 hover:border-gray-400 bg-white",
+                        : "border-border hover:border-primary/40 bg-background",
                   )}>
                     {allSelected && <CheckIcon className="size-2.5" weight="bold" />}
                     {someSelected && !allSelected && <div className="size-1.5 rounded-sm bg-primary" />}
@@ -1811,27 +1770,27 @@ export function ListView({
 
           {/* Archived tasks section */}
           {archivedTasks && archivedTasks.length > 0 && (
-            <div className="mt-6 border border-gray-100 rounded-xl overflow-hidden bg-gray-50/50">
-              <div className="flex items-center gap-2 px-4 py-2 bg-gray-100/60 text-xs font-bold text-gray-500 uppercase tracking-wide border-b border-gray-100 select-none">
+            <div className="mt-6 border border-border rounded-xl overflow-hidden bg-muted/20">
+              <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 text-xs font-bold text-muted-foreground uppercase tracking-wide border-b border-border select-none">
                 <ArchiveIcon className="size-4" />
                 Archived ({archivedTasks.length})
               </div>
-              <div className="divide-y divide-gray-100">
+              <div className="divide-y divide-border">
                 {archivedTasks.map((t) => (
                   <div
                     key={t.id}
-                    className="group flex items-center gap-3 px-4 py-2 hover:bg-slate-50 transition-colors"
+                    className="group flex items-center gap-3 px-4 py-2 hover:bg-accent/30 transition-colors"
                   >
-                    <span className="text-2xs text-gray-400 font-mono shrink-0 select-none">#{t.seqNumber}</span>
-                    <span className="flex-1 text-[13px] text-gray-400 font-medium line-through truncate">{t.title}</span>
+                    <span className="text-2xs text-muted-foreground font-mono shrink-0 select-none">#{t.seqNumber}</span>
+                    <span className="flex-1 text-[13px] text-muted-foreground font-medium line-through truncate">{t.title}</span>
                     <button
                       onClick={async () => {
                         await unarchiveTask(workspaceId, spaceId, listId, t.id);
                         await onArchivedChanged?.();
                       }}
-                      className="hidden group-hover:flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-2xs font-semibold text-gray-600 hover:text-gray-900 transition-colors cursor-pointer select-none"
+                      className="hidden group-hover:flex items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 py-1 text-2xs font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer select-none"
                     >
-                      <ArchiveIcon className="size-3.5 text-gray-400" />
+                      <ArchiveIcon className="size-3.5 text-muted-foreground" />
                       Unarchive
                     </button>
                   </div>
@@ -1844,12 +1803,12 @@ export function ListView({
         {/* Drag Overlay visual preview */}
         <DragOverlay>
           {activeTask && (
-            <div className="flex items-center bg-white border border-gray-200 rounded-xl shadow-lg px-4 py-2 w-full max-w-lg cursor-grabbing text-sm border-l-[3px]" style={{ borderLeftColor: statuses.find(s => s.id === activeTask.statusId)?.color || "#6B7280" }}>
-              <div className="flex size-4 items-center justify-center rounded border border-gray-300 mr-3">
+            <div className="flex items-center bg-card border border-border rounded-xl shadow-lg px-4 py-2 w-full max-w-lg cursor-grabbing text-sm border-l-[3px]" style={{ borderLeftColor: statuses.find(s => s.id === activeTask.statusId)?.color || "#6B7280" }}>
+              <div className="flex size-4 items-center justify-center rounded border border-border mr-3">
                 {selectedIds.has(activeTask.id) && <CheckIcon className="size-2.5 text-primary" weight="bold" />}
               </div>
-              <span className="text-2xs text-gray-400 font-mono mr-2">#{activeTask.seqNumber}</span>
-              <span className="font-semibold text-gray-800 truncate">{activeTask.title}</span>
+              <span className="text-2xs text-muted-foreground font-mono mr-2">#{activeTask.seqNumber}</span>
+              <span className="font-semibold text-foreground truncate">{activeTask.title}</span>
             </div>
           )}
         </DragOverlay>

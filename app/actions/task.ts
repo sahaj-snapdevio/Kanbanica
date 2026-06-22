@@ -433,7 +433,7 @@ export async function updateTaskStatus(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
-  const permErr = await requireEditAccess(session.user.id, workspaceId, spaceId);
+  const permErr = await requireViewAccess(session.user.id, workspaceId, spaceId);
   if (permErr) return permErr;
 
   const [existing] = await db
