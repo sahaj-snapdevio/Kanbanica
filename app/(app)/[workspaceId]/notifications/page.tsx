@@ -4,7 +4,7 @@ import * as React from "react";
 import { useParams } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import useSWR, { mutate as globalMutate } from "swr";
-import { CheckIcon, EnvelopeIcon, EnvelopeOpenIcon } from "@phosphor-icons/react";
+import { CheckIcon, EnvelopeIcon, EnvelopeOpenIcon, XIcon } from "@phosphor-icons/react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { TaskDetailPanel } from "@/components/task/task-detail-panel";
 import { getTaskLocation } from "@/app/actions/task";
@@ -152,21 +152,32 @@ export default function InboxPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex items-center gap-1 border-b px-6 shrink-0">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setActiveTab(t.key)}
-              className={cn(
-                "px-1 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors cursor-pointer",
-                activeTab === t.key
-                  ? "border-foreground text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {t.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-1 border-b px-4 py-2 shrink-0">
+          {TABS.map((t) => {
+            const active = activeTab === t.key;
+            return (
+              <button
+                key={t.key}
+                onClick={() => setActiveTab(t.key)}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer",
+                  active
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+                )}
+              >
+                {t.label}
+                {t.key === "unread" && unreadCount > 0 && (
+                  <span className={cn(
+                    "flex h-4.5 min-w-4.5 items-center justify-center rounded-full px-1 text-[10px] font-semibold leading-none",
+                    active ? "bg-foreground text-background" : "bg-blue-500 text-white",
+                  )}>
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {/* List */}
@@ -244,16 +255,27 @@ export default function InboxPage() {
 
       {/* Task detail panel — inline, not a Sheet */}
       {selectedTask && (
-        <div className="flex-1 overflow-hidden">
-          <TaskDetailPanel
-            inline
-            open
-            onOpenChange={(open) => { if (!open) setSelectedTask(null); }}
-            taskId={selectedTask.taskId}
-            workspaceId={workspaceId}
-            spaceId={selectedTask.spaceId}
-            listId={selectedTask.listId}
-          />
+        <div className="flex-1 overflow-hidden flex flex-col">
+          <div className="flex items-center justify-end border-b px-3 py-2 shrink-0">
+            <button
+              onClick={() => setSelectedTask(null)}
+              className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+              title="Close"
+            >
+              <XIcon className="size-4" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-hidden">
+            <TaskDetailPanel
+              inline
+              open
+              onOpenChange={(open) => { if (!open) setSelectedTask(null); }}
+              taskId={selectedTask.taskId}
+              workspaceId={workspaceId}
+              spaceId={selectedTask.spaceId}
+              listId={selectedTask.listId}
+            />
+          </div>
         </div>
       )}
     </div>

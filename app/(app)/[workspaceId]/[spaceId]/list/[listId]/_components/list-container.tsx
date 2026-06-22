@@ -65,6 +65,7 @@ interface ListContainerProps {
   members: { userId: string; name: string | null; email: string | null }[];
   tags: { id: string; name: string; color: string }[];
   canManage: boolean;
+  canEdit: boolean;
   isAdmin: boolean;
 }
 
@@ -83,6 +84,7 @@ export function ListContainer({
   members,
   tags,
   canManage,
+  canEdit,
   isAdmin,
 }: ListContainerProps) {
   const searchParams = useSearchParams();
@@ -328,6 +330,7 @@ export function ListContainer({
           statuses={statuses}
           tasks={tasks}
           isAdmin={isAdmin}
+          canEdit={canEdit}
           members={members}
           tags={tags}
           archivedTasks={showArchived ? archivedTasks : []}

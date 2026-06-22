@@ -120,6 +120,7 @@ interface ListViewProps {
   statuses: Status[];
   tasks: Task[];
   isAdmin?: boolean;
+  canEdit?: boolean;
   members?: { userId: string; name: string | null; email: string | null; image?: string | null }[];
   tags?: { id: string; name: string; color: string }[];
   archivedTasks?: { id: string; title: string; seqNumber: number }[];
@@ -280,6 +281,7 @@ function TaskRow({
   spaceId,
   listId,
   isAdmin,
+  canEdit,
   selected,
   onSelect,
   onOpen,
@@ -291,6 +293,7 @@ function TaskRow({
   spaceId: string;
   listId: string;
   isAdmin?: boolean;
+  canEdit?: boolean;
   selected: boolean;
   onSelect: (id: string, checked: boolean) => void;
   onOpen: () => void;
@@ -826,6 +829,7 @@ function StatusGroup({
   spaceId,
   listId,
   isAdmin,
+  canEdit,
   selectedIds,
   onSelect,
   onCreateTask,
@@ -837,6 +841,7 @@ function StatusGroup({
   spaceId: string;
   listId: string;
   isAdmin?: boolean;
+  canEdit?: boolean;
   selectedIds: Set<string>;
   onSelect: (id: string, checked: boolean) => void;
   onCreateTask: (statusId: string) => void;
@@ -988,6 +993,7 @@ function StatusGroup({
                     spaceId={spaceId}
                     listId={listId}
                     isAdmin={isAdmin}
+                    canEdit={canEdit}
                     selected={selectedIds.has(task.id)}
                     onSelect={onSelect}
                     onOpen={() => router.push(`/${workspaceId}/task/${task.id}`)}
@@ -1082,6 +1088,7 @@ function BulkActionBar({
   spaceId,
   listId,
   isAdmin,
+  canEdit,
   onClear,
 }: {
   count: number;
@@ -1091,6 +1098,7 @@ function BulkActionBar({
   spaceId: string;
   listId: string;
   isAdmin?: boolean;
+  canEdit?: boolean;
   onClear: () => void;
 }) {
   const [busy, setBusy] = React.useState(false);
@@ -1271,15 +1279,17 @@ function BulkActionBar({
 
       <div className="h-4 w-px bg-white/20 mx-1" />
 
-      {/* Archive */}
-      <button
-        disabled={busy}
-        onClick={handleBulkArchive}
-        className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold text-white/80 hover:bg-white/10 hover:text-white transition-colors disabled:opacity-50 cursor-pointer"
-      >
-        <ArchiveIcon className="size-3.5" />
-        Archive
-      </button>
+      {/* Archive — requires edit permission */}
+      {canEdit && (
+        <button
+          disabled={busy}
+          onClick={handleBulkArchive}
+          className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-white/80 hover:bg-white/10 hover:text-white transition-colors disabled:opacity-50"
+        >
+          <ArchiveIcon className="size-3.5" />
+          Archive
+        </button>
+      )}
 
       {/* Delete — admin only */}
       {isAdmin && (
@@ -1305,6 +1315,7 @@ export function ListView({
   statuses,
   tasks,
   isAdmin,
+  canEdit,
   members = [],
   tags = [],
   archivedTasks,
@@ -1789,6 +1800,7 @@ export function ListView({
                 spaceId={spaceId}
                 listId={listId}
                 isAdmin={isAdmin}
+                canEdit={canEdit}
                 selectedIds={selectedIds}
                 onSelect={handleSelect}
                 onCreateTask={setCreateForStatusId}
@@ -1862,6 +1874,7 @@ export function ListView({
           spaceId={spaceId}
           listId={listId}
           isAdmin={isAdmin}
+          canEdit={canEdit}
           onClear={() => setSelectedIds(new Set())}
         />
       )}

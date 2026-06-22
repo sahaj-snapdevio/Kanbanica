@@ -81,19 +81,24 @@ export default function SupportPage({ params }: { params: Promise<{ workspaceId:
       </div>
 
       {/* Status filter */}
-      <div className="flex gap-1 border rounded-md p-1 w-fit">
-        {STATUS_TABS.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setStatus(tab.key)}
-            className={cn(
-              "px-3 py-1 text-sm rounded transition-colors",
-              status === tab.key ? "bg-foreground text-background" : "hover:bg-muted",
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
+      <div className="flex items-center gap-1">
+        {STATUS_TABS.map((tab) => {
+          const active = status === tab.key;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setStatus(tab.key)}
+              className={cn(
+                "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer",
+                active
+                  ? "bg-accent text-accent-foreground"
+                  : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+              )}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Ticket list */}

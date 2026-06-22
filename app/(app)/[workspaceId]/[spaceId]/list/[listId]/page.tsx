@@ -4,7 +4,7 @@ import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { list, listStatus, task, taskTag, tag, space, spaceMember, taskAssignee, user, workspaceMember } from "@/db/schema";
-import { canAccessSpace, getWorkspaceMembership } from "@/lib/permissions";
+import { canAccessSpace, getWorkspaceMembership, getSpacePermission, hasPermissionLevel } from "@/lib/permissions";
 import { ListContainer } from "./_components/list-container";
 
 interface ListPageProps {
@@ -25,16 +25,13 @@ export default async function ListPage({ params }: ListPageProps) {
 
   const isAdminOrOwner = membership.role === "OWNER" || membership.role === "ADMIN";
 
-  // Determine canManage: OWNER/ADMIN always can; others need FULL_ACCESS in spaceMember
-  let canManage = isAdminOrOwner;
-  if (!isAdminOrOwner) {
-    const [sm] = await db
-      .select({ permission: spaceMember.permission })
-      .from(spaceMember)
-      .where(and(eq(spaceMember.userId, session.user.id), eq(spaceMember.spaceId, spaceId)))
-      .limit(1);
-    canManage = sm?.permission === "FULL_ACCESS";
-  }
+  // Determine canManage (FULL_ACCESS) and canEdit (EDIT or above)
+  const spacePermission = isAdminOrOwner
+    ? "full_access" as const
+    : await getSpacePermission(session.user.id, workspaceId, spaceId);
+
+  const canManage = spacePermission === "full_access";
+  const canEdit = spacePermission !== null && hasPermissionLevel(spacePermission, "edit");
 
   const [currentSpace, currentList] = await Promise.all([
     db
@@ -145,6 +142,7 @@ export default async function ListPage({ params }: ListPageProps) {
       members={members}
       tags={allTags}
       canManage={canManage}
+      canEdit={canEdit}
       isAdmin={isAdminOrOwner}
     />
   );

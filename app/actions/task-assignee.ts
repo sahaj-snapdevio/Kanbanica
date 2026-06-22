@@ -5,9 +5,10 @@ import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { task, taskAssignee, taskWatcher } from "@/db/schema";
+import { task, taskAssignee, taskWatcher, user } from "@/db/schema";
 import { canAccessSpace, getSpacePermission, hasPermissionLevel, getWorkspaceMembership } from "@/lib/permissions";
 import { writeActivityLog } from "@/lib/activity-log";
+import { createNotifications } from "@/lib/notifications/create-notification";
 
 function revalidateTask(workspaceId: string, spaceId: string, listId: string) {
   revalidatePath(`/${workspaceId}/${spaceId}/list/${listId}`);
@@ -42,6 +43,29 @@ export async function addAssignee(
     .insert(taskWatcher)
     .values({ taskId, userId: assigneeUserId })
     .onConflictDoNothing();
+
+  // Notify the assignee (skip if assigning to yourself)
+  if (assigneeUserId !== session.user.id) {
+    const [taskRow] = await db
+      .select({ title: task.title })
+      .from(task)
+      .where(eq(task.id, taskId))
+      .limit(1);
+
+    if (taskRow) {
+      const actorName = session.user.name ?? session.user.email ?? "Someone";
+      createNotifications({
+        workspaceId,
+        actorId: session.user.id,
+        recipientIds: [assigneeUserId],
+        triggerType: "task_assigned",
+        entityType: "TASK",
+        entityId: taskId,
+        title: `${actorName} assigned you to "${taskRow.title}"`,
+        muteCheckEntityIds: [taskId],
+      });
+    }
+  }
 
   await writeActivityLog(taskId, session.user.id, "assignee_added", { userId: assigneeUserId });
   revalidateTask(workspaceId, spaceId, listId);
