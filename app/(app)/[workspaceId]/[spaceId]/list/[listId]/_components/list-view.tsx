@@ -229,7 +229,7 @@ function TaskRow({
       <div className="w-36 shrink-0 px-2 flex items-stretch" onClick={(e) => e.stopPropagation()}>
         <Popover open={assigneeOpen} onOpenChange={(o) => { setAssigneeOpen(o); if (o) void loadMembers(); }}>
           <PopoverTrigger asChild>
-            <button className="flex flex-1 items-center gap-2 rounded px-2 py-2.5 hover:bg-accent transition-colors text-left cursor-pointer">
+            <button className="flex flex-1 items-center gap-2 rounded border border-transparent px-2 py-2.5 hover:bg-transparent hover:border-[#BBBBBB] transition-all text-left cursor-pointer">
               {task.assignees.length > 0 ? (
                 <div className="flex -space-x-1.5">
                   {task.assignees.slice(0, 3).map((a) => (
@@ -298,7 +298,7 @@ function TaskRow({
         <Popover open={dateOpen} onOpenChange={setDateOpen}>
           <PopoverTrigger asChild>
             <button className={cn(
-              "flex flex-1 items-center gap-1.5 rounded px-2 py-2.5 text-sm font-medium hover:bg-accent transition-colors cursor-pointer",
+              "flex flex-1 items-center gap-2 rounded border border-transparent px-2 py-2.5 hover:bg-transparent hover:border-[#BBBBBB] transition-all text-left cursor-pointer",
               dueDate?.overdue ? "text-red-500" : "text-muted-foreground",
             )}>
               {dueDate ? dueDate.label : <CalendarBlankIcon className="size-4 text-muted-foreground/30" />}
@@ -340,7 +340,7 @@ function TaskRow({
       <div className="w-28 shrink-0 px-2 flex items-stretch" onClick={(e) => e.stopPropagation()}>
         <Popover open={priorityOpen} onOpenChange={setPriorityOpen}>
           <PopoverTrigger asChild>
-            <button className="flex flex-1 items-center gap-1.5 rounded px-2 py-2.5 hover:bg-accent transition-colors cursor-pointer">
+            <button className="flex flex-1 items-center gap-2 rounded border border-transparent px-2 py-2.5 hover:bg-transparent hover:border-[#BBBBBB] transition-all text-left cursor-pointer">
               {task.priority !== "NONE" ? (
                 <span className={cn("flex items-center gap-1.5 text-sm font-medium", priority.color)}>
                   <FlagIcon className="size-4 shrink-0" weight="fill" />
