@@ -10,9 +10,7 @@ import {
   DotsThreeIcon,
   GearIcon,
   LightningIcon,
-  MagnifyingGlassIcon,
   PencilSimpleIcon,
-  PlusIcon,
   RowsIcon,
   SquaresFourIcon,
   TrashIcon,
@@ -27,8 +25,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { SprintPanel } from "@/components/sprint/sprint-panel";
 import { SprintListView } from "@/components/sprint/sprint-list-view";
-import { ListFilterToolbar } from "@/components/list/list-filter-toolbar";
-import { type FilterState } from "@/app/actions/search";
 import { ListView } from "./list-view";
 import { BoardView } from "./board-view";
 import { BoardSkeleton } from "./board-skeleton";
@@ -110,8 +106,6 @@ export function ListContainer({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const [filters, setFilters] = useState<FilterState>({});
   const [showArchived, setShowArchived] = React.useState(false);
   const [archivedTasks, setArchivedTasks] = React.useState<{ id: string; title: string; seqNumber: number }[]>([]);
   const [archivedLoading, setArchivedLoading] = React.useState(false);
@@ -125,41 +119,6 @@ export function ListContainer({
     }
     setShowArchived(v => !v);
   }
-
-  const filteredTasks = tasks.filter((t) => {
-    if (search.trim() && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
-    if (filters.status?.length && !filters.status.includes(t.statusId)) return false;
-    if (filters.priority?.length && !filters.priority.includes(t.priority)) return false;
-    if (filters.due) {
-      const now = new Date();
-      const due = t.dueDateEnd ? new Date(t.dueDateEnd) : null;
-      if (filters.due === "overdue" && (!due || due >= now)) return false;
-      if (filters.due === "today") {
-        if (!due) return false;
-        const today = new Date(); today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
-        if (due < today || due >= tomorrow) return false;
-      }
-      if (filters.due === "this_week") {
-        if (!due) return false;
-        const start = new Date(); start.setHours(0, 0, 0, 0);
-        start.setDate(start.getDate() - start.getDay());
-        const end = new Date(start); end.setDate(end.getDate() + 7);
-        if (due < start || due >= end) return false;
-      }
-      if (filters.due === "no_due_date" && due) return false;
-    }
-    if (filters.assignee?.length) {
-      const hasUnassigned = filters.assignee.includes("unassigned");
-      const userIds = filters.assignee.filter((a) => a !== "unassigned");
-      const assigneeIds = t.assignees.map((a) => a.userId);
-      const matchUnassigned = hasUnassigned && assigneeIds.length === 0;
-      const matchUser = userIds.length > 0 && assigneeIds.some((id) => userIds.includes(id));
-      if (!matchUnassigned && !matchUser) return false;
-    }
-    if (filters.tags?.length && !t.tags.some((tg) => filters.tags!.includes(tg.id))) return false;
-    return true;
-  });
 
   return (
     <div className="space-y-5 p-6">
@@ -246,78 +205,24 @@ export function ListContainer({
         )}
       </div>
 
-      {/* Toolbar: view tabs + search + add task */}
-      <div className="flex items-center gap-2">
-        {/* View tabs */}
-        <div className="flex items-center gap-1 border-b flex-1">
-          {VIEWS.map(({ key, label, icon }) => (
-            <button
-              key={key}
-              onClick={() => switchView(key)}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border-b-2 -mb-px transition-colors",
-                view === key
-                  ? "border-primary text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {icon}
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {view !== "list" && (
-          <>
-            {/* Search */}
-            <div className="relative">
-              <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Search tasks…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="h-8 w-48 rounded-md border bg-background pl-8 pr-3 text-xs focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all focus:w-64"
-              />
-            </div>
-
-            {/* Show archived toggle */}
-            <button
-              onClick={() => void handleToggleArchived()}
-              className={cn(
-                "flex items-center gap-1.5 h-8 rounded-md border px-3 text-xs font-medium transition-colors shrink-0",
-                showArchived
-                  ? "border-primary/40 bg-primary/10 text-primary"
-                  : "border-border text-muted-foreground hover:bg-accent hover:text-foreground",
-              )}
-            >
-              <ArchiveIcon className="size-3.5" />
-              {archivedLoading ? "Loading…" : showArchived ? "Hide archived" : "Show archived"}
-            </button>
-
-            {/* Add Task button */}
-            <button
-              onClick={() => setCreateOpen(true)}
-              className="flex items-center gap-1.5 h-8 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shrink-0"
-            >
-              <PlusIcon className="size-3.5" weight="bold" />
-              Task
-            </button>
-          </>
-        )}
+      {/* View tabs */}
+      <div className="flex items-center gap-1 border-b">
+        {VIEWS.map(({ key, label, icon }) => (
+          <button
+            key={key}
+            onClick={() => switchView(key)}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border-b-2 -mb-px transition-colors",
+              view === key
+                ? "border-primary text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {icon}
+            {label}
+          </button>
+        ))}
       </div>
-
-      {/* Filter toolbar */}
-      {view !== "sprint" && view !== "list" && (
-        <ListFilterToolbar
-          listId={list.id}
-          statuses={statuses}
-          members={members}
-          tags={tags}
-          filters={filters}
-          onChange={setFilters}
-        />
-      )}
 
       {/* Active view — while switching into Board, show a board-shaped skeleton
           and suppress the outgoing view so they don't overlap. */}
@@ -346,8 +251,12 @@ export function ListContainer({
           space={space}
           list={list}
           statuses={statuses}
-          tasks={filteredTasks}
+          tasks={tasks}
           headerless
+          canEdit={canEdit}
+          isAdmin={isAdmin}
+          members={members}
+          tags={tags}
         />
       )}
       {!showBoardSkeleton && view === "sprint" && (
@@ -365,6 +274,9 @@ export function ListContainer({
             listId={list.id}
             statuses={statuses}
             isAdmin={isAdmin}
+            canEdit={canEdit}
+            members={members}
+            tags={tags}
           />
         </>
       )}

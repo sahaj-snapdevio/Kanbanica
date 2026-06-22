@@ -6,6 +6,9 @@ import { headers } from "next/headers";
 import { workspace, workspaceMember } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { enqueueEmail } from "@/lib/email";
+import { workspaceInviteTemplate } from "@/lib/email/templates/workspace-invite";
+import { env } from "@/lib/env";
 import { getWorkspaceMembership } from "@/lib/permissions";
 
 type WorkspaceRole = "OWNER" | "ADMIN" | "MEMBER" | "GUEST";
@@ -158,6 +161,8 @@ export async function inviteMember(data: {
     return { error: "This email is already a member or has a pending invite" };
   }
 
+  const inviteToken = createId();
+
   await db.insert(workspaceMember).values({
     id: createId(),
     workspaceId: data.workspaceId,
@@ -165,10 +170,30 @@ export async function inviteMember(data: {
     role: data.role,
     status: "INVITED",
     invitedBy: session.user.id,
-    inviteToken: createId(),
+    inviteToken,
     inviteExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     createdAt: new Date(),
     updatedAt: new Date(),
+  });
+
+  const ws = await db
+    .select({ name: workspace.name })
+    .from(workspace)
+    .where(eq(workspace.id, data.workspaceId))
+    .then((r) => r[0]);
+
+  const inviteUrl = `${env.NEXT_PUBLIC_APP_URL}/invite/${inviteToken}`;
+  const inviterName = session.user.name ?? session.user.email ?? "Someone";
+  const workspaceName = ws?.name ?? "a workspace";
+
+  console.log(`[invite] ${email} → ${inviteUrl}`);
+
+  const { html, text } = await workspaceInviteTemplate({ inviterName, workspaceName, inviteUrl });
+  await enqueueEmail({
+    to: email,
+    subject: `${inviterName} invited you to ${workspaceName}`,
+    html,
+    text,
   });
 
   return { ok: true };
@@ -187,10 +212,12 @@ export async function resendInvite(data: {
     return { error: "Only admins can resend invites" };
   }
 
-  await db
+  const newToken = createId();
+
+  const [member] = await db
     .update(workspaceMember)
     .set({
-      inviteToken: createId(),
+      inviteToken: newToken,
       inviteExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       updatedAt: new Date(),
     })
@@ -199,9 +226,67 @@ export async function resendInvite(data: {
         eq(workspaceMember.id, data.memberId),
         eq(workspaceMember.workspaceId, data.workspaceId)
       )
-    );
+    )
+    .returning({ email: workspaceMember.email });
+
+  if (member?.email) {
+    const ws = await db
+      .select({ name: workspace.name })
+      .from(workspace)
+      .where(eq(workspace.id, data.workspaceId))
+      .then((r) => r[0]);
+
+    const inviteUrl = `${env.NEXT_PUBLIC_APP_URL}/invite/${newToken}`;
+    const inviterName = session.user.name ?? session.user.email ?? "Someone";
+    const workspaceName = ws?.name ?? "a workspace";
+
+    console.log(`[invite] ${member.email} → ${inviteUrl}`);
+
+    const { html, text } = await workspaceInviteTemplate({ inviterName, workspaceName, inviteUrl });
+    await enqueueEmail({
+      to: member.email,
+      subject: `${inviterName} invited you to ${workspaceName}`,
+      html,
+      text,
+    });
+  }
 
   return { ok: true };
+}
+
+export async function acceptInvite(token: string): Promise<
+  { workspaceId: string } | { error: string }
+> {
+  const session = await requireSession();
+  if (!session) return { error: "Unauthorized" };
+
+  const [invite] = await db
+    .select()
+    .from(workspaceMember)
+    .where(eq(workspaceMember.inviteToken, token));
+
+  if (!invite) return { error: "Invalid or expired invitation" };
+  if (invite.status !== "INVITED") return { error: "This invitation has already been used" };
+  if (invite.inviteExpiresAt && invite.inviteExpiresAt < new Date())
+    return { error: "This invitation has expired" };
+
+  // Check email matches if invite was for a specific address
+  if (invite.email && invite.email !== session.user.email?.toLowerCase())
+    return { error: "This invitation was sent to a different email address" };
+
+  await db
+    .update(workspaceMember)
+    .set({
+      userId: session.user.id,
+      status: "ACTIVE",
+      inviteToken: null,
+      inviteExpiresAt: null,
+      joinedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(workspaceMember.id, invite.id));
+
+  return { workspaceId: invite.workspaceId };
 }
 
 export async function cancelInvite(data: {

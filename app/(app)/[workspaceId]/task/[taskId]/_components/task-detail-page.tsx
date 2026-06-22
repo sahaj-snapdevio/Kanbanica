@@ -75,6 +75,7 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { TaskDescriptionEditor } from "@/components/task/task-description-editor";
+import { ClickUpCalendar } from "@/components/ui/clickup-calendar";
 import { format } from "date-fns";
 import { TaskDetailSkeleton } from "./task-detail-skeleton";
 
@@ -214,6 +215,8 @@ export function TaskDetailPage({
   const [priorityPopoverOpen, setPriorityPopoverOpen] = React.useState(false);
   const [assigneePopoverOpen, setAssigneePopoverOpen] = React.useState(false);
   const [tagPopoverOpen, setTagPopoverOpen] = React.useState(false);
+  const [startCalOpen, setStartCalOpen] = React.useState(false);
+  const [endCalOpen, setEndCalOpen] = React.useState(false);
 
   async function fetchAll(showSpinner: boolean) {
     if (showSpinner) setLoading(true);
@@ -313,12 +316,8 @@ export function TaskDetailPage({
     (t) => t.name.toLowerCase() === tagSearch.toLowerCase(),
   );
 
-  const dueDateStartStr = t.dueDateStart
-    ? format(new Date(t.dueDateStart), "yyyy-MM-dd")
-    : "";
-  const dueDateEndStr = t.dueDateEnd
-    ? format(new Date(t.dueDateEnd), "yyyy-MM-dd")
-    : "";
+  const dueDateStart = t.dueDateStart ? new Date(t.dueDateStart) : null;
+  const dueDateEnd = t.dueDateEnd ? new Date(t.dueDateEnd) : null;
 
   async function saveTitle() {
     if (!titleDraft.trim() || titleDraft === t.title) {
@@ -351,16 +350,11 @@ export function TaskDetailPage({
     load();
   }
 
-  async function handleDueDateChange(field: "start" | "end", value: string) {
-    const date = value ? new Date(value) : null;
+  async function handleDueDateChange(field: "start" | "end", date: Date | null) {
     if (field === "start")
-      await updateTask(workspaceId, spaceId, listId, taskId, {
-        dueDateStart: date,
-      });
+      await updateTask(workspaceId, spaceId, listId, taskId, { dueDateStart: date });
     else
-      await updateTask(workspaceId, spaceId, listId, taskId, {
-        dueDateEnd: date,
-      });
+      await updateTask(workspaceId, spaceId, listId, taskId, { dueDateEnd: date });
     load();
   }
 
@@ -758,19 +752,41 @@ export function TaskDetailPage({
               icon={<CalendarBlankIcon className="size-3.5" />}
             >
               <div className="flex items-center gap-2">
-                <input
-                  type="date"
-                  value={dueDateStartStr}
-                  onChange={(e) => handleDueDateChange("start", e.target.value)}
-                  className="rounded-md border bg-background px-2 py-1 text-xs w-32"
-                />
+                <Popover open={startCalOpen} onOpenChange={setStartCalOpen}>
+                  <PopoverTrigger asChild>
+                    <button className="flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-xs w-32 hover:bg-accent transition-colors">
+                      <CalendarBlankIcon className="size-3 text-muted-foreground shrink-0" />
+                      <span className={dueDateStart ? "text-foreground" : "text-muted-foreground"}>
+                        {dueDateStart ? format(dueDateStart, "MMM d, yyyy") : "Start date"}
+                      </span>
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <ClickUpCalendar
+                      selectedDate={dueDateStart}
+                      onSelect={(date) => { handleDueDateChange("start", date); setStartCalOpen(false); }}
+                      onClose={() => setStartCalOpen(false)}
+                    />
+                  </PopoverContent>
+                </Popover>
                 <span className="text-muted-foreground text-xs">→</span>
-                <input
-                  type="date"
-                  value={dueDateEndStr}
-                  onChange={(e) => handleDueDateChange("end", e.target.value)}
-                  className="rounded-md border bg-background px-2 py-1 text-xs w-32"
-                />
+                <Popover open={endCalOpen} onOpenChange={setEndCalOpen}>
+                  <PopoverTrigger asChild>
+                    <button className="flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-xs w-32 hover:bg-accent transition-colors">
+                      <CalendarBlankIcon className="size-3 text-muted-foreground shrink-0" />
+                      <span className={dueDateEnd ? "text-foreground" : "text-muted-foreground"}>
+                        {dueDateEnd ? format(dueDateEnd, "MMM d, yyyy") : "End date"}
+                      </span>
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <ClickUpCalendar
+                      selectedDate={dueDateEnd}
+                      onSelect={(date) => { handleDueDateChange("end", date); setEndCalOpen(false); }}
+                      onClose={() => setEndCalOpen(false)}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
             </FieldRow>
 

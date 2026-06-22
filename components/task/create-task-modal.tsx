@@ -5,7 +5,6 @@ import {
   CalendarBlankIcon,
   CheckIcon,
   FlagIcon,
-  PaperclipIcon,
   PlusIcon,
   TagIcon,
   UserIcon,
@@ -26,6 +25,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
+import { ClickUpCalendar } from "@/components/ui/clickup-calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
@@ -75,7 +75,7 @@ export function CreateTaskModal({
   const [description, setDescription] = React.useState("");
   const [statusId, setStatusId] = React.useState(defaultStatusId ?? statuses[0]?.id ?? "");
   const [priority, setPriority] = React.useState<Priority>("NONE");
-  const [dueDate, setDueDate] = React.useState("");
+  const [dueDate, setDueDate] = React.useState<Date | null>(null);
   const [assigneeIds, setAssigneeIds] = React.useState<string[]>([]);
   const [tagIds, setTagIds] = React.useState<string[]>([]);
   const [loading, setLoading] = React.useState(false);
@@ -96,7 +96,7 @@ export function CreateTaskModal({
       setTitle("");
       setDescription("");
       setPriority("NONE");
-      setDueDate("");
+      setDueDate(null);
       setAssigneeIds([]);
       setTagIds([]);
       setError("");
@@ -136,15 +136,22 @@ export function CreateTaskModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl p-0 gap-0 overflow-hidden" aria-describedby={undefined}>
+      <DialogContent showCloseButton={false} className="sm:max-w-2xl p-0 gap-0 overflow-hidden" aria-describedby={undefined}>
         <DialogHeader className="sr-only">
           <DialogTitle>Create Task</DialogTitle>
         </DialogHeader>
 
-        {/* Top bar: status tabs (Task / Doc / etc simplified) */}
-        <div className="flex items-center gap-1 border-b px-5 pt-3 pb-0">
-          <button className="border-b-2 border-primary pb-2 px-1 text-sm font-medium text-foreground">
+        {/* Top bar: tab + close button */}
+        <div className="flex items-center border-b px-5">
+          <button className="border-b-2 border-primary py-3 px-1 text-sm font-medium text-foreground">
             Task
+          </button>
+          <div className="flex-1" />
+          <button
+            onClick={() => onOpenChange(false)}
+            className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+          >
+            <XIcon className="size-4" />
           </button>
         </div>
 
@@ -249,24 +256,15 @@ export function CreateTaskModal({
               <PopoverTrigger asChild>
                 <button className={cn("flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs hover:bg-accent transition-colors", dueDate ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
                   <CalendarBlankIcon className="size-3.5" />
-                  {dueDate ? format(new Date(dueDate), "MMM d") : "Due date"}
+                  {dueDate ? format(dueDate, "MMM d") : "Due date"}
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-3" align="start">
-                <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground">Due date</p>
-                  <input
-                    type="date"
-                    value={dueDate}
-                    onChange={(e) => { setDueDate(e.target.value); setDueDatePopoverOpen(false); }}
-                    className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
-                  />
-                  {dueDate && (
-                    <Button size="sm" variant="ghost" className="w-full h-7 text-xs" onClick={() => { setDueDate(""); setDueDatePopoverOpen(false); }}>
-                      Clear
-                    </Button>
-                  )}
-                </div>
+              <PopoverContent className="w-auto p-0" align="start">
+                <ClickUpCalendar
+                  selectedDate={dueDate}
+                  onSelect={(date) => { setDueDate(date); setDueDatePopoverOpen(false); }}
+                  onClose={() => setDueDatePopoverOpen(false)}
+                />
               </PopoverContent>
             </Popover>
 
@@ -360,23 +358,15 @@ export function CreateTaskModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between border-t px-6 py-3 bg-muted/30">
-          <div className="flex items-center gap-2">
-            <button className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-              <PaperclipIcon className="size-3.5" />
-              Templates
-            </button>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="default"
-              onClick={handleSubmit}
-              disabled={loading || !title.trim()}
-              className="h-8 text-sm"
-            >
-              {loading ? "Creating…" : "Create Task"}
-            </Button>
-          </div>
+        <div className="flex items-center justify-end border-t px-6 py-3 bg-muted/30">
+          <Button
+            variant="default"
+            onClick={handleSubmit}
+            disabled={loading || !title.trim()}
+            className="h-8 text-sm"
+          >
+            {loading ? "Creating…" : "Create Task"}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

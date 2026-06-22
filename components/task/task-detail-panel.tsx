@@ -65,6 +65,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { TaskActivityFeed } from "@/components/task/task-activity-feed";
+import { ClickUpCalendar } from "@/components/ui/clickup-calendar";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -129,6 +130,8 @@ export function TaskDetailPanel({
   const [timeInput, setTimeInput] = React.useState("");
   const [timeNote, setTimeNote] = React.useState("");
   const [saving, setSaving] = React.useState(false);
+  const [startCalOpen, setStartCalOpen] = React.useState(false);
+  const [endCalOpen, setEndCalOpen] = React.useState(false);
 
   async function load() {
     setLoading(true);
@@ -209,8 +212,7 @@ export function TaskDetailPanel({
     load();
   }
 
-  async function handleDueDateChange(field: "start" | "end", value: string) {
-    const date = value ? new Date(value) : null;
+  async function handleDueDateChange(field: "start" | "end", date: Date | null) {
     if (field === "start") await updateTask(workspaceId, spaceId, listId, taskId, { dueDateStart: date });
     else await updateTask(workspaceId, spaceId, listId, taskId, { dueDateEnd: date });
     load();
@@ -317,12 +319,8 @@ export function TaskDetailPanel({
     navigator.clipboard.writeText(`${window.location.origin}/${workspaceId}/task/${taskId}`);
   }
 
-  const dueDateStartStr = t.dueDateStart
-    ? format(new Date(t.dueDateStart), "yyyy-MM-dd")
-    : "";
-  const dueDateEndStr = t.dueDateEnd
-    ? format(new Date(t.dueDateEnd), "yyyy-MM-dd")
-    : "";
+  const dueDateStart = t.dueDateStart ? new Date(t.dueDateStart) : null;
+  const dueDateEnd = t.dueDateEnd ? new Date(t.dueDateEnd) : null;
 
   const panelContent = (
     <>
@@ -682,21 +680,37 @@ export function TaskDetailPanel({
               <div className="space-y-1">
                 <div>
                   <p className="text-[10px] text-muted-foreground mb-0.5">Start</p>
-                  <input
-                    type="date"
-                    value={dueDateStartStr}
-                    onChange={(e) => handleDueDateChange("start", e.target.value)}
-                    className="w-full rounded-md border bg-background px-2 py-1 text-xs"
-                  />
+                  <Popover open={startCalOpen} onOpenChange={setStartCalOpen}>
+                    <PopoverTrigger asChild>
+                      <button className="w-full flex items-center rounded-md border bg-background px-2 py-1.5 text-xs hover:bg-accent transition-colors text-left">
+                        {dueDateStart ? format(dueDateStart, "MMM d, yyyy") : <span className="text-muted-foreground">Pick a date</span>}
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <ClickUpCalendar
+                        selectedDate={dueDateStart}
+                        onSelect={(date) => handleDueDateChange("start", date)}
+                        onClose={() => setStartCalOpen(false)}
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <div>
                   <p className="text-[10px] text-muted-foreground mb-0.5">End</p>
-                  <input
-                    type="date"
-                    value={dueDateEndStr}
-                    onChange={(e) => handleDueDateChange("end", e.target.value)}
-                    className="w-full rounded-md border bg-background px-2 py-1 text-xs"
-                  />
+                  <Popover open={endCalOpen} onOpenChange={setEndCalOpen}>
+                    <PopoverTrigger asChild>
+                      <button className="w-full flex items-center rounded-md border bg-background px-2 py-1.5 text-xs hover:bg-accent transition-colors text-left">
+                        {dueDateEnd ? format(dueDateEnd, "MMM d, yyyy") : <span className="text-muted-foreground">Pick a date</span>}
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <ClickUpCalendar
+                        selectedDate={dueDateEnd}
+                        onSelect={(date) => handleDueDateChange("end", date)}
+                        onClose={() => setEndCalOpen(false)}
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
             </div>

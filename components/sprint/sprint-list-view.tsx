@@ -4,14 +4,17 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import {
   ArchiveIcon,
+  ArrowsOutCardinalIcon,
   CalendarBlankIcon,
+  CalendarPlusIcon,
   CaretDownIcon,
   CaretRightIcon,
   CheckIcon,
   CopyIcon,
   DotsThreeIcon,
-  FlagIcon,
+  FunnelIcon,
   LightningIcon,
+  MagnifyingGlassIcon,
   PencilSimpleIcon,
   PlusIcon,
   TrayIcon,
@@ -19,7 +22,8 @@ import {
   UserIcon,
   XIcon,
 } from "@phosphor-icons/react";
-import { addDays, format, isToday, isPast } from "date-fns";
+import { ClickUpCalendar } from "@/components/ui/clickup-calendar";
+import { format, isToday, isPast } from "date-fns";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -52,9 +56,11 @@ import {
   duplicateTask,
   getWorkspaceMembers,
   updateTask,
+  updateTaskStatus,
 } from "@/app/actions/task";
 import { addAssignee, removeAssignee } from "@/app/actions/task-assignee";
 import { createListStatus, getWorkspaceLists, updateListStatus } from "@/app/actions/list";
+import { CreateTaskModal } from "@/components/task/create-task-modal";
 import { cn } from "@/lib/utils";
 
 const STATUS_PRESET_COLORS = [
@@ -101,6 +107,9 @@ interface SprintListViewProps {
   listId: string;
   statuses: Status[];
   isAdmin?: boolean;
+  canEdit?: boolean;
+  members?: { userId: string; name: string | null; email: string | null }[];
+  tags?: { id: string; name: string; color: string }[];
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -108,11 +117,11 @@ interface SprintListViewProps {
 type WorkspaceMember = { userId: string | null; name: string | null; email: string | null; image: string | null };
 
 const PRIORITY_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
-  NONE:   { label: "—",      color: "text-muted-foreground/40", icon: "😴" },
-  LOW:    { label: "Low",    color: "text-blue-500",             icon: "🐢" },
-  MEDIUM: { label: "Medium", color: "text-yellow-500",           icon: "🚶" },
-  HIGH:   { label: "High",   color: "text-orange-500",           icon: "🏃" },
-  URGENT: { label: "Urgent", color: "text-red-500",              icon: "⚡" },
+  NONE:   { label: "—",      color: "text-gray-400",    icon: "😴" },
+  LOW:    { label: "Low",    color: "text-gray-500",    icon: "🐢" },
+  MEDIUM: { label: "Medium", color: "text-yellow-600",  icon: "🚶" },
+  HIGH:   { label: "High",   color: "text-orange-500",  icon: "🏃" },
+  URGENT: { label: "Urgent", color: "text-red-500",     icon: "⚡" },
 };
 
 function userInitials(name: string) {
@@ -137,31 +146,46 @@ function formatDateRange(start: Date | null, end: Date | null): string {
 
 function TaskRow({
   task,
+  statusColor,
   workspaceId,
   spaceId,
   listId,
+  statuses,
   isAdmin,
+  canEdit,
   selected,
   onSelect,
 }: {
   task: SprintTask;
+  statusColor: string;
   workspaceId: string;
   spaceId: string;
   listId: string;
+  statuses: Status[];
   isAdmin?: boolean;
+  canEdit?: boolean;
   selected: boolean;
   onSelect: (id: string, checked: boolean) => void;
 }) {
   const router = useRouter();
-  const priority = PRIORITY_CONFIG[task.priority ?? "NONE"] ?? PRIORITY_CONFIG.NONE;
-  const dueDate = formatDueDate(task.dueDateStart);
 
-  // ── Inline editing ────────────────────────────────────────────────────────
+  // Optimistic local state
+  const [localPriority, setLocalPriority] = React.useState<string>(task.priority ?? "NONE");
+  const [localDueDate, setLocalDueDate] = React.useState<Date | null>(task.dueDateStart ?? null);
+  React.useEffect(() => { setLocalPriority(task.priority ?? "NONE"); }, [task.priority]);
+  React.useEffect(() => { setLocalDueDate(task.dueDateStart ?? null); }, [task.dueDateStart]);
+
+  const priority = PRIORITY_CONFIG[localPriority] ?? PRIORITY_CONFIG.NONE;
+  const dueDate = formatDueDate(localDueDate);
+
+  // Inline editing state
   const [assigneeOpen, setAssigneeOpen] = React.useState(false);
   const [members, setMembers] = React.useState<WorkspaceMember[] | null>(null);
   const [memberSearch, setMemberSearch] = React.useState("");
   const [dateOpen, setDateOpen] = React.useState(false);
   const [priorityOpen, setPriorityOpen] = React.useState(false);
+  const [deleteOpen, setDeleteOpen] = React.useState(false);
+  const [deleting, setDeleting] = React.useState(false);
 
   async function loadMembers() {
     if (members !== null) return;
@@ -173,24 +197,34 @@ function TaskRow({
   async function handleToggleAssignee(userId: string | null) {
     if (!userId) return;
     const isAssigned = task.assignees.some((a) => a.userId === userId);
-    if (isAssigned) {
-      await removeAssignee(workspaceId, spaceId, listId, task.id, userId);
-    } else {
-      await addAssignee(workspaceId, spaceId, listId, task.id, userId);
-    }
+    if (isAssigned) await removeAssignee(workspaceId, spaceId, listId, task.id, userId);
+    else await addAssignee(workspaceId, spaceId, listId, task.id, userId);
     router.refresh();
   }
 
   async function handleSetDueDate(date: Date | null) {
-    await updateTask(workspaceId, spaceId, listId, task.id, { dueDateStart: date, dueDateEnd: date });
+    const prev = localDueDate;
+    setLocalDueDate(date);
     setDateOpen(false);
-    router.refresh();
+    const res = await updateTask(workspaceId, spaceId, listId, task.id, { dueDateStart: date, dueDateEnd: date });
+    if ("error" in res) { setLocalDueDate(prev); toast.error("Failed to update due date"); }
+    else router.refresh();
   }
 
   async function handleSetPriority(p: string) {
-    await updateTask(workspaceId, spaceId, listId, task.id, { priority: p as "NONE" | "LOW" | "MEDIUM" | "HIGH" | "URGENT" });
+    const prev = localPriority;
+    setLocalPriority(p);
     setPriorityOpen(false);
-    router.refresh();
+    const res = await updateTask(workspaceId, spaceId, listId, task.id, { priority: p as "NONE" | "LOW" | "MEDIUM" | "HIGH" | "URGENT" });
+    if ("error" in res) { setLocalPriority(prev); toast.error("Failed to update priority"); }
+    else router.refresh();
+  }
+
+  async function confirmDelete() {
+    setDeleting(true);
+    await deleteTask(workspaceId, spaceId, listId, task.id);
+    setDeleting(false);
+    setDeleteOpen(false);
   }
 
   const filteredMembers = (members ?? []).filter(
@@ -200,243 +234,252 @@ function TaskRow({
   );
 
   return (
-    <div
-      className={cn(
-        "group/row flex items-center border-b border-border/50 transition-colors cursor-pointer",
-        selected ? "bg-primary/5" : "hover:bg-accent/30",
-      )}
-      onClick={() => router.push(`/${workspaceId}/task/${task.id}?from=sprint`)}
-    >
-      {/* Checkbox */}
+    <>
       <div
-        className="flex w-10 shrink-0 items-center justify-center py-2.5 pl-3"
-        onClick={(e) => { e.stopPropagation(); onSelect(task.id, !selected); }}
+        className={cn(
+          "group/row hidden md:flex items-center border-b border-gray-100 transition-colors cursor-pointer",
+          selected ? "bg-primary/5" : "hover:bg-gray-50/70",
+        )}
+        onClick={() => router.push(`/${workspaceId}/task/${task.id}?from=sprint`)}
       >
-        <div className={cn(
-          "flex size-4 items-center justify-center rounded border transition-colors",
-          selected
-            ? "border-primary bg-primary text-primary-foreground"
-            : "border-border group-hover/row:bg-accent/50",
-        )}>
-          {selected && <CheckIcon className="size-2.5" weight="bold" />}
-        </div>
-      </div>
+        {/* Left status indicator */}
+        <div
+          className={cn("w-[3px] self-stretch shrink-0 transition-opacity duration-200", selected ? "opacity-100" : "opacity-0 group-hover/row:opacity-100")}
+          style={{ backgroundColor: statusColor }}
+        />
 
-      {/* Name */}
-      <div className="flex flex-1 items-center gap-2 min-w-0 py-3 pr-4">
-        <span className="text-xs text-muted-foreground/50 font-mono shrink-0 w-6">
-          #{task.seqNumber}
-        </span>
-        <span className="text-[15px] font-medium truncate">{task.title}</span>
-        {task.tags.slice(0, 2).map((tag) => (
-          <span
-            key={tag.id}
-            className="hidden md:inline-flex shrink-0 rounded-full px-1.5 py-px text-2xs font-medium"
-            style={{ backgroundColor: `${tag.color}20`, color: tag.color }}
+        {/* Checkbox */}
+        <div className="flex items-center pl-3 py-1.5 shrink-0 w-10">
+          <div
+            className={cn("flex size-4 items-center justify-center rounded border transition-opacity duration-200 cursor-pointer", selected ? "opacity-100" : "opacity-0 group-hover/row:opacity-100")}
+            onClick={(e) => { e.stopPropagation(); onSelect(task.id, !selected); }}
           >
-            {tag.name}
-          </span>
-        ))}
-      </div>
+            <div className={cn("flex size-4 items-center justify-center rounded border transition-colors", selected ? "border-primary bg-primary text-primary-foreground" : "border-gray-300 hover:border-gray-400 bg-white")}>
+              {selected && <CheckIcon className="size-2.5" weight="bold" />}
+            </div>
+          </div>
+        </div>
 
-      {/* Assignee */}
-      <div className="w-36 shrink-0 px-2 flex items-stretch" onClick={(e) => e.stopPropagation()}>
-        <Popover open={assigneeOpen} onOpenChange={(o) => { setAssigneeOpen(o); if (o) void loadMembers(); }}>
-          <PopoverTrigger asChild>
-            <button className="flex flex-1 items-center gap-2 rounded px-2 py-2.5 hover:bg-accent transition-colors text-left cursor-pointer">
+        {/* Name */}
+        <div className="flex flex-1 items-center gap-2.5 min-w-0 py-1.5 pr-4 pl-1">
+          <span className="text-2xs text-gray-400 font-mono shrink-0 select-none">#{task.seqNumber}</span>
+          <span className="text-[13px] font-medium text-gray-800 truncate group-hover/row:text-primary transition-colors">{task.title}</span>
+          {task.tags.slice(0, 2).map((tag) => (
+            <span
+              key={tag.id}
+              className="hidden lg:inline-flex shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide border"
+              style={{ backgroundColor: `${tag.color}10`, color: tag.color, borderColor: `${tag.color}30` }}
+            >
+              {tag.name}
+            </span>
+          ))}
+        </div>
+
+        {/* Assignee */}
+        <div className="w-36 shrink-0 self-stretch flex items-center px-2" onClick={(e) => e.stopPropagation()}>
+          {canEdit ? (
+            <Popover open={assigneeOpen} onOpenChange={(o) => { setAssigneeOpen(o); if (o) void loadMembers(); }}>
+              <PopoverTrigger asChild>
+                <button className="flex items-center gap-2 w-full h-full px-2 rounded-md border border-transparent hover:border-gray-200 hover:bg-gray-50 transition-all text-left cursor-pointer select-none">
+                  {task.assignees.length > 0 ? (
+                    <div className="flex -space-x-1.5">
+                      {task.assignees.slice(0, 3).map((a) => (
+                        <Avatar key={a.userId} className="size-6 shrink-0 border border-white shadow-sm">
+                          {a.image && <AvatarImage src={a.image} alt={a.name} />}
+                          <AvatarFallback className="text-[10px] bg-primary text-primary-foreground font-semibold">{userInitials(a.name)}</AvatarFallback>
+                        </Avatar>
+                      ))}
+                      {task.assignees.length > 3 && (
+                        <div className="flex size-6 items-center justify-center rounded-full border border-white bg-gray-100 text-[10px] text-gray-500 font-bold shadow-sm">+{task.assignees.length - 3}</div>
+                      )}
+                    </div>
+                  ) : (
+                    <UserIcon className="size-4 text-gray-400 group-hover/row:text-gray-600" weight="bold" />
+                  )}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="start" side="bottom" className="w-72 p-2">
+                <Input placeholder="Search members…" value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)} className="h-8 text-xs mb-2" />
+                {members === null ? (
+                  <p className="py-2 px-1 text-xs text-muted-foreground">Loading…</p>
+                ) : filteredMembers.length === 0 ? (
+                  <p className="py-2 px-1 text-xs text-muted-foreground">No members found</p>
+                ) : (
+                  <div className="max-h-52 overflow-y-auto">
+                    <p className="px-1 pb-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">People</p>
+                    {filteredMembers.map((m) => {
+                      const assigned = task.assignees.some((a) => a.userId === m.userId);
+                      return (
+                        <button key={m.userId} onClick={() => void handleToggleAssignee(m.userId)} className={cn("flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors cursor-pointer", assigned ? "bg-primary/10" : "hover:bg-accent")}>
+                          <Avatar className="size-6 shrink-0">
+                            {m.image && <AvatarImage src={m.image} />}
+                            <AvatarFallback className="text-2xs bg-primary/10 text-primary font-semibold">{userInitials(m.name ?? m.email ?? "?")}</AvatarFallback>
+                          </Avatar>
+                          <span className="flex-1 min-w-0 text-left truncate">{m.name ?? m.email}</span>
+                          {assigned && <CheckIcon className="size-3.5 text-primary shrink-0" weight="bold" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
+          ) : (
+            <div className="flex items-center gap-2 px-2">
               {task.assignees.length > 0 ? (
                 <div className="flex -space-x-1.5">
                   {task.assignees.slice(0, 3).map((a) => (
-                    <Avatar key={a.userId} className="size-7 border-2 border-background" title={a.name}>
+                    <Avatar key={a.userId} className="size-6 shrink-0 border border-white shadow-sm">
                       {a.image && <AvatarImage src={a.image} alt={a.name} />}
-                      <AvatarFallback className="text-xs bg-primary text-primary-foreground font-semibold">
-                        {userInitials(a.name)}
-                      </AvatarFallback>
+                      <AvatarFallback className="text-[10px] bg-primary text-primary-foreground font-semibold">{userInitials(a.name)}</AvatarFallback>
                     </Avatar>
                   ))}
-                  {task.assignees.length > 3 && (
-                    <div className="flex size-7 items-center justify-center rounded-full border-2 border-background bg-muted text-xs font-medium text-muted-foreground">
-                      +{task.assignees.length - 3}
-                    </div>
-                  )}
+                  {task.assignees.length > 3 && <div className="flex size-6 items-center justify-center rounded-full border border-white bg-gray-100 text-[10px] text-gray-500 font-bold shadow-sm">+{task.assignees.length - 3}</div>}
                 </div>
               ) : (
-                <UserIcon className="size-4 text-muted-foreground/30" />
+                <UserIcon className="size-4 text-gray-300" weight="bold" />
               )}
-            </button>
-          </PopoverTrigger>
-          <PopoverContent align="start" side="bottom" className="w-72 p-2">
-            <Input
-              placeholder="Search members…"
-              value={memberSearch}
-              onChange={(e) => setMemberSearch(e.target.value)}
-              className="h-8 text-xs mb-2"
-            />
-            {members === null ? (
-              <p className="py-2 px-1 text-xs text-muted-foreground">Loading…</p>
-            ) : filteredMembers.length === 0 ? (
-              <p className="py-2 px-1 text-xs text-muted-foreground">No members found</p>
-            ) : (
-              <div className="max-h-52 overflow-y-auto">
-                <p className="px-1 pb-1 text-2xs font-semibold text-muted-foreground uppercase tracking-wide">People</p>
-                {filteredMembers.map((m) => {
-                  const assigned = task.assignees.some((a) => a.userId === m.userId);
-                  return (
-                    <button
-                      key={m.userId}
-                      onClick={() => void handleToggleAssignee(m.userId)}
-                      className={cn(
-                        "flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors",
-                        assigned ? "bg-primary/10" : "hover:bg-accent",
-                      )}
-                    >
-                      <Avatar className="size-6 shrink-0">
-                        {m.image && <AvatarImage src={m.image} />}
-                        <AvatarFallback className="text-2xs bg-primary/10 text-primary font-semibold">
-                          {userInitials(m.name ?? m.email ?? "?")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="flex-1 min-w-0 text-left truncate">{m.name ?? m.email}</span>
-                      {assigned && <CheckIcon className="size-3.5 text-primary shrink-0" weight="bold" />}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </PopoverContent>
-        </Popover>
-      </div>
+            </div>
+          )}
+        </div>
 
-      {/* Due date */}
-      <div className="w-28 shrink-0 px-2 flex items-stretch" onClick={(e) => e.stopPropagation()}>
-        <Popover open={dateOpen} onOpenChange={setDateOpen}>
-          <PopoverTrigger asChild>
-            <button className={cn(
-              "flex flex-1 items-center gap-1.5 rounded px-2 py-2.5 text-sm font-medium hover:bg-accent transition-colors cursor-pointer",
-              dueDate?.overdue ? "text-red-500" : "text-muted-foreground",
-            )}>
-              {dueDate ? dueDate.label : <CalendarBlankIcon className="size-4 text-muted-foreground/30" />}
-            </button>
-          </PopoverTrigger>
-          <PopoverContent align="start" side="bottom" className="w-44 p-1">
-            {[
-              { label: "Today",     date: new Date() },
-              { label: "Tomorrow",  date: addDays(new Date(), 1) },
-              { label: "Next week", date: addDays(new Date(), 7) },
-              { label: "2 weeks",   date: addDays(new Date(), 14) },
-            ].map(({ label, date }) => (
-              <button
-                key={label}
-                onClick={() => void handleSetDueDate(date)}
-                className="flex w-full items-center justify-between rounded px-2 py-1.5 text-sm hover:bg-accent"
-              >
-                <span>{label}</span>
-                <span className="text-xs text-muted-foreground">{format(date, "MMM d")}</span>
-              </button>
-            ))}
-            {task.dueDateStart && (
-              <>
-                <div className="h-px bg-border my-1" />
-                <button
-                  onClick={() => void handleSetDueDate(null)}
-                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-destructive hover:bg-destructive/10"
-                >
-                  <XIcon className="size-3.5 shrink-0" />
-                  Clear date
+        {/* Due date */}
+        <div className="w-28 shrink-0 self-stretch flex items-center px-2" onClick={(e) => e.stopPropagation()}>
+          {canEdit ? (
+            <Popover open={dateOpen} onOpenChange={setDateOpen}>
+              <PopoverTrigger asChild>
+                <button className={cn("flex items-center gap-1.5 w-full h-full px-2 rounded-md border border-transparent hover:border-gray-200 hover:bg-gray-50 transition-all text-xs font-semibold text-left cursor-pointer select-none", dueDate?.overdue ? "text-red-500" : "text-gray-600")}>
+                  {dueDate ? (
+                    <><CalendarBlankIcon className="size-3.5" /><span>{dueDate.label}</span></>
+                  ) : (
+                    <CalendarPlusIcon className="size-4 text-gray-400 group-hover/row:text-gray-600" weight="bold" />
+                  )}
                 </button>
-              </>
-            )}
-          </PopoverContent>
-        </Popover>
-      </div>
+              </PopoverTrigger>
+              <PopoverContent align="end" side="bottom" className="p-0 border-0 shadow-none bg-transparent">
+                <ClickUpCalendar selectedDate={localDueDate} onSelect={handleSetDueDate} onClose={() => setDateOpen(false)} />
+              </PopoverContent>
+            </Popover>
+          ) : (
+            <div className={cn("flex items-center gap-1.5 px-2 text-xs font-semibold", dueDate?.overdue ? "text-red-500" : "text-gray-400")}>
+              {dueDate ? <><CalendarBlankIcon className="size-3.5" /><span>{dueDate.label}</span></> : null}
+            </div>
+          )}
+        </div>
 
-      {/* Priority */}
-      <div className="w-28 shrink-0 px-2 flex items-stretch" onClick={(e) => e.stopPropagation()}>
-        <Popover open={priorityOpen} onOpenChange={setPriorityOpen}>
-          <PopoverTrigger asChild>
-            <button className="flex flex-1 items-center gap-1.5 rounded px-2 py-2.5 hover:bg-accent transition-colors cursor-pointer">
-              {task.priority && task.priority !== "NONE" ? (
-                <span className={cn("flex items-center gap-1.5 text-sm font-medium", priority.color)}>
-                  <FlagIcon className="size-4 shrink-0" weight="fill" />
-                  {priority.label}
+        {/* Priority */}
+        <div className="w-28 shrink-0 self-stretch flex items-center px-2" onClick={(e) => e.stopPropagation()}>
+          {canEdit ? (
+            <Popover open={priorityOpen} onOpenChange={setPriorityOpen}>
+              <PopoverTrigger asChild>
+                <button className="flex items-center gap-1.5 w-full h-full px-2 rounded-md border border-transparent hover:border-gray-200 hover:bg-gray-50 transition-all text-left cursor-pointer select-none">
+                  {localPriority !== "NONE" ? (
+                    <span className={cn("flex items-center gap-1.5 text-xs font-bold", priority.color)}>
+                      <span>{priority.icon}</span>
+                      {priority.label}
+                    </span>
+                  ) : (
+                    <span className="text-base text-gray-400 group-hover/row:text-gray-600">{PRIORITY_CONFIG.NONE.icon}</span>
+                  )}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="start" side="bottom" className="w-44 p-1">
+                <p className="px-2 py-1 text-2xs font-bold text-muted-foreground uppercase tracking-wide">Priority</p>
+                {(["URGENT", "HIGH", "MEDIUM", "LOW"] as const).map((value) => (
+                  <button key={value} onClick={() => void handleSetPriority(value)} className={cn("flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs font-semibold hover:bg-accent cursor-pointer", localPriority === value && "bg-accent")}>
+                    <span>{PRIORITY_CONFIG[value].icon}</span>
+                    <span className={PRIORITY_CONFIG[value].color}>{PRIORITY_CONFIG[value].label}</span>
+                  </button>
+                ))}
+                <div className="h-px bg-border my-1" />
+                <button onClick={() => void handleSetPriority("NONE")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent cursor-pointer">
+                  <XIcon className="size-3.5 shrink-0" /> Clear
+                </button>
+              </PopoverContent>
+            </Popover>
+          ) : (
+            <div className="flex items-center gap-1.5 px-2">
+              {localPriority !== "NONE" ? (
+                <span className={cn("flex items-center gap-1.5 text-xs font-bold", priority.color)}>
+                  <span>{priority.icon}</span>{priority.label}
                 </span>
-              ) : (
-                <FlagIcon className="size-4 text-muted-foreground/30" />
-              )}
-            </button>
-          </PopoverTrigger>
-          <PopoverContent align="start" side="bottom" className="w-44 p-1">
-            <p className="px-2 py-1 text-xs font-semibold text-muted-foreground">Priority</p>
-            {([
-              { value: "URGENT", label: "Urgent", color: "text-red-500"    },
-              { value: "HIGH",   label: "High",   color: "text-yellow-500" },
-              { value: "MEDIUM", label: "Medium", color: "text-blue-500"   },
-              { value: "LOW",    label: "Low",    color: "text-gray-400"   },
-            ] as const).map(({ value, label, color }) => (
-              <button
-                key={value}
-                onClick={() => void handleSetPriority(value)}
-                className={cn(
-                  "flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent",
-                  task.priority === value && "bg-accent",
-                )}
-              >
-                <FlagIcon className={cn("size-3.5 shrink-0", color)} weight="fill" />
-                {label}
-              </button>
-            ))}
-            <div className="h-px bg-border my-1" />
-            <button
-              onClick={() => void handleSetPriority("NONE")}
-              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent"
-            >
-              <XIcon className="size-3.5 shrink-0" />
-              Clear
-            </button>
-          </PopoverContent>
-        </Popover>
-      </div>
+              ) : null}
+            </div>
+          )}
+        </div>
 
-      {/* Actions */}
-      <div
-        className="w-10 shrink-0 py-2.5 pr-3 flex items-center justify-end"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <Popover>
-          <PopoverTrigger asChild>
-            <button className="opacity-0 group-hover/row:opacity-100 flex size-7 items-center justify-center rounded-md hover:bg-accent transition-opacity">
-              <DotsThreeIcon className="size-4.5 text-muted-foreground" weight="bold" />
+        {/* Row actions */}
+        <div className="w-40 shrink-0 py-1.5 pr-4 flex items-center justify-end gap-0.5" onClick={(e) => e.stopPropagation()}>
+          <div className="opacity-0 group-hover/row:opacity-100 transition-all duration-200 flex items-center gap-0.5">
+            <button onClick={() => router.push(`/${workspaceId}/task/${task.id}?from=sprint`)} title="Edit Task" className="flex size-7 items-center justify-center rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors cursor-pointer">
+              <PencilSimpleIcon className="size-4" />
             </button>
-          </PopoverTrigger>
-          <PopoverContent align="end" className="w-40 p-1">
-            <button
-              onClick={async (e) => { e.stopPropagation(); await duplicateTask(workspaceId, spaceId, listId, task.id); }}
-              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
-            >
-              <CopyIcon className="size-3.5 text-muted-foreground" /> Duplicate
-            </button>
-            <button
-              onClick={async (e) => { e.stopPropagation(); await archiveTask(workspaceId, spaceId, listId, task.id); }}
-              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
-            >
-              <ArchiveIcon className="size-3.5 text-muted-foreground" /> Archive
-            </button>
-            {isAdmin && (
-              <button
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  if (!confirm(`Delete "${task.title}"? This cannot be undone.`)) return;
-                  await deleteTask(workspaceId, spaceId, listId, task.id);
-                }}
-                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-destructive hover:bg-destructive/10"
-              >
-                <TrashIcon className="size-3.5" /> Delete
+            {canEdit && (
+              <button onClick={async (e) => { e.stopPropagation(); await duplicateTask(workspaceId, spaceId, listId, task.id); router.refresh(); }} title="Duplicate Task" className="flex size-7 items-center justify-center rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors cursor-pointer">
+                <CopyIcon className="size-4" />
               </button>
             )}
-          </PopoverContent>
-        </Popover>
+            {/* Move status */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button title="Move Task Status" className="flex size-7 items-center justify-center rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors cursor-pointer">
+                  <ArrowsOutCardinalIcon className="size-4" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-48 p-1">
+                <p className="px-2 py-1 text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Move Status</p>
+                {statuses.map((s) => (
+                  <button key={s.id} onClick={async () => { await updateTaskStatus(workspaceId, spaceId, listId, task.id, s.id); router.refresh(); }} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs font-semibold hover:bg-accent text-left cursor-pointer">
+                    <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
+                    <span className="truncate">{s.name}</span>
+                  </button>
+                ))}
+              </PopoverContent>
+            </Popover>
+            {isAdmin && (
+              <button onClick={(e) => { e.stopPropagation(); setDeleteOpen(true); }} title="Delete Task" className="flex size-7 items-center justify-center rounded-md hover:bg-red-50 text-red-500 hover:text-red-700 transition-colors cursor-pointer">
+                <TrashIcon className="size-4" />
+              </button>
+            )}
+            {canEdit && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="flex size-7 items-center justify-center rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors cursor-pointer">
+                    <DotsThreeIcon className="size-4.5" weight="bold" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-40 p-1">
+                  <button onClick={async (e) => { e.stopPropagation(); await archiveTask(workspaceId, spaceId, listId, task.id); router.refresh(); }} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs font-semibold hover:bg-accent cursor-pointer">
+                    <ArchiveIcon className="size-3.5 text-muted-foreground" /> Archive
+                  </button>
+                </PopoverContent>
+              </Popover>
+            )}
+          </div>
+        </div>
       </div>
-    </div>
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="sm:max-w-sm" aria-describedby={undefined}>
+          <DialogHeader>
+            <div className="flex flex-col items-center gap-3 pt-2">
+              <div className="flex size-12 items-center justify-center rounded-full bg-red-100">
+                <TrashIcon className="size-6 text-red-600" weight="bold" />
+              </div>
+              <DialogTitle className="text-center text-base font-semibold">Delete Task</DialogTitle>
+              <p className="text-center text-sm text-muted-foreground">
+                Are you sure you want to delete <span className="font-semibold text-foreground">&ldquo;{task.title}&rdquo;</span>? This action cannot be undone.
+              </p>
+            </div>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2 pt-2">
+            <Button variant="outline" onClick={() => setDeleteOpen(false)} disabled={deleting} className="flex-1">Cancel</Button>
+            <Button variant="destructive" onClick={confirmDelete} disabled={deleting} className="flex-1">{deleting ? "Deleting…" : "Delete"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -540,7 +583,9 @@ function StatusGroup({
   spaceId,
   listId,
   sprintId,
+  statuses,
   isAdmin,
+  canEdit,
   selectedIds,
   onSelect,
   onRefresh,
@@ -551,7 +596,9 @@ function StatusGroup({
   spaceId: string;
   listId: string;
   sprintId: string;
+  statuses: Status[];
   isAdmin?: boolean;
+  canEdit?: boolean;
   selectedIds: Set<string>;
   onSelect: (id: string, checked: boolean) => void;
   onRefresh: () => void;
@@ -608,29 +655,29 @@ function StatusGroup({
     <>
     <div>
       {/* Group header */}
-      <div className="group/header flex items-center gap-2 py-2 px-3 select-none">
-        <button
-          onClick={() => setCollapsed((v) => !v)}
-          className="flex size-5 items-center justify-center rounded hover:bg-accent transition-colors shrink-0 cursor-pointer"
-        >
+      <div
+        onClick={() => setCollapsed((v) => !v)}
+        className="group/header flex items-center gap-2.5 py-1.5 px-3 hover:bg-slate-50/80 transition-colors cursor-pointer select-none border-b border-gray-100"
+      >
+        <div className="flex size-5 items-center justify-center rounded hover:bg-gray-100 transition-colors shrink-0 text-gray-400 group-hover/header:text-gray-600">
           {collapsed
-            ? <CaretRightIcon weight="fill" className="size-3 text-muted-foreground" />
-            : <CaretDownIcon weight="fill" className="size-3 text-muted-foreground" />}
-        </button>
+            ? <CaretRightIcon weight="fill" className="size-3" />
+            : <CaretDownIcon weight="fill" className="size-3" />}
+        </div>
 
-        <Badge
-          variant="outline"
-          className="text-xs px-2 py-1 rounded font-semibold cursor-pointer"
-          style={{ borderColor: `${status.color}50`, backgroundColor: `${status.color}18`, color: status.color }}
-          onClick={() => setCollapsed((v) => !v)}
+        <span
+          className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border transition-all"
+          style={{ backgroundColor: `${status.color}12`, color: status.color, borderColor: `${status.color}25` }}
         >
-          <span className="size-1.5 rounded-full mr-1.5 shrink-0 inline-block" style={{ backgroundColor: status.color }} />
+          <span className="size-1.5 rounded-full shrink-0" style={{ backgroundColor: status.color }} />
           {status.name}
-        </Badge>
+        </span>
 
-        <span className="text-xs text-muted-foreground tabular-nums">{tasks.length}</span>
+        <span className="text-[11px] text-gray-400 font-semibold tabular-nums">
+          {tasks.length} {tasks.length === 1 ? "task" : "tasks"}
+        </span>
 
-        <div className="ml-1 flex items-center gap-1 opacity-0 group-hover/header:opacity-100 transition-opacity">
+        <div className="ml-2 flex items-center gap-1 opacity-0 group-hover/header:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
           <Popover open={menuOpen} onOpenChange={setMenuOpen}>
             <PopoverTrigger asChild>
               <button className="flex size-6 items-center justify-center rounded hover:bg-accent transition-colors">
@@ -696,21 +743,24 @@ function StatusGroup({
                 {someSelected && !allSelected && <div className="size-1.5 rounded-sm bg-primary" />}
               </div>
             </div>
-            <div className="flex-1 py-2 pr-4 text-sm font-semibold text-muted-foreground">Name</div>
-            <div className="w-36 shrink-0 py-2 px-4 text-sm font-semibold text-muted-foreground">Assignee</div>
-            <div className="w-28 shrink-0 py-2 px-4 text-sm font-semibold text-muted-foreground">Due date</div>
-            <div className="w-28 shrink-0 py-2 px-4 text-sm font-semibold text-muted-foreground">Priority</div>
-            <div className="w-10 shrink-0" />
+            <div className="flex-1 py-2 pr-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Name</div>
+            <div className="w-36 shrink-0 py-2 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Assignee</div>
+            <div className="w-28 shrink-0 py-2 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Due date</div>
+            <div className="w-28 shrink-0 py-2 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Priority</div>
+            <div className="w-40 shrink-0" />
           </div>
 
           {tasks.map((task) => (
             <TaskRow
               key={task.id}
               task={task}
+              statusColor={status.color}
               workspaceId={workspaceId}
               spaceId={spaceId}
               listId={listId}
+              statuses={statuses}
               isAdmin={isAdmin}
+              canEdit={canEdit}
               selected={selectedIds.has(task.id)}
               onSelect={onSelect}
             />
@@ -1041,12 +1091,21 @@ function BulkActionBar({
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
-export function SprintListView({ workspaceId, spaceId, listId, statuses, isAdmin }: SprintListViewProps) {
+export function SprintListView({ workspaceId, spaceId, listId, statuses, isAdmin, canEdit, members = [] }: SprintListViewProps) {
   const [sprintInfo, setSprintInfo] = React.useState<SprintInfo | null>(null);
   const [tasks, setTasks] = React.useState<SprintTask[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [sprintCollapsed, setSprintCollapsed] = React.useState(false);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
+
+  // ── Toolbar state ─────────────────────────────────────────────────────────
+  const [createOpen, setCreateOpen] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [statusFilter, setStatusFilter] = React.useState<string[]>([]);
+  const [priorityFilter, setPriorityFilter] = React.useState<string[]>([]);
+  const [assigneeFilter, setAssigneeFilter] = React.useState<string[]>([]);
+
+  const hasActiveFilters = statusFilter.length > 0 || priorityFilter.length > 0 || assigneeFilter.length > 0;
 
   function handleSelect(id: string, checked: boolean) {
     setSelectedIds((prev) => {
@@ -1070,16 +1129,34 @@ export function SprintListView({ workspaceId, spaceId, listId, statuses, isAdmin
 
   React.useEffect(() => { void fetchData(); }, [fetchData]);
 
+  // ── Filtered tasks ────────────────────────────────────────────────────────
+  const filteredTasks = React.useMemo(() => {
+    return tasks.filter((t) => {
+      if (searchQuery.trim() && !t.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+      if (statusFilter.length && !statusFilter.includes(t.statusId)) return false;
+      if (priorityFilter.length && !priorityFilter.includes(t.priority ?? "NONE")) return false;
+      if (assigneeFilter.length) {
+        const hasUnassigned = assigneeFilter.includes("unassigned");
+        const userIds = assigneeFilter.filter((a) => a !== "unassigned");
+        const assigneeIds = t.assignees.map((a) => a.userId);
+        const matchUnassigned = hasUnassigned && assigneeIds.length === 0;
+        const matchUser = userIds.length > 0 && assigneeIds.some((id) => userIds.includes(id));
+        if (!matchUnassigned && !matchUser) return false;
+      }
+      return true;
+    });
+  }, [tasks, searchQuery, statusFilter, priorityFilter, assigneeFilter]);
+
   const tasksByStatus = React.useMemo(() => {
     const map = new Map<string, SprintTask[]>();
     for (const s of statuses) map.set(s.id, []);
-    for (const t of tasks) {
+    for (const t of filteredTasks) {
       const group = map.get(t.statusId);
       if (group) group.push(t);
       else map.get(statuses[0]?.id ?? "")?.push(t);
     }
     return map;
-  }, [statuses, tasks]);
+  }, [statuses, filteredTasks]);
 
   // ── Loading skeleton ──────────────────────────────────────────────────────
   if (loading) {
@@ -1131,6 +1208,136 @@ export function SprintListView({ workspaceId, spaceId, listId, statuses, isAdmin
   // ── Sprint card ───────────────────────────────────────────────────────────
   return (
     <>
+      <CreateTaskModal
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        workspaceId={workspaceId}
+        spaceId={spaceId}
+        listId={listId}
+        statuses={statuses}
+      />
+
+      {/* Toolbar */}
+      <div className="flex items-center justify-between gap-4 flex-wrap mb-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Search */}
+          <div className="relative">
+            <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-gray-400 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search tasks…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-8 w-44 rounded-lg border border-gray-200 bg-white pl-8 pr-3 text-xs focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all focus:w-56"
+            />
+          </div>
+
+          {/* Filter Popover */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className="flex items-center gap-1.5 h-8 rounded-lg border border-gray-200 px-3 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer select-none">
+                <FunnelIcon className="size-3.5 text-gray-500" />
+                Filters
+                {hasActiveFilters && (
+                  <span className="ml-1 size-2 rounded-full bg-primary" />
+                )}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-64 p-3 space-y-4">
+              {/* Status filter */}
+              <div>
+                <p className="mb-1.5 text-2xs font-bold text-gray-400 uppercase tracking-wide">Status</p>
+                <div className="flex flex-col gap-1 max-h-32 overflow-y-auto">
+                  {statuses.map((s) => (
+                    <label key={s.id} className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer py-0.5 hover:bg-gray-50 rounded">
+                      <input
+                        type="checkbox"
+                        checked={statusFilter.includes(s.id)}
+                        onChange={(e) => {
+                          setStatusFilter((prev) => e.target.checked ? [...prev, s.id] : prev.filter((id) => id !== s.id));
+                        }}
+                        className="rounded border-gray-300 text-primary focus:ring-primary size-3.5"
+                      />
+                      <span className="truncate">{s.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Priority filter */}
+              <div>
+                <p className="mb-1.5 text-2xs font-bold text-gray-400 uppercase tracking-wide">Priority</p>
+                <div className="flex flex-col gap-1">
+                  {["URGENT", "HIGH", "MEDIUM", "LOW", "NONE"].map((p) => (
+                    <label key={p} className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer py-0.5 hover:bg-gray-50 rounded">
+                      <input
+                        type="checkbox"
+                        checked={priorityFilter.includes(p)}
+                        onChange={(e) => {
+                          setPriorityFilter((prev) => e.target.checked ? [...prev, p] : prev.filter((v) => v !== p));
+                        }}
+                        className="rounded border-gray-300 text-primary focus:ring-primary size-3.5"
+                      />
+                      <span>{p === "NONE" ? "No Priority" : p.charAt(0) + p.slice(1).toLowerCase()}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Assignee filter */}
+              {members.length > 0 && (
+                <div>
+                  <p className="mb-1.5 text-2xs font-bold text-gray-400 uppercase tracking-wide">Assignee</p>
+                  <div className="flex flex-col gap-1 max-h-36 overflow-y-auto">
+                    <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer py-0.5 hover:bg-gray-50 rounded">
+                      <input
+                        type="checkbox"
+                        checked={assigneeFilter.includes("unassigned")}
+                        onChange={(e) => {
+                          setAssigneeFilter((prev) => e.target.checked ? [...prev, "unassigned"] : prev.filter((v) => v !== "unassigned"));
+                        }}
+                        className="rounded border-gray-300 text-primary focus:ring-primary size-3.5"
+                      />
+                      <span>Unassigned</span>
+                    </label>
+                    {members.map((m) => (
+                      <label key={m.userId} className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer py-0.5 hover:bg-gray-50 rounded">
+                        <input
+                          type="checkbox"
+                          checked={assigneeFilter.includes(m.userId)}
+                          onChange={(e) => {
+                            setAssigneeFilter((prev) => e.target.checked ? [...prev, m.userId] : prev.filter((id) => id !== m.userId));
+                          }}
+                          className="rounded border-gray-300 text-primary focus:ring-primary size-3.5"
+                        />
+                        <span className="truncate">{m.name || m.email}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Clear all */}
+              <button
+                onClick={() => { setPriorityFilter([]); setAssigneeFilter([]); setStatusFilter([]); }}
+                className="w-full py-1 text-center text-red-500 hover:bg-red-50 rounded text-xs font-semibold transition-colors cursor-pointer"
+              >
+                Clear Filters
+              </button>
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        {/* Create Task button */}
+        <button
+          onClick={() => setCreateOpen(true)}
+          className="flex items-center gap-1.5 h-8 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/95 transition-all shadow-sm shrink-0 cursor-pointer select-none"
+        >
+          <PlusIcon className="size-3.5" weight="bold" />
+          Create Task
+        </button>
+      </div>
+
       <div className="rounded-xl border bg-card overflow-hidden">
         {/* Sprint header */}
         <div className="flex items-center gap-2 px-4 py-3 border-b bg-muted/20">
@@ -1173,7 +1380,9 @@ export function SprintListView({ workspaceId, spaceId, listId, statuses, isAdmin
                   spaceId={spaceId}
                   listId={listId}
                   sprintId={sprintInfo.id}
+                  statuses={statuses}
                   isAdmin={isAdmin}
+                  canEdit={canEdit}
                   selectedIds={selectedIds}
                   onSelect={handleSelect}
                   onRefresh={fetchData}

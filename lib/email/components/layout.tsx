@@ -3,6 +3,7 @@ import {
   Body,
   Container,
   Head,
+  Hr,
   Html,
   Img,
   Preview,
@@ -13,49 +14,50 @@ import { PRODUCT_NAME } from "@/config/platform";
 
 export const emailStyles = {
   body: {
-    backgroundColor: "#f6f4ef",
-    color: "#171717",
+    backgroundColor: "#F9FAFB",
+    color: "#111827",
     fontFamily:
-      'Geist, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   },
   button: {
-    backgroundColor: "#111111",
+    backgroundColor: "#6366F1",
     borderRadius: "6px",
     color: "#ffffff",
     display: "inline-block",
     fontSize: "14px",
-    fontWeight: 700,
-    padding: "12px 18px",
+    fontWeight: 600,
+    padding: "12px 24px",
     textDecoration: "none",
   },
   container: {
     backgroundColor: "#ffffff",
-    border: "1px solid #ded8cc",
-    borderRadius: "10px",
+    border: "1px solid #E5E7EB",
+    borderRadius: "8px",
     margin: "40px auto",
     maxWidth: "560px",
-    padding: "32px",
+    padding: "40px 32px",
   },
   fallbackLink: {
-    color: "#5c554a",
+    color: "#9CA3AF",
     fontSize: "12px",
     lineHeight: "20px",
   },
   heading: {
+    color: "#111827",
     fontSize: "24px",
-    fontWeight: 800,
+    fontWeight: 700,
     letterSpacing: "0",
     lineHeight: "32px",
-    margin: "0 0 16px",
+    margin: "0 0 12px",
   },
-  link: { color: "#006d5b" },
+  link: { color: "#6366F1" },
   muted: {
-    color: "#6b665d",
+    color: "#6B7280",
     fontSize: "13px",
     lineHeight: "22px",
   },
   paragraph: {
-    color: "#2c2a26",
+    color: "#374151",
     fontSize: "15px",
     lineHeight: "24px",
   },
@@ -78,16 +80,36 @@ export function EmailLayout({
       <Preview>{preview}</Preview>
       <Body style={emailStyles.body}>
         <Container style={emailStyles.container}>
-          <Section style={{ marginBottom: "24px" }}>
+          <Section style={{ marginBottom: "32px" }}>
             {logoUrl ? (
               <Img alt={productName} height="32" src={logoUrl} />
             ) : (
-              <Text style={{ fontWeight: 900, letterSpacing: "0" }}>
+              <Text
+                style={{
+                  color: "#6366F1",
+                  fontSize: "20px",
+                  fontWeight: 700,
+                  letterSpacing: "-0.5px",
+                  margin: "0",
+                }}
+              >
                 {productName}
               </Text>
             )}
           </Section>
           {children}
+          <Hr style={{ borderColor: "#E5E7EB", margin: "32px 0 16px" }} />
+          <Text
+            style={{
+              color: "#9CA3AF",
+              fontSize: "12px",
+              lineHeight: "18px",
+              margin: "0",
+            }}
+          >
+            {productName} · You received this email because an action was
+            requested on your account.
+          </Text>
         </Container>
       </Body>
     </Html>
