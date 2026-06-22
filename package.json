@@ -20,7 +20,8 @@
     "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
     "db:migrate": "drizzle-kit migrate --config=drizzle.config.ts",
     "db:reset": "tsx db/reset.ts && pnpm db:migrate",
-    "make:admin": "tsx scripts/make-admin.ts"
+    "make:admin": "tsx scripts/make-admin.ts",
+    "create:admin": "tsx scripts/create-admin.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1068.0",

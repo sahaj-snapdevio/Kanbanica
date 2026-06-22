@@ -78,6 +78,7 @@ interface TaskDetailPanelProps {
   spaceId: string;
   listId: string;
   isAdmin?: boolean;
+  inline?: boolean; // render content directly without Sheet overlay
 }
 
 // ─── Priority config ──────────────────────────────────────────────────────────
@@ -109,6 +110,7 @@ export function TaskDetailPanel({
   spaceId,
   listId,
   isAdmin,
+  inline = false,
 }: TaskDetailPanelProps) {
   const router = useRouter();
   const [data, setData] = React.useState<Awaited<ReturnType<typeof getTaskDetail>> | null>(null);
@@ -161,12 +163,16 @@ export function TaskDetailPanel({
   if (!open) return null;
 
   if (loading || !data || "error" in data) {
+    const loadingContent = (
+      <div className="flex h-full items-center justify-center">
+        <p className="text-sm text-muted-foreground">{loading ? "Loading…" : "Task not found"}</p>
+      </div>
+    );
+    if (inline) return <div className="h-full overflow-y-auto">{loadingContent}</div>;
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent className="w-full sm:max-w-2xl overflow-y-auto" aria-describedby={undefined}>
-          <div className="flex h-full items-center justify-center">
-            <p className="text-sm text-muted-foreground">{loading ? "Loading…" : "Task not found"}</p>
-          </div>
+          {loadingContent}
         </SheetContent>
       </Sheet>
     );
@@ -318,12 +324,8 @@ export function TaskDetailPanel({
     ? format(new Date(t.dueDateEnd), "yyyy-MM-dd")
     : "";
 
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        className="w-full sm:max-w-2xl overflow-y-auto flex flex-col gap-0 p-0"
-        aria-describedby={undefined}
-      >
+  const panelContent = (
+    <>
         {/* Header */}
         <div className="flex items-start gap-2 border-b px-6 py-4">
           <div className="flex-1 min-w-0">
@@ -830,6 +832,24 @@ export function TaskDetailPanel({
             )}
           </div>
         </div>
+    </>
+  );
+
+  if (inline) {
+    return (
+      <div className="h-full overflow-y-auto flex flex-col gap-0">
+        {panelContent}
+      </div>
+    );
+  }
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        className="w-full sm:max-w-2xl overflow-y-auto flex flex-col gap-0 p-0"
+        aria-describedby={undefined}
+      >
+        {panelContent}
       </SheetContent>
     </Sheet>
   );

@@ -85,9 +85,9 @@ export default async function WorkspaceLayout({
     notFound();
   }
 
-  const spaces =
+  const [spaces, archivedSpaces] = await Promise.all([
     spaceIds.length > 0
-      ? await db
+      ? db
           .select({
             id: space.id,
             name: space.name,
@@ -97,7 +97,15 @@ export default async function WorkspaceLayout({
           .from(space)
           .where(and(inArray(space.id, spaceIds), eq(space.isArchived, false)))
           .orderBy(asc(space.orderIndex), asc(space.createdAt))
-      : [];
+      : Promise.resolve([] as { id: string; name: string; color: string | null; isPrivate: boolean }[]),
+    spaceIds.length > 0
+      ? db
+          .select({ id: space.id, name: space.name, color: space.color, isPrivate: space.isPrivate })
+          .from(space)
+          .where(and(inArray(space.id, spaceIds), eq(space.isArchived, true)))
+          .orderBy(asc(space.orderIndex), asc(space.createdAt))
+      : Promise.resolve([] as { id: string; name: string; color: string | null; isPrivate: boolean }[]),
+  ]);
 
   const isAdminOrOwner =
     membership.role === "OWNER" || membership.role === "ADMIN";
@@ -113,11 +121,12 @@ export default async function WorkspaceLayout({
   > = {};
   // Per-space canManageList: OWNER/ADMIN always can; others need FULL_ACCESS in spaceMember
   const spaceCanManageMap: Record<string, boolean> = {};
+  const archivedListsBySpace: Record<string, { id: string; name: string; color: string | null; description: string | null }[]> = {};
 
   if (spaces.length > 0) {
     const spaceIdList = spaces.map((s) => s.id);
 
-    const [lists, spacePermissions] = await Promise.all([
+    const [lists, spacePermissions, archivedListRows] = await Promise.all([
       db
         .select({
           id: list.id,
@@ -146,7 +155,19 @@ export default async function WorkspaceLayout({
                 inArray(spaceMember.spaceId, spaceIdList)
               )
             ),
+
+      // Fetch archived lists for active spaces
+      db
+        .select({ id: list.id, name: list.name, spaceId: list.spaceId, color: list.color, description: list.description })
+        .from(list)
+        .where(and(inArray(list.spaceId, spaceIdList), eq(list.isArchived, true)))
+        .orderBy(asc(list.orderIndex), asc(list.createdAt)),
     ]);
+
+    for (const l of archivedListRows) {
+      if (!archivedListsBySpace[l.spaceId]) archivedListsBySpace[l.spaceId] = [];
+      archivedListsBySpace[l.spaceId].push({ id: l.id, name: l.name, color: l.color, description: l.description });
+    }
 
     for (const l of lists) {
       if (!spaceListMap[l.spaceId]) {
@@ -182,7 +203,14 @@ export default async function WorkspaceLayout({
         spaces={spaces.map((s) => ({
           ...s,
           lists: spaceListMap[s.id] ?? [],
+          archivedLists: archivedListsBySpace[s.id] ?? [],
           canManageList: spaceCanManageMap[s.id] ?? isAdminOrOwner,
+        }))}
+        archivedSpaces={archivedSpaces.map((s) => ({
+          ...s,
+          lists: [],
+          archivedLists: [],
+          canManageList: isAdminOrOwner,
         }))}
         channels={channels}
         user={{ name: session.user.name ?? null, email: session.user.email }}

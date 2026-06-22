@@ -243,7 +243,7 @@ function TaskRow({
       <div className="w-36 shrink-0 px-2 flex items-stretch" onClick={(e) => e.stopPropagation()}>
         <Popover open={assigneeOpen} onOpenChange={(o) => { setAssigneeOpen(o); if (o) void loadMembers(); }}>
           <PopoverTrigger asChild>
-            <button className="flex flex-1 items-center gap-2 rounded px-2 py-2.5 hover:bg-accent transition-colors text-left">
+            <button className="flex flex-1 items-center gap-2 rounded px-2 py-2.5 hover:bg-accent transition-colors text-left cursor-pointer">
               {task.assignees.length > 0 ? (
                 <div className="flex -space-x-1.5">
                   {task.assignees.slice(0, 3).map((a) => (
@@ -312,7 +312,7 @@ function TaskRow({
         <Popover open={dateOpen} onOpenChange={setDateOpen}>
           <PopoverTrigger asChild>
             <button className={cn(
-              "flex flex-1 items-center gap-1.5 rounded px-2 py-2.5 text-sm font-medium hover:bg-accent transition-colors",
+              "flex flex-1 items-center gap-1.5 rounded px-2 py-2.5 text-sm font-medium hover:bg-accent transition-colors cursor-pointer",
               dueDate?.overdue ? "text-red-500" : "text-muted-foreground",
             )}>
               {dueDate ? dueDate.label : <CalendarBlankIcon className="size-4 text-muted-foreground/30" />}
@@ -354,7 +354,7 @@ function TaskRow({
       <div className="w-28 shrink-0 px-2 flex items-stretch" onClick={(e) => e.stopPropagation()}>
         <Popover open={priorityOpen} onOpenChange={setPriorityOpen}>
           <PopoverTrigger asChild>
-            <button className="flex flex-1 items-center gap-1.5 rounded px-2 py-2.5 hover:bg-accent transition-colors">
+            <button className="flex flex-1 items-center gap-1.5 rounded px-2 py-2.5 hover:bg-accent transition-colors cursor-pointer">
               {task.priority && task.priority !== "NONE" ? (
                 <span className={cn("flex items-center gap-1.5 text-sm font-medium", priority.color)}>
                   <FlagIcon className="size-4 shrink-0" weight="fill" />
@@ -679,7 +679,7 @@ function StatusGroup({
       {!collapsed && (
         <div>
           {/* Column headers with select-all */}
-          <div className="flex items-center border-y border-border bg-muted/40">
+          <div className="flex items-center">
             <div
               className="flex w-10 shrink-0 items-center justify-center py-2 pl-3 cursor-pointer"
               onClick={toggleAll}
