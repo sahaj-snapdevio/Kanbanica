@@ -20,7 +20,7 @@ export const emailStyles = {
       'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   },
   button: {
-    backgroundColor: "#6366F1",
+    backgroundColor: "#174D38",
     borderRadius: "6px",
     color: "#ffffff",
     display: "inline-block",
@@ -50,7 +50,7 @@ export const emailStyles = {
     lineHeight: "32px",
     margin: "0 0 12px",
   },
-  link: { color: "#6366F1" },
+  link: { color: "#174D38" },
   muted: {
     color: "#6B7280",
     fontSize: "13px",
@@ -86,7 +86,7 @@ export function EmailLayout({
             ) : (
               <Text
                 style={{
-                  color: "#6366F1",
+                  color: "#174D38",
                   fontSize: "20px",
                   fontWeight: 700,
                   letterSpacing: "-0.5px",
