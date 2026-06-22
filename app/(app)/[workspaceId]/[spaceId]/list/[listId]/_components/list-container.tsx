@@ -265,44 +265,48 @@ export function ListContainer({
           ))}
         </div>
 
-        {/* Search */}
-        <div className="relative">
-          <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Search tasks…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-8 w-48 rounded-md border bg-background pl-8 pr-3 text-xs focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all focus:w-64"
-          />
-        </div>
+        {view !== "list" && (
+          <>
+            {/* Search */}
+            <div className="relative">
+              <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search tasks…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-8 w-48 rounded-md border bg-background pl-8 pr-3 text-xs focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all focus:w-64"
+              />
+            </div>
 
-        {/* Show archived toggle */}
-        <button
-          onClick={() => void handleToggleArchived()}
-          className={cn(
-            "flex items-center gap-1.5 h-8 rounded-md border px-3 text-xs font-medium transition-colors shrink-0",
-            showArchived
-              ? "border-primary/40 bg-primary/10 text-primary"
-              : "border-border text-muted-foreground hover:bg-accent hover:text-foreground",
-          )}
-        >
-          <ArchiveIcon className="size-3.5" />
-          {archivedLoading ? "Loading…" : showArchived ? "Hide archived" : "Show archived"}
-        </button>
+            {/* Show archived toggle */}
+            <button
+              onClick={() => void handleToggleArchived()}
+              className={cn(
+                "flex items-center gap-1.5 h-8 rounded-md border px-3 text-xs font-medium transition-colors shrink-0",
+                showArchived
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:bg-accent hover:text-foreground",
+              )}
+            >
+              <ArchiveIcon className="size-3.5" />
+              {archivedLoading ? "Loading…" : showArchived ? "Hide archived" : "Show archived"}
+            </button>
 
-        {/* Add Task button */}
-        <button
-          onClick={() => setCreateOpen(true)}
-          className="flex items-center gap-1.5 h-8 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shrink-0"
-        >
-          <PlusIcon className="size-3.5" weight="bold" />
-          Task
-        </button>
+            {/* Add Task button */}
+            <button
+              onClick={() => setCreateOpen(true)}
+              className="flex items-center gap-1.5 h-8 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shrink-0"
+            >
+              <PlusIcon className="size-3.5" weight="bold" />
+              Task
+            </button>
+          </>
+        )}
       </div>
 
       {/* Filter toolbar */}
-      {view !== "sprint" && (
+      {view !== "sprint" && view !== "list" && (
         <ListFilterToolbar
           listId={list.id}
           statuses={statuses}
@@ -322,8 +326,10 @@ export function ListContainer({
           spaceId={space.id}
           listId={list.id}
           statuses={statuses}
-          tasks={filteredTasks}
+          tasks={tasks}
           isAdmin={isAdmin}
+          members={members}
+          tags={tags}
           archivedTasks={showArchived ? archivedTasks : []}
           onArchivedChanged={async () => {
             const result = await getArchivedTasksForList(workspaceId, space.id, list.id);
@@ -337,7 +343,7 @@ export function ListContainer({
           space={space}
           list={list}
           statuses={statuses}
-          tasks={tasks}
+          tasks={filteredTasks}
           headerless
         />
       )}
