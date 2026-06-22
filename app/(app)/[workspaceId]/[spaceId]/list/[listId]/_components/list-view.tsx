@@ -21,6 +21,7 @@ import {
   ArrowsOutCardinalIcon,
   ArrowsDownUpIcon,
   GearIcon,
+  FlagIcon,
   FunnelIcon,
 } from "@phosphor-icons/react";
 import { toast } from "sonner";
@@ -487,13 +488,11 @@ function TaskRow({
                   "flex items-center gap-1.5 w-full h-full px-2 rounded-md border border-transparent hover:border-border hover:bg-accent/30 transition-all text-xs font-semibold text-left cursor-pointer select-none",
                   dueDate?.overdue ? "text-red-500" : "text-gray-600",
                 )}>
+                  <CalendarBlankIcon className="size-3.5 shrink-0" />
                   {dueDate ? (
-                    <>
-                      <CalendarBlankIcon className="size-3.5" />
-                      <span>{dueDate.label}</span>
-                    </>
+                    <span>{dueDate.label}</span>
                   ) : (
-                    <CalendarPlusIcon className="size-4 text-gray-400 group-hover/row:text-gray-600" weight="bold" />
+                    <span className="text-gray-400">Set date</span>
                   )}
                 </button>
               </PopoverTrigger>
@@ -507,12 +506,8 @@ function TaskRow({
             </Popover>
           ) : (
             <div className={cn("flex items-center gap-1.5 px-2 text-xs font-semibold", dueDate?.overdue ? "text-red-500" : "text-gray-400")}>
-              {dueDate ? (
-                <>
-                  <CalendarBlankIcon className="size-3.5" />
-                  <span>{dueDate.label}</span>
-                </>
-              ) : null}
+              <CalendarBlankIcon className="size-3.5 shrink-0" />
+              {dueDate ? <span>{dueDate.label}</span> : null}
             </div>
           )}
         </div>
@@ -529,7 +524,10 @@ function TaskRow({
                       {PRIORITY_CONFIG[localPriority].label}
                     </span>
                   ) : (
-                    <span className="text-base text-muted-foreground/50 group-hover/row:text-muted-foreground">{PRIORITY_CONFIG.NONE.icon}</span>
+                    <span className="flex items-center gap-1.5 text-xs font-bold text-gray-400">
+                      <FlagIcon className="size-3.5 shrink-0" />
+                      No priority
+                    </span>
                   )}
                 </button>
               </PopoverTrigger>
@@ -565,7 +563,12 @@ function TaskRow({
                   <span>{PRIORITY_CONFIG[localPriority].icon}</span>
                   {PRIORITY_CONFIG[localPriority].label}
                 </span>
-              ) : null}
+              ) : (
+                <span className="flex items-center gap-1.5 text-xs font-bold text-gray-400">
+                  <FlagIcon className="size-3.5 shrink-0" />
+                  No priority
+                </span>
+              )}
             </div>
           )}
         </div>

@@ -169,7 +169,7 @@ export function CreateTaskModal({
 
           {/* Description */}
           <Textarea
-            placeholder="Add description, or write with ✦ AI"
+            placeholder="Add a description…"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={3}

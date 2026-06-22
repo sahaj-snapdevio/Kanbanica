@@ -54,7 +54,7 @@ export function TaskDescriptionEditor({
   value,
   onChange,
   onSave,
-  placeholder = "Add description, or write with ✦ AI",
+  placeholder = "Add a description…",
   className,
 }: TaskDescriptionEditorProps) {
   const [focused, setFocused] = React.useState(false);
