@@ -1,58 +1,60 @@
-﻿"use client";
+"use client";
 
-import * as React from "react";
-import Link from "next/link";
-import Image from "next/image";
 import {
-  ArrowRight,
-  CheckCircle2,
-  LayoutList,
-  Kanban,
-  CalendarDays,
-  Bell,
-  Search,
-  MessageSquare,
-  Zap,
-  Users,
-  ChevronRight,
-  Star,
-  Menu,
-  X,
-  Check,
-  ShieldCheck,
-  Clock,
-  TrendingUp,
-  Globe,
-  MoveHorizontal,
   AlertTriangle,
-  Sparkles,
+  ArrowRight,
   BarChart3,
+  Bell,
+  CalendarDays,
+  Check,
+  CheckCircle2,
+  ChevronRight,
+  Clock,
+  Globe,
+  Kanban,
+  LayoutList,
+  Menu,
+  MessageSquare,
   MessagesSquare,
+  MoveHorizontal,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  Star,
+  TrendingUp,
+  Users,
+  X,
+  Zap,
 } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import * as React from "react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from "@/lib/utils";
 import {
   MARKETING_DOMAIN,
   PRODUCT_NAME,
   SUPPORT_EMAIL,
 } from "@/config/platform";
+import { cn } from "@/lib/utils";
 
 function useInView(threshold = 0.12) {
   const ref = React.useRef<HTMLDivElement>(null);
   const [visible, setVisible] = React.useState(false);
   React.useEffect(() => {
     const el = ref.current;
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const obs = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -88,7 +90,6 @@ function Animate({
         : "translate-y-8";
   return (
     <div
-      ref={ref}
       className={cn(
         "transition-all duration-700 ease-out",
         visible
@@ -96,6 +97,7 @@ function Animate({
           : cn("opacity-0", translate),
         className,
       )}
+      ref={ref}
       style={{ transitionDelay: `${delay}ms` }}
     >
       {children}
@@ -262,42 +264,41 @@ function Navbar() {
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
         <span className="flex items-center gap-2 font-bold text-[#174D38] text-lg tracking-tight">
           <Image
-            src="/width_497.png"
             alt={`${PRODUCT_NAME} Logo`}
-            width={28}
-            height={28}
-            className="rounded"
+            className="h-8 w-auto object-contain"
+            height={32}
+            src="/Kanbanica2.png"
+            width={150}
           />
-          {PRODUCT_NAME}
         </span>
         <nav className="hidden items-center gap-6 text-sm text-[#6b7280] sm:flex">
           <a
-            href="#features"
             className="transition-colors hover:text-[#174D38]"
+            href="#features"
           >
             Features
           </a>
-          <a href="#why" className="transition-colors hover:text-[#174D38]">
+          <a className="transition-colors hover:text-[#174D38]" href="#why">
             Why us
           </a>
           <a
-            href="#how-it-works"
             className="transition-colors hover:text-[#174D38]"
+            href="#how-it-works"
           >
             How it works
           </a>
-          <a href="#faq" className="transition-colors hover:text-[#174D38]">
+          <a className="transition-colors hover:text-[#174D38]" href="#faq">
             FAQ
           </a>
         </nav>
         <div className="hidden items-center gap-2 sm:flex">
-          <Button variant="ghost" size="sm" asChild>
+          <Button asChild size="sm" variant="ghost">
             <Link href="/login">Sign in</Link>
           </Button>
           <Button
-            size="sm"
             asChild
             className="bg-[#174D38] text-white hover:bg-[#103526]"
+            size="sm"
           >
             <Link href="/login">
               Get Started Free <ArrowRight className="ml-1 size-3.5" />
@@ -305,8 +306,8 @@ function Navbar() {
           </Button>
         </div>
         <button
-          aria-label={mobileOpen ? "Close menu" : "Open menu"}
           aria-expanded={mobileOpen}
+          aria-label={mobileOpen ? "Close menu" : "Open menu"}
           className="rounded-md p-2 text-[#6b7280] hover:text-[#174D38] sm:hidden"
           onClick={() => setMobileOpen((v) => !v)}
         >
@@ -317,41 +318,41 @@ function Navbar() {
         <div className="border-t border-[#CBCBCB] bg-white px-6 pb-4 sm:hidden">
           <nav className="flex flex-col gap-3 pt-4 text-sm text-[#6b7280]">
             <a
+              className="hover:text-[#174D38]"
               href="#features"
               onClick={() => setMobileOpen(false)}
-              className="hover:text-[#174D38]"
             >
               Features
             </a>
             <a
+              className="hover:text-[#174D38]"
               href="#why"
               onClick={() => setMobileOpen(false)}
-              className="hover:text-[#174D38]"
             >
               Why us
             </a>
             <a
+              className="hover:text-[#174D38]"
               href="#how-it-works"
               onClick={() => setMobileOpen(false)}
-              className="hover:text-[#174D38]"
             >
               How it works
             </a>
             <a
+              className="hover:text-[#174D38]"
               href="#faq"
               onClick={() => setMobileOpen(false)}
-              className="hover:text-[#174D38]"
             >
               FAQ
             </a>
             <div className="flex flex-col gap-2 border-t border-[#CBCBCB] pt-2">
-              <Button variant="outline" size="sm" asChild>
+              <Button asChild size="sm" variant="outline">
                 <Link href="/login">Sign in</Link>
               </Button>
               <Button
-                size="sm"
                 asChild
                 className="bg-[#174D38] text-white hover:bg-[#103526]"
+                size="sm"
               >
                 <Link href="/login">Get Started Free</Link>
               </Button>
@@ -360,6 +361,115 @@ function Navbar() {
         </div>
       )}
     </header>
+  );
+}
+
+interface TypewriterProps {
+  phrases: string[];
+  typingSpeed?: number;
+  erasingSpeed?: number;
+  pauseDuration?: number;
+  colors?: string[];
+}
+
+function Typewriter({
+  phrases,
+  typingSpeed = 100,
+  erasingSpeed = 50,
+  pauseDuration = 2000,
+  colors = ["#174D38", "#174D38"],
+}: TypewriterProps) {
+  const [currentPhraseIndex, setCurrentPhraseIndex] = React.useState(0);
+  const [currentText, setCurrentText] = React.useState("");
+  const [isDeleting, setIsDeleting] = React.useState(false);
+  const [mounted, setMounted] = React.useState(false);
+  const [hasStarted, setHasStarted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+    const timer = setTimeout(() => {
+      setHasStarted(true);
+    }, 600); // delay to sync with page load fade-in
+    return () => clearTimeout(timer);
+  }, []);
+
+  React.useEffect(() => {
+    if (!hasStarted) return;
+
+    // Check for prefers-reduced-motion
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (mediaQuery.matches) {
+      setCurrentText(phrases[currentPhraseIndex]);
+      const timer = setTimeout(() => {
+        setCurrentPhraseIndex((prev) => (prev + 1) % phrases.length);
+      }, pauseDuration);
+      return () => clearTimeout(timer);
+    }
+
+    const currentPhrase = phrases[currentPhraseIndex];
+    let timer: NodeJS.Timeout;
+
+    if (isDeleting) {
+      timer = setTimeout(() => {
+        setCurrentText((prev) => prev.slice(0, -1));
+      }, erasingSpeed);
+    } else {
+      timer = setTimeout(() => {
+        setCurrentText((prev) => currentPhrase.slice(0, prev.length + 1));
+      }, typingSpeed);
+    }
+
+    if (!isDeleting && currentText === currentPhrase) {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        setIsDeleting(true);
+      }, pauseDuration);
+    }
+
+    if (isDeleting && currentText === "") {
+      clearTimeout(timer);
+      setIsDeleting(false);
+      setCurrentPhraseIndex((prev) => (prev + 1) % phrases.length);
+    }
+
+    return () => clearTimeout(timer);
+  }, [
+    hasStarted,
+    currentText,
+    isDeleting,
+    currentPhraseIndex,
+    phrases,
+    typingSpeed,
+    erasingSpeed,
+    pauseDuration,
+  ]);
+
+  const currentColor = colors[currentPhraseIndex % colors.length];
+
+  return (
+    <span
+      className="inline-block whitespace-nowrap"
+      style={{
+        color: currentColor,
+        transition: "color 0.3s ease, opacity 0.5s ease",
+        opacity: mounted ? 1 : 0,
+      }}
+    >
+      {currentText}
+      <span
+        className="ml-1 inline-block w-[3px] h-[0.85em] translate-y-[0.08em] animate-typewriter-blink rounded-full"
+        style={{ backgroundColor: currentColor }}
+      />
+      <style>{`
+        @keyframes typewriter-blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
+        }
+        .animate-typewriter-blink {
+          animation: typewriter-blink 1s step-end infinite;
+        }
+      `}</style>
+    </span>
   );
 }
 
@@ -388,14 +498,7 @@ function HeroSection() {
           <h1 className="mb-5 mt-2 text-5xl font-bold leading-tight tracking-tight text-[#174D38] sm:text-6xl">
             Project management
             <br />
-            <span
-              className="bg-clip-text text-transparent"
-              style={{
-                backgroundImage: "linear-gradient(to right, #174D38, #4D1717)",
-              }}
-            >
-              your team will actually use
-            </span>
+            your team will <Typewriter phrases={["actually see", "trust it"]} />
           </h1>
           <p className="mx-auto mb-8 max-w-2xl text-lg leading-relaxed text-[#6b7280]">
             {PRODUCT_NAME} gives every team a shared home — Workspaces, Spaces,
@@ -404,19 +507,19 @@ function HeroSection() {
           </p>
           <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
             <Button
-              size="lg"
               asChild
               className="h-11 bg-[#174D38] px-6 text-base text-white shadow-lg shadow-[#4D1717]/40 hover:bg-[#103526]"
+              size="lg"
             >
               <Link href="/login">
                 Get Started Free <ArrowRight className="ml-1.5 size-4" />
               </Link>
             </Button>
             <Button
-              size="lg"
-              variant="outline"
               asChild
               className="h-11 border-[#CBCBCB] px-6 text-base hover:bg-[#F2F2F2]"
+              size="lg"
+              variant="outline"
             >
               <a href="#features">See what is included</a>
             </Button>
@@ -426,7 +529,7 @@ function HeroSection() {
           </p>
         </Animate>
 
-        <Animate delay={300} className="mt-16">
+        <Animate className="mt-16" delay={300}>
           <div className="relative mx-auto max-w-4xl">
             <div className="overflow-hidden rounded-xl border border-[#CBCBCB] bg-white shadow-2xl ring-1 ring-[#174D38]/20">
               <div className="flex items-center gap-1.5 border-b border-[#CBCBCB] bg-[#F2F2F2] px-4 py-2.5">
@@ -441,13 +544,13 @@ function HeroSection() {
                 <div className="flex w-14 flex-col items-center gap-4 border-r border-[#CBCBCB] bg-white px-3.5 py-4">
                   {[LayoutList, Kanban, Bell, Search, Users].map((Icon, i) => (
                     <div
-                      key={i}
                       className={cn(
                         "flex size-8 items-center justify-center rounded-md",
                         i === 0
                           ? "bg-[#174D38] text-white"
                           : "text-[#9ca3af] hover:bg-[#E8E8E8]",
                       )}
+                      key={i}
                     >
                       <Icon className="size-4" />
                     </div>
@@ -465,13 +568,13 @@ function HeroSection() {
                     <div className="flex items-center gap-1">
                       {["List", "Board", "Calendar"].map((v, i) => (
                         <span
-                          key={v}
                           className={cn(
                             "cursor-pointer rounded px-2.5 py-1 font-medium text-xs transition-colors",
                             i === 0
                               ? "bg-[#174D38] text-white"
                               : "text-[#6b7280] hover:bg-[#E8E8E8] hover:text-[#174D38]",
                           )}
+                          key={v}
                         >
                           {v}
                         </span>
@@ -481,8 +584,8 @@ function HeroSection() {
                   <div className="mb-3 flex items-center gap-2 border-b border-[#CBCBCB] pb-3">
                     {["Filter", "Group by: Status", "Sort"].map((label) => (
                       <span
-                        key={label}
                         className="rounded border border-dashed border-[#CBCBCB] px-2 py-1 text-[#9ca3af] text-xs"
+                        key={label}
                       >
                         {label}
                       </span>
@@ -532,8 +635,8 @@ function HeroSection() {
                       },
                     ].map((t) => (
                       <div
-                        key={t.title}
                         className="flex items-center gap-3 rounded-md border border-[#CBCBCB] bg-white px-3 py-2 text-sm transition-colors hover:border-[#174D38]/40"
+                        key={t.title}
                       >
                         <span className="size-4 shrink-0 rounded border-2 border-[#CBCBCB]" />
                         <span className="flex-1 truncate font-medium text-[#174D38] text-xs">
@@ -591,8 +694,8 @@ function SocialProofBar() {
               {["Acme Co", "Flowboard", "Stackd", "Loopback", "Nexus"].map(
                 (name) => (
                   <span
-                    key={name}
                     className="font-semibold text-[#CBCBCB] text-xs uppercase tracking-widest"
+                    key={name}
                   >
                     {name}
                   </span>
@@ -613,8 +716,8 @@ function FeaturesSection() {
   const { ref, visible } = useInView();
   return (
     <section
-      id="features"
       className="py-16 scroll-mt-14"
+      id="features"
       style={{
         backgroundImage: LINE_GRID,
         backgroundSize: "40px 40px",
@@ -631,10 +734,9 @@ function FeaturesSection() {
             No bolt-ons. No plugins. Everything in the box.
           </p>
         </Animate>
-        <div ref={ref} className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3" ref={ref}>
           {features.map(({ icon: Icon, title, description }, i) => (
             <div
-              key={title}
               className={cn(
                 "group cursor-default rounded-xl border border-[#CBCBCB] bg-white p-6 shadow-sm transition-all duration-300",
                 "hover:-translate-y-0.5 hover:border-[#174D38]/40 hover:shadow-md",
@@ -642,6 +744,7 @@ function FeaturesSection() {
                   ? "translate-y-0 opacity-100"
                   : "translate-y-4 opacity-0",
               )}
+              key={title}
               style={{
                 transitionDelay: visible ? `${i * 80}ms` : "0ms",
                 transitionProperty:
@@ -697,17 +800,17 @@ function StatsSection() {
           backgroundSize: "20px 20px",
         }}
       />
-      <div ref={ref} className="relative mx-auto max-w-6xl px-6">
+      <div className="relative mx-auto max-w-6xl px-6" ref={ref}>
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           {stats.map(({ value, label, icon: Icon }, i) => (
             <div
-              key={label}
               className={cn(
                 "flex flex-col items-center text-center transition-all duration-500 sm:items-start sm:text-left",
                 visible
                   ? "translate-y-0 opacity-100"
                   : "translate-y-4 opacity-0",
               )}
+              key={label}
               style={{ transitionDelay: visible ? `${i * 90}ms` : "0ms" }}
             >
               <div className="mb-3 flex size-9 items-center justify-center rounded-lg bg-white/15 ring-1 ring-white/20 backdrop-blur-sm">
@@ -759,7 +862,7 @@ const bentoCards = [
 function BentoSection() {
   const { ref, visible } = useInView();
   return (
-    <section id="why" className="bg-white pt-16 pb-8 scroll-mt-14">
+    <section className="bg-white pt-16 pb-8 scroll-mt-14" id="why">
       <div className="mx-auto max-w-6xl px-6">
         <Animate className="mb-14 text-center">
           <SectionLabel className="mb-4">Why teams switch</SectionLabel>
@@ -771,12 +874,11 @@ function BentoSection() {
             actually enjoy.
           </p>
         </Animate>
-        <div ref={ref} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" ref={ref}>
           {bentoCards.map((card, i) => {
             const Icon = card.icon;
             return (
               <div
-                key={card.title}
                 className={cn(
                   "group relative overflow-hidden rounded-2xl border p-6 transition-all duration-500",
                   card.span,
@@ -788,6 +890,7 @@ function BentoSection() {
                     ? "translate-y-0 opacity-100"
                     : "translate-y-4 opacity-0",
                 )}
+                key={card.title}
                 style={{ transitionDelay: visible ? `${i * 90}ms` : "0ms" }}
               >
                 {card.accent && (
@@ -821,7 +924,7 @@ function BentoSection() {
 function HowItWorksSection() {
   const { ref, visible } = useInView();
   return (
-    <section id="how-it-works" className="bg-white pt-8 pb-16 scroll-mt-14">
+    <section className="bg-white pt-8 pb-16 scroll-mt-14" id="how-it-works">
       <div className="mx-auto max-w-6xl px-6">
         <Animate className="mb-14 text-center">
           <SectionLabel className="mb-4">How it works</SectionLabel>
@@ -832,7 +935,7 @@ function HowItWorksSection() {
             No configuration required. Just sign in and start organising.
           </p>
         </Animate>
-        <Animate delay={100} className="mb-12 flex flex-col items-center gap-3">
+        <Animate className="mb-12 flex flex-col items-center gap-3" delay={100}>
           <div className="flex flex-wrap items-center justify-center gap-2 text-sm">
             {["Workspace", "Space", "List", "Task"].map((label, i, arr) => (
               <React.Fragment key={label}>
@@ -850,19 +953,19 @@ function HowItWorksSection() {
           </p>
         </Animate>
         <div
-          ref={ref}
           className="relative grid gap-6 sm:grid-cols-2 lg:grid-cols-4"
+          ref={ref}
         >
           <div className="pointer-events-none absolute top-10 right-[12.5%] left-[12.5%] hidden border-t-2 border-dashed border-[#174D38]/20 lg:block" />
           {steps.map((step, i) => (
             <div
-              key={step.number}
               className={cn(
                 "relative rounded-xl border border-[#CBCBCB] bg-white p-6 shadow-sm transition-all duration-500",
                 visible
                   ? "translate-y-0 opacity-100"
                   : "translate-y-4 opacity-0",
               )}
+              key={step.number}
               style={{
                 transitionDelay: visible ? `${i * 120}ms` : "0ms",
                 transitionProperty: "opacity, transform",
@@ -911,33 +1014,33 @@ function ViewsShowcaseSection() {
           </p>
         </Animate>
         <Animate delay={150}>
-          <Tabs defaultValue="list" className="mx-auto max-w-3xl">
+          <Tabs className="mx-auto max-w-3xl" defaultValue="list">
             <TabsList className="mb-6 grid w-full grid-cols-3 rounded-lg bg-[#E8E8E8] p-1">
               <TabsTrigger
-                value="list"
                 className="gap-1.5 rounded-md data-[state=active]:bg-[#174D38] data-[state=active]:text-white"
+                value="list"
               >
                 <LayoutList className="size-3.5" />
                 List
               </TabsTrigger>
               <TabsTrigger
-                value="board"
                 className="gap-1.5 rounded-md data-[state=active]:bg-[#174D38] data-[state=active]:text-white"
+                value="board"
               >
                 <Kanban className="size-3.5" />
                 Board
               </TabsTrigger>
               <TabsTrigger
-                value="mytasks"
                 className="gap-1.5 rounded-md data-[state=active]:bg-[#174D38] data-[state=active]:text-white"
+                value="mytasks"
               >
                 <CalendarDays className="size-3.5" />
                 My Tasks
               </TabsTrigger>
             </TabsList>
             <TabsContent
-              value="list"
               className="animate-in fade-in-0 duration-200"
+              value="list"
             >
               <Card className="rounded-xl border-[#CBCBCB] shadow-sm">
                 <CardHeader className="pb-2">
@@ -957,13 +1060,13 @@ function ViewsShowcaseSection() {
                       { t: "Deploy to staging", done: false },
                     ].map(({ t, done }) => (
                       <div
-                        key={t}
                         className={cn(
                           "flex items-center gap-3 rounded border px-3 py-2 text-sm",
                           done
                             ? "border-[#CBCBCB] bg-[#F2F2F2]"
                             : "border-[#174D38]/20 bg-[#174D38]/5",
                         )}
+                        key={t}
                       >
                         <div
                           className={cn(
@@ -1005,8 +1108,8 @@ function ViewsShowcaseSection() {
               </Card>
             </TabsContent>
             <TabsContent
-              value="board"
               className="animate-in fade-in-0 duration-200"
+              value="board"
             >
               <Card className="rounded-xl border-[#CBCBCB] shadow-sm">
                 <CardHeader className="pb-2">
@@ -1042,8 +1145,8 @@ function ViewsShowcaseSection() {
                       },
                     ].map((col) => (
                       <div
-                        key={col.label}
                         className="rounded-md border border-[#CBCBCB] bg-[#F2F2F2] p-2"
+                        key={col.label}
                       >
                         <div className="mb-2 flex items-center gap-1.5 px-1">
                           <span
@@ -1056,8 +1159,8 @@ function ViewsShowcaseSection() {
                         </div>
                         {col.tasks.map((t) => (
                           <div
-                            key={t}
                             className="mb-1.5 rounded border border-[#CBCBCB] bg-white px-2.5 py-2 text-2xs text-[#174D38] shadow-sm transition-colors hover:border-[#174D38]/40"
+                            key={t}
                           >
                             {t}
                           </div>
@@ -1069,8 +1172,8 @@ function ViewsShowcaseSection() {
               </Card>
             </TabsContent>
             <TabsContent
-              value="mytasks"
               className="animate-in fade-in-0 duration-200"
+              value="mytasks"
             >
               <Card className="rounded-xl border-[#CBCBCB] shadow-sm">
                 <CardHeader className="pb-2">
@@ -1121,8 +1224,8 @@ function ViewsShowcaseSection() {
                         </p>
                         {g.tasks.map(({ t, ctx }) => (
                           <div
-                            key={t}
                             className="mb-1 flex items-center gap-2 rounded border border-[#CBCBCB] bg-[#F2F2F2] px-3 py-2 text-xs"
+                            key={t}
                           >
                             <span className="size-3.5 shrink-0 rounded border border-[#CBCBCB]" />
                             <span className="flex-1 text-[#174D38]">{t}</span>
@@ -1178,10 +1281,18 @@ const comparisonFeatures = [
 function BeforeAfterSection() {
   const [sliderPosition, setSliderPosition] = React.useState(50);
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const beforeLabelRef = React.useRef<HTMLSpanElement>(null);
+  const afterLabelRef = React.useRef<HTMLSpanElement>(null);
   const isDragging = React.useRef(false);
 
+  const [containerWidth, setContainerWidth] = React.useState(0);
+  const [beforeLabelWidth, setBeforeLabelWidth] = React.useState(80);
+  const [afterLabelWidth, setAfterLabelWidth] = React.useState(80);
+
   const handleMove = React.useCallback((clientX: number) => {
-    if (!containerRef.current) return;
+    if (!containerRef.current) {
+      return;
+    }
     const rect = containerRef.current.getBoundingClientRect();
     const x = clientX - rect.left;
     const pct = Math.max(0, Math.min(100, (x / rect.width) * 100));
@@ -1194,7 +1305,9 @@ function BeforeAfterSection() {
 
   React.useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isDragging.current) return;
+      if (!isDragging.current) {
+        return;
+      }
       handleMove(e.clientX);
     };
     const handleMouseUp = () => {
@@ -1214,6 +1327,58 @@ function BeforeAfterSection() {
     },
     [handleMove],
   );
+
+  React.useEffect(() => {
+    if (!containerRef.current) {
+      return;
+    }
+    const updateWidths = () => {
+      if (containerRef.current) {
+        setContainerWidth(containerRef.current.offsetWidth);
+      }
+      if (beforeLabelRef.current) {
+        setBeforeLabelWidth(beforeLabelRef.current.offsetWidth);
+      }
+      if (afterLabelRef.current) {
+        setAfterLabelWidth(afterLabelRef.current.offsetWidth);
+      }
+    };
+
+    updateWidths();
+
+    const observer = new ResizeObserver(() => {
+      updateWidths();
+    });
+    observer.observe(containerRef.current);
+
+    return () => observer.disconnect();
+  }, []);
+
+  // Calculate opacities to prevent overlap
+  let beforeOpacity = 1;
+  let afterOpacity = 1;
+  let dividerOpacity = 1;
+
+  if (containerWidth > 0) {
+    const dividerX = (sliderPosition / 100) * containerWidth;
+    const leftThreshold = 12 + beforeLabelWidth;
+    const rightThreshold = containerWidth - 12 - afterLabelWidth;
+    const fadeDistance = 30;
+
+    if (dividerX <= leftThreshold) {
+      beforeOpacity = 0;
+    } else if (dividerX < leftThreshold + fadeDistance) {
+      beforeOpacity = (dividerX - leftThreshold) / fadeDistance;
+    }
+
+    if (dividerX >= rightThreshold) {
+      afterOpacity = 0;
+    } else if (dividerX > rightThreshold - fadeDistance) {
+      afterOpacity = (rightThreshold - dividerX) / fadeDistance;
+    }
+
+    dividerOpacity = Math.min(beforeOpacity, afterOpacity);
+  }
 
   return (
     <section className="bg-white py-16">
@@ -1244,7 +1409,7 @@ function BeforeAfterSection() {
                 {comparisonFeatures.map((f) => {
                   const Icon = f.icon;
                   return (
-                    <div key={f.title} className="flex gap-3">
+                    <div className="flex gap-3" key={f.title}>
                       <div
                         className={cn(
                           "flex size-9 shrink-0 items-center justify-center rounded-lg",
@@ -1269,26 +1434,26 @@ function BeforeAfterSection() {
           </div>
 
           {/* Right — Before/After Slider */}
-          <Animate from="right" className="lg:col-span-3">
+          <Animate className="lg:col-span-3" from="right">
             <div
-              ref={containerRef}
               className="relative cursor-ew-resize select-none overflow-hidden rounded-2xl border border-[#CBCBCB] shadow-xl"
               onMouseDown={handleMouseDown}
               onTouchMove={handleTouchMove}
               onTouchStart={(e) => handleMove(e.touches[0].clientX)}
+              ref={containerRef}
             >
-              {/* After image (bottom layer, full) */}
+              {/* Before image (bottom layer, full) */}
               <Image
-                src="/after-image.png"
-                alt="After — organized with Kanbanica"
-                width={1456}
-                height={816}
+                alt="Before — chaotic workflow"
                 className="block w-full"
                 draggable={false}
+                height={816}
                 priority
+                src="/before-image.png"
+                width={1456}
               />
 
-              {/* Before image (top layer, clipped) */}
+              {/* After image (top layer, clipped) */}
               <div
                 className="absolute inset-0"
                 style={{
@@ -1296,22 +1461,30 @@ function BeforeAfterSection() {
                 }}
               >
                 <Image
-                  src="/before-image.png"
-                  alt="Before — chaotic workflow"
-                  width={1456}
-                  height={816}
+                  alt="After — organized with Kanbanica"
                   className="block w-full"
                   draggable={false}
+                  height={816}
                   priority
+                  src="/after-image.png"
+                  width={1456}
                 />
               </div>
 
               {/* Floating labels */}
-              <span className="absolute top-3 left-3 z-10 rounded-full bg-emerald-500 px-3 py-1 font-bold text-2xs text-white uppercase tracking-wider shadow-md">
-                After
-              </span>
-              <span className="absolute top-3 right-3 z-10 rounded-full bg-red-500 px-3 py-1 font-bold text-2xs text-white uppercase tracking-wider shadow-md">
+              <span
+                className="absolute top-3 left-3 z-10 rounded-full bg-red-500 px-3 py-1 font-bold text-2xs text-white uppercase tracking-wider shadow-md pointer-events-none"
+                ref={beforeLabelRef}
+                style={{ opacity: beforeOpacity }}
+              >
                 Before
+              </span>
+              <span
+                className="absolute top-3 right-3 z-10 rounded-full bg-emerald-500 px-3 py-1 font-bold text-2xs text-white uppercase tracking-wider shadow-md pointer-events-none"
+                ref={afterLabelRef}
+                style={{ opacity: afterOpacity }}
+              >
+                After
               </span>
 
               {/* Divider line */}
@@ -1320,26 +1493,30 @@ function BeforeAfterSection() {
                 style={{
                   left: `${sliderPosition}%`,
                   transform: "translateX(-50%)",
+                  opacity: dividerOpacity,
                 }}
               />
 
               {/* Drag handle */}
               <div
                 className="pointer-events-none absolute top-1/2 z-30 flex size-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white shadow-lg"
-                style={{ left: `${sliderPosition}%` }}
+                style={{
+                  left: `${sliderPosition}%`,
+                  opacity: dividerOpacity,
+                }}
               >
                 <MoveHorizontal className="size-4 text-[#6b7280]" />
               </div>
 
               {/* Invisible range input for accessibility */}
               <input
-                type="range"
-                min={0}
-                max={100}
-                value={sliderPosition}
-                onChange={(e) => setSliderPosition(Number(e.target.value))}
-                className="absolute inset-0 z-40 h-full w-full cursor-ew-resize appearance-none opacity-0"
                 aria-label="Before and after comparison slider"
+                className="absolute inset-0 z-40 h-full w-full cursor-ew-resize appearance-none opacity-0"
+                max={100}
+                min={0}
+                onChange={(e) => setSliderPosition(Number(e.target.value))}
+                type="range"
+                value={sliderPosition}
               />
             </div>
           </Animate>
@@ -1361,16 +1538,16 @@ function TestimonialsSection() {
             Teams love it
           </h2>
         </Animate>
-        <div ref={ref} className="grid gap-5 sm:grid-cols-3">
+        <div className="grid gap-5 sm:grid-cols-3" ref={ref}>
           {testimonials.map((t, i) => (
             <div
-              key={t.name}
               className={cn(
                 "flex flex-col gap-4 rounded-xl border border-[#CBCBCB] bg-white p-6 shadow-sm transition-all duration-500",
                 visible
                   ? "translate-y-0 opacity-100"
                   : "translate-y-4 opacity-0",
               )}
+              key={t.name}
               style={{
                 transitionDelay: visible ? `${i * 100}ms` : "0ms",
                 transitionProperty: "opacity, transform",
@@ -1379,8 +1556,8 @@ function TestimonialsSection() {
               <div className="flex gap-0.5">
                 {Array.from({ length: 5 }).map((_, j) => (
                   <Star
-                    key={j}
                     className="size-4 fill-amber-400 text-amber-400"
+                    key={j}
                   />
                 ))}
               </div>
@@ -1422,10 +1599,10 @@ function FaqItem({
   return (
     <div className="border-b border-[#CBCBCB] last:border-b-0">
       <button
-        type="button"
-        onClick={onToggle}
-        className="flex w-full items-center justify-between gap-4 py-5 text-left transition-colors"
         aria-expanded={isOpen}
+        className="flex w-full items-center justify-between gap-4 py-5 text-left transition-colors"
+        onClick={onToggle}
+        type="button"
       >
         <span
           className={cn(
@@ -1476,7 +1653,7 @@ function FaqSection() {
   const [openIndex, setOpenIndex] = React.useState<number | null>(null);
 
   return (
-    <section id="faq" className="bg-[#F2F2F2] py-16 scroll-mt-14">
+    <section className="bg-[#F2F2F2] py-16 scroll-mt-14" id="faq">
       <div className="mx-auto max-w-2xl px-6">
         <Animate className="mb-12 text-center">
           <SectionLabel className="mb-4">FAQ</SectionLabel>
@@ -1486,8 +1663,8 @@ function FaqSection() {
           <p className="mt-2 text-[#6b7280]">
             {"Can't find an answer? "}
             <a
-              href={`mailto:${SUPPORT_EMAIL}`}
               className="text-[#174D38] underline-offset-2 hover:underline"
+              href={`mailto:${SUPPORT_EMAIL}`}
             >
               Reach out to support
             </a>
@@ -1497,11 +1674,11 @@ function FaqSection() {
           <div className="rounded-xl border border-[#CBCBCB] bg-white px-6 shadow-sm">
             {faqs.map((faq, i) => (
               <FaqItem
-                key={i}
-                question={faq.q}
                 answer={faq.a}
                 isOpen={openIndex === i}
+                key={i}
                 onToggle={() => setOpenIndex(openIndex === i ? null : i)}
+                question={faq.q}
               />
             ))}
           </div>
@@ -1542,9 +1719,9 @@ function CtaBanner() {
                 no setup fees.
               </p>
               <Button
-                size="lg"
                 asChild
                 className="h-11 bg-white px-8 font-semibold text-base text-[#174D38] shadow-lg hover:bg-[#F2F2F2]"
+                size="lg"
               >
                 <Link href="/login">
                   Start for free <ArrowRight className="ml-1.5 size-4" />
@@ -1569,13 +1746,12 @@ function Footer() {
           <div className="sm:col-span-1">
             <span className="flex items-center gap-2 font-bold text-base text-[#174D38]">
               <Image
-                src="/width_497.png"
                 alt={`${PRODUCT_NAME} Logo`}
-                width={24}
-                height={24}
-                className="rounded"
+                className="h-7 w-auto object-contain"
+                height={28}
+                src="/Kanbanica2.png"
+                width={130}
               />
-              {PRODUCT_NAME}
             </span>
             <p className="mt-2 text-[#6b7280] text-xs leading-relaxed">
               Free project management for modern teams. Workspaces, Spaces,
@@ -1589,32 +1765,32 @@ function Footer() {
             <ul className="space-y-2 text-[#6b7280] text-sm">
               <li>
                 <a
-                  href="#features"
                   className="transition-colors hover:text-[#174D38]"
+                  href="#features"
                 >
                   Features
                 </a>
               </li>
               <li>
                 <a
-                  href="#why"
                   className="transition-colors hover:text-[#174D38]"
+                  href="#why"
                 >
                   Why us
                 </a>
               </li>
               <li>
                 <a
-                  href="#how-it-works"
                   className="transition-colors hover:text-[#174D38]"
+                  href="#how-it-works"
                 >
                   How it works
                 </a>
               </li>
               <li>
                 <a
-                  href="#faq"
                   className="transition-colors hover:text-[#174D38]"
+                  href="#faq"
                 >
                   FAQ
                 </a>
@@ -1628,16 +1804,16 @@ function Footer() {
             <ul className="space-y-2 text-[#6b7280] text-sm">
               <li>
                 <Link
-                  href="/login"
                   className="transition-colors hover:text-[#174D38]"
+                  href="/login"
                 >
                   Sign in
                 </Link>
               </li>
               <li>
                 <Link
-                  href="/login"
                   className="transition-colors hover:text-[#174D38]"
+                  href="/login"
                 >
                   Create an account
                 </Link>
@@ -1651,16 +1827,16 @@ function Footer() {
             <ul className="space-y-2 text-[#6b7280] text-sm">
               <li>
                 <a
-                  href="#faq"
                   className="transition-colors hover:text-[#174D38]"
+                  href="#faq"
                 >
                   FAQ
                 </a>
               </li>
               <li>
                 <a
-                  href={`mailto:${SUPPORT_EMAIL}`}
                   className="transition-colors hover:text-[#174D38]"
+                  href={`mailto:${SUPPORT_EMAIL}`}
                 >
                   Contact support
                 </a>
