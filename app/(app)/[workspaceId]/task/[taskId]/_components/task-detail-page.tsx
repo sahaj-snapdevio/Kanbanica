@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -21,6 +21,7 @@ import {
   LinkIcon,
   PaperclipIcon,
   PlusIcon,
+  PushPinIcon,
   TagIcon,
   TimerIcon,
   TrashIcon,
@@ -78,6 +79,7 @@ import { TaskDescriptionEditor } from "@/components/task/task-description-editor
 import { ClickUpCalendar } from "@/components/ui/clickup-calendar";
 import { format } from "date-fns";
 import { TaskDetailSkeleton } from "./task-detail-skeleton";
+import { useSetTopbar } from "@/lib/topbar-context";
 
 type Priority = "NONE" | "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 
@@ -156,6 +158,8 @@ interface TaskDetailPageProps {
   listId: string;
   taskId: string;
   listName: string;
+  workspaceName: string;
+  canPinToList?: boolean;
 }
 
 export function TaskDetailPage({
@@ -164,10 +168,19 @@ export function TaskDetailPage({
   listId,
   taskId,
   listName,
+  workspaceName,
+  canPinToList,
 }: TaskDetailPageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const fromView = searchParams.get("from");
+  const fromSprintId = searchParams.get("sid");
+
+  const contextLabel = fromView === "sprint" ? "Sprint" : (listName || "List");
+  useSetTopbar({
+    breadcrumbs: [{ label: workspaceName }],
+    title: contextLabel,
+  });
   const [data, setData] = React.useState<Awaited<
     ReturnType<typeof getTaskDetail>
   > | null>(null);
@@ -211,6 +224,7 @@ export function TaskDetailPage({
   const [uploadingFile, setUploadingFile] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [creatingSubtask, setCreatingSubtask] = React.useState(false);
+  const [isPinned, setIsPinned] = React.useState(false);
   const [statusPopoverOpen, setStatusPopoverOpen] = React.useState(false);
   const [priorityPopoverOpen, setPriorityPopoverOpen] = React.useState(false);
   const [assigneePopoverOpen, setAssigneePopoverOpen] = React.useState(false);
@@ -220,13 +234,16 @@ export function TaskDetailPage({
 
   async function fetchAll(showSpinner: boolean) {
     if (showSpinner) setLoading(true);
-    const [detail, mem, tags, attRes] = await Promise.all([
+    const [detail, mem, tags, attRes, pinRes] = await Promise.all([
       getTaskDetail(workspaceId, spaceId, taskId),
       getWorkspaceMembers(workspaceId),
       getWorkspaceTags(workspaceId),
       fetch(`/api/tasks/${taskId}/attachments`)
         .then((r) => r.json())
         .catch(() => ({ attachments: [] })),
+      fetch(`/api/tasks/${taskId}/pin`, { method: "GET" })
+        .then((r) => r.ok ? r.json() : { pinned: false })
+        .catch(() => ({ pinned: false })),
     ]);
     setData(detail && !("error" in detail) ? detail : null);
     if (mem && !("error" in mem)) {
@@ -243,7 +260,20 @@ export function TaskDetailPage({
     }
     if (tags && !("error" in tags)) setAllTags(tags.tags);
     if (attRes?.attachments) setAttachments(attRes.attachments);
+    setIsPinned(!!pinRes?.pinned);
     if (showSpinner) setLoading(false);
+  }
+
+  async function handleTogglePin() {
+    const next = !isPinned;
+    setIsPinned(next);
+    const res = await fetch(`/api/tasks/${taskId}/pin`, { method: next ? "POST" : "DELETE" });
+    if (!res.ok) {
+      setIsPinned(!next);
+      const data = await res.json().catch(() => ({}));
+      // eslint-disable-next-line no-console
+      console.error("Pin toggle failed:", data.error);
+    }
   }
 
   // Initial load shows spinner; subsequent refreshes are silent
@@ -266,7 +296,9 @@ export function TaskDetailPage({
     }
   }, [data]);
 
-  const listBackUrl = `/${workspaceId}/${spaceId}/list/${listId}${fromView ? `?view=${fromView}` : ""}`;
+  const listBackUrl = fromView === "sprint" && fromSprintId
+    ? `/${workspaceId}/${spaceId}/sprint/${fromSprintId}`
+    : `/${workspaceId}/${spaceId}/list/${listId}${fromView && fromView !== "sprint" ? `?view=${fromView}` : ""}`;
 
   if (loading) {
     return <TaskDetailSkeleton />;
@@ -548,6 +580,19 @@ export function TaskDetailPage({
         </div>
         <div className="ml-auto flex items-center gap-1">
           <button
+            onClick={handleTogglePin}
+            title={isPinned ? "Unpin from sidebar" : "Pin to sidebar"}
+            className={cn(
+              "flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors",
+              isPinned
+                ? "bg-primary/10 text-primary"
+                : "text-muted-foreground hover:bg-accent hover:text-foreground",
+            )}
+          >
+            <PushPinIcon className="size-3.5" weight={isPinned ? "fill" : "regular"} />
+            {isPinned ? "Pinned" : "Pin"}
+          </button>
+          <button
             onClick={copyLink}
             className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
           >
@@ -591,6 +636,36 @@ export function TaskDetailPage({
                 <ArchiveIcon className="size-3.5 text-muted-foreground" />{" "}
                 Archive
               </button>
+              {canPinToList && listId && (
+                <>
+                  <Separator className="my-1" />
+                  {data?.task.isPinnedToList ? (
+                    <button
+                      onClick={async () => {
+                        const res = await fetch(`/api/tasks/${taskId}/pin-to-list`, { method: "DELETE" });
+                        if (res.ok) load();
+                      }}
+                      className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
+                    >
+                      <PushPinIcon className="size-3.5 text-primary" weight="fill" /> Unpin from list
+                    </button>
+                  ) : (
+                    <button
+                      onClick={async () => {
+                        const res = await fetch(`/api/tasks/${taskId}/pin-to-list`, { method: "POST" });
+                        if (res.ok) load();
+                        else {
+                          const d = await res.json().catch(() => ({}));
+                          alert(d.error ?? "Failed to pin");
+                        }
+                      }}
+                      className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
+                    >
+                      <PushPinIcon className="size-3.5 text-muted-foreground" /> Pin to list top
+                    </button>
+                  )}
+                </>
+              )}
               <Separator className="my-1" />
               <button
                 onClick={handleDelete}

@@ -223,11 +223,23 @@ If any incomplete tasks remain (user skipped step 1 or only some were closed), u
 
 ### 9. Backlog
 
-- The Backlog is the list of all tasks across **all Lists in the Project** that are **not assigned to any Sprint**
-- Always visible alongside the Sprint view
-- Tasks move from Backlog → Sprint (when added) and Sprint → Backlog (when removed or carried over on close)
-- Backlog tasks are grouped by their originating List for clarity
-- Backlog tasks can be created, edited, and managed like any other task
+- The Backlog is the list of all tasks across **all Lists in the Project** that are **not assigned to any Sprint** (PLANNED or ACTIVE)
+- Visible via a **"Show Backlog"** toggle button below the Sprint List View
+- Tasks move from Backlog → Sprint (when added via "Add to Sprint") and Sprint → Backlog (when removed or carried over on close)
+- Backlog tasks are grouped by their originating List for clarity; each list group is collapsible
+- Each task row shows: status dot, title, seq number (on hover), priority badge, assignee avatars
+- **"Add to Sprint"** button appears on hover per task — opens a popover listing PLANNED and ACTIVE sprints to choose from
+- Backlog refreshes automatically when a task is added to a sprint or when the sprint view refreshes
+
+**UI Spec:**
+- Toggle button: `Show Backlog / Hide Backlog` (with TrayIcon) — placed below SprintListView
+- Backlog section header: "Backlog" with total task count badge
+- Per List group header: collapsible (caret icon + list name + task count)
+- Per task row: `[status dot] [title] [#seq on hover] [priority] [assignees] [Add to Sprint button on hover]`
+- Empty state: "All tasks are in a sprint" with descriptive subtext
+- Clicking a task row navigates to task detail page
+
+**Data source:** `getBacklogTasks(workspaceId, spaceId)` — queries all lists in the space, excludes tasks in PLANNED/ACTIVE sprints, returns grouped by list with status, priority, and assignee data.
 
 ---
 

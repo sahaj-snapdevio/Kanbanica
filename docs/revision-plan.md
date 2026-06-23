@@ -178,7 +178,52 @@ Create the route at `app/(app)/[workspaceId]/[spaceId]/sprint/[sprintId]/page.ts
 
 ---
 
-## Change 2 — Space → Project (UI Rename Only)
+## Change 3 — Backlog View
+
+**Why:** The Backlog view was missing from the sprint page. Users had no way to see tasks not yet in a sprint.
+
+**Spec:** `docs/sprint.md` section 9
+
+### Step 3.1 — Fix `getBacklogTasks` to be space-scoped
+
+- Remove `listId` parameter
+- Query all non-archived lists in the space
+- Return tasks grouped by list with status, priority, and assignee data
+- Export `BacklogTask` and `BacklogList` types for use in the UI
+
+**Files:** `app/actions/sprint.ts`
+
+**Status:** `[x]`
+
+---
+
+### Step 3.2 — Create `BacklogView` component
+
+- `components/sprint/backlog-view.tsx`
+- Grouped by list (collapsible per group)
+- Per-task: status dot, title, seq number (hover), priority badge, assignees, "Add to Sprint" button
+- "Add to Sprint" popover lists PLANNED + ACTIVE sprints; calls `addTaskToSprint`
+- `refreshKey` prop triggers re-fetch when sprint view changes
+- Empty state when all tasks are in a sprint
+
+**Status:** `[x]`
+
+---
+
+### Step 3.3 — Wire into SprintPageClient
+
+- Add `showBacklog` toggle state
+- "Show Backlog / Hide Backlog" button below SprintListView
+- Render `<BacklogView>` when toggled on
+- Pass `refreshKey` so backlog refreshes when sprint changes
+
+**Files:** `app/(app)/[workspaceId]/[spaceId]/sprint/[sprintId]/_components/sprint-page-client.tsx`
+
+**Status:** `[x]`
+
+---
+
+## Change 4 — Space → Project (UI Rename Only)
 
 **Why:** "Space" as a term is ambiguous. Users think in terms of projects. The entity is renamed "Project" in all user-facing text.
 

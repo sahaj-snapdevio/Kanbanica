@@ -10,6 +10,7 @@ import {
   sprint,
   taskSprint,
   task,
+  list,
   listStatus,
   taskAssignee,
   taskTag,
@@ -622,100 +623,151 @@ export async function createNextSprintFromClosed(
 
 // ─── getBacklogTasks ──────────────────────────────────────────────────────────
 
+export type BacklogTask = {
+  id: string;
+  title: string;
+  seqNumber: number;
+  priority: string | null;
+  statusId: string | null;
+  statusName: string | null;
+  statusColor: string | null;
+  statusType: string | null;
+  listId: string;
+  orderIndex: number;
+  assignees: { userId: string; name: string | null; email: string | null }[];
+};
+
+export type BacklogList = {
+  listId: string;
+  listName: string;
+  tasks: BacklogTask[];
+};
+
 export async function getBacklogTasks(
   workspaceId: string,
   spaceId: string,
-  listId: string,
-): Promise<
-  | {
-      tasks: {
-        id: string;
-        title: string;
-        seqNumber: number;
-        priority: string | null;
-        statusId: string | null;
-        orderIndex: number;
-      }[];
-    }
-  | { error: string }
-> {
+): Promise<{ lists: BacklogList[] } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
   const err = await requireAccess(session.user.id, workspaceId, spaceId);
   if (err) return err;
 
-  // Find sprint IDs that are PLANNED or ACTIVE for this space
+  // 1. All non-archived lists in this space
+  const spaceLists = await db
+    .select({ id: list.id, name: list.name })
+    .from(list)
+    .where(and(eq(list.spaceId, spaceId), eq(list.isArchived, false)))
+    .orderBy(asc(list.orderIndex));
+
+  if (spaceLists.length === 0) return { lists: [] };
+
+  const listIds = spaceLists.map((l) => l.id);
+
+  // 2. Sprint IDs that are PLANNED or ACTIVE for this space
   const activeSprintRows = await db
     .select({ id: sprint.id })
     .from(sprint)
-    .where(
-      and(
-        eq(sprint.spaceId, spaceId),
-        inArray(sprint.status, ["PLANNED", "ACTIVE"]),
-      ),
-    );
+    .where(and(eq(sprint.spaceId, spaceId), inArray(sprint.status, ["PLANNED", "ACTIVE"])));
 
   const activeSprintIds = activeSprintRows.map((s) => s.id);
 
+  // 3. Task IDs already in an active/planned sprint
+  let taskIdsInSprints: string[] = [];
+  if (activeSprintIds.length > 0) {
+    const rows = await db
+      .select({ taskId: taskSprint.taskId })
+      .from(taskSprint)
+      .where(inArray(taskSprint.sprintId, activeSprintIds));
+    taskIdsInSprints = rows.map((r) => r.taskId);
+  }
+
+  // 4. Fetch backlog tasks with status info
   const baseConditions = [
-    eq(task.listId, listId),
+    inArray(task.listId, listIds),
     eq(task.isArchived, false),
     isNull(task.parentTaskId),
   ];
 
-  if (activeSprintIds.length === 0) {
-    const tasks = await db
-      .select({
-        id: task.id,
-        title: task.title,
-        seqNumber: task.seqNumber,
-        priority: task.priority,
-        statusId: task.statusId,
-        orderIndex: task.orderIndex,
-      })
-      .from(task)
-      .where(and(...baseConditions))
-      .orderBy(asc(task.orderIndex));
+  const taskRows = await db
+    .select({
+      id: task.id,
+      title: task.title,
+      seqNumber: task.seqNumber,
+      priority: task.priority,
+      statusId: task.statusId,
+      statusName: listStatus.name,
+      statusColor: listStatus.color,
+      statusType: listStatus.type,
+      listId: task.listId,
+      orderIndex: task.orderIndex,
+    })
+    .from(task)
+    .leftJoin(listStatus, eq(listStatus.id, task.statusId))
+    .where(
+      taskIdsInSprints.length > 0
+        ? and(...baseConditions, notInArray(task.id, taskIdsInSprints))
+        : and(...baseConditions),
+    )
+    .orderBy(asc(task.orderIndex));
 
-    return { tasks };
+  if (taskRows.length === 0) return { lists: [] };
+
+  // 5. Fetch assignees for those tasks
+  const taskIds = taskRows.map((t) => t.id);
+  const assigneeRows = await db
+    .select({
+      taskId: taskAssignee.taskId,
+      userId: taskAssignee.userId,
+      name: user.name,
+      email: user.email,
+    })
+    .from(taskAssignee)
+    .leftJoin(user, eq(user.id, taskAssignee.userId))
+    .where(inArray(taskAssignee.taskId, taskIds));
+
+  // 6. Group assignees by taskId
+  const assigneesByTask = new Map<string, { userId: string; name: string | null; email: string | null }[]>();
+  for (const a of assigneeRows) {
+    const arr = assigneesByTask.get(a.taskId) ?? [];
+    arr.push({ userId: a.userId, name: a.name, email: a.email });
+    assigneesByTask.set(a.taskId, arr);
   }
 
-  const tasksInSprintRows = await db
-    .select({ taskId: taskSprint.taskId })
-    .from(taskSprint)
-    .where(inArray(taskSprint.sprintId, activeSprintIds));
+  // 7. Build a lookup of listId → list name
+  const listNameById = new Map(spaceLists.map((l) => [l.id, l.name]));
 
-  const taskIdsInSprints = tasksInSprintRows.map((r) => r.taskId);
+  // 8. Group tasks by list, preserving list order
+  const tasksByList = new Map<string, BacklogTask[]>();
+  for (const t of taskRows) {
+    if (!t.listId) continue;
+    const arr = tasksByList.get(t.listId) ?? [];
+    arr.push({
+      id: t.id,
+      title: t.title,
+      seqNumber: t.seqNumber,
+      priority: t.priority,
+      statusId: t.statusId,
+      statusName: t.statusName ?? null,
+      statusColor: t.statusColor ?? null,
+      statusType: t.statusType ?? null,
+      listId: t.listId,
+      orderIndex: t.orderIndex,
+      assignees: assigneesByTask.get(t.id) ?? [],
+    });
+    tasksByList.set(t.listId, arr);
+  }
 
-  const tasks =
-    taskIdsInSprints.length > 0
-      ? await db
-          .select({
-            id: task.id,
-            title: task.title,
-            seqNumber: task.seqNumber,
-            priority: task.priority,
-            statusId: task.statusId,
-            orderIndex: task.orderIndex,
-          })
-          .from(task)
-          .where(and(...baseConditions, notInArray(task.id, taskIdsInSprints)))
-          .orderBy(asc(task.orderIndex))
-      : await db
-          .select({
-            id: task.id,
-            title: task.title,
-            seqNumber: task.seqNumber,
-            priority: task.priority,
-            statusId: task.statusId,
-            orderIndex: task.orderIndex,
-          })
-          .from(task)
-          .where(and(...baseConditions))
-          .orderBy(asc(task.orderIndex));
+  // 9. Build output in list order, skip lists with no backlog tasks
+  const lists: BacklogList[] = [];
+  for (const l of spaceLists) {
+    const tasks = tasksByList.get(l.id);
+    if (tasks && tasks.length > 0) {
+      lists.push({ listId: l.id, listName: listNameById.get(l.id) ?? l.id, tasks });
+    }
+  }
 
-  return { tasks };
+  return { lists };
 }
 
 // ─── getActiveSprintView ──────────────────────────────────────────────────────
@@ -750,6 +802,13 @@ export async function getActiveSprintView(
         tags: { id: string; name: string; color: string }[];
         assignees: { userId: string; name: string; image: string | null }[];
       }[];
+      statuses: {
+        id: string;
+        name: string;
+        color: string;
+        type: "OPEN" | "ACTIVE" | "CLOSED";
+        orderIndex: number;
+      }[];
     }
   | { error: string }
 > {
@@ -773,7 +832,7 @@ export async function getActiveSprintView(
     .where(and(eq(sprint.spaceId, spaceId), eq(sprint.status, "ACTIVE")))
     .limit(1);
 
-  if (!activeSprint) return { sprint: null, tasks: [] };
+  if (!activeSprint) return { sprint: null, tasks: [], statuses: [] };
 
   const sprintTasks = await db
     .select({
@@ -796,7 +855,7 @@ export async function getActiveSprintView(
     .where(and(eq(taskSprint.sprintId, activeSprint.id), eq(task.isArchived, false)))
     .orderBy(asc(task.orderIndex));
 
-  if (sprintTasks.length === 0) return { sprint: activeSprint, tasks: [] };
+  if (sprintTasks.length === 0) return { sprint: activeSprint, tasks: [], statuses: [] };
 
   const taskIds = sprintTasks.map((t) => t.id);
 
@@ -839,7 +898,24 @@ export async function getActiveSprintView(
     assignees: assigneesByTask.get(t.id) ?? [],
   }));
 
-  return { sprint: activeSprint, tasks };
+  // Fetch all statuses from every list that has tasks in this sprint
+  // so the board view shows empty columns too (not just columns with tasks)
+  const listIds = [...new Set(sprintTasks.filter((t) => t.listId).map((t) => t.listId!))];
+  const allStatuses = listIds.length > 0
+    ? await db
+        .select({
+          id: listStatus.id,
+          name: listStatus.name,
+          color: listStatus.color,
+          type: listStatus.type,
+          orderIndex: listStatus.orderIndex,
+        })
+        .from(listStatus)
+        .where(inArray(listStatus.listId, listIds))
+        .orderBy(asc(listStatus.orderIndex))
+    : [];
+
+  return { sprint: activeSprint, tasks, statuses: allStatuses };
 }
 
 // ─── bulkMoveTasksToSprint ────────────────────────────────────────────────────
@@ -847,7 +923,7 @@ export async function getActiveSprintView(
 export async function bulkMoveTasksToSprint(
   workspaceId: string,
   spaceId: string,
-  listId: string,
+  listId: string | null,
   taskIds: string[],
   targetSprintId: string,
 ): Promise<{ ok: true; moved: number } | { error: string }> {
@@ -898,7 +974,8 @@ export async function bulkMoveTasksToSprint(
     moved++;
   }
 
-  revalidateList(workspaceId, spaceId, listId);
+  if (listId) revalidateList(workspaceId, spaceId, listId);
+  else revalidateSpace(workspaceId, spaceId);
   return { ok: true, moved };
 }
 

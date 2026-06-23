@@ -6,6 +6,8 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   ArchiveIcon,
   BellIcon,
+  CaretDownIcon,
+  CaretRightIcon,
   CaretUpDownIcon,
   ChatCircleIcon,
   CheckCircleIcon,
@@ -23,12 +25,14 @@ import {
   MagnifyingGlassIcon,
   PencilSimpleIcon,
   PlusIcon,
+  PushPinIcon,
+  PushPinSlashIcon,
   SignOutIcon,
   TrashIcon,
   UserPlusIcon,
   XIcon,
 } from "@phosphor-icons/react";
-import useSWR from "swr";
+import useSWR, { useSWRConfig } from "swr";
 import { SearchPalette } from "@/components/search/search-palette";
 import { archiveSpace, deleteSpace, unarchiveSpace } from "@/app/actions/space";
 import { archiveList, duplicateList, unarchiveList } from "@/app/actions/list";
@@ -48,6 +52,7 @@ import { PushNotificationBanner } from "@/components/notifications/push-notifica
 import { usePushSubscription } from "@/hooks/use-push-subscription";
 import { CreateChannelModal } from "@/components/channel/create-channel-modal";
 import { AddChannelMemberModal } from "@/components/channel/add-channel-member-modal";
+import { TopbarProvider, useTopbarState } from "@/lib/topbar-context";
 
 interface WorkspaceSummary {
   id: string;
@@ -164,7 +169,7 @@ export function WorkspaceShell({
   }
 
   return (
-    <div className="flex h-screen flex-col bg-background overflow-hidden">
+    <div className="flex h-screen bg-background overflow-hidden">
       <SearchPalette
         workspaceId={workspace.id}
         open={searchOpen}
@@ -246,78 +251,6 @@ export function WorkspaceShell({
         />
       )}
 
-      {/* Global top bar */}
-      <header className="sticky top-0 z-40 flex h-12 shrink-0 items-center border-b border-border bg-surface px-3 gap-3">
-        {/* Mobile sidebar toggle */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-8 lg:hidden shrink-0"
-          onClick={() => setSidebarOpen(true)}
-        >
-          <ListIcon className="size-5" />
-        </Button>
-
-        {/* Workspace switcher — left side */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <button className="flex shrink-0 items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors hover:bg-accent max-w-45">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-xs font-semibold">
-                {workspaceBadge(workspace)}
-              </span>
-              <span className="truncate hidden sm:block">{workspace.name}</span>
-              <CaretUpDownIcon className="size-3.5 shrink-0 text-muted-foreground" />
-            </button>
-          </PopoverTrigger>
-          <PopoverContent align="start" className="w-64 p-1">
-            <p className="px-2 py-1.5 font-medium text-muted-foreground text-xs uppercase tracking-wide">
-              Workspaces
-            </p>
-            {workspaces.map((ws) => (
-              <Link
-                key={ws.id}
-                href={`/${ws.id}`}
-                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent"
-              >
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-xs">
-                  {workspaceBadge(ws)}
-                </span>
-                <span className="flex-1 truncate">{ws.name}</span>
-                {ws.id === workspace.id && <CheckIcon className="size-4 text-primary" />}
-              </Link>
-            ))}
-            <Separator className="my-1" />
-            <Link
-              href="/onboarding?new=1"
-              className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            >
-              <PlusIcon className="size-4" />
-              Create workspace
-            </Link>
-          </PopoverContent>
-        </Popover>
-
-        <div className="h-5 w-px bg-border shrink-0" />
-
-        {/* Centered search bar */}
-        <div className="flex flex-1 justify-center">
-          <button
-            onClick={() => setSearchOpen(true)}
-            className="flex items-center gap-2 h-8 w-full max-w-md rounded-md border bg-muted/50 px-3 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          >
-            <MagnifyingGlassIcon className="size-4 shrink-0" />
-            <span className="flex-1 text-left text-sm">Search…</span>
-            <kbd className="hidden sm:inline-flex items-center gap-0.5 rounded border bg-background px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
-              Ctrl K
-            </kbd>
-          </button>
-        </div>
-
-      </header>
-
-      {/* Body: sidebar + main content */}
-      <div className="flex flex-1 overflow-hidden">
-
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-20 bg-black/50 lg:hidden"
@@ -325,13 +258,54 @@ export function WorkspaceShell({
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar — full height */}
       <aside
         className={cn(
-          "fixed inset-y-12 left-0 z-30 flex w-60 shrink-0 flex-col border-r border-[var(--border)] bg-[var(--bg-sidebar)] transition-transform duration-200 lg:static lg:inset-y-auto lg:h-full",
+          "fixed inset-y-0 left-0 z-30 flex w-60 shrink-0 flex-col border-r border-border bg-(--bg-sidebar) transition-transform duration-200 lg:static lg:h-full",
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         )}
       >
+        {/* Workspace switcher at top of sidebar */}
+        <div className="flex h-12 shrink-0 items-center border-b border-[rgba(255,255,255,0.06)] px-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors hover:bg-(--bg-sidebar-item-hover) text-(--text-sidebar-active)">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/15 text-xs font-semibold text-(--text-sidebar-active)">
+                  {workspaceBadge(workspace)}
+                </span>
+                <span className="flex-1 truncate text-left">{workspace.name}</span>
+                <CaretUpDownIcon className="size-3.5 shrink-0 text-(--text-muted)" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-64 p-1">
+              <p className="px-2 py-1.5 font-medium text-muted-foreground text-xs uppercase tracking-wide">
+                Workspaces
+              </p>
+              {workspaces.map((ws) => (
+                <Link
+                  key={ws.id}
+                  href={`/${ws.id}`}
+                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent"
+                >
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-xs">
+                    {workspaceBadge(ws)}
+                  </span>
+                  <span className="flex-1 truncate">{ws.name}</span>
+                  {ws.id === workspace.id && <CheckIcon className="size-4 text-primary" />}
+                </Link>
+              ))}
+              <Separator className="my-1" />
+              <Link
+                href="/onboarding?new=1"
+                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <PlusIcon className="size-4" />
+                Create workspace
+              </Link>
+            </PopoverContent>
+          </Popover>
+        </div>
+
         {/* Main nav */}
         <nav className="flex-1 space-y-4 overflow-y-auto px-2 py-3">
           {/* Global links */}
@@ -357,16 +331,16 @@ export function WorkspaceShell({
                   href={href}
                   onClick={() => setSidebarOpen(false)}
                   className={cn(
-                    "flex items-center gap-2.5 rounded-md px-3 py-1.5 text-[13px] transition-colors select-none",
+                    "relative flex items-center gap-2.5 rounded-md px-3 py-1.5 text-[13px] transition-colors select-none",
                     active
-                      ? "bg-(--bg-sidebar-item-active) text-(--text-sidebar-active) font-medium"
+                      ? "bg-(--bg-sidebar-item-active) text-(--text-sidebar-active) font-medium overflow-hidden after:absolute after:left-0 after:inset-y-0 after:w-0.75 after:bg-primary"
                       : "text-(--text-sidebar) hover:bg-(--bg-sidebar-item-hover) hover:text-(--text-sidebar-active)",
                   )}
                 >
                   {icon}
                   <span className="flex-1">{label}</span>
                   {badge !== null && (
-                    <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--brand)] px-1 text-2xs font-semibold text-white leading-none">
+                    <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-(--brand) px-1 text-2xs font-semibold text-white leading-none">
                       {badge > 99 ? "99+" : badge}
                     </span>
                   )}
@@ -474,9 +448,9 @@ export function WorkspaceShell({
                             href={href}
                             onClick={() => setSidebarOpen(false)}
                             className={cn(
-                              "flex flex-1 items-center gap-2 rounded-md py-1.5 pr-7 pl-7 text-[13px] transition-colors select-none",
+                              "relative flex flex-1 items-center gap-2 rounded-md py-1.5 pr-7 pl-7 text-[13px] transition-colors select-none",
                               active
-                                ? "bg-(--bg-sidebar-item-active) text-(--text-sidebar-active) font-medium"
+                                ? "bg-(--bg-sidebar-item-active) text-(--text-sidebar-active) font-medium overflow-hidden after:absolute after:left-0 after:inset-y-0 after:w-0.75 after:bg-primary"
                                 : "text-(--text-sidebar) hover:bg-(--bg-sidebar-item-hover) hover:text-(--text-sidebar-active)",
                             )}
                           >
@@ -550,9 +524,9 @@ export function WorkspaceShell({
                           href={href}
                           onClick={() => setSidebarOpen(false)}
                           className={cn(
-                            "flex items-center gap-2 rounded-md py-1.5 pr-2 pl-7 text-[13px] transition-colors select-none",
+                            "relative flex items-center gap-2 rounded-md py-1.5 pr-2 pl-7 text-[13px] transition-colors select-none",
                             active
-                              ? "bg-(--bg-sidebar-item-active) text-(--text-sidebar-active) font-medium"
+                              ? "bg-(--bg-sidebar-item-active) text-(--text-sidebar-active) font-medium overflow-hidden after:absolute after:left-0 after:inset-y-0 after:w-0.75 after:bg-primary"
                               : "text-(--text-sidebar) hover:bg-(--bg-sidebar-item-hover) hover:text-(--text-sidebar-active)",
                           )}
                         >
@@ -764,13 +738,175 @@ export function WorkspaceShell({
         </div>
       </aside>
 
-      {/* Main content */}
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <PushNotificationBanner workspaceId={workspace.id} />
-        <main className="flex-1 overflow-auto">{children}</main>
-      </div>
+      {/* Right column: topbar + main content */}
+      <TopbarProvider>
+        <TopbarRightColumn
+          workspaceId={workspace.id}
+          onOpenSidebar={() => setSidebarOpen(true)}
+          onOpenSearch={() => setSearchOpen(true)}
+        >
+          {children}
+        </TopbarRightColumn>
+      </TopbarProvider>
+    </div>
+  );
+}
 
-      </div>{/* end body row */}
+// ─── Pinned Tasks Tab Strip ───────────────────────────────────────────────────
+
+interface PinnedItem {
+  id: string;
+  taskId: string;
+  taskTitle: string;
+  listName: string | null;
+  spaceName: string | null;
+  orderIndex: number;
+}
+
+
+function PinnedTasksBar({ workspaceId }: { workspaceId: string }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const { mutate } = useSWRConfig();
+  const swrKey = `/api/workspaces/${workspaceId}/pinned-tasks`;
+  const { data } = useSWR<{ pinnedTasks: PinnedItem[] }>(
+    swrKey,
+    (url: string) => fetch(url).then((r) => r.json()),
+    { refreshInterval: 60000 },
+  );
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+
+  const pinned = data?.pinnedTasks ?? [];
+  if (pinned.length === 0) return null;
+
+  async function handleUnpin(e: React.MouseEvent, taskId: string) {
+    e.stopPropagation();
+    mutate(swrKey, (prev: { pinnedTasks: PinnedItem[] } | undefined) => ({
+      pinnedTasks: (prev?.pinnedTasks ?? []).filter((t) => t.taskId !== taskId),
+    }), { revalidate: false });
+    await fetch(`/api/tasks/${taskId}/pin`, { method: 'DELETE' });
+    mutate(swrKey);
+  }
+  function handleWheel(e: React.WheelEvent<HTMLDivElement>) {
+    if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && scrollRef.current) {
+      e.preventDefault();
+      scrollRef.current.scrollLeft += e.deltaY;
+    }
+  }
+
+
+  return (
+    <div className="h-7 shrink-0 border-b border-border bg-surface overflow-hidden">
+      <div
+        ref={scrollRef}
+        onWheel={handleWheel}
+        className="flex h-full items-center gap-1 px-3 overflow-x-auto [&::-webkit-scrollbar]:hidden"
+        style={{ scrollbarWidth: 'none' } as React.CSSProperties}
+      >
+        <PushPinIcon className="size-3 shrink-0 text-muted-foreground" weight="fill" />
+        {pinned.map((item) => {
+          const isActive = pathname === `/${workspaceId}/task/${item.taskId}`;
+          return (
+            <div
+              key={item.id}
+              className={cn(
+                "group/pin relative flex h-5 items-center rounded shrink-0 max-w-[160px] overflow-hidden border",
+                isActive ? "bg-primary/10 border-primary/30" : "border-border hover:bg-accent",
+              )}
+            >
+              <button
+                onClick={() => router.push(`/${workspaceId}/task/${item.taskId}`)}
+                title={[item.spaceName, item.listName].filter(Boolean).join(" · ")}
+                className={cn(
+                  "min-w-0 flex-1 flex h-full items-center pl-2 pr-1 text-xs font-medium transition-colors cursor-pointer overflow-hidden",
+                  isActive ? "text-primary" : "text-muted-foreground group-hover/pin:text-foreground",
+                )}
+              >
+                <span className="truncate block">{item.taskTitle}</span>
+              </button>
+              <button
+                onClick={(e) => handleUnpin(e, item.taskId)}
+                title="Unpin"
+                className="hidden group-hover/pin:flex shrink-0 h-full items-center px-1 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              >
+                <PushPinSlashIcon className="size-3" />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── TopbarRightColumn ────────────────────────────────────────────────────────
+// Separated so it can read TopbarContext (must be inside TopbarProvider)
+
+function TopbarRightColumn({
+  workspaceId,
+  onOpenSidebar,
+  onOpenSearch,
+  children,
+}: {
+  workspaceId: string;
+  onOpenSidebar: () => void;
+  onOpenSearch: () => void;
+  children: React.ReactNode;
+}) {
+  const topbar = useTopbarState();
+
+  return (
+    <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+      {/* Top bar */}
+      <header className="sticky top-0 z-40 flex h-12 shrink-0 items-center border-b border-border bg-surface px-4 gap-3">
+        {/* Mobile sidebar toggle */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-8 lg:hidden shrink-0"
+          onClick={onOpenSidebar}
+        >
+          <ListIcon className="size-5" />
+        </Button>
+
+        {/* Breadcrumb — injected by active page */}
+        <div className="flex flex-1 items-center gap-1.5 min-w-0 text-sm">
+          {topbar ? (
+            <>
+              {topbar.breadcrumbs.map((crumb, i) => (
+                <React.Fragment key={i}>
+                  {i > 0 && <CaretRightIcon className="size-3.5 text-muted-foreground shrink-0" />}
+                  <span className="flex items-center gap-1.5 text-muted-foreground font-medium shrink-0">
+                    {crumb.color && (
+                      <span className="inline-block h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: crumb.color }} />
+                    )}
+                    {crumb.label}
+                  </span>
+                </React.Fragment>
+              ))}
+              {topbar.breadcrumbs.length > 0 && <CaretRightIcon className="size-3.5 text-muted-foreground shrink-0" />}
+              <span className="font-semibold text-foreground truncate">{topbar.title}</span>
+              {topbar.actions && <div className="ml-auto shrink-0">{topbar.actions}</div>}
+            </>
+          ) : null}
+        </div>
+
+        {/* Search — right side */}
+        <button
+          onClick={onOpenSearch}
+          className="flex items-center gap-2 h-8 w-52 shrink-0 rounded-md border bg-muted/50 px-3 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        >
+          <MagnifyingGlassIcon className="size-4 shrink-0" />
+          <span className="flex-1 text-left text-sm">Search…</span>
+          <kbd className="hidden sm:inline-flex items-center gap-0.5 rounded border bg-background px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
+            ⌘K
+          </kbd>
+        </button>
+      </header>
+
+      <PushNotificationBanner workspaceId={workspaceId} />
+      <PinnedTasksBar workspaceId={workspaceId} />
+      <main className="flex-1 overflow-auto bg-app">{children}</main>
     </div>
   );
 }

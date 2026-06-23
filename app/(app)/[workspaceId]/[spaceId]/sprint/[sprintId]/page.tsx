@@ -5,8 +5,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { space, workspaceMember, user } from "@/db/schema";
 import { canAccessSpace, getSpacePermission, hasPermissionLevel } from "@/lib/permissions";
-import { SprintPanel } from "@/components/sprint/sprint-panel";
-import { SprintListView } from "@/components/sprint/sprint-list-view";
+import { SprintPageClient } from "./_components/sprint-page-client";
 
 interface SprintPageProps {
   params: Promise<{ workspaceId: string; spaceId: string; sprintId: string }>;
@@ -49,27 +48,14 @@ export default async function SprintPage({ params }: SprintPageProps) {
     email: m.email,
   }));
 
-  void sprintId; // param used for routing, data fetched via getActiveSprintView
-
   return (
     <div className="space-y-5 p-6">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-1.5 text-sm">
-        <span className="flex items-center gap-1.5 font-medium">
-          {currentSpace.color && (
-            <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: currentSpace.color }} />
-          )}
-          {currentSpace.name}
-        </span>
-        <span className="text-muted-foreground">/</span>
-        <h1 className="font-semibold">Sprints</h1>
-      </div>
-
-      <SprintPanel workspaceId={workspaceId} spaceId={spaceId} />
-
-      <SprintListView
+      <SprintPageClient
         workspaceId={workspaceId}
         spaceId={spaceId}
+        sprintId={sprintId}
+        spaceName={currentSpace.name}
+        spaceColor={currentSpace.color}
         isAdmin={isAdmin}
         canEdit={canEdit}
         members={members}

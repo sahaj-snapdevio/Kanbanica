@@ -3,8 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { and, eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { task, list } from "@/db/schema";
-import { canAccessSpace, getWorkspaceMembership } from "@/lib/permissions";
+import { task, list, workspace } from "@/db/schema";
+import { canAccessSpace, getWorkspaceMembership, getSpacePermission } from "@/lib/permissions";
 import { TaskDetailPage } from "./_components/task-detail-page";
 
 interface TaskPageProps {
@@ -19,6 +19,12 @@ export default async function TaskPage({ params }: TaskPageProps) {
 
   const membership = await getWorkspaceMembership(session.user.id, workspaceId);
   if (!membership) notFound();
+
+  const [ws] = await db
+    .select({ name: workspace.name })
+    .from(workspace)
+    .where(eq(workspace.id, workspaceId))
+    .limit(1);
 
   const [t] = await db
     .select({ id: task.id, listId: task.listId, spaceId: task.spaceId, workspaceId: task.workspaceId })
@@ -51,6 +57,9 @@ export default async function TaskPage({ params }: TaskPageProps) {
   const accessible = await canAccessSpace(session.user.id, workspaceId, spaceId!);
   if (!accessible) notFound();
 
+  const spacePermission = await getSpacePermission(session.user.id, workspaceId, spaceId!);
+  const canPinToList = spacePermission === "full_access";
+
   return (
     <div className="h-full flex flex-col overflow-hidden">
       <TaskDetailPage
@@ -59,6 +68,8 @@ export default async function TaskPage({ params }: TaskPageProps) {
         listId={listId ?? ""}
         taskId={taskId}
         listName={listName ?? ""}
+        workspaceName={ws?.name ?? ""}
+        canPinToList={canPinToList}
       />
     </div>
   );

@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { list, listStatus, task, taskTag, tag, space, spaceMember, taskAssignee, user, workspaceMember } from "@/db/schema";
+import { list, listStatus, task, taskTag, tag, space, spaceMember, taskAssignee, user, workspaceMember, pinnedTask } from "@/db/schema";
 import { canAccessSpace, getWorkspaceMembership, getSpacePermission, hasPermissionLevel } from "@/lib/permissions";
 import { ListContainer } from "./_components/list-container";
 
@@ -66,6 +66,8 @@ export default async function ListPage({ params }: ListPageProps) {
         orderIndex: task.orderIndex,
         dueDateStart: task.dueDateStart,
         dueDateEnd: task.dueDateEnd,
+        isPinnedToList: task.isPinnedToList,
+        pinnedToListOrder: task.pinnedToListOrder,
       })
       .from(task)
       .where(and(eq(task.listId, listId), eq(task.isArchived, false), isNull(task.parentTaskId)))
@@ -81,10 +83,10 @@ export default async function ListPage({ params }: ListPageProps) {
       .where(eq(tag.workspaceId, workspaceId)),
   ]);
 
-  // Fetch tags + assignees for all tasks in parallel
+  // Fetch tags, assignees, and personal pins in parallel
   const taskIds = tasks.map((t) => t.id);
 
-  const [tagRows, assigneeRows] = await Promise.all([
+  const [tagRows, assigneeRows, personalPinRows] = await Promise.all([
     taskIds.length > 0
       ? db
           .select({ taskId: taskTag.taskId, id: tag.id, name: tag.name, color: tag.color })
@@ -106,6 +108,13 @@ export default async function ListPage({ params }: ListPageProps) {
           .innerJoin(user, eq(user.id, taskAssignee.userId))
           .where(inArray(taskAssignee.taskId, taskIds))
       : Promise.resolve([]),
+
+    taskIds.length > 0
+      ? db
+          .select({ taskId: pinnedTask.taskId })
+          .from(pinnedTask)
+          .where(and(eq(pinnedTask.userId, session.user.id), inArray(pinnedTask.taskId, taskIds)))
+      : Promise.resolve([]),
   ]);
 
   const tagsByTaskId = new Map<string, { id: string; name: string; color: string }[]>();
@@ -122,11 +131,19 @@ export default async function ListPage({ params }: ListPageProps) {
     assigneesByTaskId.set(row.taskId, existing);
   }
 
+  const personallyPinnedIds = new Set(personalPinRows.map((r) => r.taskId));
+
   const tasksWithTags = tasks.map((t) => ({
     ...t,
     tags: tagsByTaskId.get(t.id) ?? [],
     assignees: assigneesByTaskId.get(t.id) ?? [],
   }));
+
+  const pinnedListTasks = tasksWithTags
+    .filter((t) => t.isPinnedToList)
+    .sort((a, b) => (a.pinnedToListOrder ?? 0) - (b.pinnedToListOrder ?? 0));
+
+  const normalTasks = tasksWithTags.filter((t) => !t.isPinnedToList);
 
   const members = memberRows
     .filter((m) => m.userId)
@@ -138,12 +155,16 @@ export default async function ListPage({ params }: ListPageProps) {
       space={currentSpace}
       list={currentList}
       statuses={statuses}
-      tasks={tasksWithTags}
+      tasks={normalTasks}
+      pinnedTasks={pinnedListTasks}
       members={members}
       tags={allTags}
       canManage={canManage}
       canEdit={canEdit}
       isAdmin={isAdminOrOwner}
+      canPinToList={canManage}
+      currentUserId={session.user.id}
+      personallyPinnedIds={personallyPinnedIds}
     />
   );
 }

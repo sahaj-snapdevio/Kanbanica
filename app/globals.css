@@ -96,7 +96,7 @@ body {
 
 :root {
   /* ── 3-layer surface system ─────────────────────────── */
-  --bg-app:      #F4F5F7;
+  --bg-app:      #F7F9FB;
   --bg-surface:  #FFFFFF;
   --bg-elevated: #FFFFFF;
   --bg-sidebar:  #1A1D23;

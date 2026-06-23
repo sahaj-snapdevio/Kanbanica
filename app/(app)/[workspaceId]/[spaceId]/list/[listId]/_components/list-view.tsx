@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
@@ -15,6 +15,7 @@ import {
   LightningIcon,
   PencilSimpleIcon,
   PlusIcon,
+  PushPinIcon,
   TrashIcon,
   UserIcon,
   XIcon,
@@ -25,6 +26,7 @@ import {
   FunnelIcon,
 } from "@phosphor-icons/react";
 import { toast } from "sonner";
+import { useSWRConfig } from "swr";
 import {
   archiveTask,
   bulkArchiveTasks,
@@ -34,6 +36,7 @@ import {
   deleteTask,
   duplicateTask,
   getWorkspaceMembers,
+  moveTask,
   unarchiveTask,
   updateTask,
   updateTaskStatus,
@@ -110,6 +113,8 @@ interface Task {
   orderIndex: number;
   dueDateStart: Date | null;
   dueDateEnd: Date | null;
+  isPinnedToList: boolean;
+  pinnedToListOrder: number | null;
   tags: { id: string; name: string; color: string }[];
   assignees: { userId: string; name: string; image: string | null }[];
 }
@@ -120,8 +125,12 @@ interface ListViewProps {
   listId: string;
   statuses: Status[];
   tasks: Task[];
+  pinnedTasks?: Task[];
   isAdmin?: boolean;
   canEdit?: boolean;
+  canPinToList?: boolean;
+  currentUserId?: string;
+  personallyPinnedIds?: Set<string>;
   members?: { userId: string; name: string | null; email: string | null; image?: string | null }[];
   tags?: { id: string; name: string; color: string }[];
   archivedTasks?: { id: string; title: string; seqNumber: number }[];
@@ -156,6 +165,9 @@ function formatDueDate(date: Date | null) {
 
 // ─── Task row ─────────────────────────────────────────────────────────────────
 
+type SprintOption = { id: string; name: string; status: "PLANNED" | "ACTIVE" | "CLOSED" };
+type ListSpaceOption = { id: string; name: string; color: string | null; lists: { id: string; name: string; color: string | null }[] };
+
 function TaskRow({
   task,
   statusColor,
@@ -164,6 +176,8 @@ function TaskRow({
   listId,
   isAdmin,
   canEdit,
+  canPinToList,
+  isPersonallyPinned,
   selected,
   onSelect,
   onOpen,
@@ -176,20 +190,66 @@ function TaskRow({
   listId: string;
   isAdmin?: boolean;
   canEdit?: boolean;
+  canPinToList?: boolean;
+  isPersonallyPinned?: boolean;
   selected: boolean;
   onSelect: (id: string, checked: boolean) => void;
   onOpen: () => void;
   statuses: Status[];
 }) {
   const router = useRouter();
+  const { mutate } = useSWRConfig();
 
   // Optimistic local state — updates instantly on user action, syncs when server refreshes
   const [localPriority, setLocalPriority] = React.useState<Task["priority"]>(task.priority);
   const [localDueDate, setLocalDueDate] = React.useState<Date | null>(task.dueDateStart ?? null);
+  const [localPersonalPin, setLocalPersonalPin] = React.useState(isPersonallyPinned ?? false);
 
   // Keep in sync if parent prop changes (e.g. after refresh)
   React.useEffect(() => { setLocalPriority(task.priority); }, [task.priority]);
   React.useEffect(() => { setLocalDueDate(task.dueDateStart ?? null); }, [task.dueDateStart]);
+  React.useEffect(() => { setLocalPersonalPin(isPersonallyPinned ?? false); }, [isPersonallyPinned]);
+
+  async function handleTogglePersonalPin(e: React.MouseEvent) {
+    e.stopPropagation();
+    const next = !localPersonalPin;
+    setLocalPersonalPin(next);
+    try {
+      const res = await fetch(`/api/tasks/${task.id}/pin`, { method: next ? "POST" : "DELETE" });
+      if (!res.ok) {
+        setLocalPersonalPin(!next);
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error ?? "Failed to update pin");
+      } else {
+        mutate(`/api/workspaces/${workspaceId}/pinned-tasks`);
+      }
+    } catch {
+      setLocalPersonalPin(!next);
+      toast.error("Failed to update pin");
+    }
+  }
+
+  async function handlePinToList(e: React.MouseEvent) {
+    e.stopPropagation();
+    const res = await fetch(`/api/tasks/${task.id}/pin-to-list`, { method: "POST" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      toast.error(data.error ?? "Failed to pin task");
+    } else {
+      router.refresh();
+    }
+  }
+
+  async function handleUnpinFromList(e: React.MouseEvent) {
+    e.stopPropagation();
+    const res = await fetch(`/api/tasks/${task.id}/pin-to-list`, { method: "DELETE" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      toast.error(data.error ?? "Failed to unpin task");
+    } else {
+      router.refresh();
+    }
+  }
 
   const priority = PRIORITY_CONFIG[localPriority];
   const dueDate = formatDueDate(localDueDate);
@@ -221,6 +281,32 @@ function TaskRow({
   }
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
+  const [moveSprints, setMoveSprints] = React.useState<SprintOption[] | null>(null);
+  const [moveListSpaces, setMoveListSpaces] = React.useState<ListSpaceOption[] | null>(null);
+
+  async function loadMoveData() {
+    if (moveSprints !== null) return;
+    const [sprintsRes, listsRes] = await Promise.all([
+      getSprints(workspaceId, spaceId),
+      getWorkspaceLists(workspaceId, listId),
+    ]);
+    setMoveSprints("error" in sprintsRes ? [] : sprintsRes.sprints.filter((s) => s.status !== "CLOSED"));
+    setMoveListSpaces("error" in listsRes ? [] : listsRes.spaces);
+  }
+
+  async function handleMoveToSprint(targetSprintId: string, sprintName: string) {
+    const res = await bulkMoveTasksToSprint(workspaceId, spaceId, listId, [task.id], targetSprintId);
+    if ("error" in res) { toast.error(res.error); return; }
+    toast.success(`Moved to ${sprintName}`);
+    router.refresh();
+  }
+
+  async function handleMoveToList(targetListId: string, listName: string) {
+    const res = await moveTask(workspaceId, spaceId, task.id, targetListId);
+    if ("error" in res) { toast.error(res.error); return; }
+    toast.success(`Moved to ${listName}`);
+    router.refresh();
+  }
 
   function handleDeleteClick(e: React.MouseEvent) {
     e.stopPropagation();
@@ -365,7 +451,10 @@ function TaskRow({
 
         {/* Task Name & ID */}
         <div className="flex flex-1 items-center gap-2.5 min-w-0 py-1.5 pr-4 pl-1">
-          <span className="text-2xs text-gray-400 font-mono shrink-0 select-none">#{task.seqNumber}</span>
+          <span className="text-2xs text-gray-400 font-mono shrink-0 select-none flex items-center gap-1">
+            #{task.seqNumber}
+            {localPersonalPin && <PushPinIcon className="size-2.5 text-primary shrink-0" weight="fill" />}
+          </span>
           <span className="text-[13px] font-medium text-foreground truncate group-hover/row:text-primary transition-colors">{task.title}</span>
           {task.tags.slice(0, 2).map((tag) => (
             <span
@@ -513,7 +602,7 @@ function TaskRow({
         </div>
 
         {/* Priority */}
-        <div className="w-28 shrink-0 self-stretch flex items-center px-2" onClick={(e) => e.stopPropagation()}>
+        <div className="w-32 shrink-0 self-stretch flex items-center px-2" onClick={(e) => e.stopPropagation()}>
           {canEdit ? (
             <Popover open={priorityOpen} onOpenChange={setPriorityOpen}>
               <PopoverTrigger asChild>
@@ -574,8 +663,17 @@ function TaskRow({
         </div>
 
         {/* Row hover actions */}
-        <div className="w-40 shrink-0 py-1.5 pr-4 flex items-center justify-end gap-0.5" onClick={(e) => e.stopPropagation()}>
+        <div className="w-48 shrink-0 py-1.5 pr-4 flex items-center justify-end gap-0.5" onClick={(e) => e.stopPropagation()}>
           <div className="opacity-0 group-hover/row:opacity-100 transition-all duration-200 flex items-center gap-0.5">
+            {/* Personal pin */}
+            <button
+              onClick={handleTogglePersonalPin}
+              title={localPersonalPin ? "Unpin from sidebar" : "Pin to sidebar"}
+              className="flex size-7 items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            >
+              <PushPinIcon className="size-4" weight={localPersonalPin ? "fill" : "regular"} />
+            </button>
+
             {/* Edit */}
             <button
               onClick={onOpen}
@@ -635,15 +733,62 @@ function TaskRow({
               </button>
             )}
 
-            {/* More menu — archive lives here */}
+            {/* More menu — move + archive */}
             {canEdit && (
-              <Popover>
+              <Popover onOpenChange={(open) => { if (open) void loadMoveData(); }}>
                 <PopoverTrigger asChild>
                   <button className="flex size-7 items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
                     <DotsThreeIcon className="size-4.5" weight="bold" />
                   </button>
                 </PopoverTrigger>
-                <PopoverContent align="end" className="w-40 p-1">
+                <PopoverContent align="end" className="w-56 p-1 max-h-80 overflow-y-auto">
+                  {/* Sprint targets */}
+                  <p className="px-2 py-1 text-2xs font-bold text-muted-foreground uppercase tracking-wide">Move to Sprint</p>
+                  {moveSprints === null ? (
+                    <p className="px-2 py-1.5 text-xs text-muted-foreground">Loading…</p>
+                  ) : moveSprints.length === 0 ? (
+                    <p className="px-2 py-1.5 text-xs text-muted-foreground">No active sprints</p>
+                  ) : moveSprints.map((s) => (
+                    <button key={s.id} onClick={() => void handleMoveToSprint(s.id, s.name)} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs hover:bg-accent cursor-pointer">
+                      <LightningIcon className={cn("size-3.5 shrink-0", s.status === "ACTIVE" ? "text-primary" : "text-muted-foreground")} weight="fill" />
+                      <span className="flex-1 text-left truncate">{s.name}</span>
+                      <span className={cn("text-2xs px-1.5 py-0.5 rounded-full shrink-0", s.status === "ACTIVE" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>{s.status === "ACTIVE" ? "Active" : "Planned"}</span>
+                    </button>
+                  ))}
+                  <div className="h-px bg-border my-1" />
+                  {/* List targets */}
+                  <p className="px-2 py-1 text-2xs font-bold text-muted-foreground uppercase tracking-wide">Move to List</p>
+                  {moveListSpaces === null ? (
+                    <p className="px-2 py-1.5 text-xs text-muted-foreground">Loading…</p>
+                  ) : moveListSpaces.length === 0 ? (
+                    <p className="px-2 py-1.5 text-xs text-muted-foreground">No other lists</p>
+                  ) : moveListSpaces.map((sp) => (
+                    <div key={sp.id}>
+                      <p className="flex items-center gap-1.5 px-2 py-0.5 text-2xs font-bold text-muted-foreground uppercase">
+                        <span className="size-1.5 rounded-full shrink-0" style={{ backgroundColor: sp.color ?? "#6B7280" }} />
+                        {sp.name}
+                      </p>
+                      {sp.lists.map((l) => (
+                        <button key={l.id} onClick={() => void handleMoveToList(l.id, l.name)} className="flex w-full items-center gap-2 rounded pl-5 pr-2 py-1.5 text-xs hover:bg-accent cursor-pointer">
+                          <span className="size-1.5 rounded-full shrink-0" style={{ backgroundColor: l.color ?? "#6B7280" }} />
+                          <span className="flex-1 text-left truncate">{l.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  ))}
+                  <div className="h-px bg-border my-1" />
+                  {canPinToList && (
+                    task.isPinnedToList ? (
+                      <button onClick={handleUnpinFromList} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs font-semibold hover:bg-accent text-left cursor-pointer">
+                        <PushPinIcon className="size-3.5 text-primary shrink-0" weight="fill" /> Unpin from top
+                      </button>
+                    ) : (
+                      <button onClick={handlePinToList} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs font-semibold hover:bg-accent text-left cursor-pointer">
+                        <PushPinIcon className="size-3.5 text-muted-foreground shrink-0" /> Pin to top
+                      </button>
+                    )
+                  )}
+                  <div className="h-px bg-border my-1" />
                   <button onClick={handleArchive} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs font-semibold hover:bg-accent text-left cursor-pointer">
                     <ArchiveIcon className="size-3.5 text-muted-foreground shrink-0" /> Archive
                   </button>
@@ -776,6 +921,86 @@ function TaskRow({
   );
 }
 
+// ─── Pinned section ───────────────────────────────────────────────────────────
+
+function PinnedSection({
+  tasks,
+  workspaceId,
+  spaceId,
+  listId,
+  statuses,
+  canPinToList,
+  isAdmin,
+  canEdit,
+  personallyPinnedIds,
+}: {
+  tasks: Task[];
+  workspaceId: string;
+  spaceId: string;
+  listId: string;
+  statuses: Status[];
+  canPinToList?: boolean;
+  isAdmin?: boolean;
+  canEdit?: boolean;
+  personallyPinnedIds?: Set<string>;
+}) {
+  const router = useRouter();
+  const [collapsed, setCollapsed] = React.useState(false);
+
+  if (tasks.length === 0) return null;
+
+  return (
+    <div className="flex flex-col border border-primary/20 rounded-xl overflow-hidden bg-primary/[0.02] mb-2">
+      {/* Header */}
+      <div
+        className="flex items-center gap-2 px-3 py-1.5 cursor-pointer select-none hover:bg-primary/5 transition-colors"
+        onClick={() => setCollapsed((v) => !v)}
+      >
+        <div className="flex size-5 items-center justify-center rounded text-primary/70">
+          {collapsed ? (
+            <CaretRightIcon weight="fill" className="size-3" />
+          ) : (
+            <CaretDownIcon weight="fill" className="size-3" />
+          )}
+        </div>
+        <PushPinIcon className="size-3.5 text-primary" weight="fill" />
+        <span className="text-2xs font-bold uppercase tracking-wider text-primary">
+          Pinned
+        </span>
+        <span className="text-[11px] text-primary/60 font-semibold tabular-nums">
+          {tasks.length}
+        </span>
+      </div>
+
+      {!collapsed && (
+        <div className="flex flex-col border-t border-primary/15">
+          {tasks.map((t) => {
+            const statusColor = statuses.find((s) => s.id === t.statusId)?.color ?? "#6B7280";
+            return (
+              <TaskRow
+                key={t.id}
+                task={t}
+                statusColor={statusColor}
+                workspaceId={workspaceId}
+                spaceId={spaceId}
+                listId={listId}
+                isAdmin={isAdmin}
+                canEdit={canEdit}
+                canPinToList={canPinToList}
+                isPersonallyPinned={personallyPinnedIds?.has(t.id)}
+                selected={false}
+                onSelect={() => {}}
+                onOpen={() => router.push(`/${workspaceId}/task/${t.id}`)}
+                statuses={statuses}
+              />
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Status group ─────────────────────────────────────────────────────────────
 
 const STATUS_PRESET_COLORS = [
@@ -792,6 +1017,8 @@ function StatusGroup({
   listId,
   isAdmin,
   canEdit,
+  canPinToList,
+  personallyPinnedIds,
   selectedIds,
   onSelect,
   onCreateTask,
@@ -804,6 +1031,8 @@ function StatusGroup({
   listId: string;
   isAdmin?: boolean;
   canEdit?: boolean;
+  canPinToList?: boolean;
+  personallyPinnedIds?: Set<string>;
   selectedIds: Set<string>;
   onSelect: (id: string, checked: boolean) => void;
   onCreateTask: (statusId: string) => void;
@@ -956,6 +1185,8 @@ function StatusGroup({
                     listId={listId}
                     isAdmin={isAdmin}
                     canEdit={canEdit}
+                    canPinToList={canPinToList}
+                    isPersonallyPinned={personallyPinnedIds?.has(task.id)}
                     selected={selectedIds.has(task.id)}
                     onSelect={onSelect}
                     onOpen={() => router.push(`/${workspaceId}/task/${task.id}`)}
@@ -1039,8 +1270,6 @@ function StatusGroup({
 }
 
 // ─── Bulk action bar ──────────────────────────────────────────────────────────
-
-type SprintOption = { id: string; name: string; status: "PLANNED" | "ACTIVE" | "CLOSED" };
 
 function BulkActionBar({
   count,
@@ -1276,8 +1505,12 @@ export function ListView({
   listId,
   statuses,
   tasks,
+  pinnedTasks = [],
   isAdmin,
   canEdit,
+  canPinToList,
+  currentUserId,
+  personallyPinnedIds,
   members = [],
   tags = [],
   archivedTasks,
@@ -1745,6 +1978,21 @@ export function ListView({
             </div>
           </div>
 
+          {/* Pinned tasks sticky section */}
+          {pinnedTasks.length > 0 && (
+            <PinnedSection
+              tasks={pinnedTasks}
+              workspaceId={workspaceId}
+              spaceId={spaceId}
+              listId={listId}
+              statuses={statuses}
+              canPinToList={canPinToList}
+              isAdmin={isAdmin}
+              canEdit={canEdit}
+              personallyPinnedIds={personallyPinnedIds}
+            />
+          )}
+
           {/* Group Content Container */}
           <div className="flex flex-col gap-6">
             {groupedGroups.map((group) => (
@@ -1763,6 +2011,8 @@ export function ListView({
                 listId={listId}
                 isAdmin={isAdmin}
                 canEdit={canEdit}
+                canPinToList={canPinToList}
+                personallyPinnedIds={personallyPinnedIds}
                 selectedIds={selectedIds}
                 onSelect={handleSelect}
                 onCreateTask={setCreateForStatusId}

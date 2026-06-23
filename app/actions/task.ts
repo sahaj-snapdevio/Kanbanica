@@ -142,7 +142,7 @@ export async function createTask(
       seqNumber: taskSeq,
       workspaceId,
       spaceId,
-      listId: listId ?? null,
+      listId: listId || null,
       statusId: statusId ?? null,
       title,
       priority: "NONE",
@@ -530,7 +530,15 @@ export async function archiveTask(
 
   await db
     .update(task)
-    .set({ isArchived: true, archivedAt: new Date(), updatedAt: new Date() })
+    .set({
+      isArchived: true,
+      archivedAt: new Date(),
+      isPinnedToList: false,
+      pinnedToListBy: null,
+      pinnedToListAt: null,
+      pinnedToListOrder: null,
+      updatedAt: new Date(),
+    })
     .where(and(eq(task.id, taskId), listId != null ? eq(task.listId, listId) : isNull(task.listId)));
 
   await writeActivityLog(taskId, session.user.id, "task_archived");
@@ -682,12 +690,28 @@ export async function moveTask(
       newStatusId = firstOpen.id;
     }
   } else {
-    return { error: "Current status not found" };
+    // Task has no current status — use the first OPEN status in the target list
+    const [firstOpen] = await db
+      .select({ id: listStatus.id })
+      .from(listStatus)
+      .where(and(eq(listStatus.listId, targetListId), eq(listStatus.type, "OPEN")))
+      .orderBy(asc(listStatus.orderIndex))
+      .limit(1);
+    if (!firstOpen) return { error: "Target list has no statuses" };
+    newStatusId = firstOpen.id;
   }
 
   await db
     .update(task)
-    .set({ listId: targetListId, statusId: newStatusId, updatedAt: new Date() })
+    .set({
+      listId: targetListId,
+      statusId: newStatusId,
+      isPinnedToList: false,
+      pinnedToListBy: null,
+      pinnedToListAt: null,
+      pinnedToListOrder: null,
+      updatedAt: new Date(),
+    })
     .where(eq(task.id, taskId));
 
   await writeActivityLog(taskId, session.user.id, "task_moved", {
