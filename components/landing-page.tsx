@@ -46,6 +46,7 @@ import {
   SUPPORT_EMAIL,
 } from "@/config/platform";
 import { cn } from "@/lib/utils";
+import { motion, useScroll, useTransform, useMotionValueEvent } from "framer-motion";
 
 function useInView(threshold = 0.12) {
   const ref = React.useRef<HTMLDivElement>(null);
@@ -473,6 +474,420 @@ function Typewriter({
   );
 }
 
+function ListView() {
+  return (
+    <div className="flex flex-col gap-4 h-full bg-white rounded-lg p-5">
+      {/* Toolbar */}
+      <div className="flex items-center gap-2 border-b border-[#CBCBCB]/60 pb-3 shrink-0">
+        {["Filter", "Group by: Status", "Sort"].map((label) => (
+          <span
+            key={label}
+            className="rounded border border-dashed border-[#CBCBCB] px-2.5 py-1 text-[#9ca3af] text-2xs font-semibold cursor-default"
+          >
+            {label}
+          </span>
+        ))}
+      </div>
+      
+      {/* Table Headers */}
+      <div className="grid grid-cols-12 gap-4 px-3 text-[10px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1 shrink-0">
+        <div className="col-span-6">Task Name</div>
+        <div className="col-span-2 text-center">Status</div>
+        <div className="col-span-2 text-center">Priority</div>
+        <div className="col-span-2 text-right">Assignee</div>
+      </div>
+      
+      {/* Table Rows */}
+      <div className="flex-1 flex flex-col gap-1.5 overflow-y-auto pr-1">
+        {[
+          {
+            title: "Fix login redirect bug",
+            status: "In Progress",
+            statusCls: "bg-[#174D38]/10 text-[#174D38]",
+            priority: "High",
+            pCls: "bg-orange-50 text-orange-500",
+            assignee: "SC",
+          },
+          {
+            title: "Design onboarding flow",
+            status: "Review",
+            statusCls: "bg-amber-50 text-amber-600",
+            priority: "Medium",
+            pCls: "bg-yellow-50 text-yellow-600",
+            assignee: "MR",
+          },
+          {
+            title: "Write API documentation",
+            status: "Todo",
+            statusCls: "bg-[#E8E8E8] text-[#6b7280]",
+            priority: "Low",
+            pCls: "bg-blue-50 text-blue-500",
+            assignee: "PN",
+          },
+          {
+            title: "Set up CI/CD pipeline",
+            status: "Todo",
+            statusCls: "bg-[#E8E8E8] text-[#6b7280]",
+            priority: "Urgent",
+            pCls: "bg-red-50 text-red-500",
+            assignee: "SC",
+          },
+          {
+            title: "Implement search indexing",
+            status: "In Progress",
+            statusCls: "bg-[#174D38]/10 text-[#174D38]",
+            priority: "High",
+            pCls: "bg-orange-50 text-orange-500",
+            assignee: "MR",
+          },
+        ].map((t) => (
+          <div
+            className="grid grid-cols-12 gap-4 items-center rounded-lg border border-[#CBCBCB]/60 bg-white px-3 py-2.5 text-xs transition-colors hover:border-[#174D38]/40"
+            key={t.title}
+          >
+            <div className="col-span-6 flex items-center gap-3">
+              <span className="size-4 shrink-0 rounded border-2 border-[#CBCBCB]" />
+              <span className="font-semibold text-[#174D38] truncate">{t.title}</span>
+            </div>
+            <div className="col-span-2 flex justify-center">
+              <span className={cn("rounded px-2.5 py-0.5 text-[10px] font-bold tracking-wide", t.statusCls)}>
+                {t.status}
+              </span>
+            </div>
+            <div className="col-span-2 flex justify-center">
+              <span className={cn("rounded px-2.5 py-0.5 text-[10px] font-bold tracking-wide", t.pCls)}>
+                {t.priority}
+              </span>
+            </div>
+            <div className="col-span-2 flex justify-end">
+              <Avatar className="size-5.5">
+                <AvatarFallback className="bg-[#4D1717]/25 text-[8px] font-bold text-[#174D38]">
+                  {t.assignee}
+                </AvatarFallback>
+              </Avatar>
+            </div>
+          </div>
+        ))}
+        <div className="flex cursor-pointer items-center gap-2 px-3 py-2 text-[#9ca3af] text-xs hover:text-[#6b7280]">
+          <span className="text-base leading-none font-bold">+</span> Add task
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BoardView() {
+  return (
+    <div className="flex gap-4 h-full bg-white rounded-lg p-5 overflow-x-auto">
+      {[
+        {
+          title: "Backlog",
+          color: "#9ca3af",
+          tasks: [
+            { title: "Write API documentation", priority: "Low", pCls: "bg-blue-50 text-blue-500", assignee: "PN" },
+          ],
+        },
+        {
+          title: "Todo",
+          color: "#3b82f6",
+          tasks: [
+            { title: "Set up CI/CD pipeline", priority: "Urgent", pCls: "bg-red-50 text-red-500", assignee: "SC" },
+          ],
+        },
+        {
+          title: "In Progress",
+          color: "#174D38",
+          tasks: [
+            { title: "Fix login redirect bug", priority: "High", pCls: "bg-orange-50 text-orange-500", assignee: "SC" },
+            { title: "Implement search indexing", priority: "High", pCls: "bg-orange-50 text-orange-500", assignee: "MR" },
+          ],
+        },
+        {
+          title: "Review",
+          color: "#f59e0b",
+          tasks: [
+            { title: "Design onboarding flow", priority: "Medium", pCls: "bg-yellow-50 text-yellow-600", assignee: "MR" },
+          ],
+        },
+        {
+          title: "Done",
+          color: "#10b981",
+          tasks: [
+            { title: "Database migration", priority: "Low", pCls: "bg-blue-50 text-blue-500", assignee: "PN" },
+          ],
+        },
+      ].map((col) => (
+        <div
+          key={col.title}
+          className="rounded-lg border border-[#CBCBCB]/60 bg-[#F5F5F5] p-3 flex flex-col gap-2 min-w-[170px] flex-1 max-h-full"
+        >
+          <div className="flex items-center justify-between px-1 mb-1 shrink-0">
+            <div className="flex items-center gap-2">
+              <span className="size-2 rounded-full" style={{ backgroundColor: col.color }} />
+              <span className="font-bold text-[#174D38] text-xs">{col.title}</span>
+            </div>
+            <span className="rounded bg-[#E8E8E8] px-1.5 py-0.5 text-4xs font-bold text-[#6b7280]">
+              {col.tasks.length}
+            </span>
+          </div>
+          <div className="flex-1 flex flex-col gap-2 overflow-y-auto pr-0.5">
+            {col.tasks.map((task) => (
+              <div
+                key={task.title}
+                className="rounded-lg border border-[#CBCBCB]/60 bg-white p-3 shadow-xs flex flex-col gap-2 hover:border-[#174D38]/40 transition-colors cursor-grab"
+              >
+                <p className="font-medium text-[#174D38] text-2xs leading-tight line-clamp-2">
+                  {task.title}
+                </p>
+                <div className="flex items-center justify-between mt-1">
+                  <span className={cn("rounded px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider", task.pCls)}>
+                    {task.priority}
+                  </span>
+                  <Avatar className="size-5">
+                    <AvatarFallback className="bg-[#4D1717]/25 text-[7px] font-bold text-[#174D38]">
+                      {task.assignee}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CalendarView() {
+  return (
+    <div className="flex flex-col h-full bg-white rounded-lg p-5">
+      {/* Calendar header */}
+      <div className="flex items-center justify-between mb-3 shrink-0">
+        <span className="font-bold text-[#174D38] text-sm">June 2026</span>
+        <div className="flex items-center gap-3">
+          <div className="flex rounded border border-[#CBCBCB] bg-[#F2F2F2] p-0.5 text-[9px] font-bold">
+            <span className="bg-white rounded px-2.5 py-0.5 text-[#174D38] shadow-xs">Month</span>
+            <span className="px-2.5 py-0.5 text-[#6b7280]">Week</span>
+            <span className="px-2.5 py-0.5 text-[#6b7280]">Day</span>
+          </div>
+        </div>
+      </div>
+      
+      {/* Weekday headers */}
+      <div className="grid grid-cols-7 gap-1 text-center font-bold text-[#9ca3af] text-[9px] uppercase tracking-wider mb-1 shrink-0">
+        {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
+          <div key={day} className="py-1">{day}</div>
+        ))}
+      </div>
+      
+      {/* Calendar Grid */}
+      <div className="flex-1 grid grid-cols-7 grid-rows-5 gap-1 min-h-0">
+        {Array.from({ length: 35 }).map((_, idx) => {
+          const dayNum = idx + 1; // June 1st is Monday (idx = 0)
+          const isValidDay = dayNum > 0 && dayNum <= 30;
+          
+          return (
+            <div
+              key={idx}
+              className={cn(
+                "border border-[#E8E8E8] rounded-md p-1 flex flex-col gap-1 min-h-0 relative bg-white transition-colors hover:border-[#174D38]/30",
+                isValidDay ? "text-[#174D38]" : "text-[#CBCBCB] bg-[#F9F9F9]"
+              )}
+            >
+              <span className="text-[9px] font-bold leading-none mb-0.5">
+                {isValidDay ? dayNum : ""}
+              </span>
+              
+              {/* Event bars */}
+              {dayNum === 2 && (
+                <div className="bg-[#174D38]/10 border-l-2 border-[#174D38] rounded px-1 py-0.5 text-[7px] text-[#174D38] font-bold truncate leading-none cursor-pointer">
+                  Fix Redirects
+                </div>
+              )}
+              {dayNum === 9 && (
+                <div className="bg-amber-100 border-l-2 border-amber-500 rounded px-1 py-0.5 text-[7px] text-amber-700 font-bold truncate leading-none cursor-pointer">
+                  Onboarding Flow
+                </div>
+              )}
+              {dayNum === 16 && (
+                <div className="bg-blue-100 border-l-2 border-blue-500 rounded px-1 py-0.5 text-[7px] text-blue-700 font-bold truncate leading-none cursor-pointer">
+                  API Docs
+                </div>
+              )}
+              {dayNum === 23 && (
+                <div className="bg-red-100 border-l-2 border-red-500 rounded px-1 py-0.5 text-[7px] text-red-700 font-bold truncate leading-none cursor-pointer">
+                  CI/CD Deploy
+                </div>
+              )}
+              {dayNum === 24 && (
+                <div className="bg-[#174D38]/10 border-l-2 border-[#174D38] rounded px-1 py-0.5 text-[7px] text-[#174D38] font-bold truncate leading-none cursor-pointer">
+                  Search Index
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ProductShowcaseSection() {
+  const sectionRef = React.useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start start", "end end"],
+  });
+
+  const [activeTabIdx, setActiveTabIdx] = React.useState(0);
+  const [prefersReducedMotion, setPrefersReducedMotion] = React.useState(false);
+
+  React.useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setPrefersReducedMotion(mediaQuery.matches);
+    const handler = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
+    mediaQuery.addEventListener("change", handler);
+    return () => mediaQuery.removeEventListener("change", handler);
+  }, []);
+
+  useMotionValueEvent(scrollYProgress, "change", (latest) => {
+    if (latest < 0.35) {
+      setActiveTabIdx(0);
+    } else if (latest < 0.7) {
+      setActiveTabIdx(1);
+    } else {
+      setActiveTabIdx(2);
+    }
+  });
+
+  const activeTabName = ["List", "Board", "Calendar"][activeTabIdx];
+  const activeTabUrl = ["backlog", "board", "calendar"][activeTabIdx];
+  const activeSidebarIndex = activeTabIdx === 2 ? 0 : activeTabIdx;
+
+  // Scroll Transforms for List View
+  const listOpacityTransform = useTransform(scrollYProgress, [0, 0.2, 0.35], [1, 0.5, 0]);
+  const listScaleTransform = useTransform(scrollYProgress, [0, 0.35], [1, 0.95]);
+  const listYTransform = useTransform(scrollYProgress, [0, 0.35], [0, -50]);
+
+  // Scroll Transforms for Board View
+  const boardOpacityTransform = useTransform(scrollYProgress, [0, 0.15, 0.35, 0.55, 0.7], [0, 0.4, 1, 0.5, 0]);
+  const boardScaleTransform = useTransform(scrollYProgress, [0, 0.35, 0.7], [0.9, 1, 0.95]);
+  const boardYTransform = useTransform(scrollYProgress, [0, 0.35, 0.7], [150, 0, -50]);
+
+  // Scroll Transforms for Calendar View
+  const calendarOpacityTransform = useTransform(scrollYProgress, [0.35, 0.55, 0.7], [0, 0.4, 1]);
+  const calendarScaleTransform = useTransform(scrollYProgress, [0.35, 0.7], [0.9, 1]);
+  const calendarYTransform = useTransform(scrollYProgress, [0.35, 0.7], [150, 0]);
+
+  const listOpacity = prefersReducedMotion ? (activeTabIdx === 0 ? 1 : 0) : listOpacityTransform;
+  const listScale = prefersReducedMotion ? 1 : listScaleTransform;
+  const listY = prefersReducedMotion ? 0 : listYTransform;
+
+  const boardOpacity = prefersReducedMotion ? (activeTabIdx === 1 ? 1 : 0) : boardOpacityTransform;
+  const boardScale = prefersReducedMotion ? 1 : boardScaleTransform;
+  const boardY = prefersReducedMotion ? 0 : boardYTransform;
+
+  const calendarOpacity = prefersReducedMotion ? (activeTabIdx === 2 ? 1 : 0) : calendarOpacityTransform;
+  const calendarScale = prefersReducedMotion ? 1 : calendarScaleTransform;
+  const calendarY = prefersReducedMotion ? 0 : calendarYTransform;
+
+  return (
+    <section ref={sectionRef} className="relative h-[300vh] bg-white w-full">
+      {/* Sticky container that centers the browser frame in the viewport */}
+      <div className="sticky top-[100px] z-10 w-full flex items-center justify-center overflow-hidden py-12">
+        <div className="relative mx-auto max-w-4xl w-full px-4 sm:px-6">
+          <div className="overflow-hidden rounded-xl border border-[#CBCBCB] bg-white shadow-2xl ring-1 ring-[#174D38]/20 h-[500px] flex flex-col">
+            {/* Header URL bar */}
+            <div className="flex items-center gap-1.5 border-b border-[#CBCBCB] bg-[#F2F2F2] px-4 py-2.5 shrink-0">
+              <span className="size-3 rounded-full bg-[#ef4444]" />
+              <span className="size-3 rounded-full bg-[#f59e0b]" />
+              <span className="size-3 rounded-full bg-[#10b981]" />
+              <div className="mx-auto ml-4 max-w-xs flex-1 rounded-md border border-[#CBCBCB] bg-white px-3 py-1 text-[#9ca3af] text-[10px] text-center font-mono">
+                {MARKETING_DOMAIN}/acme/engineering/{activeTabUrl}
+              </div>
+            </div>
+
+            <div className="flex flex-1 min-h-0 bg-[#F2F2F2]">
+              {/* Sidebar */}
+              <div className="flex w-14 flex-col items-center gap-4 border-r border-[#CBCBCB] bg-white px-3.5 py-4 shrink-0">
+                {[LayoutList, Kanban, Bell, Search, Users].map((Icon, i) => (
+                  <div
+                    key={i}
+                    className={cn(
+                      "flex size-8 items-center justify-center rounded-md transition-colors",
+                      i === activeSidebarIndex
+                        ? "bg-[#174D38] text-white"
+                        : "text-[#9ca3af] hover:bg-[#E8E8E8]"
+                    )}
+                  >
+                    <Icon className="size-4" />
+                  </div>
+                ))}
+              </div>
+
+              {/* Workspace Container */}
+              <div className="flex-1 flex flex-col min-w-0 bg-[#F2F2F2]">
+                {/* Header Navigation */}
+                <div className="flex items-center justify-between border-b border-[#CBCBCB]/60 bg-white px-5 py-3 shrink-0">
+                  <div className="flex items-center gap-1 text-[#6b7280] text-xs">
+                    <span>Engineering</span>
+                    <ChevronRight className="size-3" />
+                    <span className="font-semibold text-[#174D38]">
+                      {activeTabName}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {["List", "Board", "Calendar"].map((tab, idx) => (
+                      <span
+                        key={tab}
+                        className={cn(
+                          "rounded px-2.5 py-1 font-semibold text-xs transition-all duration-200",
+                          activeTabIdx === idx
+                            ? "bg-[#174D38] text-white"
+                            : "text-[#6b7280] hover:bg-[#E8E8E8] hover:text-[#174D38]"
+                        )}
+                      >
+                        {tab}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Workspace Views area */}
+                <div className="flex-1 relative min-h-0 overflow-hidden bg-[#F5F5F5]">
+                  {/* List View */}
+                  <motion.div
+                    style={{ opacity: listOpacity, scale: listScale, y: listY }}
+                    className="absolute inset-0 p-4"
+                  >
+                    <ListView />
+                  </motion.div>
+
+                  {/* Board View */}
+                  <motion.div
+                    style={{ opacity: boardOpacity, scale: boardScale, y: boardY }}
+                    className="absolute inset-0 p-4"
+                  >
+                    <BoardView />
+                  </motion.div>
+
+                  {/* Calendar View */}
+                  <motion.div
+                    style={{ opacity: calendarOpacity, scale: calendarScale, y: calendarY }}
+                    className="absolute inset-0 p-4"
+                  >
+                    <CalendarView />
+                  </motion.div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 const DOT_GRID =
   "url(\"data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='1' cy='1' r='1' fill='%23174D38' fill-opacity='0.05'/%3E%3C/svg%3E\")";
 
@@ -527,153 +942,6 @@ function HeroSection() {
           <p className="mt-4 text-[#9ca3af] text-xs">
             No credit card required · Magic link sign-in
           </p>
-        </Animate>
-
-        <Animate className="mt-16" delay={300}>
-          <div className="relative mx-auto max-w-4xl">
-            <div className="overflow-hidden rounded-xl border border-[#CBCBCB] bg-white shadow-2xl ring-1 ring-[#174D38]/20">
-              <div className="flex items-center gap-1.5 border-b border-[#CBCBCB] bg-[#F2F2F2] px-4 py-2.5">
-                <span className="size-3 rounded-full bg-[#ef4444]" />
-                <span className="size-3 rounded-full bg-[#f59e0b]" />
-                <span className="size-3 rounded-full bg-[#10b981]" />
-                <div className="mx-auto ml-4 max-w-xs flex-1 rounded-md border border-[#CBCBCB] bg-white px-3 py-1 text-[#9ca3af] text-xs">
-                  {MARKETING_DOMAIN}/acme/engineering/backlog
-                </div>
-              </div>
-              <div className="flex bg-[#F2F2F2]">
-                <div className="flex w-14 flex-col items-center gap-4 border-r border-[#CBCBCB] bg-white px-3.5 py-4">
-                  {[LayoutList, Kanban, Bell, Search, Users].map((Icon, i) => (
-                    <div
-                      className={cn(
-                        "flex size-8 items-center justify-center rounded-md",
-                        i === 0
-                          ? "bg-[#174D38] text-white"
-                          : "text-[#9ca3af] hover:bg-[#E8E8E8]",
-                      )}
-                      key={i}
-                    >
-                      <Icon className="size-4" />
-                    </div>
-                  ))}
-                </div>
-                <div className="min-w-0 flex-1 p-5">
-                  <div className="mb-4 flex items-center justify-between">
-                    <div className="flex items-center gap-1 text-[#6b7280] text-xs">
-                      <span>Engineering</span>
-                      <ChevronRight className="size-3" />
-                      <span className="font-semibold text-[#174D38]">
-                        Backlog
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {["List", "Board", "Calendar"].map((v, i) => (
-                        <span
-                          className={cn(
-                            "cursor-pointer rounded px-2.5 py-1 font-medium text-xs transition-colors",
-                            i === 0
-                              ? "bg-[#174D38] text-white"
-                              : "text-[#6b7280] hover:bg-[#E8E8E8] hover:text-[#174D38]",
-                          )}
-                          key={v}
-                        >
-                          {v}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="mb-3 flex items-center gap-2 border-b border-[#CBCBCB] pb-3">
-                    {["Filter", "Group by: Status", "Sort"].map((label) => (
-                      <span
-                        className="rounded border border-dashed border-[#CBCBCB] px-2 py-1 text-[#9ca3af] text-xs"
-                        key={label}
-                      >
-                        {label}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="space-y-1.5">
-                    {[
-                      {
-                        title: "Fix login redirect bug",
-                        status: "In Progress",
-                        statusCls: "bg-[#174D38]/10 text-[#174D38]",
-                        priority: "High",
-                        pCls: "bg-orange-50 text-orange-500",
-                        assignee: "SC",
-                      },
-                      {
-                        title: "Design onboarding flow",
-                        status: "Review",
-                        statusCls: "bg-amber-50 text-amber-600",
-                        priority: "Medium",
-                        pCls: "bg-yellow-50 text-yellow-600",
-                        assignee: "MR",
-                      },
-                      {
-                        title: "Write API documentation",
-                        status: "Todo",
-                        statusCls: "bg-[#E8E8E8] text-[#6b7280]",
-                        priority: "Low",
-                        pCls: "bg-blue-50 text-blue-500",
-                        assignee: "PN",
-                      },
-                      {
-                        title: "Set up CI/CD pipeline",
-                        status: "Todo",
-                        statusCls: "bg-[#E8E8E8] text-[#6b7280]",
-                        priority: "Urgent",
-                        pCls: "bg-red-50 text-red-500",
-                        assignee: "SC",
-                      },
-                      {
-                        title: "Implement search indexing",
-                        status: "In Progress",
-                        statusCls: "bg-[#174D38]/10 text-[#174D38]",
-                        priority: "High",
-                        pCls: "bg-orange-50 text-orange-500",
-                        assignee: "MR",
-                      },
-                    ].map((t) => (
-                      <div
-                        className="flex items-center gap-3 rounded-md border border-[#CBCBCB] bg-white px-3 py-2 text-sm transition-colors hover:border-[#174D38]/40"
-                        key={t.title}
-                      >
-                        <span className="size-4 shrink-0 rounded border-2 border-[#CBCBCB]" />
-                        <span className="flex-1 truncate font-medium text-[#174D38] text-xs">
-                          {t.title}
-                        </span>
-                        <span
-                          className={cn(
-                            "shrink-0 rounded px-2 py-0.5 text-2xs font-medium",
-                            t.statusCls,
-                          )}
-                        >
-                          {t.status}
-                        </span>
-                        <span
-                          className={cn(
-                            "hidden shrink-0 rounded px-2 py-0.5 text-2xs font-medium sm:inline-block",
-                            t.pCls,
-                          )}
-                        >
-                          {t.priority}
-                        </span>
-                        <Avatar className="size-5 shrink-0">
-                          <AvatarFallback className="bg-[#4D1717]/25 text-[8px] text-[#174D38]">
-                            {t.assignee}
-                          </AvatarFallback>
-                        </Avatar>
-                      </div>
-                    ))}
-                    <div className="flex cursor-pointer items-center gap-2 px-3 py-2 text-[#9ca3af] text-xs hover:text-[#6b7280]">
-                      <span className="text-base leading-none">+</span> Add task
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="pointer-events-none absolute right-0 bottom-0 left-0 h-24 bg-gradient-to-b from-transparent to-white" />
-          </div>
         </Animate>
       </div>
     </section>
@@ -1862,6 +2130,7 @@ export default function LandingPage() {
     <div className="min-h-screen bg-white text-[#174D38]">
       <Navbar />
       <HeroSection />
+      <ProductShowcaseSection />
       <SocialProofBar />
       <FeaturesSection />
       <BentoSection />
