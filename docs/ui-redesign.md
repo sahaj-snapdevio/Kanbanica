@@ -238,17 +238,17 @@ The sidebar is always dark (`--bg-sidebar: #1A1D23`), regardless of light/dark m
 **Sidebar item styles:**
 ```tsx
 // Normal
-className="flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] text-[var(--text-sidebar)]
-           hover:bg-[var(--bg-sidebar-item-hover)] hover:text-[var(--text-sidebar-active)]
+className="flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] text-[--text-sidebar]
+           hover:bg-[--bg-sidebar-item-hover] hover:text-[--text-sidebar-active]
            transition-colors duration-100 cursor-pointer select-none"
 
 // Active
-className="... bg-[var(--bg-sidebar-item-active)] text-[var(--text-sidebar-active)] font-medium"
+className="... bg-[--bg-sidebar-item-active] text-[--text-sidebar-active] font-medium"
 ```
 
 **Section labels:**
 ```tsx
-className="px-3 pt-4 pb-1 text-[11px] font-semibold tracking-widest uppercase text-[var(--text-muted)]"
+className="px-3 pt-4 pb-1 text-xs font-semibold tracking-widest uppercase text-[--text-muted]"
 ```
 
 **Project row with color dot:**
@@ -260,7 +260,7 @@ className="px-3 pt-4 pb-1 text-[11px] font-semibold tracking-widest uppercase te
 
 **Sprint active badge (inside sidebar):**
 ```tsx
-<span className="ml-auto px-1.5 py-0.5 text-[10px] font-medium rounded-full
+<span className="ml-auto px-1.5 py-0.5 text-2xs font-medium rounded-full
                  bg-emerald-500/15 text-emerald-500">
   Active
 </span>
@@ -294,7 +294,7 @@ Upgrade all button variants. Remove the default shadcn ring focus style — repl
 
 ```tsx
 // Primary
-"bg-[var(--brand)] hover:bg-[var(--brand-hover)] text-white
+"bg-[--brand] hover:bg-[var(--brand-hover)] text-white
  h-8 px-3.5 text-sm font-medium rounded-md
  transition-colors duration-100
  focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)]"
@@ -354,7 +354,7 @@ The task row is the most-seen element. It needs to feel premium and interactive.
 
 **Status pill on task row** — small, inline:
 ```tsx
-<span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium"
+<span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium"
       style={{ backgroundColor: `${status.color}1A`, color: status.color }}>
   <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: status.color }} />
   {status.name}
@@ -364,7 +364,7 @@ The task row is the most-seen element. It needs to feel premium and interactive.
 **Priority badge:**
 ```tsx
 // Urgent — the only priority with strong visual weight
-<span className="text-[11px] font-medium text-red-500 bg-red-50 dark:bg-red-500/10
+<span className="text-xs font-medium text-red-500 bg-red-50 dark:bg-red-500/10
                  px-1.5 py-0.5 rounded">
   Urgent
 </span>
@@ -417,7 +417,7 @@ Use Framer Motion for enter/exit:
   animate={{ opacity: 1, scale: 1, y: 0 }}
   exit={{ opacity: 0, scale: 0.96, y: 8 }}
   transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-  className="bg-[var(--bg-elevated)] border border-[var(--border)] rounded-xl shadow-[var(--shadow-lg)]
+  className="bg-[--bg-elevated] border border-[--border] rounded-xl shadow-[--shadow-lg]
              max-w-md w-full p-6"
 />
 ```
@@ -426,10 +426,10 @@ Use Framer Motion for enter/exit:
 ```tsx
 <div className="flex items-start justify-between mb-5">
   <div>
-    <h2 className="text-[15px] font-semibold text-[var(--text-primary)]">Create Sprint</h2>
-    <p className="text-sm text-[var(--text-secondary)] mt-0.5">Set up a new iteration for Backend API</p>
+    <h2 className="text-[15px] font-semibold text-[--text-primary]">Create Sprint</h2>
+    <p className="text-sm text-[--text-secondary] mt-0.5">Set up a new iteration for Backend API</p>
   </div>
-  <button className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
+  <button className="text-[--text-muted] hover:text-[--text-primary] transition-colors">
     <X className="w-4 h-4" />
   </button>
 </div>
@@ -483,7 +483,7 @@ const dot = "w-2 h-2 rounded-full flex-shrink-0"
 style={{ backgroundColor: color }}
 
 // Count badge (notifications, sprint task count)
-"min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-semibold
+"min-w-[18px] h-[18px] px-1 rounded-full text-2xs font-semibold
  bg-[var(--brand)] text-white flex items-center justify-center"
 ```
 
@@ -499,10 +499,10 @@ Replace all spinners with **skeleton screens** that match the real layout.
 
 // Task row skeleton
 <div className="flex items-center gap-3 h-9 px-4">
-  <div className="w-4 h-4 rounded-full animate-pulse bg-[var(--border)]" />
-  <div className="w-24 h-3 rounded animate-pulse bg-[var(--border)]" />
-  <div className="flex-1 h-3 rounded animate-pulse bg-[var(--border)]" />
-  <div className="w-16 h-3 rounded animate-pulse bg-[var(--border)]" />
+  <div className="w-4 h-4 rounded-full animate-pulse bg-[--border]" />
+  <div className="w-24 h-3 rounded animate-pulse bg-[--border]" />
+  <div className="flex-1 h-3 rounded animate-pulse bg-[--border]" />
+  <div className="w-16 h-3 rounded animate-pulse bg-[--border]" />
 </div>
 ```
 
@@ -517,11 +517,11 @@ Each empty state needs a centered layout with: icon → heading → subtext → 
 ```tsx
 <div className="flex flex-col items-center justify-center py-20 text-center">
   {/* Icon — use a subtle colored icon, not a gray blob */}
-  <div className="w-12 h-12 rounded-2xl bg-[var(--brand-muted)] flex items-center justify-center mb-4">
-    <ListTodo className="w-6 h-6 text-[var(--brand)]" />
+  <div className="w-12 h-12 rounded-2xl bg-[--brand-muted] flex items-center justify-center mb-4">
+    <ListTodo className="w-6 h-6 text-[--brand]" />
   </div>
-  <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1">No tasks yet</h3>
-  <p className="text-sm text-[var(--text-secondary)] max-w-[260px] mb-5">
+  <h3 className="text-sm font-semibold text-[--text-primary] mb-1">No tasks yet</h3>
+  <p className="text-sm text-[--text-secondary] max-w-65 mb-5">
     Add your first task to start tracking work in this list.
   </p>
   <Button variant="primary" size="sm">Add task</Button>
@@ -535,7 +535,7 @@ Each empty state needs a centered layout with: icon → heading → subtext → 
 Use Radix `<Tooltip>` (via shadcn) with a consistent dark style:
 
 ```tsx
-"bg-[#1A1D23] text-white text-xs px-2 py-1 rounded-md shadow-[var(--shadow-md)]
+"bg-[#1A1D23] text-white text-xs px-2 py-1 rounded-md shadow-[--shadow-md]
  border border-white/10"
 ```
 
@@ -609,8 +609,8 @@ Pinned task rows get a left accent border and a slightly elevated background:
 
 ```tsx
 // Pinned section header
-<div className="flex items-center gap-2 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wider
-                text-[var(--text-muted)] border-b border-[var(--border)]">
+<div className="flex items-center gap-2 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider
+                text-[--text-muted] border-b border-[--border]">
   <Pin className="w-3 h-3" />
   Pinned
 </div>
@@ -625,7 +625,7 @@ Replace a flat progress bar with a segmented one that shows task status distribu
 
 ```tsx
 // Instead of a single filled bar, show colored segments per status
-<div className="flex h-1.5 rounded-full overflow-hidden gap-px bg-[var(--border)]">
+<div className="flex h-1.5 rounded-full overflow-hidden gap-px bg-[--border]">
   {statuses.map(s => (
     <div key={s.id} style={{ width: `${s.percent}%`, backgroundColor: s.color }}
          className="transition-all duration-500" />
@@ -640,8 +640,8 @@ Replace a flat progress bar with a segmented one that shows task status distribu
 <div className="flex items-center justify-between px-3 py-2 mb-2">
   <div className="flex items-center gap-2">
     <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: status.color }} />
-    <span className="text-sm font-medium text-[var(--text-primary)]">{status.name}</span>
-    <span className="text-xs text-[var(--text-muted)] bg-[var(--bg-app)] px-1.5 py-0.5 rounded-full">
+    <span className="text-sm font-medium text-[--text-primary]">{status.name}</span>
+    <span className="text-xs text-[--text-muted] bg-[--bg-app] px-1.5 py-0.5 rounded-full">
       {count}
     </span>
   </div>
@@ -651,7 +651,7 @@ Replace a flat progress bar with a segmented one that shows task status distribu
 </div>
 
 // Column body
-<div className="flex flex-col gap-2 min-h-[40px]">
+<div className="flex flex-col gap-2 min-h-10">
   {/* task cards */}
 </div>
 ```

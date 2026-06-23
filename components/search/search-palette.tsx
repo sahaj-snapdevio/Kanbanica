@@ -154,7 +154,7 @@ export function SearchPalette({ workspaceId, open, onClose }: SearchPaletteProps
               {/* Tasks */}
               {results.tasks.length > 0 && (
                 <section className="py-2">
-                  <p className="px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="px-4 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Tasks
                   </p>
                   {results.tasks.map((t) => {
@@ -203,7 +203,7 @@ export function SearchPalette({ workspaceId, open, onClose }: SearchPaletteProps
               {/* Lists */}
               {results.lists.length > 0 && (
                 <section className="py-2">
-                  <p className="px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="px-4 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Lists
                   </p>
                   {results.lists.map((l) => (
@@ -225,7 +225,7 @@ export function SearchPalette({ workspaceId, open, onClose }: SearchPaletteProps
               {/* Spaces */}
               {results.spaces.length > 0 && (
                 <section className="py-2">
-                  <p className="px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="px-4 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Spaces
                   </p>
                   {results.spaces.map((s) => (
@@ -244,7 +244,7 @@ export function SearchPalette({ workspaceId, open, onClose }: SearchPaletteProps
               {/* Members */}
               {results.members.length > 0 && (
                 <section className="py-2">
-                  <p className="px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="px-4 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Members
                   </p>
                   {results.members.map((m) => (
@@ -271,7 +271,7 @@ export function SearchPalette({ workspaceId, open, onClose }: SearchPaletteProps
         </div>
 
         {/* Footer hint */}
-        <div className="flex items-center gap-3 border-t px-4 py-2 text-[11px] text-muted-foreground">
+        <div className="flex items-center gap-3 border-t px-4 py-2 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
             <ClockIcon className="size-3" /> recent items tracked automatically
           </span>

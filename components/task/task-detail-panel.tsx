@@ -453,7 +453,7 @@ export function TaskDetailPanel({
               ) : (
                 <div
                   onClick={() => setDescEditing(true)}
-                  className="min-h-[60px] rounded-md border border-transparent hover:border-border hover:bg-accent/30 px-2 py-1.5 text-sm cursor-text transition-colors"
+                  className="min-h-15 rounded-md border border-transparent hover:border-border hover:bg-accent/30 px-2 py-1.5 text-sm cursor-text transition-colors"
                 >
                   {descDraft ? (
                     <p className="whitespace-pre-wrap">{descDraft}</p>
@@ -660,7 +660,7 @@ export function TaskDetailPanel({
                       <Avatar className="size-4">
                         <AvatarFallback className="text-[8px]">{userInitials(a.name, a.email)}</AvatarFallback>
                       </Avatar>
-                      <span className="text-xs max-w-[80px] truncate">{a.name ?? a.email}</span>
+                      <span className="text-xs max-w-20 truncate">{a.name ?? a.email}</span>
                       <button onClick={() => handleToggleAssignee(a.userId!)} className="text-muted-foreground hover:text-foreground">
                         <XIcon className="size-3" />
                       </button>
@@ -791,7 +791,7 @@ export function TaskDetailPanel({
                   {timeLogs.map((log) => (
                     <div key={log.id} className="text-xs text-muted-foreground flex justify-between">
                       <span>{Math.floor(log.durationMinutes / 60)}h {log.durationMinutes % 60}m</span>
-                      {log.note && <span className="truncate max-w-[80px]">{log.note}</span>}
+                      {log.note && <span className="truncate max-w-20">{log.note}</span>}
                     </div>
                   ))}
                   <div className="text-xs font-medium">

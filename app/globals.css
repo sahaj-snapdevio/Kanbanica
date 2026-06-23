@@ -159,8 +159,8 @@ body {
   --secondary-foreground: #5E6573;
 
   --muted:          #F4F5F7;
-  --muted-foreground: #9AA0AD;
-
+  /* --muted-foreground: #9AA0AD; */
+--muted-foreground: #5E6573;
   --accent:          #EEF0FE;
   --accent-foreground: #4554E8;
 

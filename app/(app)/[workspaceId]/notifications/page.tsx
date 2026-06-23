@@ -122,14 +122,14 @@ export default function InboxPage() {
       {/* Notification list */}
       <div className={cn(
         "flex flex-col h-full transition-all duration-200",
-        selectedTask ? "w-[420px] shrink-0 border-r" : "flex-1",
+        selectedTask ? "w-105 shrink-0 border-r" : "flex-1",
       )}>
         {/* Header */}
         <div className="flex items-center justify-between border-b px-6 py-4 shrink-0">
           <div className="flex items-center gap-3">
             <h1 className="text-lg font-semibold">Inbox</h1>
             {unreadCount > 0 && (
-              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-blue-500 px-1.5 text-[11px] font-semibold text-white leading-none">
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-blue-500 px-1.5 text-xs font-semibold text-white leading-none">
                 {unreadCount > 99 ? "99+" : unreadCount}
               </span>
             )}
