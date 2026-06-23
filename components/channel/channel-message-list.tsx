@@ -151,7 +151,7 @@ export function ChannelMessageList({ messages, currentUserId }: ChannelMessageLi
                       <span className="text-sm font-semibold">
                         {msg.senderName || msg.senderEmail}
                       </span>
-                      <span className="text-[11px] text-muted-foreground">
+                      <span className="text-xs text-muted-foreground">
                         {formatTime(msg.createdAt)}
                       </span>
                     </div>

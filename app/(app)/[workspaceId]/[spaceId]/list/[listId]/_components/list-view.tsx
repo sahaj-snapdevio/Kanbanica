@@ -414,7 +414,7 @@ function TaskRow({
         {...attributes}
         {...listeners}
         className={cn(
-          "group/row hidden md:flex items-center border-b border-border transition-all duration-200 cursor-pointer text-foreground bg-card min-h-[40px] text-sm",
+          "group/row hidden md:flex items-center border-b border-border transition-all duration-200 cursor-pointer text-foreground bg-card min-h-10 text-sm",
           isDragging && "opacity-40 shadow-none border-dashed",
           selected ? "bg-primary/5" : "hover:bg-accent/30",
         )}
@@ -423,7 +423,7 @@ function TaskRow({
         {/* Left ClickUp Status Indicator Line */}
         <div
           className={cn(
-            "w-[3px] self-stretch shrink-0 transition-opacity duration-200",
+            "w-0.75 self-stretch shrink-0 transition-opacity duration-200",
             selected ? "opacity-100" : "opacity-0 group-hover/row:opacity-100"
           )}
           style={{ backgroundColor: statusColor }}
@@ -950,7 +950,7 @@ function PinnedSection({
   if (tasks.length === 0) return null;
 
   return (
-    <div className="flex flex-col border border-primary/20 rounded-xl overflow-hidden bg-primary/[0.02] mb-2">
+    <div className="flex flex-col border border-primary/20 rounded-xl overflow-hidden bg-primary/2 mb-2">
       {/* Header */}
       <div
         className="flex items-center gap-2 px-3 py-1.5 cursor-pointer select-none hover:bg-primary/5 transition-colors"
@@ -967,7 +967,7 @@ function PinnedSection({
         <span className="text-2xs font-bold uppercase tracking-wider text-primary">
           Pinned
         </span>
-        <span className="text-[11px] text-primary/60 font-semibold tabular-nums">
+        <span className="text-xs text-primary/60 font-semibold tabular-nums">
           {tasks.length}
         </span>
       </div>
@@ -1108,7 +1108,7 @@ function StatusGroup({
           </span>
 
           {/* Task count */}
-          <span className="text-[11px] text-gray-400 font-semibold tabular-nums">
+          <span className="text-xs text-gray-400 font-semibold tabular-nums">
             {tasks.length} {tasks.length === 1 ? "task" : "tasks"}
           </span>
 
@@ -1163,10 +1163,20 @@ function StatusGroup({
         {/* Tasks Container */}
         {!collapsed && (
           <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+            {/* Column Header (Desktop Only) */}
+            <div className="hidden md:flex items-center border-b border-border text-2xs font-bold text-gray-400 select-none uppercase tracking-wider bg-card">
+              <div className="w-0.75 self-stretch shrink-0 bg-transparent" />
+              <div className="flex items-center pl-3 shrink-0 w-16" />
+              <div className="flex-1 py-2 pr-4 pl-1">Name</div>
+              <div className="w-36 shrink-0 py-2 px-4">Assignee</div>
+              <div className="w-28 shrink-0 py-2 px-4">Due Date</div>
+              <div className="w-32 shrink-0 py-2 px-4">Priority</div>
+              <div className="w-48 shrink-0 text-right pr-4">Actions</div>
+            </div>
             <div
               ref={setNodeRef}
               className={cn(
-                "flex flex-col transition-all min-h-[4px]",
+                "flex flex-col transition-all min-h-1",
                 isOver && "bg-accent/20 border-y border-dashed border-border"
               )}
             >
@@ -1945,37 +1955,6 @@ export function ListView({
               </button>
             </div>
 
-            {/* Global Sticky Table Header (Desktop Only) */}
-            <div className="hidden md:flex items-center border-t border-border pt-3 text-2xs font-bold text-gray-400 select-none uppercase tracking-wider">
-              {/* Left indicator spacer */}
-              <div className="w-[3px] self-stretch shrink-0 bg-transparent" />
-              
-              {/* Checkbox wrapper */}
-              <div className="flex items-center pl-3 shrink-0 w-16">
-                <div
-                  className="flex size-4 items-center justify-center rounded border transition-colors cursor-pointer"
-                  onClick={toggleAll}
-                >
-                  <div className={cn(
-                    "flex size-4 items-center justify-center rounded border transition-colors",
-                    allSelected
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : someSelected
-                        ? "border-primary bg-primary/20"
-                        : "border-border hover:border-primary/40 bg-background",
-                  )}>
-                    {allSelected && <CheckIcon className="size-2.5" weight="bold" />}
-                    {someSelected && !allSelected && <div className="size-1.5 rounded-sm bg-primary" />}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex-1 py-1 pr-4 pl-1">Name</div>
-              <div className="w-36 shrink-0 py-1 px-4">Assignee</div>
-              <div className="w-28 shrink-0 py-1 px-4">Due Date</div>
-              <div className="w-28 shrink-0 py-1 px-4">Priority</div>
-              <div className="w-40 shrink-0 text-right pr-4">Actions</div>
-            </div>
           </div>
 
           {/* Pinned tasks sticky section */}

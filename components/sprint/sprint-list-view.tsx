@@ -17,6 +17,7 @@ import {
   MagnifyingGlassIcon,
   PencilSimpleIcon,
   PlusIcon,
+  PushPinIcon,
   RowsIcon,
   SquaresFourIcon,
   TrayIcon,
@@ -45,6 +46,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { ClickUpCalendar } from "@/components/ui/clickup-calendar";
 import { format, isToday, isPast } from "date-fns";
 import { toast } from "sonner";
+import { useSWRConfig } from "swr";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -199,12 +201,41 @@ function TaskRow({
   onRefresh: () => void;
 }) {
   const router = useRouter();
+  const { mutate } = useSWRConfig();
 
   // Optimistic local state
   const [localPriority, setLocalPriority] = React.useState<string>(task.priority ?? "NONE");
   const [localDueDate, setLocalDueDate] = React.useState<Date | null>(task.dueDateStart ?? null);
+  const [localPersonalPin, setLocalPersonalPin] = React.useState(false);
   React.useEffect(() => { setLocalPriority(task.priority ?? "NONE"); }, [task.priority]);
   React.useEffect(() => { setLocalDueDate(task.dueDateStart ?? null); }, [task.dueDateStart]);
+
+  // Check if task is pinned on mount
+  React.useEffect(() => {
+    fetch(`/api/tasks/${task.id}/pin`)
+      .then((r) => r.json())
+      .then((d) => { if (typeof d?.pinned === "boolean") setLocalPersonalPin(d.pinned); })
+      .catch(() => {});
+  }, [task.id]);
+
+  async function handleTogglePersonalPin(e: React.MouseEvent) {
+    e.stopPropagation();
+    const next = !localPersonalPin;
+    setLocalPersonalPin(next);
+    try {
+      const res = await fetch(`/api/tasks/${task.id}/pin`, { method: next ? "POST" : "DELETE" });
+      if (!res.ok) {
+        setLocalPersonalPin(!next);
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error ?? "Failed to update pin");
+      } else {
+        mutate(`/api/workspaces/${workspaceId}/pinned-tasks`);
+      }
+    } catch {
+      setLocalPersonalPin(!next);
+      toast.error("Failed to update pin");
+    }
+  }
 
   const priority = PRIORITY_CONFIG[localPriority] ?? PRIORITY_CONFIG.NONE;
   const dueDate = formatDueDate(localDueDate);
@@ -309,7 +340,7 @@ function TaskRow({
       >
         {/* Left status indicator */}
         <div
-          className={cn("w-[3px] self-stretch shrink-0 transition-opacity duration-200", selected ? "opacity-100" : "opacity-0 group-hover/row:opacity-100")}
+          className={cn("w-0.75 self-stretch shrink-0 transition-opacity duration-200", selected ? "opacity-100" : "opacity-0 group-hover/row:opacity-100")}
           style={{ backgroundColor: statusColor }}
         />
 
@@ -327,7 +358,10 @@ function TaskRow({
 
         {/* Name */}
         <div className="flex flex-1 items-center gap-2.5 min-w-0 py-1.5 pr-4 pl-1">
-          <span className="text-2xs text-gray-400 font-mono shrink-0 select-none">#{task.seqNumber}</span>
+          <span className="text-2xs text-gray-400 font-mono shrink-0 select-none flex items-center gap-1">
+            #{task.seqNumber}
+            {localPersonalPin && <PushPinIcon className="size-2.5 text-primary shrink-0" weight="fill" />}
+          </span>
           <span className="text-[13px] font-medium text-gray-800 truncate group-hover/row:text-primary transition-colors">{task.title}</span>
           {task.tags.slice(0, 2).map((tag) => (
             <span
@@ -483,8 +517,16 @@ function TaskRow({
         </div>
 
         {/* Row actions */}
-        <div className="w-40 shrink-0 py-1.5 pr-4 flex items-center justify-end gap-0.5" onClick={(e) => e.stopPropagation()}>
+        <div className="w-48 shrink-0 py-1.5 pr-4 flex items-center justify-end gap-0.5" onClick={(e) => e.stopPropagation()}>
           <div className="opacity-0 group-hover/row:opacity-100 transition-all duration-200 flex items-center gap-0.5">
+            {/* Personal pin */}
+            <button
+              onClick={handleTogglePersonalPin}
+              title={localPersonalPin ? "Unpin from sidebar" : "Pin to sidebar"}
+              className="flex size-7 items-center justify-center rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors cursor-pointer"
+            >
+              <PushPinIcon className="size-4" weight={localPersonalPin ? "fill" : "regular"} />
+            </button>
             <button onClick={() => router.push(`/${workspaceId}/task/${task.id}?from=sprint&sid=${sprintId}`)} title="Edit Task" className="flex size-7 items-center justify-center rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors cursor-pointer">
               <PencilSimpleIcon className="size-4" />
             </button>
@@ -785,7 +827,7 @@ function StatusGroup({
           {status.name}
         </span>
 
-        <span className="text-[11px] text-gray-400 font-semibold tabular-nums">
+        <span className="text-xs text-gray-400 font-semibold tabular-nums">
           {tasks.length} {tasks.length === 1 ? "task" : "tasks"}
         </span>
 
@@ -859,7 +901,7 @@ function StatusGroup({
             <div className="w-36 shrink-0 py-2 px-4 text-2xs font-bold text-gray-400 uppercase tracking-wider">Assignee</div>
             <div className="w-28 shrink-0 py-2 px-4 text-2xs font-bold text-gray-400 uppercase tracking-wider">Due date</div>
             <div className="w-28 shrink-0 py-2 px-4 text-2xs font-bold text-gray-400 uppercase tracking-wider">Priority</div>
-            <div className="w-40 shrink-0" />
+            <div className="w-48 shrink-0" />
           </div>
 
           {tasks.map((task) => (

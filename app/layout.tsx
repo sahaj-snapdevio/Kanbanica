@@ -28,7 +28,14 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
   return (
-    <html className={cn("dark scroll-smooth font-sans", inter.variable)} lang="en">
+    <html className={cn("scroll-smooth font-sans", inter.variable)} lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var p=window.location.pathname.split('/');var wid=p[1];var a=wid?localStorage.getItem('kanbanica_appearance_'+wid):null;var dark=a==='dark'||(a!=='light'&&(a==='auto'||!a)&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark)document.documentElement.classList.add('dark');}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body suppressHydrationWarning>
         {children}
         <Toaster richColors position="top-right" />

@@ -351,7 +351,7 @@ export function WorkspaceShell({
 
           <div>
             <div className="flex items-center px-3 pb-1 pt-2">
-              <p className="flex-1 text-[11px] font-semibold tracking-widest uppercase text-(--text-muted)">
+              <p className="flex-1 text-xs font-semibold tracking-widest uppercase text-(--text-muted)">
                 Projects
               </p>
               {isAdmin && (
@@ -796,7 +796,7 @@ function PinnedTasksBar({ workspaceId }: { workspaceId: string }) {
 
 
   return (
-    <div className="h-7 shrink-0 border-b border-border bg-surface overflow-hidden">
+    <div className="h-9 shrink-0 border-b border-border bg-surface overflow-hidden">
       <div
         ref={scrollRef}
         onWheel={handleWheel}
@@ -810,7 +810,7 @@ function PinnedTasksBar({ workspaceId }: { workspaceId: string }) {
             <div
               key={item.id}
               className={cn(
-                "group/pin relative flex h-5 items-center rounded shrink-0 max-w-[160px] overflow-hidden border",
+                "group/pin relative flex h-5 items-center rounded shrink-0 max-w-40 overflow-hidden border",
                 isActive ? "bg-primary/10 border-primary/30" : "border-border hover:bg-accent",
               )}
             >
