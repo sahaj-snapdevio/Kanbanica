@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import Link from "next/link";
@@ -93,7 +93,7 @@ export function SpaceActivityFeed({ workspaceId, spaceId }: SpaceActivityFeedPro
               <div key={entry.id} className="flex items-start gap-3 px-4 py-3 hover:bg-accent/20 transition-colors">
                 <Avatar className="size-7 shrink-0 mt-0.5">
                   {entry.actorImage && <AvatarImage src={entry.actorImage} />}
-                  <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                  <AvatarFallback className="text-2xs bg-primary/10 text-primary">
                     {initials(entry.actorName, entry.actorEmail)}
                   </AvatarFallback>
                 </Avatar>

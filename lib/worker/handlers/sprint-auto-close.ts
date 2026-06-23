@@ -1,6 +1,6 @@
 import { and, eq, inArray, lt } from "drizzle-orm";
 import type { Job } from "pg-boss";
-import { sprint, taskSprint, task, listStatus, list } from "@/db/schema";
+import { sprint, taskSprint, task, listStatus } from "@/db/schema";
 import { db } from "@/lib/db";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -30,8 +30,7 @@ export async function handleSprintAutoClose(
     .select({
       id: sprint.id,
       name: sprint.name,
-      listId: sprint.listId,
-      workspaceId: sprint.workspaceId,
+      spaceId: sprint.spaceId,
       startDate: sprint.startDate,
       endDate: sprint.endDate,
       durationWeeks: sprint.durationWeeks,
@@ -65,8 +64,7 @@ export async function handleSprintAutoClose(
 async function processAutoClose(s: {
   id: string;
   name: string;
-  listId: string;
-  workspaceId: string;
+  spaceId: string;
   startDate: Date | null;
   endDate: Date | null;
   durationWeeks: number;
@@ -94,7 +92,7 @@ async function processAutoClose(s: {
     .select({ taskId: taskSprint.taskId, statusType: listStatus.type })
     .from(taskSprint)
     .innerJoin(task, eq(taskSprint.taskId, task.id))
-    .innerJoin(listStatus, eq(task.statusId, listStatus.id))
+    .leftJoin(listStatus, eq(task.statusId, listStatus.id))
     .where(and(eq(taskSprint.sprintId, s.id), eq(task.isArchived, false)));
 
   const incompleteTaskIds = sprintTasks
@@ -109,7 +107,7 @@ async function processAutoClose(s: {
     const [existingPlanned] = await db
       .select({ id: sprint.id })
       .from(sprint)
-      .where(and(eq(sprint.listId, s.listId), eq(sprint.status, "PLANNED")))
+      .where(and(eq(sprint.spaceId, s.spaceId), eq(sprint.status, "PLANNED")))
       .limit(1);
 
     if (existingPlanned) {
@@ -124,8 +122,7 @@ async function processAutoClose(s: {
 
       await db.insert(sprint).values({
         id: newId,
-        listId: s.listId,
-        workspaceId: s.workspaceId,
+        spaceId: s.spaceId,
         name: newName,
         goal: null,
         status: "PLANNED",

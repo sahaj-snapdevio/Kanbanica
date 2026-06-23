@@ -34,7 +34,7 @@ interface NotificationsResponse {
 interface TaskLocation {
   taskId: string;
   spaceId: string;
-  listId: string;
+  listId: string | null;
 }
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -169,7 +169,7 @@ export default function InboxPage() {
                 {t.label}
                 {t.key === "unread" && unreadCount > 0 && (
                   <span className={cn(
-                    "flex h-4.5 min-w-4.5 items-center justify-center rounded-full px-1 text-[10px] font-semibold leading-none",
+                    "flex h-4.5 min-w-4.5 items-center justify-center rounded-full px-1 text-2xs font-semibold leading-none",
                     active ? "bg-foreground text-background" : "bg-blue-500 text-white",
                   )}>
                     {unreadCount > 99 ? "99+" : unreadCount}
@@ -273,7 +273,7 @@ export default function InboxPage() {
               taskId={selectedTask.taskId}
               workspaceId={workspaceId}
               spaceId={selectedTask.spaceId}
-              listId={selectedTask.listId}
+              listId={selectedTask.listId ?? ""}
             />
           </div>
         </div>

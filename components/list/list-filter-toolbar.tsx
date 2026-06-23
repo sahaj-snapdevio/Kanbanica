@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import {
@@ -147,7 +147,7 @@ export function ListFilterToolbar({
             <FunnelIcon className="size-3.5" weight={count > 0 ? "fill" : "regular"} />
             Filters
             {count > 0 && (
-              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold">
+              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary text-2xs text-primary-foreground font-bold">
                 {count}
               </span>
             )}

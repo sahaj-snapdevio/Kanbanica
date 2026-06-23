@@ -73,12 +73,17 @@ function revalidateList(workspaceId: string, spaceId: string, listId: string) {
   revalidatePath(`/${workspaceId}/${spaceId}/list/${listId}`);
 }
 
+function revalidateSpace(workspaceId: string, spaceId: string) {
+  revalidatePath(`/${workspaceId}/${spaceId}`);
+  revalidatePath(`/${workspaceId}`);
+}
+
 // ─── Create Task ─────────────────────────────────────────────────────────────
 
 export async function createTask(
   workspaceId: string,
   spaceId: string,
-  listId: string,
+  listId: string | null,
   data: { title: string; statusId?: string },
 ): Promise<{ taskId: string } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -90,33 +95,36 @@ export async function createTask(
   const title = data.title.trim();
   if (!title) return { error: "Task title is required" };
 
-  const [currentList] = await db
-    .select({ id: list.id })
-    .from(list)
-    .where(and(eq(list.id, listId), eq(list.spaceId, spaceId), eq(list.isArchived, false)))
-    .limit(1);
-  if (!currentList) return { error: "List not found or archived" };
+  let statusId: string | undefined = data.statusId;
 
-  let statusId = data.statusId;
-  if (!statusId) {
-    const [firstStatus] = await db
-      .select({ id: listStatus.id })
-      .from(listStatus)
-      .where(and(eq(listStatus.listId, listId), eq(listStatus.type, "OPEN")))
-      .orderBy(asc(listStatus.orderIndex))
+  if (listId) {
+    const [currentList] = await db
+      .select({ id: list.id })
+      .from(list)
+      .where(and(eq(list.id, listId), eq(list.spaceId, spaceId), eq(list.isArchived, false)))
       .limit(1);
+    if (!currentList) return { error: "List not found or archived" };
 
-    if (!firstStatus) {
-      const [anyStatus] = await db
+    if (!statusId) {
+      const [firstStatus] = await db
         .select({ id: listStatus.id })
         .from(listStatus)
-        .where(eq(listStatus.listId, listId))
+        .where(and(eq(listStatus.listId, listId), eq(listStatus.type, "OPEN")))
         .orderBy(asc(listStatus.orderIndex))
         .limit(1);
-      if (!anyStatus) return { error: "List has no statuses" };
-      statusId = anyStatus.id;
-    } else {
-      statusId = firstStatus.id;
+
+      if (!firstStatus) {
+        const [anyStatus] = await db
+          .select({ id: listStatus.id })
+          .from(listStatus)
+          .where(eq(listStatus.listId, listId))
+          .orderBy(asc(listStatus.orderIndex))
+          .limit(1);
+        if (!anyStatus) return { error: "List has no statuses" };
+        statusId = anyStatus.id;
+      } else {
+        statusId = firstStatus.id;
+      }
     }
   }
 
@@ -133,8 +141,9 @@ export async function createTask(
       id: taskId,
       seqNumber: taskSeq,
       workspaceId,
-      listId,
-      statusId,
+      spaceId,
+      listId: listId || null,
+      statusId: statusId ?? null,
       title,
       priority: "NONE",
       reporterId: session.user.id,
@@ -145,7 +154,7 @@ export async function createTask(
   });
 
   await writeActivityLog(taskId, session.user.id, "task_created", { title });
-  revalidateList(workspaceId, spaceId, listId);
+  if (listId) revalidateList(workspaceId, spaceId, listId);
   return { taskId };
 }
 
@@ -225,11 +234,9 @@ export async function getTaskDetail(
         .where(eq(timeLog.taskId, taskId))
         .orderBy(desc(timeLog.loggedAt)),
 
-      db
-        .select()
-        .from(listStatus)
-        .where(eq(listStatus.listId, t.listId))
-        .orderBy(asc(listStatus.orderIndex)),
+      t.listId
+        ? db.select().from(listStatus).where(eq(listStatus.listId, t.listId)).orderBy(asc(listStatus.orderIndex))
+        : Promise.resolve([]),
 
       db
         .select()
@@ -313,7 +320,7 @@ export async function getWorkspaceMembers(workspaceId: string) {
 export async function updateTask(
   workspaceId: string,
   spaceId: string,
-  listId: string,
+  listId: string | null,
   taskId: string,
   data: {
     title?: string;
@@ -333,7 +340,7 @@ export async function updateTask(
   const [existing] = await db
     .select({ title: task.title, priority: task.priority, description: task.description })
     .from(task)
-    .where(and(eq(task.id, taskId), eq(task.listId, listId)))
+    .where(and(eq(task.id, taskId), listId != null ? eq(task.listId, listId) : isNull(task.listId)))
     .limit(1);
   if (!existing) return { error: "Task not found" };
 
@@ -417,7 +424,7 @@ export async function updateTask(
     }
   }
 
-  revalidateList(workspaceId, spaceId, listId);
+  if (listId) revalidateList(workspaceId, spaceId, listId); else revalidateSpace(workspaceId, spaceId);
   return { ok: true };
 }
 
@@ -426,7 +433,7 @@ export async function updateTask(
 export async function updateTaskStatus(
   workspaceId: string,
   spaceId: string,
-  listId: string,
+  listId: string | null,
   taskId: string,
   statusId: string,
 ): Promise<{ ok: true } | { error: string }> {
@@ -446,7 +453,7 @@ export async function updateTaskStatus(
   await db
     .update(task)
     .set({ statusId, updatedAt: new Date() })
-    .where(and(eq(task.id, taskId), eq(task.listId, listId)));
+    .where(and(eq(task.id, taskId), listId != null ? eq(task.listId, listId) : isNull(task.listId)));
 
   await writeActivityLog(taskId, session.user.id, "status_changed", {
     from: existing.statusId,
@@ -483,7 +490,7 @@ export async function updateTaskStatus(
     });
   }
 
-  revalidateList(workspaceId, spaceId, listId);
+  if (listId) revalidateList(workspaceId, spaceId, listId); else revalidateSpace(workspaceId, spaceId);
   return { ok: true };
 }
 
@@ -492,7 +499,7 @@ export async function updateTaskStatus(
 export async function deleteTask(
   workspaceId: string,
   spaceId: string,
-  listId: string,
+  listId: string | null,
   taskId: string,
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -501,9 +508,9 @@ export async function deleteTask(
   const permErr = await requireFullAccess(session.user.id, workspaceId, spaceId);
   if (permErr) return { error: "You don't have permission to delete tasks" };
 
-  await db.delete(task).where(and(eq(task.id, taskId), eq(task.listId, listId)));
+  await db.delete(task).where(and(eq(task.id, taskId), listId != null ? eq(task.listId, listId) : isNull(task.listId)));
 
-  revalidateList(workspaceId, spaceId, listId);
+  if (listId) revalidateList(workspaceId, spaceId, listId); else revalidateSpace(workspaceId, spaceId);
   return { ok: true };
 }
 
@@ -512,7 +519,7 @@ export async function deleteTask(
 export async function archiveTask(
   workspaceId: string,
   spaceId: string,
-  listId: string,
+  listId: string | null,
   taskId: string,
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -523,18 +530,26 @@ export async function archiveTask(
 
   await db
     .update(task)
-    .set({ isArchived: true, archivedAt: new Date(), updatedAt: new Date() })
-    .where(and(eq(task.id, taskId), eq(task.listId, listId)));
+    .set({
+      isArchived: true,
+      archivedAt: new Date(),
+      isPinnedToList: false,
+      pinnedToListBy: null,
+      pinnedToListAt: null,
+      pinnedToListOrder: null,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(task.id, taskId), listId != null ? eq(task.listId, listId) : isNull(task.listId)));
 
   await writeActivityLog(taskId, session.user.id, "task_archived");
-  revalidateList(workspaceId, spaceId, listId);
+  if (listId) revalidateList(workspaceId, spaceId, listId); else revalidateSpace(workspaceId, spaceId);
   return { ok: true };
 }
 
 export async function unarchiveTask(
   workspaceId: string,
   spaceId: string,
-  listId: string,
+  listId: string | null,
   taskId: string,
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -546,10 +561,10 @@ export async function unarchiveTask(
   await db
     .update(task)
     .set({ isArchived: false, archivedAt: null, updatedAt: new Date() })
-    .where(and(eq(task.id, taskId), eq(task.listId, listId)));
+    .where(and(eq(task.id, taskId), listId != null ? eq(task.listId, listId) : isNull(task.listId)));
 
   await writeActivityLog(taskId, session.user.id, "task_unarchived");
-  revalidateList(workspaceId, spaceId, listId);
+  if (listId) revalidateList(workspaceId, spaceId, listId); else revalidateSpace(workspaceId, spaceId);
   return { ok: true };
 }
 
@@ -558,7 +573,7 @@ export async function unarchiveTask(
 export async function duplicateTask(
   workspaceId: string,
   spaceId: string,
-  listId: string,
+  listId: string | null,
   taskId: string,
 ): Promise<{ taskId: string } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -628,7 +643,7 @@ export async function duplicateTask(
   }
 
   await writeActivityLog(newTaskId, session.user.id, "task_created", { duplicatedFrom: taskId });
-  revalidateList(workspaceId, spaceId, listId);
+  if (listId) revalidateList(workspaceId, spaceId, listId); else revalidateSpace(workspaceId, spaceId);
   return { taskId: newTaskId };
 }
 
@@ -650,11 +665,9 @@ export async function moveTask(
   if (!t) return { error: "Task not found" };
 
   // Find matching status in target list by name
-  const [currentStatus] = await db
-    .select({ name: listStatus.name })
-    .from(listStatus)
-    .where(eq(listStatus.id, t.statusId))
-    .limit(1);
+  const [currentStatus] = t.statusId
+    ? await db.select({ name: listStatus.name }).from(listStatus).where(eq(listStatus.id, t.statusId)).limit(1)
+    : [];
 
   let newStatusId: string;
   if (currentStatus) {
@@ -677,12 +690,28 @@ export async function moveTask(
       newStatusId = firstOpen.id;
     }
   } else {
-    return { error: "Current status not found" };
+    // Task has no current status — use the first OPEN status in the target list
+    const [firstOpen] = await db
+      .select({ id: listStatus.id })
+      .from(listStatus)
+      .where(and(eq(listStatus.listId, targetListId), eq(listStatus.type, "OPEN")))
+      .orderBy(asc(listStatus.orderIndex))
+      .limit(1);
+    if (!firstOpen) return { error: "Target list has no statuses" };
+    newStatusId = firstOpen.id;
   }
 
   await db
     .update(task)
-    .set({ listId: targetListId, statusId: newStatusId, updatedAt: new Date() })
+    .set({
+      listId: targetListId,
+      statusId: newStatusId,
+      isPinnedToList: false,
+      pinnedToListBy: null,
+      pinnedToListAt: null,
+      pinnedToListOrder: null,
+      updatedAt: new Date(),
+    })
     .where(eq(task.id, taskId));
 
   await writeActivityLog(taskId, session.user.id, "task_moved", {
@@ -754,25 +783,27 @@ export async function createSubtask(
 
   const listId = parentTask.listId;
 
-  const [firstStatus] = await db
-    .select({ id: listStatus.id })
-    .from(listStatus)
-    .where(and(eq(listStatus.listId, listId), eq(listStatus.type, "OPEN")))
-    .orderBy(asc(listStatus.orderIndex))
-    .limit(1);
-
-  let statusId: string;
-  if (firstStatus) {
-    statusId = firstStatus.id;
-  } else {
-    const [anyStatus] = await db
+  let statusId: string | null = null;
+  if (listId) {
+    const [firstStatus] = await db
       .select({ id: listStatus.id })
       .from(listStatus)
-      .where(eq(listStatus.listId, listId))
+      .where(and(eq(listStatus.listId, listId), eq(listStatus.type, "OPEN")))
       .orderBy(asc(listStatus.orderIndex))
       .limit(1);
-    if (!anyStatus) return { error: "List has no statuses" };
-    statusId = anyStatus.id;
+
+    if (firstStatus) {
+      statusId = firstStatus.id;
+    } else {
+      const [anyStatus] = await db
+        .select({ id: listStatus.id })
+        .from(listStatus)
+        .where(eq(listStatus.listId, listId))
+        .orderBy(asc(listStatus.orderIndex))
+        .limit(1);
+      if (!anyStatus) return { error: "List has no statuses" };
+      statusId = anyStatus.id;
+    }
   }
 
   const [{ taskSeq }] = await db
@@ -787,7 +818,7 @@ export async function createSubtask(
     id: taskId,
     seqNumber: taskSeq,
     workspaceId,
-    listId,
+    listId: listId ?? null,
     statusId,
     title: trimmedTitle,
     priority: "NONE",
@@ -797,7 +828,7 @@ export async function createSubtask(
   });
 
   await writeActivityLog(taskId, session.user.id, "subtask_created", { title: trimmedTitle, parentTaskId });
-  revalidatePath(`/${workspaceId}/${spaceId}/list/${listId}`);
+  if (listId) revalidatePath(`/${workspaceId}/${spaceId}/list/${listId}`);
   return { taskId };
 }
 
@@ -969,11 +1000,9 @@ export async function bulkMoveTasks(
     if (t.listId === targetListId) continue; // already there
 
     // Map status by name
-    const [currentStatus] = await db
-      .select({ name: listStatus.name })
-      .from(listStatus)
-      .where(eq(listStatus.id, t.statusId))
-      .limit(1);
+    const [currentStatus] = t.statusId
+      ? await db.select({ name: listStatus.name }).from(listStatus).where(eq(listStatus.id, t.statusId)).limit(1)
+      : [];
 
     const newStatusId =
       (currentStatus && targetStatuses.find((s) => s.name === currentStatus.name)?.id) ??
@@ -1018,19 +1047,21 @@ export async function bulkMoveTasks(
 export async function getTaskLocation(
   workspaceId: string,
   taskId: string,
-): Promise<{ spaceId: string; listId: string } | { error: string }> {
+): Promise<{ spaceId: string; listId: string | null } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
   const [row] = await db
-    .select({ listId: task.listId, spaceId: list.spaceId })
+    .select({ listId: task.listId, taskSpaceId: task.spaceId, listSpaceId: list.spaceId })
     .from(task)
-    .innerJoin(list, eq(task.listId, list.id))
+    .leftJoin(list, eq(task.listId, list.id))
     .where(and(eq(task.id, taskId), eq(task.workspaceId, workspaceId)))
     .limit(1);
 
   if (!row) return { error: "Task not found" };
-  return { spaceId: row.spaceId, listId: row.listId };
+  const spaceId = row.listSpaceId ?? row.taskSpaceId;
+  if (!spaceId) return { error: "Task has no space association" };
+  return { spaceId, listId: row.listId };
 }
 
 // ─── Get archived tasks for list ──────────────────────────────────────────────

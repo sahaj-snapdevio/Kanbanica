@@ -1,10 +1,10 @@
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { task, list } from "@/db/schema";
-import { canAccessSpace, getWorkspaceMembership } from "@/lib/permissions";
+import { task, list, workspace } from "@/db/schema";
+import { canAccessSpace, getWorkspaceMembership, getSpacePermission } from "@/lib/permissions";
 import { TaskDetailPage } from "./_components/task-detail-page";
 
 interface TaskPageProps {
@@ -20,33 +20,56 @@ export default async function TaskPage({ params }: TaskPageProps) {
   const membership = await getWorkspaceMembership(session.user.id, workspaceId);
   if (!membership) notFound();
 
+  const [ws] = await db
+    .select({ name: workspace.name })
+    .from(workspace)
+    .where(eq(workspace.id, workspaceId))
+    .limit(1);
+
   const [t] = await db
-    .select({ id: task.id, listId: task.listId, workspaceId: task.workspaceId })
+    .select({ id: task.id, listId: task.listId, spaceId: task.spaceId, workspaceId: task.workspaceId })
     .from(task)
     .where(eq(task.id, taskId))
     .limit(1);
 
   if (!t || t.workspaceId !== workspaceId) notFound();
 
-  const [l] = await db
-    .select({ id: list.id, spaceId: list.spaceId, name: list.name })
-    .from(list)
-    .where(eq(list.id, t.listId))
-    .limit(1);
+  let spaceId: string;
+  let listId: string | null = null;
+  let listName: string | null = null;
 
-  if (!l) notFound();
+  if (t.listId) {
+    const [l] = await db
+      .select({ id: list.id, spaceId: list.spaceId, name: list.name })
+      .from(list)
+      .where(and(eq(list.id, t.listId)))
+      .limit(1);
+    if (!l) notFound();
+    spaceId = l.spaceId;
+    listId = l.id;
+    listName = l.name;
+  } else if (t.spaceId) {
+    spaceId = t.spaceId;
+  } else {
+    notFound();
+  }
 
-  const accessible = await canAccessSpace(session.user.id, workspaceId, l.spaceId);
+  const accessible = await canAccessSpace(session.user.id, workspaceId, spaceId!);
   if (!accessible) notFound();
+
+  const spacePermission = await getSpacePermission(session.user.id, workspaceId, spaceId!);
+  const canPinToList = spacePermission === "full_access";
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
       <TaskDetailPage
         workspaceId={workspaceId}
-        spaceId={l.spaceId}
-        listId={l.id}
+        spaceId={spaceId!}
+        listId={listId ?? ""}
         taskId={taskId}
-        listName={l.name}
+        listName={listName ?? ""}
+        workspaceName={ws?.name ?? ""}
+        canPinToList={canPinToList}
       />
     </div>
   );

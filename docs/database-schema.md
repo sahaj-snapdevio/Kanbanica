@@ -243,6 +243,11 @@ export const task = pgTable("task", {
   orderIndex: integer("order_index").notNull().default(0),
   isArchived: boolean("is_archived").notNull().default(false),
   archivedAt: timestamp("archived_at", { withTimezone: true }),
+  // List Pin (sticky) — see docs/pinned-tasks.md Part 2
+  isPinnedToList: boolean("is_pinned_to_list").notNull().default(false),
+  pinnedToListBy: text("pinned_to_list_by"),
+  pinnedToListAt: timestamp("pinned_to_list_at", { withTimezone: true }),
+  pinnedToListOrder: integer("pinned_to_list_order"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
@@ -250,6 +255,7 @@ export const task = pgTable("task", {
   index("task_workspace_id_idx").on(t.workspaceId),
   index("task_parent_task_id_idx").on(t.parentTaskId),
   index("task_status_id_idx").on(t.statusId),
+  index("task_pinned_to_list_idx").on(t.listId, t.isPinnedToList),
 ]);
 
 export const taskAssignee = pgTable("task_assignee", {
@@ -289,6 +295,10 @@ export const taskDependency = pgTable("task_dependency", {
   type: dependencyTypeEnum("type").notNull().default("BLOCKED_BY"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// List Pin columns — added to the task table
+// isPinnedToList, pinnedToListBy, pinnedToListAt, pinnedToListOrder
+// See docs/pinned-tasks.md for full spec
 
 export const taskDescriptionSnapshot = pgTable("task_description_snapshot", {
   id: text("id").primaryKey(),
@@ -354,15 +364,13 @@ Schema file: `db/schema/sprint.ts`
 ```ts
 import { pgEnum, pgTable, text, timestamp, integer, index } from "drizzle-orm/pg-core";
 import { task } from "./task";
-import { workspace } from "./workspace";
-import { list } from "./list";
+import { space } from "./space";
 
 export const sprintStatusEnum = pgEnum("sprint_status", ["PLANNED", "ACTIVE", "CLOSED"]);
 
 export const sprint = pgTable("sprint", {
   id: text("id").primaryKey(),
-  listId: text("list_id").notNull().references(() => list.id, { onDelete: "cascade" }),
-  workspaceId: text("workspace_id").notNull().references(() => workspace.id, { onDelete: "cascade" }),
+  spaceId: text("space_id").notNull().references(() => space.id, { onDelete: "cascade" }),  // Sprint belongs to a Project (space), not a List
   name: text("name").notNull(),
   goal: text("goal"),
   status: sprintStatusEnum("status").notNull().default("PLANNED"),
@@ -372,7 +380,7 @@ export const sprint = pgTable("sprint", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
-  index("sprint_list_id_idx").on(t.listId),
+  index("sprint_space_id_idx").on(t.spaceId),
 ]);
 
 export const taskSprint = pgTable("task_sprint", {
@@ -381,6 +389,31 @@ export const taskSprint = pgTable("task_sprint", {
   points: integer("points"),
   addedAt: timestamp("added_at", { withTimezone: true }).notNull().defaultNow(),
 });
+```
+
+---
+
+## Pinned Tasks
+
+Schema file: `db/schema/pinned-task.ts`
+
+```ts
+import { pgTable, text, timestamp, integer, uniqueIndex, index } from "drizzle-orm/pg-core";
+import { user } from "./auth";
+import { task } from "./task";
+import { workspace } from "./workspace";
+
+export const pinnedTask = pgTable("pinned_task", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  taskId: text("task_id").notNull().references(() => task.id, { onDelete: "cascade" }),
+  workspaceId: text("workspace_id").notNull().references(() => workspace.id, { onDelete: "cascade" }),
+  orderIndex: integer("order_index").notNull().default(0),
+  pinnedAt: timestamp("pinned_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("pinned_task_user_task_idx").on(t.userId, t.taskId),
+  index("pinned_task_user_workspace_idx").on(t.userId, t.workspaceId),
+]);
 ```
 
 ---

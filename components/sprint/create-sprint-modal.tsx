@@ -33,7 +33,6 @@ interface CreateSprintModalProps {
   onOpenChange: (open: boolean) => void;
   workspaceId: string;
   spaceId: string;
-  listId: string;
   onCreated: () => void;
 }
 
@@ -55,7 +54,6 @@ export function CreateSprintModal({
   onOpenChange,
   workspaceId,
   spaceId,
-  listId,
   onCreated,
 }: CreateSprintModalProps) {
   const [name, setName] = useState("");
@@ -107,7 +105,7 @@ export function CreateSprintModal({
     setError(null);
 
     try {
-      const result = await createSprint(workspaceId, spaceId, listId, {
+      const result = await createSprint(workspaceId, spaceId, {
         name: name.trim(),
         goal: goal.trim() || undefined,
         startDate: startDate!,

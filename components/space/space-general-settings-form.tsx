@@ -61,7 +61,7 @@ export function SpaceGeneralSettingsForm({
         toast.error(result.error);
         return;
       }
-      toast.success("Space updated");
+      toast.success("Project updated");
       router.refresh();
     });
   }
@@ -73,7 +73,7 @@ export function SpaceGeneralSettingsForm({
         toast.error(result.error);
         return;
       }
-      toast.success("Space archived");
+      toast.success("Project archived");
       router.push(`/${workspaceId}`);
     });
   }
@@ -85,7 +85,7 @@ export function SpaceGeneralSettingsForm({
         toast.error(result.error);
         return;
       }
-      toast.success("Space deleted");
+      toast.success("Project deleted");
       router.push(`/${workspaceId}`);
     });
   }
@@ -94,7 +94,7 @@ export function SpaceGeneralSettingsForm({
     <div className="max-w-xl space-y-8">
       <form onSubmit={handleSave} className="space-y-5">
         <div className="space-y-1.5">
-          <Label htmlFor="space-name">Space Name</Label>
+          <Label htmlFor="space-name">Project Name</Label>
           <Input
             id="space-name"
             value={name}
@@ -159,9 +159,9 @@ export function SpaceGeneralSettingsForm({
         {!isArchived && (
           <div className="flex items-center justify-between rounded-md border border-border p-4">
             <div>
-              <p className="text-sm font-medium">Archive Space</p>
+              <p className="text-sm font-medium">Archive Project</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Hides the Space from the sidebar. Data is preserved and searchable.
+                Hides the Project from the sidebar. Data is preserved and searchable.
               </p>
             </div>
             <AlertDialog>
@@ -174,7 +174,7 @@ export function SpaceGeneralSettingsForm({
                 <AlertDialogHeader>
                   <AlertDialogTitle>Archive &ldquo;{spaceName}&rdquo;?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    The Space will be hidden from the sidebar. All data is preserved and can be restored at any time.
+                    The Project will be hidden from the sidebar. All data is preserved and can be restored at any time.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -189,9 +189,9 @@ export function SpaceGeneralSettingsForm({
         {isAdmin && (
           <div className="flex items-center justify-between rounded-md border border-destructive/30 p-4">
             <div>
-              <p className="text-sm font-medium">Delete Space</p>
+              <p className="text-sm font-medium">Delete Project</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Permanently deletes this Space and all its Lists, Tasks, and files. Cannot be undone.
+                Permanently deletes this Project and all its Lists, Tasks, and files. Cannot be undone.
               </p>
             </div>
             <AlertDialog>
@@ -204,7 +204,7 @@ export function SpaceGeneralSettingsForm({
                 <AlertDialogHeader>
                   <AlertDialogTitle>Delete &ldquo;{spaceName}&rdquo;?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will permanently delete the Space and all its contents — Lists, Tasks, Comments, and uploaded files. This cannot be undone.
+                    This will permanently delete the Project and all its contents — Lists, Tasks, Comments, and uploaded files. This cannot be undone.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

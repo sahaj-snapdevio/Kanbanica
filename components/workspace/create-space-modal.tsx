@@ -46,7 +46,7 @@ export function CreateSpaceModal({ open, onOpenChange, workspaceId }: CreateSpac
         toast.error(result.error);
         return;
       }
-      toast.success("Space created");
+      toast.success("Project created");
       setName("");
       setColor(COLORS[5]);
       setIsPrivate(false);
@@ -59,7 +59,7 @@ export function CreateSpaceModal({ open, onOpenChange, workspaceId }: CreateSpac
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Create a Space</DialogTitle>
+          <DialogTitle>Create a Project</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-5 pt-2">
@@ -67,7 +67,7 @@ export function CreateSpaceModal({ open, onOpenChange, workspaceId }: CreateSpac
             <Label htmlFor="space-name">Name</Label>
             <Input
               id="space-name"
-              placeholder="e.g. Engineering"
+              placeholder="e.g. Backend API"
               value={name}
               onChange={(e) => setName(e.target.value)}
               autoFocus
@@ -128,7 +128,7 @@ export function CreateSpaceModal({ open, onOpenChange, workspaceId }: CreateSpac
             </Button>
             <Button type="submit" disabled={pending || !name.trim()} className="gap-2">
               {pending && <Spinner className="size-4" />}
-              Create Space
+              Create Project
             </Button>
           </div>
         </form>

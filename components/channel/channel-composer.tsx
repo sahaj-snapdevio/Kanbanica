@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import {
@@ -260,7 +260,7 @@ export function ChannelComposer({
               )}
               <div className="min-w-0 max-w-32">
                 <p className="truncate text-xs font-medium">{att.file.name}</p>
-                <p className="text-[10px] text-muted-foreground">
+                <p className="text-2xs text-muted-foreground">
                   {att.uploading
                     ? "Uploading…"
                     : att.error

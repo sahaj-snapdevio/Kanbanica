@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import Link from "next/link";
@@ -541,7 +541,7 @@ function HeroSection() {
                         </span>
                         <span
                           className={cn(
-                            "shrink-0 rounded px-2 py-0.5 text-[10px] font-medium",
+                            "shrink-0 rounded px-2 py-0.5 text-2xs font-medium",
                             t.statusCls,
                           )}
                         >
@@ -549,7 +549,7 @@ function HeroSection() {
                         </span>
                         <span
                           className={cn(
-                            "hidden shrink-0 rounded px-2 py-0.5 text-[10px] font-medium sm:inline-block",
+                            "hidden shrink-0 rounded px-2 py-0.5 text-2xs font-medium sm:inline-block",
                             t.pCls,
                           )}
                         >
@@ -991,7 +991,7 @@ function ViewsShowcaseSection() {
                           {t}
                         </span>
                         {done && (
-                          <span className="text-[10px] text-[#9ca3af]">
+                          <span className="text-2xs text-[#9ca3af]">
                             Completed
                           </span>
                         )}
@@ -1050,14 +1050,14 @@ function ViewsShowcaseSection() {
                             className="size-2 shrink-0 rounded-full"
                             style={{ background: col.dot }}
                           />
-                          <p className="font-semibold text-[#6b7280] text-[10px]">
+                          <p className="font-semibold text-[#6b7280] text-2xs">
                             {col.label}
                           </p>
                         </div>
                         {col.tasks.map((t) => (
                           <div
                             key={t}
-                            className="mb-1.5 rounded border border-[#CBCBCB] bg-white px-2.5 py-2 text-[10px] text-[#174D38] shadow-sm transition-colors hover:border-[#174D38]/40"
+                            className="mb-1.5 rounded border border-[#CBCBCB] bg-white px-2.5 py-2 text-2xs text-[#174D38] shadow-sm transition-colors hover:border-[#174D38]/40"
                           >
                             {t}
                           </div>
@@ -1126,7 +1126,7 @@ function ViewsShowcaseSection() {
                           >
                             <span className="size-3.5 shrink-0 rounded border border-[#CBCBCB]" />
                             <span className="flex-1 text-[#174D38]">{t}</span>
-                            <span className="text-[#9ca3af] text-[10px]">
+                            <span className="text-[#9ca3af] text-2xs">
                               {ctx}
                             </span>
                           </div>
@@ -1307,10 +1307,10 @@ function BeforeAfterSection() {
               </div>
 
               {/* Floating labels */}
-              <span className="absolute top-3 left-3 z-10 rounded-full bg-emerald-500 px-3 py-1 font-bold text-[10px] text-white uppercase tracking-wider shadow-md">
+              <span className="absolute top-3 left-3 z-10 rounded-full bg-emerald-500 px-3 py-1 font-bold text-2xs text-white uppercase tracking-wider shadow-md">
                 After
               </span>
-              <span className="absolute top-3 right-3 z-10 rounded-full bg-red-500 px-3 py-1 font-bold text-[10px] text-white uppercase tracking-wider shadow-md">
+              <span className="absolute top-3 right-3 z-10 rounded-full bg-red-500 px-3 py-1 font-bold text-2xs text-white uppercase tracking-wider shadow-md">
                 Before
               </span>
 

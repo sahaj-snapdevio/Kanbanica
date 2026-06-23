@@ -1,5 +1,6 @@
 import { pgEnum, pgTable, text, timestamp, integer, boolean, json, index, unique } from "drizzle-orm/pg-core";
 import { workspace } from "./workspace";
+import { space } from "./space";
 import { list, listStatus } from "./list";
 
 export const priorityEnum = pgEnum("priority", ["NONE", "LOW", "MEDIUM", "HIGH", "URGENT"]);
@@ -13,12 +14,12 @@ export const task = pgTable(
     workspaceId: text("workspace_id")
       .notNull()
       .references(() => workspace.id, { onDelete: "cascade" }),
+    spaceId: text("space_id")
+      .references(() => space.id, { onDelete: "cascade" }),
     listId: text("list_id")
-      .notNull()
       .references(() => list.id, { onDelete: "cascade" }),
     parentTaskId: text("parent_task_id"),
     statusId: text("status_id")
-      .notNull()
       .references(() => listStatus.id),
     title: text("title").notNull(),
     description: json("description"),
@@ -30,6 +31,10 @@ export const task = pgTable(
     orderIndex: integer("order_index").notNull().default(0),
     isArchived: boolean("is_archived").notNull().default(false),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
+    isPinnedToList: boolean("is_pinned_to_list").notNull().default(false),
+    pinnedToListBy: text("pinned_to_list_by"),
+    pinnedToListAt: timestamp("pinned_to_list_at", { withTimezone: true }),
+    pinnedToListOrder: integer("pinned_to_list_order"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -38,6 +43,7 @@ export const task = pgTable(
     index("task_workspace_id_idx").on(t.workspaceId),
     index("task_parent_task_id_idx").on(t.parentTaskId),
     index("task_status_id_idx").on(t.statusId),
+    index("task_pinned_to_list_idx").on(t.listId, t.isPinnedToList),
   ],
 );
 

@@ -28,7 +28,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
   return (
-    <html className={cn("scroll-smooth font-sans", inter.variable)} lang="en">
+    <html className={cn("dark scroll-smooth font-sans", inter.variable)} lang="en">
       <body suppressHydrationWarning>
         {children}
         <Toaster richColors position="top-right" />

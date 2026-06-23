@@ -20,4 +20,4 @@ export default async function SpaceActivityPage({ params }: Props) {
   return <SpaceActivityFeed workspaceId={workspaceId} spaceId={spaceId} />;
 }
 
-export const metadata = { title: "Space Activity" };
+export const metadata = { title: "Project Activity" };

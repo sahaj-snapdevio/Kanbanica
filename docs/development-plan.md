@@ -38,20 +38,21 @@ Phase 2  ->  Landing Page
 Phase 3  ->  Authentication Pages
 Phase 4  ->  Onboarding
 Phase 5  ->  Workspace
-Phase 6  ->  Space
+Phase 6  ->  Project (Space)
 Phase 7  ->  Folder (Post-MVP — skipped in initial build)
 Phase 8  ->  List
 Phase 9  ->  Task
 Phase 10 ->  Subtask
 Phase 11 ->  Sprint
-Phase 12 ->  Views (Board + Calendar + My Tasks)
-Phase 13 ->  Collaboration (Comments + Activity)
-Phase 14 ->  Search & Filters
-Phase 15 ->  Notifications
-Phase 16 ->  Permission Enforcement (audit pass)
-Phase 17 ->  Admin Panel
-Phase 18 ->  Customer Support
-Phase 19 ->  QA & Launch Prep
+Phase 12 ->  Pinned Tasks (Personal Pin + List Pin)
+Phase 13 ->  Views (Board + Calendar + My Tasks)
+Phase 14 ->  Collaboration (Comments + Activity)
+Phase 15 ->  Search & Filters
+Phase 16 ->  Notifications
+Phase 17 ->  Permission Enforcement (audit pass)
+Phase 18 ->  Admin Panel
+Phase 19 ->  Customer Support
+Phase 20 ->  QA & Launch Prep
 ```
 
 ---

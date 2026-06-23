@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import Link from "next/link";
@@ -6,6 +6,8 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   ArchiveIcon,
   BellIcon,
+  CaretDownIcon,
+  CaretRightIcon,
   CaretUpDownIcon,
   ChatCircleIcon,
   CheckCircleIcon,
@@ -17,17 +19,20 @@ import {
   HeadsetIcon,
   TrayIcon,
   HashIcon,
+  LightningIcon,
   ListIcon,
   LockSimpleIcon,
   MagnifyingGlassIcon,
   PencilSimpleIcon,
   PlusIcon,
+  PushPinIcon,
+  PushPinSlashIcon,
   SignOutIcon,
   TrashIcon,
   UserPlusIcon,
   XIcon,
 } from "@phosphor-icons/react";
-import useSWR from "swr";
+import useSWR, { useSWRConfig } from "swr";
 import { SearchPalette } from "@/components/search/search-palette";
 import { archiveSpace, deleteSpace, unarchiveSpace } from "@/app/actions/space";
 import { archiveList, duplicateList, unarchiveList } from "@/app/actions/list";
@@ -40,12 +45,14 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { CreateSpaceModal } from "@/components/workspace/create-space-modal";
 import { CreateListModal } from "@/components/list/create-list-modal";
+import { CreateSprintModal } from "@/components/sprint/create-sprint-modal";
 import { EditListDialog } from "@/components/list/edit-list-dialog";
 import { DeleteListDialog } from "@/components/list/delete-list-dialog";
 import { PushNotificationBanner } from "@/components/notifications/push-notification-banner";
 import { usePushSubscription } from "@/hooks/use-push-subscription";
 import { CreateChannelModal } from "@/components/channel/create-channel-modal";
 import { AddChannelMemberModal } from "@/components/channel/add-channel-member-modal";
+import { TopbarProvider, useTopbarState } from "@/lib/topbar-context";
 
 interface WorkspaceSummary {
   id: string;
@@ -60,6 +67,12 @@ interface ListSummary {
   description: string | null;
 }
 
+interface SprintSummary {
+  id: string;
+  name: string;
+  status: "PLANNED" | "ACTIVE" | "CLOSED";
+}
+
 interface SpaceSummary {
   id: string;
   name: string;
@@ -68,6 +81,7 @@ interface SpaceSummary {
   canManageList: boolean;
   lists: ListSummary[];
   archivedLists: ListSummary[];
+  sprints: SprintSummary[];
 }
 
 interface ChannelSummary {
@@ -112,6 +126,7 @@ export function WorkspaceShell({
   const [deleteList, setDeleteList] = React.useState<{ spaceId: string; list: ListSummary } | null>(null);
   const [createChannelOpen, setCreateChannelOpen] = React.useState(false);
   const [addMemberChannel, setAddMemberChannel] = React.useState<{ id: string; name: string } | null>(null);
+  const [createSprintForSpace, setCreateSprintForSpace] = React.useState<{ spaceId: string } | null>(null);
 
   // Auto-subscribe to push notifications if permission was already granted
   usePushSubscription();
@@ -154,7 +169,7 @@ export function WorkspaceShell({
   }
 
   return (
-    <div className="flex h-screen flex-col bg-background overflow-hidden">
+    <div className="flex h-screen bg-background overflow-hidden">
       <SearchPalette
         workspaceId={workspace.id}
         open={searchOpen}
@@ -172,6 +187,16 @@ export function WorkspaceShell({
           onOpenChange={(open) => !open && setCreateListForSpace(null)}
           workspaceId={workspace.id}
           spaceId={createListForSpace.spaceId}
+        />
+      )}
+
+      {createSprintForSpace && (
+        <CreateSprintModal
+          open
+          onOpenChange={(open) => !open && setCreateSprintForSpace(null)}
+          workspaceId={workspace.id}
+          spaceId={createSprintForSpace.spaceId}
+          onCreated={() => setCreateSprintForSpace(null)}
         />
       )}
 
@@ -226,78 +251,6 @@ export function WorkspaceShell({
         />
       )}
 
-      {/* Global top bar */}
-      <header className="sticky top-0 z-40 flex h-12 shrink-0 items-center border-b bg-card px-3 gap-3">
-        {/* Mobile sidebar toggle */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-8 lg:hidden shrink-0"
-          onClick={() => setSidebarOpen(true)}
-        >
-          <ListIcon className="size-5" />
-        </Button>
-
-        {/* Workspace switcher — left side */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <button className="flex shrink-0 items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors hover:bg-accent max-w-45">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-xs font-semibold">
-                {workspaceBadge(workspace)}
-              </span>
-              <span className="truncate hidden sm:block">{workspace.name}</span>
-              <CaretUpDownIcon className="size-3.5 shrink-0 text-muted-foreground" />
-            </button>
-          </PopoverTrigger>
-          <PopoverContent align="start" className="w-64 p-1">
-            <p className="px-2 py-1.5 font-medium text-muted-foreground text-xs uppercase tracking-wide">
-              Workspaces
-            </p>
-            {workspaces.map((ws) => (
-              <Link
-                key={ws.id}
-                href={`/${ws.id}`}
-                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent"
-              >
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-xs">
-                  {workspaceBadge(ws)}
-                </span>
-                <span className="flex-1 truncate">{ws.name}</span>
-                {ws.id === workspace.id && <CheckIcon className="size-4 text-primary" />}
-              </Link>
-            ))}
-            <Separator className="my-1" />
-            <Link
-              href="/onboarding?new=1"
-              className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            >
-              <PlusIcon className="size-4" />
-              Create workspace
-            </Link>
-          </PopoverContent>
-        </Popover>
-
-        <div className="h-5 w-px bg-border shrink-0" />
-
-        {/* Centered search bar */}
-        <div className="flex flex-1 justify-center">
-          <button
-            onClick={() => setSearchOpen(true)}
-            className="flex items-center gap-2 h-8 w-full max-w-md rounded-md border bg-muted/50 px-3 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          >
-            <MagnifyingGlassIcon className="size-4 shrink-0" />
-            <span className="flex-1 text-left text-sm">Search…</span>
-            <kbd className="hidden sm:inline-flex items-center gap-0.5 rounded border bg-background px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
-              Ctrl K
-            </kbd>
-          </button>
-        </div>
-
-      </header>
-
-      {/* Body: sidebar + main content */}
-      <div className="flex flex-1 overflow-hidden">
-
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-20 bg-black/50 lg:hidden"
@@ -305,14 +258,55 @@ export function WorkspaceShell({
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar — full height */}
       <aside
         className={cn(
-          "fixed inset-y-12 left-0 z-30 flex w-60 shrink-0 flex-col border-r bg-[#F9F9F9] dark:bg-card transition-transform duration-200 lg:static lg:inset-y-auto lg:h-full",
+          "fixed inset-y-0 left-0 z-30 flex w-60 shrink-0 flex-col border-r border-border bg-(--bg-sidebar) transition-transform duration-200 lg:static lg:h-full",
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         )}
       >
-        {/* Spaces nav */}
+        {/* Workspace switcher at top of sidebar */}
+        <div className="flex h-12 shrink-0 items-center border-b border-[rgba(255,255,255,0.06)] px-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors hover:bg-(--bg-sidebar-item-hover) text-(--text-sidebar-active)">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/15 text-xs font-semibold text-(--text-sidebar-active)">
+                  {workspaceBadge(workspace)}
+                </span>
+                <span className="flex-1 truncate text-left">{workspace.name}</span>
+                <CaretUpDownIcon className="size-3.5 shrink-0 text-(--text-muted)" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-64 p-1">
+              <p className="px-2 py-1.5 font-medium text-muted-foreground text-xs uppercase tracking-wide">
+                Workspaces
+              </p>
+              {workspaces.map((ws) => (
+                <Link
+                  key={ws.id}
+                  href={`/${ws.id}`}
+                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent"
+                >
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-xs">
+                    {workspaceBadge(ws)}
+                  </span>
+                  <span className="flex-1 truncate">{ws.name}</span>
+                  {ws.id === workspace.id && <CheckIcon className="size-4 text-primary" />}
+                </Link>
+              ))}
+              <Separator className="my-1" />
+              <Link
+                href="/onboarding?new=1"
+                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <PlusIcon className="size-4" />
+                Create workspace
+              </Link>
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        {/* Main nav */}
         <nav className="flex-1 space-y-4 overflow-y-auto px-2 py-3">
           {/* Global links */}
           <div className="space-y-0.5">
@@ -337,16 +331,16 @@ export function WorkspaceShell({
                   href={href}
                   onClick={() => setSidebarOpen(false)}
                   className={cn(
-                    "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
+                    "relative flex items-center gap-2.5 rounded-md px-3 py-1.5 text-[13px] transition-colors select-none",
                     active
-                      ? "bg-accent font-medium text-accent-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                      ? "bg-(--bg-sidebar-item-active) text-(--text-sidebar-active) font-medium overflow-hidden after:absolute after:left-0 after:inset-y-0 after:w-0.75 after:bg-primary"
+                      : "text-(--text-sidebar) hover:bg-(--bg-sidebar-item-hover) hover:text-(--text-sidebar-active)",
                   )}
                 >
                   {icon}
                   <span className="flex-1">{label}</span>
                   {badge !== null && (
-                    <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-blue-500 px-1 text-[10px] font-semibold text-white leading-none">
+                    <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-(--brand) px-1 text-2xs font-semibold text-white leading-none">
                       {badge > 99 ? "99+" : badge}
                     </span>
                   )}
@@ -356,15 +350,15 @@ export function WorkspaceShell({
           </div>
 
           <div>
-            <div className="flex items-center px-2 pb-1">
-              <p className="flex-1 font-medium text-muted-foreground text-xs uppercase tracking-wide">
-                Spaces
+            <div className="flex items-center px-3 pb-1 pt-2">
+              <p className="flex-1 text-[11px] font-semibold tracking-widest uppercase text-(--text-muted)">
+                Projects
               </p>
               {isAdmin && (
                 <button
                   onClick={() => setCreateSpaceOpen(true)}
-                  className="flex size-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                  title="Create Space"
+                  className="flex size-5 items-center justify-center rounded text-(--text-muted) transition-colors hover:bg-(--bg-sidebar-item-hover) hover:text-(--text-sidebar-active)"
+                  title="Create Project"
                 >
                   <PlusIcon className="size-3.5" />
                 </button>
@@ -373,33 +367,32 @@ export function WorkspaceShell({
             <div className="space-y-0.5">
               {spaces.map((s) => (
                 <div key={s.id}>
-                  <div className="group flex items-center gap-2 px-2 py-1.5 font-medium text-sm">
-                    <FolderIcon
-                      className="size-4 shrink-0"
-                      weight="fill"
-                      style={{ color: s.color ?? "#9CA3AF" }}
+                  <div className="group flex items-center gap-2 px-3 py-1.5 text-[13px] font-medium text-(--text-sidebar-active)">
+                    <span
+                      className="size-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: s.color ?? "#9CA3AF" }}
                     />
                     <span className="flex-1 truncate">{s.name}</span>
                     {s.isPrivate && (
-                      <LockSimpleIcon className="size-3 shrink-0 text-muted-foreground" />
+                      <LockSimpleIcon className="size-3 shrink-0 text-(--text-muted)" />
                     )}
                     {s.canManageList && (
                       <button
                         onClick={() => setCreateListForSpace({ spaceId: s.id })}
-                        className="opacity-0 transition-opacity group-hover:opacity-100 flex size-5 items-center justify-center rounded hover:bg-accent"
+                        className="opacity-0 transition-opacity group-hover:opacity-100 flex size-5 items-center justify-center rounded hover:bg-(--bg-sidebar-item-hover) text-(--text-muted)"
                         title="Add list"
                       >
-                        <PlusIcon className="size-3.5 text-muted-foreground" />
+                        <PlusIcon className="size-3.5" />
                       </button>
                     )}
                     <Popover>
                       <PopoverTrigger asChild>
                         <button
-                          className="opacity-0 transition-opacity group-hover:opacity-100 flex size-5 items-center justify-center rounded hover:bg-accent"
-                          title="Space options"
+                          className="opacity-0 transition-opacity group-hover:opacity-100 flex size-5 items-center justify-center rounded hover:bg-(--bg-sidebar-item-hover) text-(--text-muted)"
+                          title="Project options"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <DotsThreeIcon className="size-4.5 text-muted-foreground" weight="bold" />
+                          <DotsThreeIcon className="size-4.5" weight="bold" />
                         </button>
                       </PopoverTrigger>
                       <PopoverContent side="right" align="start" className="w-48 p-1">
@@ -433,14 +426,14 @@ export function WorkspaceShell({
                           className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                         >
                           <ArchiveIcon className="size-3.5 shrink-0" />
-                          Archive Space
+                          Archive Project
                         </button>
                         <button
                           onClick={() => setSpaceAction({ id: s.id, name: s.name, variant: "delete" })}
                           className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-destructive transition-colors hover:bg-destructive/10"
                         >
                           <TrashIcon className="size-3.5 shrink-0" />
-                          Delete Space
+                          Delete Project
                         </button>
                       </PopoverContent>
                     </Popover>
@@ -455,10 +448,10 @@ export function WorkspaceShell({
                             href={href}
                             onClick={() => setSidebarOpen(false)}
                             className={cn(
-                              "flex flex-1 items-center gap-2 rounded-md py-1.5 pr-7 pl-6 text-sm transition-colors",
+                              "relative flex flex-1 items-center gap-2 rounded-md py-1.5 pr-7 pl-7 text-[13px] transition-colors select-none",
                               active
-                                ? "bg-accent font-medium text-accent-foreground"
-                                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                                ? "bg-(--bg-sidebar-item-active) text-(--text-sidebar-active) font-medium overflow-hidden after:absolute after:left-0 after:inset-y-0 after:w-0.75 after:bg-primary"
+                                : "text-(--text-sidebar) hover:bg-(--bg-sidebar-item-hover) hover:text-(--text-sidebar-active)",
                             )}
                           >
                             <ListIcon
@@ -472,11 +465,11 @@ export function WorkspaceShell({
                             <Popover>
                               <PopoverTrigger asChild>
                                 <button
-                                  className="absolute right-1 opacity-0 transition-opacity group-hover/list:opacity-100 flex size-5 items-center justify-center rounded hover:bg-accent"
+                                  className="absolute right-1 opacity-0 transition-opacity group-hover/list:opacity-100 flex size-5 items-center justify-center rounded hover:bg-(--bg-sidebar-item-hover)"
                                   title="List options"
                                   onClick={(e) => e.stopPropagation()}
                                 >
-                                  <DotsThreeIcon className="size-4.5 text-foreground/70" weight="bold" />
+                                  <DotsThreeIcon className="size-4.5 text-(--text-muted)" weight="bold" />
                                 </button>
                               </PopoverTrigger>
                               <PopoverContent side="right" align="start" className="w-44 p-1">
@@ -522,10 +515,46 @@ export function WorkspaceShell({
                         </div>
                       );
                     })}
+                    {s.sprints.map((sp) => {
+                      const href = `/${workspace.id}/${s.id}/sprint/${sp.id}`;
+                      const active = pathname === href;
+                      return (
+                        <Link
+                          key={sp.id}
+                          href={href}
+                          onClick={() => setSidebarOpen(false)}
+                          className={cn(
+                            "relative flex items-center gap-2 rounded-md py-1.5 pr-2 pl-7 text-[13px] transition-colors select-none",
+                            active
+                              ? "bg-(--bg-sidebar-item-active) text-(--text-sidebar-active) font-medium overflow-hidden after:absolute after:left-0 after:inset-y-0 after:w-0.75 after:bg-primary"
+                              : "text-(--text-sidebar) hover:bg-(--bg-sidebar-item-hover) hover:text-(--text-sidebar-active)",
+                          )}
+                        >
+                          <LightningIcon
+                            className="size-3.5 shrink-0"
+                            weight="fill"
+                            style={{ color: sp.status === "ACTIVE" ? "#4ADE80" : undefined }}
+                          />
+                          <span className="truncate">{sp.name}</span>
+                          {sp.status === "ACTIVE" && (
+                            <span className="ml-auto h-1.5 w-1.5 rounded-full bg-green-400 shrink-0 animate-pulse" />
+                          )}
+                        </Link>
+                      );
+                    })}
+                    {s.canManageList && (
+                      <button
+                        onClick={() => setCreateSprintForSpace({ spaceId: s.id })}
+                        className="flex w-full items-center gap-2 rounded-md py-1.5 pl-7 pr-2 text-xs text-(--text-muted) transition-colors hover:bg-(--bg-sidebar-item-hover) hover:text-(--text-sidebar-active)"
+                      >
+                        <LightningIcon className="size-3" />
+                        Create sprint
+                      </button>
+                    )}
                     {s.canManageList && (
                       <button
                         onClick={() => setCreateListForSpace({ spaceId: s.id })}
-                        className="flex w-full items-center gap-2 rounded-md py-1.5 pl-6 pr-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                        className="flex w-full items-center gap-2 rounded-md py-1.5 pl-7 pr-2 text-xs text-(--text-muted) transition-colors hover:bg-(--bg-sidebar-item-hover) hover:text-(--text-sidebar-active)"
                       >
                         <PlusIcon className="size-3" />
                         Add list
@@ -538,20 +567,20 @@ export function WorkspaceShell({
                           next.has(s.id) ? next.delete(s.id) : next.add(s.id);
                           return next;
                         })}
-                        className="flex items-center gap-1.5 pl-6 pr-2 py-1 text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors w-full"
+                        className="flex items-center gap-1.5 pl-7 pr-2 py-1 text-xs text-(--text-muted) hover:text-(--text-sidebar) transition-colors w-full"
                       >
                         <ArchiveIcon className="size-3" />
                         {expandedArchivedLists.has(s.id) ? "Hide" : `${s.archivedLists.length} archived`}
                       </button>
                     )}
                     {expandedArchivedLists.has(s.id) && s.archivedLists.map((l) => (
-                      <div key={l.id} className="group flex items-center gap-2 pl-6 pr-2 py-1 text-xs text-muted-foreground/50">
+                      <div key={l.id} className="group flex items-center gap-2 pl-7 pr-2 py-1 text-xs text-(--text-muted)">
                         <ArchiveIcon className="size-3 shrink-0" />
                         <span className="flex-1 truncate italic">{l.name}</span>
                         {s.canManageList && (
                           <button
                             onClick={async () => { await unarchiveList(workspace.id, s.id, l.id); }}
-                            className="hidden group-hover:block text-[10px] px-1.5 py-0.5 rounded bg-accent hover:bg-accent/80 text-muted-foreground"
+                            className="hidden group-hover:block text-2xs px-1.5 py-0.5 rounded bg-(--bg-sidebar-item-hover) hover:bg-(--bg-sidebar-item-active) text-(--text-sidebar)"
                           >
                             Unarchive
                           </button>
@@ -568,23 +597,26 @@ export function WorkspaceShell({
             <div>
               <button
                 onClick={() => setShowArchivedSpaces(v => !v)}
-                className="flex items-center gap-1.5 px-2 pb-1 text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors w-full"
+                className="flex items-center gap-1.5 px-3 pb-1 text-xs text-(--text-muted) hover:text-(--text-sidebar) transition-colors w-full"
               >
                 <ArchiveIcon className="size-3" />
                 <span className="flex-1 text-left uppercase tracking-wide font-medium">
-                  {showArchivedSpaces ? "Hide archived spaces" : `Archived spaces (${archivedSpaces.length})`}
+                  {showArchivedSpaces ? "Hide archived projects" : `Archived projects (${archivedSpaces.length})`}
                 </span>
               </button>
               {showArchivedSpaces && (
                 <div className="space-y-0.5">
                   {archivedSpaces.map((s) => (
-                    <div key={s.id} className="group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground/50">
-                      <FolderIcon className="size-4 shrink-0" weight="fill" style={{ color: s.color ?? "#9CA3AF" }} />
+                    <div key={s.id} className="group flex items-center gap-2 rounded-md px-3 py-1.5 text-[13px] text-(--text-muted)">
+                      <span
+                        className="size-2 shrink-0 rounded-full opacity-40"
+                        style={{ backgroundColor: s.color ?? "#9CA3AF" }}
+                      />
                       <span className="flex-1 truncate italic">{s.name}</span>
                       {isAdmin && (
                         <button
                           onClick={async () => { await unarchiveSpace(workspace.id, s.id); }}
-                          className="hidden group-hover:block text-xs px-1.5 py-0.5 rounded bg-accent hover:bg-accent/80 text-muted-foreground"
+                          className="hidden group-hover:block text-xs px-1.5 py-0.5 rounded bg-(--bg-sidebar-item-hover) text-(--text-sidebar)"
                         >
                           Unarchive
                         </button>
@@ -659,10 +691,10 @@ export function WorkspaceShell({
         </nav>
 
         {/* Bottom user menu */}
-        <div className="border-t p-2">
+        <div className="border-t border-[rgba(255,255,255,0.08)] p-2">
           <Popover>
             <PopoverTrigger asChild>
-              <button className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors hover:bg-accent">
+              <button className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-[13px] text-(--text-sidebar) transition-colors hover:bg-(--bg-sidebar-item-hover) hover:text-(--text-sidebar-active)">
                 <Avatar className="size-7 shrink-0">
                   <AvatarFallback className="text-xs">{initials}</AvatarFallback>
                 </Avatar>
@@ -706,13 +738,175 @@ export function WorkspaceShell({
         </div>
       </aside>
 
-      {/* Main content */}
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <PushNotificationBanner workspaceId={workspace.id} />
-        <main className="flex-1 overflow-auto">{children}</main>
-      </div>
+      {/* Right column: topbar + main content */}
+      <TopbarProvider>
+        <TopbarRightColumn
+          workspaceId={workspace.id}
+          onOpenSidebar={() => setSidebarOpen(true)}
+          onOpenSearch={() => setSearchOpen(true)}
+        >
+          {children}
+        </TopbarRightColumn>
+      </TopbarProvider>
+    </div>
+  );
+}
 
-      </div>{/* end body row */}
+// ─── Pinned Tasks Tab Strip ───────────────────────────────────────────────────
+
+interface PinnedItem {
+  id: string;
+  taskId: string;
+  taskTitle: string;
+  listName: string | null;
+  spaceName: string | null;
+  orderIndex: number;
+}
+
+
+function PinnedTasksBar({ workspaceId }: { workspaceId: string }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const { mutate } = useSWRConfig();
+  const swrKey = `/api/workspaces/${workspaceId}/pinned-tasks`;
+  const { data } = useSWR<{ pinnedTasks: PinnedItem[] }>(
+    swrKey,
+    (url: string) => fetch(url).then((r) => r.json()),
+    { refreshInterval: 60000 },
+  );
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+
+  const pinned = data?.pinnedTasks ?? [];
+  if (pinned.length === 0) return null;
+
+  async function handleUnpin(e: React.MouseEvent, taskId: string) {
+    e.stopPropagation();
+    mutate(swrKey, (prev: { pinnedTasks: PinnedItem[] } | undefined) => ({
+      pinnedTasks: (prev?.pinnedTasks ?? []).filter((t) => t.taskId !== taskId),
+    }), { revalidate: false });
+    await fetch(`/api/tasks/${taskId}/pin`, { method: 'DELETE' });
+    mutate(swrKey);
+  }
+  function handleWheel(e: React.WheelEvent<HTMLDivElement>) {
+    if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && scrollRef.current) {
+      e.preventDefault();
+      scrollRef.current.scrollLeft += e.deltaY;
+    }
+  }
+
+
+  return (
+    <div className="h-7 shrink-0 border-b border-border bg-surface overflow-hidden">
+      <div
+        ref={scrollRef}
+        onWheel={handleWheel}
+        className="flex h-full items-center gap-1 px-3 overflow-x-auto [&::-webkit-scrollbar]:hidden"
+        style={{ scrollbarWidth: 'none' } as React.CSSProperties}
+      >
+        <PushPinIcon className="size-3 shrink-0 text-muted-foreground" weight="fill" />
+        {pinned.map((item) => {
+          const isActive = pathname === `/${workspaceId}/task/${item.taskId}`;
+          return (
+            <div
+              key={item.id}
+              className={cn(
+                "group/pin relative flex h-5 items-center rounded shrink-0 max-w-[160px] overflow-hidden border",
+                isActive ? "bg-primary/10 border-primary/30" : "border-border hover:bg-accent",
+              )}
+            >
+              <button
+                onClick={() => router.push(`/${workspaceId}/task/${item.taskId}`)}
+                title={[item.spaceName, item.listName].filter(Boolean).join(" · ")}
+                className={cn(
+                  "min-w-0 flex-1 flex h-full items-center pl-2 pr-1 text-xs font-medium transition-colors cursor-pointer overflow-hidden",
+                  isActive ? "text-primary" : "text-muted-foreground group-hover/pin:text-foreground",
+                )}
+              >
+                <span className="truncate block">{item.taskTitle}</span>
+              </button>
+              <button
+                onClick={(e) => handleUnpin(e, item.taskId)}
+                title="Unpin"
+                className="hidden group-hover/pin:flex shrink-0 h-full items-center px-1 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              >
+                <PushPinSlashIcon className="size-3" />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── TopbarRightColumn ────────────────────────────────────────────────────────
+// Separated so it can read TopbarContext (must be inside TopbarProvider)
+
+function TopbarRightColumn({
+  workspaceId,
+  onOpenSidebar,
+  onOpenSearch,
+  children,
+}: {
+  workspaceId: string;
+  onOpenSidebar: () => void;
+  onOpenSearch: () => void;
+  children: React.ReactNode;
+}) {
+  const topbar = useTopbarState();
+
+  return (
+    <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+      {/* Top bar */}
+      <header className="sticky top-0 z-40 flex h-12 shrink-0 items-center border-b border-border bg-surface px-4 gap-3">
+        {/* Mobile sidebar toggle */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-8 lg:hidden shrink-0"
+          onClick={onOpenSidebar}
+        >
+          <ListIcon className="size-5" />
+        </Button>
+
+        {/* Breadcrumb — injected by active page */}
+        <div className="flex flex-1 items-center gap-1.5 min-w-0 text-sm">
+          {topbar ? (
+            <>
+              {topbar.breadcrumbs.map((crumb, i) => (
+                <React.Fragment key={i}>
+                  {i > 0 && <CaretRightIcon className="size-3.5 text-muted-foreground shrink-0" />}
+                  <span className="flex items-center gap-1.5 text-muted-foreground font-medium shrink-0">
+                    {crumb.color && (
+                      <span className="inline-block h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: crumb.color }} />
+                    )}
+                    {crumb.label}
+                  </span>
+                </React.Fragment>
+              ))}
+              {topbar.breadcrumbs.length > 0 && <CaretRightIcon className="size-3.5 text-muted-foreground shrink-0" />}
+              <span className="font-semibold text-foreground truncate">{topbar.title}</span>
+              {topbar.actions && <div className="ml-auto shrink-0">{topbar.actions}</div>}
+            </>
+          ) : null}
+        </div>
+
+        {/* Search — right side */}
+        <button
+          onClick={onOpenSearch}
+          className="flex items-center gap-2 h-8 w-52 shrink-0 rounded-md border bg-muted/50 px-3 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        >
+          <MagnifyingGlassIcon className="size-4 shrink-0" />
+          <span className="flex-1 text-left text-sm">Search…</span>
+          <kbd className="hidden sm:inline-flex items-center gap-0.5 rounded border bg-background px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
+            ⌘K
+          </kbd>
+        </button>
+      </header>
+
+      <PushNotificationBanner workspaceId={workspaceId} />
+      <PinnedTasksBar workspaceId={workspaceId} />
+      <main className="flex-1 overflow-auto bg-app">{children}</main>
     </div>
   );
 }

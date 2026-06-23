@@ -38,12 +38,12 @@ export type SearchTaskResult = {
   title: string;
   seqNumber: number;
   priority: string;
-  statusId: string;
-  statusName: string;
-  statusColor: string;
-  statusType: string;
-  listId: string;
-  listName: string;
+  statusId: string | null;
+  statusName: string | null;
+  statusColor: string | null;
+  statusType: string | null;
+  listId: string | null;
+  listName: string | null;
   spaceId: string;
   spaceName: string;
   dueDateEnd: Date | null;
@@ -417,7 +417,7 @@ export async function getFilteredTasks(
       title: string;
       seqNumber: number;
       priority: string;
-      statusId: string;
+      statusId: string | null;
       dueDateEnd: Date | null;
       orderIndex: number;
       tags: { id: string; name: string; color: string }[];

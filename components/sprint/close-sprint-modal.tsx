@@ -112,7 +112,7 @@ export function CloseSprintModal({
   async function loadPlannedSprints() {
     setLoadingPlanned(true);
     try {
-      const result = await getSprints(workspaceId, spaceId, listId);
+      const result = await getSprints(workspaceId, spaceId);
       if ("error" in result) return;
       const planned = result.sprints
         .filter((s) => s.status === "PLANNED")
@@ -174,7 +174,6 @@ export function CloseSprintModal({
       const result = await closeSprint(
         workspaceId,
         spaceId,
-        listId,
         sprintId,
         finalStrategy,
         finalTarget,

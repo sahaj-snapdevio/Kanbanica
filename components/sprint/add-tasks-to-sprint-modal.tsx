@@ -10,25 +10,16 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { getBacklogTasks, addTaskToSprint } from "@/app/actions/sprint";
+import { getBacklogTasks, addTaskToSprint, type BacklogTask } from "@/app/actions/sprint";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-interface BacklogTask {
-  id: string;
-  title: string;
-  seqNumber: number;
-  priority: string | null;
-  statusId: string;
-  orderIndex: number;
-}
 
 interface AddTasksToSprintModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   workspaceId: string;
   spaceId: string;
-  listId: string;
+  listId?: string;
   sprintId: string;
   sprintName: string;
   onAdded: () => void;
@@ -73,9 +64,10 @@ export function AddTasksToSprintModal({
   async function loadTasks() {
     setLoading(true);
     try {
-      const result = await getBacklogTasks(workspaceId, spaceId, listId);
+      const result = await getBacklogTasks(workspaceId, spaceId);
       if ("error" in result) { setError(result.error); return; }
-      setTasks(result.tasks);
+      // Flatten tasks from all list groups, preserving list order
+      setTasks(result.lists.flatMap((l) => l.tasks));
     } catch {
       setError("Failed to load backlog tasks.");
     } finally {
@@ -118,7 +110,7 @@ export function AddTasksToSprintModal({
       const ids = Array.from(selected);
       const results = await Promise.all(
         ids.map((taskId) =>
-          addTaskToSprint(workspaceId, spaceId, listId, sprintId, taskId),
+          addTaskToSprint(workspaceId, spaceId, sprintId, taskId),
         ),
       );
       const failed = results.filter((r) => "error" in r);

@@ -9,6 +9,7 @@ export * from "@/db/schema/list";
 export * from "@/db/schema/task";
 export * from "@/db/schema/checklist";
 export * from "@/db/schema/sprint";
+export * from "@/db/schema/pinned-task";
 export * from "@/db/schema/collaboration";
 export * from "@/db/schema/notification";
 export * from "@/db/schema/search";

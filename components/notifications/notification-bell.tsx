@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import { BellIcon } from "@phosphor-icons/react";
@@ -34,7 +34,7 @@ export function NotificationBell() {
       >
         <BellIcon className="size-4" />
         {unreadCount > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-0.5 text-[10px] font-medium text-white leading-none">
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-0.5 text-2xs font-medium text-white leading-none">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}

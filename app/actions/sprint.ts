@@ -10,8 +10,8 @@ import {
   sprint,
   taskSprint,
   task,
-  listStatus,
   list,
+  listStatus,
   taskAssignee,
   taskTag,
   tag,
@@ -22,14 +22,19 @@ import { writeActivityLog } from "@/lib/activity-log";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-// View-level access: read sprint data, backlog, active sprint view
 async function requireAccess(userId: string, workspaceId: string, spaceId: string) {
   const accessible = await canAccessSpace(userId, workspaceId, spaceId);
   if (!accessible) return { error: "Unauthorized" } as const;
   return null;
 }
 
-// Full-access: create, start, close, delete sprints; manage sprint tasks
+async function requireEditAccess(userId: string, workspaceId: string, spaceId: string) {
+  const permission = await getSpacePermission(userId, workspaceId, spaceId);
+  if (permission === null) return { error: "Forbidden" } as const;
+  if (!hasPermissionLevel(permission, "edit")) return { error: "Forbidden" } as const;
+  return null;
+}
+
 async function requireFullAccess(userId: string, workspaceId: string, spaceId: string) {
   const permission = await getSpacePermission(userId, workspaceId, spaceId);
   if (permission === null) return { error: "Forbidden" } as const;
@@ -39,8 +44,14 @@ async function requireFullAccess(userId: string, workspaceId: string, spaceId: s
   return null;
 }
 
+function revalidateSpace(workspaceId: string, spaceId: string) {
+  revalidatePath(`/${workspaceId}/${spaceId}`);
+  revalidatePath(`/${workspaceId}`);
+}
+
 function revalidateList(workspaceId: string, spaceId: string, listId: string) {
   revalidatePath(`/${workspaceId}/${spaceId}/list/${listId}`);
+  revalidateSpace(workspaceId, spaceId);
 }
 
 function addDays(date: Date, days: number): Date {
@@ -62,7 +73,6 @@ function incrementSprintName(name: string): string {
 export async function getSprints(
   workspaceId: string,
   spaceId: string,
-  listId: string,
 ): Promise<
   | {
       sprints: {
@@ -94,7 +104,7 @@ export async function getSprints(
       createdAt: sprint.createdAt,
     })
     .from(sprint)
-    .where(and(eq(sprint.listId, listId), eq(sprint.workspaceId, workspaceId)))
+    .where(eq(sprint.spaceId, spaceId))
     .orderBy(desc(sprint.createdAt));
 
   return { sprints: rows };
@@ -105,7 +115,6 @@ export async function getSprints(
 export async function createSprint(
   workspaceId: string,
   spaceId: string,
-  listId: string,
   data: {
     name: string;
     goal?: string;
@@ -126,13 +135,6 @@ export async function createSprint(
   if (!name) return { error: "Sprint name is required" };
   if (data.durationWeeks < 1) return { error: "Duration must be at least 1 week" };
 
-  const [currentList] = await db
-    .select({ id: list.id })
-    .from(list)
-    .where(and(eq(list.id, listId), eq(list.spaceId, spaceId), eq(list.isArchived, false)))
-    .limit(1);
-  if (!currentList) return { error: "List not found" };
-
   const startDate = new Date(data.startDate);
   const endDate = addDays(startDate, data.durationWeeks * 7);
   const sprintId = createId();
@@ -140,8 +142,7 @@ export async function createSprint(
 
   await db.insert(sprint).values({
     id: sprintId,
-    listId,
-    workspaceId,
+    spaceId,
     name,
     goal: data.goal ?? null,
     status: "PLANNED",
@@ -156,7 +157,7 @@ export async function createSprint(
     updatedAt: now,
   });
 
-  revalidateList(workspaceId, spaceId, listId);
+  revalidateSpace(workspaceId, spaceId);
 
   return { sprintId };
 }
@@ -166,7 +167,6 @@ export async function createSprint(
 export async function startSprint(
   workspaceId: string,
   spaceId: string,
-  listId: string,
   sprintId: string,
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -178,15 +178,15 @@ export async function startSprint(
   const [activeSprint] = await db
     .select({ id: sprint.id })
     .from(sprint)
-    .where(and(eq(sprint.listId, listId), eq(sprint.status, "ACTIVE")))
+    .where(and(eq(sprint.spaceId, spaceId), eq(sprint.status, "ACTIVE")))
     .limit(1);
 
-  if (activeSprint) return { error: "Another sprint is already active in this list" };
+  if (activeSprint) return { error: "Another sprint is already active in this project" };
 
   const [targetSprint] = await db
     .select({ id: sprint.id, status: sprint.status })
     .from(sprint)
-    .where(and(eq(sprint.id, sprintId), eq(sprint.listId, listId), eq(sprint.workspaceId, workspaceId)))
+    .where(and(eq(sprint.id, sprintId), eq(sprint.spaceId, spaceId)))
     .limit(1);
 
   if (!targetSprint) return { error: "Sprint not found" };
@@ -198,7 +198,7 @@ export async function startSprint(
     .set({ status: "ACTIVE", startDate: now, updatedAt: now })
     .where(eq(sprint.id, sprintId));
 
-  revalidateList(workspaceId, spaceId, listId);
+  revalidateSpace(workspaceId, spaceId);
 
   return { ok: true };
 }
@@ -208,7 +208,6 @@ export async function startSprint(
 export async function deleteSprint(
   workspaceId: string,
   spaceId: string,
-  listId: string,
   sprintId: string,
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -220,7 +219,7 @@ export async function deleteSprint(
   const [targetSprint] = await db
     .select({ id: sprint.id, status: sprint.status })
     .from(sprint)
-    .where(and(eq(sprint.id, sprintId), eq(sprint.listId, listId), eq(sprint.workspaceId, workspaceId)))
+    .where(and(eq(sprint.id, sprintId), eq(sprint.spaceId, spaceId)))
     .limit(1);
 
   if (!targetSprint) return { error: "Sprint not found" };
@@ -229,7 +228,7 @@ export async function deleteSprint(
   await db.delete(taskSprint).where(eq(taskSprint.sprintId, sprintId));
   await db.delete(sprint).where(eq(sprint.id, sprintId));
 
-  revalidateList(workspaceId, spaceId, listId);
+  revalidateSpace(workspaceId, spaceId);
 
   return { ok: true };
 }
@@ -255,10 +254,10 @@ export async function getSprintWithTasks(
         title: string;
         seqNumber: number;
         priority: string | null;
-        statusId: string;
-        statusName: string;
+        statusId: string | null;
+        statusName: string | null;
         statusColor: string | null;
-        statusType: "OPEN" | "ACTIVE" | "CLOSED";
+        statusType: "OPEN" | "ACTIVE" | "CLOSED" | null;
         storyPoints: number | null;
       }[];
     }
@@ -280,7 +279,7 @@ export async function getSprintWithTasks(
       endDate: sprint.endDate,
     })
     .from(sprint)
-    .where(and(eq(sprint.id, sprintId), eq(sprint.workspaceId, workspaceId)))
+    .where(and(eq(sprint.id, sprintId), eq(sprint.spaceId, spaceId)))
     .limit(1);
 
   if (!targetSprint) return { error: "Sprint not found" };
@@ -299,7 +298,7 @@ export async function getSprintWithTasks(
     })
     .from(taskSprint)
     .innerJoin(task, eq(taskSprint.taskId, task.id))
-    .innerJoin(listStatus, eq(task.statusId, listStatus.id))
+    .leftJoin(listStatus, eq(task.statusId, listStatus.id))
     .where(eq(taskSprint.sprintId, sprintId));
 
   return { sprint: targetSprint, tasks };
@@ -310,7 +309,6 @@ export async function getSprintWithTasks(
 export async function addTaskToSprint(
   workspaceId: string,
   spaceId: string,
-  listId: string,
   sprintId: string,
   taskId: string,
   storyPoints?: number,
@@ -318,17 +316,16 @@ export async function addTaskToSprint(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
-  const err = await requireFullAccess(session.user.id, workspaceId, spaceId);
+  const err = await requireEditAccess(session.user.id, workspaceId, spaceId);
   if (err) return err;
 
   const [targetTask] = await db
     .select({ id: task.id })
     .from(task)
-    .where(and(eq(task.id, taskId), eq(task.listId, listId), eq(task.isArchived, false)))
+    .where(and(eq(task.id, taskId), eq(task.workspaceId, workspaceId), eq(task.isArchived, false)))
     .limit(1);
   if (!targetTask) return { error: "Task not found" };
 
-  // Check task is not already in a PLANNED or ACTIVE sprint
   const existingRows = await db
     .select({ sprintId: taskSprint.sprintId })
     .from(taskSprint)
@@ -351,7 +348,7 @@ export async function addTaskToSprint(
     addedAt: new Date(),
   });
 
-  revalidateList(workspaceId, spaceId, listId);
+  revalidateSpace(workspaceId, spaceId);
 
   return { ok: true };
 }
@@ -361,7 +358,6 @@ export async function addTaskToSprint(
 export async function removeTaskFromSprint(
   workspaceId: string,
   spaceId: string,
-  listId: string,
   sprintId: string,
   taskId: string,
 ): Promise<{ ok: true } | { error: string }> {
@@ -375,7 +371,7 @@ export async function removeTaskFromSprint(
     .delete(taskSprint)
     .where(and(eq(taskSprint.taskId, taskId), eq(taskSprint.sprintId, sprintId)));
 
-  revalidateList(workspaceId, spaceId, listId);
+  revalidateSpace(workspaceId, spaceId);
 
   return { ok: true };
 }
@@ -425,7 +421,6 @@ export async function markAllSprintTasksDone(
   const err = await requireFullAccess(session.user.id, workspaceId, spaceId);
   if (err) return err;
 
-  // Find first CLOSED-type status in the list
   const [closedStatus] = await db
     .select({ id: listStatus.id })
     .from(listStatus)
@@ -435,7 +430,6 @@ export async function markAllSprintTasksDone(
 
   if (!closedStatus) return { error: "No closed status found in this list" };
 
-  // Get all tasks in the sprint that are not already in a CLOSED status
   const sprintTasks = await db
     .select({ taskId: taskSprint.taskId, statusType: listStatus.type })
     .from(taskSprint)
@@ -474,7 +468,6 @@ export async function markAllSprintTasksDone(
 export async function closeSprint(
   workspaceId: string,
   spaceId: string,
-  listId: string,
   sprintId: string,
   strategy: "move_to_backlog" | "move_to_next_sprint" | "leave_as_is",
   targetSprintId?: string,
@@ -494,13 +487,12 @@ export async function closeSprint(
       endDate: sprint.endDate,
     })
     .from(sprint)
-    .where(and(eq(sprint.id, sprintId), eq(sprint.listId, listId), eq(sprint.workspaceId, workspaceId)))
+    .where(and(eq(sprint.id, sprintId), eq(sprint.spaceId, spaceId)))
     .limit(1);
 
   if (!targetSprint) return { error: "Sprint not found" };
   if (targetSprint.status !== "ACTIVE") return { error: "Only ACTIVE sprints can be closed" };
 
-  // Find incomplete tasks in this sprint
   const sprintTasks = await db
     .select({ taskId: taskSprint.taskId, statusType: listStatus.type })
     .from(taskSprint)
@@ -526,7 +518,7 @@ export async function closeSprint(
     const [nextSprint] = await db
       .select({ id: sprint.id, status: sprint.status })
       .from(sprint)
-      .where(and(eq(sprint.id, targetSprintId), eq(sprint.listId, listId)))
+      .where(and(eq(sprint.id, targetSprintId), eq(sprint.spaceId, spaceId)))
       .limit(1);
 
     if (nextSprint && nextSprint.status === "PLANNED" && incompleteTaskIds.length > 0) {
@@ -549,7 +541,6 @@ export async function closeSprint(
         })),
       );
     } else if (incompleteTaskIds.length > 0) {
-      // Fall back: move to backlog
       await db
         .delete(taskSprint)
         .where(
@@ -560,7 +551,6 @@ export async function closeSprint(
         );
     }
   }
-  // leave_as_is: no changes to tasks
 
   const now = new Date();
   await db
@@ -568,7 +558,7 @@ export async function closeSprint(
     .set({ status: "CLOSED", updatedAt: now })
     .where(eq(sprint.id, sprintId));
 
-  revalidateList(workspaceId, spaceId, listId);
+  revalidateSpace(workspaceId, spaceId);
 
   return { ok: true };
 }
@@ -578,7 +568,6 @@ export async function closeSprint(
 export async function createNextSprintFromClosed(
   workspaceId: string,
   spaceId: string,
-  listId: string,
   closedSprintId: string,
 ): Promise<{ sprintId: string } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -596,7 +585,7 @@ export async function createNextSprintFromClosed(
       endDate: sprint.endDate,
     })
     .from(sprint)
-    .where(and(eq(sprint.id, closedSprintId), eq(sprint.workspaceId, workspaceId)))
+    .where(and(eq(sprint.id, closedSprintId), eq(sprint.spaceId, spaceId)))
     .limit(1);
 
   if (!closedSprint) return { error: "Sprint not found" };
@@ -616,8 +605,7 @@ export async function createNextSprintFromClosed(
 
   await db.insert(sprint).values({
     id: sprintId,
-    listId,
-    workspaceId,
+    spaceId,
     name: newName,
     goal: null,
     status: "PLANNED",
@@ -628,118 +616,166 @@ export async function createNextSprintFromClosed(
     updatedAt: now,
   });
 
-  revalidateList(workspaceId, spaceId, listId);
+  revalidateSpace(workspaceId, spaceId);
 
   return { sprintId };
 }
 
 // ─── getBacklogTasks ──────────────────────────────────────────────────────────
 
+export type BacklogTask = {
+  id: string;
+  title: string;
+  seqNumber: number;
+  priority: string | null;
+  statusId: string | null;
+  statusName: string | null;
+  statusColor: string | null;
+  statusType: string | null;
+  listId: string;
+  orderIndex: number;
+  assignees: { userId: string; name: string | null; email: string | null }[];
+};
+
+export type BacklogList = {
+  listId: string;
+  listName: string;
+  tasks: BacklogTask[];
+};
+
 export async function getBacklogTasks(
   workspaceId: string,
   spaceId: string,
-  listId: string,
-): Promise<
-  | {
-      tasks: {
-        id: string;
-        title: string;
-        seqNumber: number;
-        priority: string | null;
-        statusId: string;
-        orderIndex: number;
-      }[];
-    }
-  | { error: string }
-> {
+): Promise<{ lists: BacklogList[] } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
   const err = await requireAccess(session.user.id, workspaceId, spaceId);
   if (err) return err;
 
-  // Find sprint IDs that are PLANNED or ACTIVE for this list
+  // 1. All non-archived lists in this space
+  const spaceLists = await db
+    .select({ id: list.id, name: list.name })
+    .from(list)
+    .where(and(eq(list.spaceId, spaceId), eq(list.isArchived, false)))
+    .orderBy(asc(list.orderIndex));
+
+  if (spaceLists.length === 0) return { lists: [] };
+
+  const listIds = spaceLists.map((l) => l.id);
+
+  // 2. Sprint IDs that are PLANNED or ACTIVE for this space
   const activeSprintRows = await db
     .select({ id: sprint.id })
     .from(sprint)
-    .where(
-      and(
-        eq(sprint.listId, listId),
-        inArray(sprint.status, ["PLANNED", "ACTIVE"]),
-      ),
-    );
+    .where(and(eq(sprint.spaceId, spaceId), inArray(sprint.status, ["PLANNED", "ACTIVE"])));
 
   const activeSprintIds = activeSprintRows.map((s) => s.id);
 
+  // 3. Task IDs already in an active/planned sprint
+  let taskIdsInSprints: string[] = [];
+  if (activeSprintIds.length > 0) {
+    const rows = await db
+      .select({ taskId: taskSprint.taskId })
+      .from(taskSprint)
+      .where(inArray(taskSprint.sprintId, activeSprintIds));
+    taskIdsInSprints = rows.map((r) => r.taskId);
+  }
+
+  // 4. Fetch backlog tasks with status info
   const baseConditions = [
-    eq(task.listId, listId),
+    inArray(task.listId, listIds),
     eq(task.isArchived, false),
     isNull(task.parentTaskId),
   ];
 
-  if (activeSprintIds.length === 0) {
-    // No active/planned sprints — all tasks are backlog
-    const tasks = await db
-      .select({
-        id: task.id,
-        title: task.title,
-        seqNumber: task.seqNumber,
-        priority: task.priority,
-        statusId: task.statusId,
-        orderIndex: task.orderIndex,
-      })
-      .from(task)
-      .where(and(...baseConditions))
-      .orderBy(asc(task.orderIndex));
+  const taskRows = await db
+    .select({
+      id: task.id,
+      title: task.title,
+      seqNumber: task.seqNumber,
+      priority: task.priority,
+      statusId: task.statusId,
+      statusName: listStatus.name,
+      statusColor: listStatus.color,
+      statusType: listStatus.type,
+      listId: task.listId,
+      orderIndex: task.orderIndex,
+    })
+    .from(task)
+    .leftJoin(listStatus, eq(listStatus.id, task.statusId))
+    .where(
+      taskIdsInSprints.length > 0
+        ? and(...baseConditions, notInArray(task.id, taskIdsInSprints))
+        : and(...baseConditions),
+    )
+    .orderBy(asc(task.orderIndex));
 
-    return { tasks };
+  if (taskRows.length === 0) return { lists: [] };
+
+  // 5. Fetch assignees for those tasks
+  const taskIds = taskRows.map((t) => t.id);
+  const assigneeRows = await db
+    .select({
+      taskId: taskAssignee.taskId,
+      userId: taskAssignee.userId,
+      name: user.name,
+      email: user.email,
+    })
+    .from(taskAssignee)
+    .leftJoin(user, eq(user.id, taskAssignee.userId))
+    .where(inArray(taskAssignee.taskId, taskIds));
+
+  // 6. Group assignees by taskId
+  const assigneesByTask = new Map<string, { userId: string; name: string | null; email: string | null }[]>();
+  for (const a of assigneeRows) {
+    const arr = assigneesByTask.get(a.taskId) ?? [];
+    arr.push({ userId: a.userId, name: a.name, email: a.email });
+    assigneesByTask.set(a.taskId, arr);
   }
 
-  // Find task IDs that ARE in an active/planned sprint
-  const tasksInSprintRows = await db
-    .select({ taskId: taskSprint.taskId })
-    .from(taskSprint)
-    .where(inArray(taskSprint.sprintId, activeSprintIds));
+  // 7. Build a lookup of listId → list name
+  const listNameById = new Map(spaceLists.map((l) => [l.id, l.name]));
 
-  const taskIdsInSprints = tasksInSprintRows.map((r) => r.taskId);
+  // 8. Group tasks by list, preserving list order
+  const tasksByList = new Map<string, BacklogTask[]>();
+  for (const t of taskRows) {
+    if (!t.listId) continue;
+    const arr = tasksByList.get(t.listId) ?? [];
+    arr.push({
+      id: t.id,
+      title: t.title,
+      seqNumber: t.seqNumber,
+      priority: t.priority,
+      statusId: t.statusId,
+      statusName: t.statusName ?? null,
+      statusColor: t.statusColor ?? null,
+      statusType: t.statusType ?? null,
+      listId: t.listId,
+      orderIndex: t.orderIndex,
+      assignees: assigneesByTask.get(t.id) ?? [],
+    });
+    tasksByList.set(t.listId, arr);
+  }
 
-  const tasks =
-    taskIdsInSprints.length > 0
-      ? await db
-          .select({
-            id: task.id,
-            title: task.title,
-            seqNumber: task.seqNumber,
-            priority: task.priority,
-            statusId: task.statusId,
-            orderIndex: task.orderIndex,
-          })
-          .from(task)
-          .where(and(...baseConditions, notInArray(task.id, taskIdsInSprints)))
-          .orderBy(asc(task.orderIndex))
-      : await db
-          .select({
-            id: task.id,
-            title: task.title,
-            seqNumber: task.seqNumber,
-            priority: task.priority,
-            statusId: task.statusId,
-            orderIndex: task.orderIndex,
-          })
-          .from(task)
-          .where(and(...baseConditions))
-          .orderBy(asc(task.orderIndex));
+  // 9. Build output in list order, skip lists with no backlog tasks
+  const lists: BacklogList[] = [];
+  for (const l of spaceLists) {
+    const tasks = tasksByList.get(l.id);
+    if (tasks && tasks.length > 0) {
+      lists.push({ listId: l.id, listName: listNameById.get(l.id) ?? l.id, tasks });
+    }
+  }
 
-  return { tasks };
+  return { lists };
 }
 
 // ─── getActiveSprintView ──────────────────────────────────────────────────────
-// Full data for rendering sprint tasks in the list-view table layout.
+// Full data for rendering sprint tasks for a specific sprint.
 
 export async function getActiveSprintView(
   workspaceId: string,
   spaceId: string,
-  listId: string,
 ): Promise<
   | {
       sprint: {
@@ -755,12 +791,23 @@ export async function getActiveSprintView(
         title: string;
         seqNumber: number;
         priority: string | null;
-        statusId: string;
+        statusId: string | null;
+        listId: string | null;
         orderIndex: number;
         dueDateStart: Date | null;
         dueDateEnd: Date | null;
+        statusName: string | null;
+        statusColor: string | null;
+        statusType: string | null;
         tags: { id: string; name: string; color: string }[];
         assignees: { userId: string; name: string; image: string | null }[];
+      }[];
+      statuses: {
+        id: string;
+        name: string;
+        color: string;
+        type: "OPEN" | "ACTIVE" | "CLOSED";
+        orderIndex: number;
       }[];
     }
   | { error: string }
@@ -771,7 +818,7 @@ export async function getActiveSprintView(
   const err = await requireAccess(session.user.id, workspaceId, spaceId);
   if (err) return err;
 
-  // Find active sprint for this list
+  // Find active sprint for this space
   const [activeSprint] = await db
     .select({
       id: sprint.id,
@@ -782,12 +829,11 @@ export async function getActiveSprintView(
       status: sprint.status,
     })
     .from(sprint)
-    .where(and(eq(sprint.listId, listId), eq(sprint.status, "ACTIVE")))
+    .where(and(eq(sprint.spaceId, spaceId), eq(sprint.status, "ACTIVE")))
     .limit(1);
 
-  if (!activeSprint) return { sprint: null, tasks: [] };
+  if (!activeSprint) return { sprint: null, tasks: [], statuses: [] };
 
-  // Get tasks in this sprint
   const sprintTasks = await db
     .select({
       id: task.id,
@@ -795,16 +841,21 @@ export async function getActiveSprintView(
       seqNumber: task.seqNumber,
       priority: task.priority,
       statusId: task.statusId,
+      listId: task.listId,
       orderIndex: task.orderIndex,
       dueDateStart: task.dueDateStart,
       dueDateEnd: task.dueDateEnd,
+      statusName: listStatus.name,
+      statusColor: listStatus.color,
+      statusType: listStatus.type,
     })
     .from(taskSprint)
     .innerJoin(task, eq(task.id, taskSprint.taskId))
+    .leftJoin(listStatus, eq(task.statusId, listStatus.id))
     .where(and(eq(taskSprint.sprintId, activeSprint.id), eq(task.isArchived, false)))
     .orderBy(asc(task.orderIndex));
 
-  if (sprintTasks.length === 0) return { sprint: activeSprint, tasks: [] };
+  if (sprintTasks.length === 0) return { sprint: activeSprint, tasks: [], statuses: [] };
 
   const taskIds = sprintTasks.map((t) => t.id);
 
@@ -847,18 +898,32 @@ export async function getActiveSprintView(
     assignees: assigneesByTask.get(t.id) ?? [],
   }));
 
-  return { sprint: activeSprint, tasks };
+  // Fetch all statuses from every list that has tasks in this sprint
+  // so the board view shows empty columns too (not just columns with tasks)
+  const listIds = [...new Set(sprintTasks.filter((t) => t.listId).map((t) => t.listId!))];
+  const allStatuses = listIds.length > 0
+    ? await db
+        .select({
+          id: listStatus.id,
+          name: listStatus.name,
+          color: listStatus.color,
+          type: listStatus.type,
+          orderIndex: listStatus.orderIndex,
+        })
+        .from(listStatus)
+        .where(inArray(listStatus.listId, listIds))
+        .orderBy(asc(listStatus.orderIndex))
+    : [];
+
+  return { sprint: activeSprint, tasks, statuses: allStatuses };
 }
 
 // ─── bulkMoveTasksToSprint ────────────────────────────────────────────────────
-// Moves selected tasks into a target sprint.
-// Any existing PLANNED/ACTIVE sprint assignment is removed first so the
-// "one task per active sprint" rule is respected.
 
 export async function bulkMoveTasksToSprint(
   workspaceId: string,
   spaceId: string,
-  listId: string,
+  listId: string | null,
   taskIds: string[],
   targetSprintId: string,
 ): Promise<{ ok: true; moved: number } | { error: string }> {
@@ -870,21 +935,17 @@ export async function bulkMoveTasksToSprint(
 
   if (taskIds.length === 0) return { ok: true, moved: 0 };
 
-  // Verify target sprint exists, belongs to this list, and is not CLOSED.
   const [target] = await db
     .select({ id: sprint.id, status: sprint.status })
     .from(sprint)
-    .where(and(eq(sprint.id, targetSprintId), eq(sprint.listId, listId)))
+    .where(and(eq(sprint.id, targetSprintId), eq(sprint.spaceId, spaceId)))
     .limit(1);
 
   if (!target) return { error: "Sprint not found" };
   if (target.status === "CLOSED") return { error: "Cannot move tasks into a closed sprint" };
 
-  // For each task: remove from any current PLANNED/ACTIVE sprint, then add to target.
-  // Do this per-task so we can handle the "already in target" case cleanly.
   let moved = 0;
   for (const taskId of taskIds) {
-    // Find existing active/planned assignment (if any)
     const existing = await db
       .select({ taskId: taskSprint.taskId, sprintId: taskSprint.sprintId })
       .from(taskSprint)
@@ -898,14 +959,12 @@ export async function bulkMoveTasksToSprint(
       .limit(1);
 
     if (existing.length > 0) {
-      if (existing[0].sprintId === targetSprintId) continue; // already there
-      // Remove from current sprint
+      if (existing[0].sprintId === targetSprintId) continue;
       await db
         .delete(taskSprint)
         .where(and(eq(taskSprint.taskId, taskId), eq(taskSprint.sprintId, existing[0].sprintId)));
     }
 
-    // Add to target sprint
     await db.insert(taskSprint).values({
       taskId,
       sprintId: targetSprintId,
@@ -915,17 +974,16 @@ export async function bulkMoveTasksToSprint(
     moved++;
   }
 
-  revalidateList(workspaceId, spaceId, listId);
+  if (listId) revalidateList(workspaceId, spaceId, listId);
+  else revalidateSpace(workspaceId, spaceId);
   return { ok: true, moved };
 }
 
 // ─── bulkRemoveTasksFromSprint ────────────────────────────────────────────────
-// Removes selected tasks from a specific sprint (→ returns them to backlog).
 
 export async function bulkRemoveTasksFromSprint(
   workspaceId: string,
   spaceId: string,
-  listId: string,
   sprintId: string,
   taskIds: string[],
 ): Promise<{ ok: true; removed: number } | { error: string }> {
@@ -937,10 +995,10 @@ export async function bulkRemoveTasksFromSprint(
 
   if (taskIds.length === 0) return { ok: true, removed: 0 };
 
-  const result = await db
+  await db
     .delete(taskSprint)
     .where(and(eq(taskSprint.sprintId, sprintId), inArray(taskSprint.taskId, taskIds)));
 
-  revalidateList(workspaceId, spaceId, listId);
+  revalidateSpace(workspaceId, spaceId);
   return { ok: true, removed: taskIds.length };
 }
