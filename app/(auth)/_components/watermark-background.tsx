@@ -95,7 +95,7 @@ export function WatermarkBackground() {
           }}
         >
           <img
-            src="/width_497.png"
+            src="/Kanbanica2.png"
             alt=""
             className="w-full h-full object-contain"
             aria-hidden="true"
