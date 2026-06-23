@@ -395,7 +395,7 @@ function PlannedSprintRow({
 // ─── Main Panel ───────────────────────────────────────────────────────────────
 
 export function SprintPanel({ workspaceId, spaceId, listId, onDataChanged }: SprintPanelProps) {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
   const [sprints, setSprints] = useState<SprintRow[]>([]);
   const [progressMap, setProgressMap] = useState<Record<string, SprintProgress>>({});
   const [backlogCount, setBacklogCount] = useState(0);
@@ -499,26 +499,37 @@ export function SprintPanel({ workspaceId, spaceId, listId, onDataChanged }: Spr
       )}
 
       <div className="rounded-lg border bg-card">
-        <button
-          onClick={() => setExpanded((v) => !v)}
-          className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-accent/50 transition-colors rounded-lg"
-        >
-          {expanded
-            ? <CaretDownIcon className="size-3.5 text-muted-foreground" />
-            : <CaretRightIcon className="size-3.5 text-muted-foreground" />}
-          <TargetIcon className="size-4 text-muted-foreground" />
-          <span className="text-sm font-medium flex-1">Sprints</span>
-          {activeSprints.length > 0 && (
-            <Badge variant="outline" className="shrink-0 border-primary/30 text-primary bg-primary/10 text-xs px-2 py-1 rounded">
-              {activeSprints.length} Active
-            </Badge>
-          )}
-          {plannedSprints.length > 0 && (
-            <Badge variant="outline" className="shrink-0 border-border text-muted-foreground bg-muted text-xs px-2 py-1 rounded">
-              {plannedSprints.length} Planned
-            </Badge>
-          )}
-        </button>
+        <div className="flex items-center gap-2 px-4 py-3 rounded-lg hover:bg-accent/50 transition-colors">
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="flex flex-1 items-center gap-2 text-left min-w-0"
+          >
+            {expanded
+              ? <CaretDownIcon className="size-3.5 text-muted-foreground shrink-0" />
+              : <CaretRightIcon className="size-3.5 text-muted-foreground shrink-0" />}
+            <TargetIcon className="size-4 text-muted-foreground shrink-0" />
+            <span className="text-sm font-medium">Sprints</span>
+          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            {activeSprints.length > 0 && (
+              <Badge variant="outline" className="border-primary/30 text-primary bg-primary/10 text-xs px-2 py-1 rounded">
+                {activeSprints.length} Active
+              </Badge>
+            )}
+            {plannedSprints.length > 0 && (
+              <Badge variant="outline" className="border-border text-muted-foreground bg-muted text-xs px-2 py-1 rounded">
+                {plannedSprints.length} Planned
+              </Badge>
+            )}
+            <button
+              onClick={() => setCreateOpen(true)}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-1"
+            >
+              <PlusIcon className="size-3.5" />
+              Create Sprint
+            </button>
+          </div>
+        </div>
 
         {expanded && (
           <div className="px-4 pb-4 space-y-3">
@@ -586,18 +597,9 @@ export function SprintPanel({ workspaceId, spaceId, listId, onDataChanged }: Spr
 
                 {sprints.length > 0 && <div className="h-px bg-border" />}
 
-                <div className="flex items-center justify-between px-1">
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <span className="font-medium">Backlog</span>
-                    <Badge variant="secondary" className="text-xs h-5 px-1.5">{backlogCount}</Badge>
-                  </div>
-                  <button
-                    onClick={() => setCreateOpen(true)}
-                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <PlusIcon className="size-3.5" />
-                    Create Sprint
-                  </button>
+                <div className="flex items-center gap-1.5 px-1 text-xs text-muted-foreground">
+                  <span className="font-medium">Backlog</span>
+                  <Badge variant="secondary" className="text-xs h-5 px-1.5">{backlogCount}</Badge>
                 </div>
               </>
             )}

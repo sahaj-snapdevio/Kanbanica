@@ -48,6 +48,7 @@ import {
 import {
   getWorkspaceTags,
   createTag,
+  deleteTag,
   addTaskTag,
   removeTaskTag,
 } from "@/app/actions/task-tag";
@@ -63,6 +64,16 @@ import {
   removeDependency,
   searchTasksForDependency,
 } from "@/app/actions/task-dependency";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -195,6 +206,7 @@ export function TaskDetailPage({
     { id: string; name: string; color: string }[]
   >([]);
   const [tagSearch, setTagSearch] = React.useState("");
+  const [deleteTagTarget, setDeleteTagTarget] = React.useState<{ id: string; name: string } | null>(null);
   const [newChecklistName, setNewChecklistName] = React.useState("");
   const [addingChecklist, setAddingChecklist] = React.useState(false);
   const [newItemTexts, setNewItemTexts] = React.useState<
@@ -415,6 +427,13 @@ export function TaskDetailPage({
     }
   }
 
+  async function handleDeleteTag() {
+    if (!deleteTagTarget) return;
+    await deleteTag(workspaceId, deleteTagTarget.id);
+    setDeleteTagTarget(null);
+    load();
+  }
+
   async function handleToggleWatch() {
     await toggleWatcher(workspaceId, spaceId, listId, taskId);
     load();
@@ -548,6 +567,7 @@ export function TaskDetailPage({
   }
 
   return (
+    <>
     <div className="flex h-full flex-col overflow-hidden bg-background">
       {/* Top bar */}
       <div className="flex items-center gap-3 border-b px-5 py-3 shrink-0">
@@ -942,28 +962,44 @@ export function TaskDetailPage({
                       placeholder="Search or create…"
                       value={tagSearch}
                       onChange={(e) => setTagSearch(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && tagSearch.trim() && !exactTagMatch) {
+                          e.preventDefault();
+                          handleCreateTag(tagSearch.trim());
+                        }
+                      }}
                       className="h-7 text-xs mb-2"
                     />
                     <div className="space-y-0.5 max-h-40 overflow-y-auto">
                       {filteredTags.map((tag) => {
                         const selected = tags.some((t) => t.id === tag.id);
                         return (
-                          <button
+                          <div
                             key={tag.id}
-                            onClick={() => handleToggleTag(tag.id)}
-                            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
+                            className="group/tag flex w-full items-center gap-2 rounded px-2 py-1.5 hover:bg-accent"
                           >
-                            <span
-                              className="size-2.5 rounded-full shrink-0"
-                              style={{ backgroundColor: tag.color }}
-                            />
-                            <span className="flex-1 truncate text-left text-xs">
-                              {tag.name}
-                            </span>
-                            {selected && (
-                              <CheckIcon className="size-3.5 text-primary shrink-0" />
-                            )}
-                          </button>
+                            <button
+                              onClick={() => handleToggleTag(tag.id)}
+                              className="flex flex-1 min-w-0 items-center gap-2"
+                            >
+                              <span
+                                className="size-2.5 rounded-full shrink-0"
+                                style={{ backgroundColor: tag.color }}
+                              />
+                              <span className="flex-1 truncate text-left text-xs">
+                                {tag.name}
+                              </span>
+                              {selected && (
+                                <CheckIcon className="size-3.5 text-primary shrink-0" />
+                              )}
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setDeleteTagTarget({ id: tag.id, name: tag.name }); }}
+                              className="opacity-0 group-hover/tag:opacity-100 flex size-5 items-center justify-center rounded hover:bg-destructive/10 hover:text-destructive transition-opacity shrink-0"
+                            >
+                              <TrashIcon className="size-3" />
+                            </button>
+                          </div>
                         );
                       })}
                       {tagSearch && !exactTagMatch && (
@@ -1522,5 +1558,26 @@ export function TaskDetailPage({
         </div>
       </div>
     </div>
+
+    <AlertDialog open={!!deleteTagTarget} onOpenChange={(open) => { if (!open) setDeleteTagTarget(null); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete tag &ldquo;{deleteTagTarget?.name}&rdquo;?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will permanently delete the tag and remove it from every task in the workspace. This cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleDeleteTag}
+            className="bg-destructive text-white hover:bg-destructive/90"
+          >
+            Delete tag
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

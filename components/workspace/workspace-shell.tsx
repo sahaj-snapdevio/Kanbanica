@@ -12,6 +12,7 @@ import {
   ChatCircleIcon,
   CheckCircleIcon,
   CheckIcon,
+  ClockIcon,
   CopyIcon,
   DotsThreeIcon,
   FolderIcon,
@@ -409,7 +410,7 @@ export function WorkspaceShell({
                           onClick={() => setSidebarOpen(false)}
                           className="flex items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors hover:bg-accent"
                         >
-                          <GearIcon className="size-3.5 shrink-0 text-muted-foreground" />
+                          <ClockIcon className="size-3.5 shrink-0 text-muted-foreground" />
                           Activity
                         </Link>
                         <Link

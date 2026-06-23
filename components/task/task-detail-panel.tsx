@@ -29,7 +29,7 @@ import {
   getWorkspaceMembers,
 } from "@/app/actions/task";
 import { addAssignee, removeAssignee, toggleWatcher } from "@/app/actions/task-assignee";
-import { getWorkspaceTags, createTag, addTaskTag, removeTaskTag } from "@/app/actions/task-tag";
+import { getWorkspaceTags, createTag, deleteTag, addTaskTag, removeTaskTag } from "@/app/actions/task-tag";
 import {
   createChecklist,
   deleteChecklist,
@@ -39,6 +39,16 @@ import {
 } from "@/app/actions/task-checklist";
 import { addDependency, removeDependency, searchTasksForDependency } from "@/app/actions/task-dependency";
 import { logTime } from "@/app/actions/task";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -122,6 +132,7 @@ export function TaskDetailPanel({
   const [descEditing, setDescEditing] = React.useState(false);
   const [members, setMembers] = React.useState<{ userId: string | null; name: string; email: string; image: string | null }[]>([]);
   const [allTags, setAllTags] = React.useState<{ id: string; name: string; color: string }[]>([]);
+  const [deleteTagTarget, setDeleteTagTarget] = React.useState<{ id: string; name: string } | null>(null);
   const [newChecklistName, setNewChecklistName] = React.useState("");
   const [addingChecklist, setAddingChecklist] = React.useState(false);
   const [newItemTexts, setNewItemTexts] = React.useState<Record<string, string>>({});
@@ -238,6 +249,13 @@ export function TaskDetailPanel({
       await addTaskTag(workspaceId, spaceId, listId, taskId, res.tag.id);
       load();
     }
+  }
+
+  async function handleDeleteTag() {
+    if (!deleteTagTarget) return;
+    await deleteTag(workspaceId, deleteTagTarget.id);
+    setDeleteTagTarget(null);
+    load();
   }
 
   async function handleToggleWatch() {
@@ -733,6 +751,7 @@ export function TaskDetailPanel({
                       selectedIds={tags.map((t) => t.id)}
                       onToggle={handleToggleTag}
                       onCreate={handleCreateTag}
+                      onDelete={(id, name) => setDeleteTagTarget({ id, name })}
                     />
                   </PopoverContent>
                 </Popover>
@@ -849,23 +868,51 @@ export function TaskDetailPanel({
     </>
   );
 
+  const deleteTagDialog = (
+    <AlertDialog open={!!deleteTagTarget} onOpenChange={(open) => { if (!open) setDeleteTagTarget(null); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete tag &ldquo;{deleteTagTarget?.name}&rdquo;?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will permanently delete the tag and remove it from every task in the workspace. This cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleDeleteTag}
+            className="bg-destructive text-white hover:bg-destructive/90"
+          >
+            Delete tag
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+
   if (inline) {
     return (
-      <div className="h-full overflow-y-auto flex flex-col gap-0">
-        {panelContent}
-      </div>
+      <>
+        <div className="h-full overflow-y-auto flex flex-col gap-0">
+          {panelContent}
+        </div>
+        {deleteTagDialog}
+      </>
     );
   }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        className="w-full sm:max-w-2xl overflow-y-auto flex flex-col gap-0 p-0"
-        aria-describedby={undefined}
-      >
-        {panelContent}
-      </SheetContent>
-    </Sheet>
+    <>
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent
+          className="w-full sm:max-w-2xl overflow-y-auto flex flex-col gap-0 p-0"
+          aria-describedby={undefined}
+        >
+          {panelContent}
+        </SheetContent>
+      </Sheet>
+      {deleteTagDialog}
+    </>
   );
 }
 
@@ -876,11 +923,13 @@ function TagPicker({
   selectedIds,
   onToggle,
   onCreate,
+  onDelete,
 }: {
   allTags: { id: string; name: string; color: string }[];
   selectedIds: string[];
   onToggle: (id: string) => void;
   onCreate: (name: string) => void;
+  onDelete: (id: string, name: string) => void;
 }) {
   const [search, setSearch] = React.useState("");
 
@@ -894,23 +943,40 @@ function TagPicker({
         placeholder="Search or create tag…"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && search.trim() && !exactMatch) {
+            e.preventDefault();
+            onCreate(search.trim());
+            setSearch("");
+          }
+        }}
         className="h-7 text-xs mb-2"
       />
       <div className="space-y-0.5 max-h-40 overflow-y-auto">
         {filtered.map((tag) => (
-          <button
+          <div
             key={tag.id}
-            onClick={() => onToggle(tag.id)}
-            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
+            className="group/tag flex w-full items-center gap-2 rounded px-2 py-1.5 hover:bg-accent"
           >
-            <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: tag.color }} />
-            <span className="flex-1 truncate text-left text-xs">{tag.name}</span>
-            {selectedIds.includes(tag.id) && <CheckIcon className="size-3.5 text-primary shrink-0" />}
-          </button>
+            <button
+              onClick={() => onToggle(tag.id)}
+              className="flex flex-1 min-w-0 items-center gap-2"
+            >
+              <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: tag.color }} />
+              <span className="flex-1 truncate text-left text-xs">{tag.name}</span>
+              {selectedIds.includes(tag.id) && <CheckIcon className="size-3.5 text-primary shrink-0" />}
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(tag.id, tag.name); }}
+              className="opacity-0 group-hover/tag:opacity-100 flex size-5 items-center justify-center rounded hover:bg-destructive/10 hover:text-destructive transition-opacity shrink-0"
+            >
+              <TrashIcon className="size-3" />
+            </button>
+          </div>
         ))}
         {search && !exactMatch && (
           <button
-            onClick={() => { onCreate(search); setSearch(""); }}
+            onClick={() => { onCreate(search.trim()); setSearch(""); }}
             className="flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-xs text-primary hover:bg-accent"
           >
             <PlusIcon className="size-3.5" />
