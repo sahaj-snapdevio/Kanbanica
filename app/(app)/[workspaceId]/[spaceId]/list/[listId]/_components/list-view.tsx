@@ -451,9 +451,9 @@ function TaskRow({
 
         {/* Task Name & ID */}
         <div className="flex flex-1 items-center gap-2.5 min-w-0 py-1.5 pr-4 pl-1">
-          <span className="text-2xs text-gray-400 font-mono shrink-0 select-none flex items-center gap-1">
+          <span className="text-2xs text-gray-400 font-mono shrink-0 select-none flex items-center gap-1.5">
+            <PushPinIcon className={cn("size-2.5 shrink-0", localPersonalPin ? "text-primary" : "invisible")} weight="fill" />
             #{task.seqNumber}
-            {localPersonalPin && <PushPinIcon className="size-2.5 text-primary shrink-0" weight="fill" />}
           </span>
           <span className="text-[13px] font-medium text-foreground truncate group-hover/row:text-primary transition-colors">{task.title}</span>
           {task.tags.slice(0, 2).map((tag) => (
@@ -1788,6 +1788,7 @@ export function ListView({
         listId={listId}
         statuses={statuses}
         defaultStatusId={createForStatusId ?? undefined}
+        canManage={canEdit || isAdmin}
       />
 
       <DndContext

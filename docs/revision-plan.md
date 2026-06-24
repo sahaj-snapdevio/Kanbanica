@@ -699,6 +699,196 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
 ---
 
+## Change 5 — Sprint Settings Page & Create Sprint Modal Redesign
+
+**Why:** Sprint settings needed a proper settings page under Project Settings → Sprints. The Create Sprint modal was also redesigned to use side-by-side date pickers constrained to the configured start day, replacing the duration dropdown.
+
+**Spec:** `docs/sprint.md` (Sprint Settings section)
+
+### Step 5.1 — Sprint Settings Columns on `space` Table
+
+**File:** `db/schema/space.ts`
+
+Added sprint settings columns to the `space` table:
+- `sprint_start_day` (int, nullable) — 0–6, NULL = unconfigured → first-time setup
+- `sprint_default_duration_weeks` (int, default 2)
+- `sprint_name_format` (text, default "Sprint {n}")
+- `sprint_date_format` (text, default "MM/DD") — date display format in sprint views
+- `sprint_auto_mark_done` (bool, default false)
+- `sprint_auto_create_next` (bool, default false)
+- `sprint_auto_move_incomplete` (bool, default false)
+- `sprint_auto_archive_after_n` (int, nullable)
+
+Also added `sprintNameFormatEnum` pgEnum (used for UI options; column stored as `text`).
+
+**Status:** `[x]`
+
+---
+
+### Step 5.2 — Sprint Settings Form Component
+
+**File:** `components/sprint/sprint-settings-form.tsx`
+
+Full settings page form with sections: General (start day, default duration, date format), Naming (format with live preview), Automations (four toggles with conditional sub-options). Save button is right-aligned (`flex justify-end`). Form fills the centered `max-w-3xl mx-auto` settings layout — no inner max-width constraints.
+
+**Status:** `[x]`
+
+---
+
+### Step 5.3 — Sprint Settings Page Route
+
+**File:** `app/(app)/[workspaceId]/[spaceId]/settings/sprints/page.tsx`
+
+Loads current settings from `getSprintSettings` server action and renders `SprintSettingsForm`.
+
+**Status:** `[x]`
+
+---
+
+### Step 5.4 — Sprints Tab in Space Settings Nav
+
+**File:** `components/space/space-settings-nav.tsx`
+
+Added "Sprints" tab linking to `/[workspaceId]/[spaceId]/settings/sprints`.
+
+**Status:** `[x]`
+
+---
+
+### Step 5.5 — Create Sprint Modal Redesign
+
+**File:** `components/sprint/create-sprint-modal.tsx`
+
+- Removed duration dropdown — duration is inferred from `sprint_default_duration_weeks`
+- Start Date and End Date shown as side-by-side pickers
+- Start Date calendar uses `allowedDayOfWeek` prop to constrain selectable days to `sprint_start_day`
+- Smart defaults pre-filled from `getCreateSprintDefaults` server action
+
+**Status:** `[x]`
+
+---
+
+### Step 5.6 — `allowedDayOfWeek` on ClickUp Calendar
+
+**File:** `components/ui/clickup-calendar.tsx`
+
+Added `allowedDayOfWeek?: number` prop. When set, all days except the allowed day of week are disabled in the date picker.
+
+**Status:** `[x]`
+
+---
+
+### Step 5.7 — Server Actions for Sprint Settings
+
+**File:** `app/actions/sprint.ts`
+
+Added:
+- `getSprintSettings(workspaceId, spaceId)` — returns all sprint settings columns from `space`
+- `saveSprintSettings(workspaceId, spaceId, data)` — updates sprint settings columns
+- `getCreateSprintDefaults(workspaceId, spaceId)` — infers smart defaults for the Create Sprint modal (next sprint number, name, start date snapped to start day, end date)
+
+**Status:** `[x]`
+
+---
+
+### Step 5.8 — Settings Page Centering Fix
+
+**Files:** `app/(app)/[workspaceId]/[spaceId]/settings/layout.tsx`, `components/space/space-general-settings-form.tsx`, `components/sprint/sprint-settings-form.tsx`
+
+The settings layout uses `max-w-3xl mx-auto p-6`. Removed inner `max-w-xl` / `max-w-lg` constraints from form components so content fills the centered container. Save button aligned right with `flex justify-end`.
+
+**Status:** `[x]`
+
+---
+
+## Change 6 — Status Settings Panel Redesign (ClickUp-Style)
+
+**Why:** The old status panel was a flat list with a type dropdown per row. Redesigned to group statuses by type (Not started / Active / Closed) with per-group "Add status" buttons — matching the ClickUp UX pattern users are familiar with.
+
+**Spec:** `docs/list.md` (Custom Task Statuses section)
+
+### Step 6.1 — Status Settings Panel Redesign
+
+**File:** `components/list/status-settings-panel.tsx`
+
+- Three labeled groups: Not started (OPEN), Active (ACTIVE), Closed (CLOSED)
+- Per-group header: colored label + `+` button
+- Status rows: drag handle + color dot + name + `···` context menu
+- Context menu: Edit / Move up / Move down / Delete
+- "Add status" dashed button at bottom of each group
+- `AddRow`: no type dropdown (group implies type), color dot picker, autoFocus input
+- `EditRow`: type dropdown for reassigning to a different group
+- `DEFAULT_COLORS` per type: OPEN=#6B7280, ACTIVE=#3B82F6, CLOSED=#22C55E
+- `addingType: StatusType | null` state (replaces old boolean `adding`)
+
+**Status:** `[x]`
+
+---
+
+### Step 6.2 — Status Grouping in Task Detail Panel
+
+**File:** `components/task/task-detail-panel.tsx`
+
+Status `Select` now uses `SelectGroup` + `SelectLabel` to group options by type (Not started / Active / Closed) with `text-2xs font-semibold uppercase tracking-wider` label style.
+
+**Status:** `[x]`
+
+---
+
+### Step 6.3 — Status Grouping in Create Task Modal
+
+**File:** `components/task/create-task-modal.tsx`
+
+Status popover (custom popover, not `Select`) now renders statuses grouped by type with inline section headers. Width changed to `w-48`. "Manage statuses" gear button added at the bottom of the popover when `onManageStatuses` prop is provided.
+
+`onManageStatuses?: () => void` prop added to `CreateTaskModalProps`.
+
+**Status:** `[x]`
+
+---
+
+### Step 6.4 — Manage Statuses Entry Points
+
+**Files:** `components/workspace/workspace-shell.tsx`, `app/(app)/[workspaceId]/[spaceId]/list/[listId]/_components/list-container.tsx`
+
+Three entry points for Manage Statuses:
+1. **List header `···` menu** — "Manage Statuses" item in the topbar popover
+2. **Sidebar list `···` menu** — "Manage Statuses" item; fetches statuses on demand via `getListStatuses` server action, then renders `<StatusSettingsPanel>`
+3. **Create Task modal status popover** — "Manage statuses" gear button closes the modal and opens the status panel; wired in `list-container.tsx` via `onManageStatuses` prop
+
+**Status:** `[x]`
+
+---
+
+### Step 6.5 — `getListStatuses` Server Action
+
+**File:** `app/actions/list.ts`
+
+Added `getListStatuses(workspaceId, spaceId, listId)` — fetches `listStatus` rows for a list ordered by `orderIndex`, used by the sidebar to open Manage Statuses on demand.
+
+**Status:** `[x]`
+
+---
+
+## Change 7 — Project Settings from Sidebar Profile Menu
+
+**Why:** Users needed a quick way to access Project (Space) settings without navigating into the space first. Added "Project settings" to the sidebar profile popover with an inline two-step project picker.
+
+**Spec:** `docs/settings.md` (Profile popover → Project settings)
+
+### Step 7.1 — Profile Popover Project Picker
+
+**File:** `components/workspace/workspace-shell.tsx`
+
+- Added "Project settings" menu item with `CaretRightIcon` to the profile popover
+- Added `showProjectPicker` boolean state; popover `onOpenChange` resets it on close
+- Project picker view (inline replace, not a flyout): "← Back" button + scrollable list of projects with colored dots
+- Clicking a project navigates to `[workspaceId]/[spaceId]/settings/general`
+
+**Status:** `[x]`
+
+---
+
 ## Dependency Order
 
 ```

@@ -17,6 +17,7 @@ import {
   FileIcon,
   FilePdfIcon,
   FlagIcon,
+  GearIcon,
   ImageIcon,
   LinkIcon,
   PaperclipIcon,
@@ -48,6 +49,7 @@ import {
 import {
   getWorkspaceTags,
   createTag,
+  deleteTag,
   addTaskTag,
   removeTaskTag,
 } from "@/app/actions/task-tag";
@@ -63,6 +65,16 @@ import {
   removeDependency,
   searchTasksForDependency,
 } from "@/app/actions/task-dependency";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -72,6 +84,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -80,6 +98,7 @@ import { ClickUpCalendar } from "@/components/ui/clickup-calendar";
 import { format } from "date-fns";
 import { TaskDetailSkeleton } from "./task-detail-skeleton";
 import { useSetTopbar } from "@/lib/topbar-context";
+import { ManageStatusesDialog } from "@/components/list/manage-statuses-dialog";
 
 type Priority = "NONE" | "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 
@@ -195,6 +214,7 @@ export function TaskDetailPage({
     { id: string; name: string; color: string }[]
   >([]);
   const [tagSearch, setTagSearch] = React.useState("");
+  const [deleteTagTarget, setDeleteTagTarget] = React.useState<{ id: string; name: string } | null>(null);
   const [newChecklistName, setNewChecklistName] = React.useState("");
   const [addingChecklist, setAddingChecklist] = React.useState(false);
   const [newItemTexts, setNewItemTexts] = React.useState<
@@ -226,6 +246,7 @@ export function TaskDetailPage({
   const [creatingSubtask, setCreatingSubtask] = React.useState(false);
   const [isPinned, setIsPinned] = React.useState(false);
   const [statusPopoverOpen, setStatusPopoverOpen] = React.useState(false);
+  const [manageStatusesOpen, setManageStatusesOpen] = React.useState(false);
   const [priorityPopoverOpen, setPriorityPopoverOpen] = React.useState(false);
   const [assigneePopoverOpen, setAssigneePopoverOpen] = React.useState(false);
   const [tagPopoverOpen, setTagPopoverOpen] = React.useState(false);
@@ -415,6 +436,13 @@ export function TaskDetailPage({
     }
   }
 
+  async function handleDeleteTag() {
+    if (!deleteTagTarget) return;
+    await deleteTag(workspaceId, deleteTagTarget.id);
+    setDeleteTagTarget(null);
+    load();
+  }
+
   async function handleToggleWatch() {
     await toggleWatcher(workspaceId, spaceId, listId, taskId);
     load();
@@ -548,6 +576,7 @@ export function TaskDetailPage({
   }
 
   return (
+    <>
     <div className="flex h-full flex-col overflow-hidden bg-background">
       {/* Top bar */}
       <div className="flex items-center gap-3 border-b px-5 py-3 shrink-0">
@@ -731,23 +760,52 @@ export function TaskDetailPage({
                     {currentStatus?.name ?? "No status"}
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className="w-44 p-1" align="start">
-                  {statuses.map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => handleStatusChange(s.id)}
-                      className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
-                    >
-                      <span
-                        className="size-2.5 rounded-full shrink-0"
-                        style={{ backgroundColor: s.color }}
-                      />
-                      <span className="flex-1 text-left">{s.name}</span>
-                      {s.id === t.statusId && (
-                        <CheckIcon className="size-3.5 text-primary" />
-                      )}
-                    </button>
-                  ))}
+                <PopoverContent className="w-52 p-0" align="start">
+                  <div className="max-h-60 overflow-y-auto p-1" onWheel={(e) => e.stopPropagation()}>
+                    {(["OPEN", "ACTIVE", "CLOSED"] as const).map((type) => {
+                      const group = statuses.filter((s) => s.type === type);
+                      if (group.length === 0) return null;
+                      const label = type === "OPEN" ? "Not started" : type === "ACTIVE" ? "Active" : "Closed";
+                      return (
+                        <div key={type}>
+                          <div className="flex items-center px-2 pt-2 pb-0.5">
+                            <span className="flex-1 text-2xs font-semibold uppercase tracking-wider text-muted-foreground">
+                              {label}
+                            </span>
+                            {canPinToList && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <button
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="flex size-4 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                                  >
+                                    <DotsThreeIcon className="size-3.5" weight="bold" />
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent side="right" align="start" className="w-36">
+                                  <DropdownMenuItem onClick={() => { setStatusPopoverOpen(false); setManageStatusesOpen(true); }}>
+                                    <GearIcon className="size-3.5" />
+                                    Edit statuses
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
+                          </div>
+                          {group.map((s) => (
+                            <button
+                              key={s.id}
+                              onClick={() => handleStatusChange(s.id)}
+                              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
+                            >
+                              <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
+                              <span className="flex-1 text-left">{s.name}</span>
+                              {s.id === t.statusId && <CheckIcon className="size-3.5 text-primary" />}
+                            </button>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </PopoverContent>
               </Popover>
             </FieldRow>
@@ -942,28 +1000,44 @@ export function TaskDetailPage({
                       placeholder="Search or create…"
                       value={tagSearch}
                       onChange={(e) => setTagSearch(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && tagSearch.trim() && !exactTagMatch) {
+                          e.preventDefault();
+                          handleCreateTag(tagSearch.trim());
+                        }
+                      }}
                       className="h-7 text-xs mb-2"
                     />
                     <div className="space-y-0.5 max-h-40 overflow-y-auto">
                       {filteredTags.map((tag) => {
                         const selected = tags.some((t) => t.id === tag.id);
                         return (
-                          <button
+                          <div
                             key={tag.id}
-                            onClick={() => handleToggleTag(tag.id)}
-                            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
+                            className="group/tag flex w-full items-center gap-2 rounded px-2 py-1.5 hover:bg-accent"
                           >
-                            <span
-                              className="size-2.5 rounded-full shrink-0"
-                              style={{ backgroundColor: tag.color }}
-                            />
-                            <span className="flex-1 truncate text-left text-xs">
-                              {tag.name}
-                            </span>
-                            {selected && (
-                              <CheckIcon className="size-3.5 text-primary shrink-0" />
-                            )}
-                          </button>
+                            <button
+                              onClick={() => handleToggleTag(tag.id)}
+                              className="flex flex-1 min-w-0 items-center gap-2"
+                            >
+                              <span
+                                className="size-2.5 rounded-full shrink-0"
+                                style={{ backgroundColor: tag.color }}
+                              />
+                              <span className="flex-1 truncate text-left text-xs">
+                                {tag.name}
+                              </span>
+                              {selected && (
+                                <CheckIcon className="size-3.5 text-primary shrink-0" />
+                              )}
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setDeleteTagTarget({ id: tag.id, name: tag.name }); }}
+                              className="opacity-0 group-hover/tag:opacity-100 flex size-5 items-center justify-center rounded hover:bg-destructive/10 hover:text-destructive transition-opacity shrink-0"
+                            >
+                              <TrashIcon className="size-3" />
+                            </button>
+                          </div>
                         );
                       })}
                       {tagSearch && !exactTagMatch && (
@@ -1522,5 +1596,34 @@ export function TaskDetailPage({
         </div>
       </div>
     </div>
+
+    <AlertDialog open={!!deleteTagTarget} onOpenChange={(open) => { if (!open) setDeleteTagTarget(null); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete tag &ldquo;{deleteTagTarget?.name}&rdquo;?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will permanently delete the tag and remove it from every task in the workspace. This cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleDeleteTag}
+            className="bg-destructive text-white hover:bg-destructive/90"
+          >
+            Delete tag
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    <ManageStatusesDialog
+      open={manageStatusesOpen}
+      onOpenChange={setManageStatusesOpen}
+      workspaceId={workspaceId}
+      spaceId={spaceId}
+      listId={listId}
+      onSaved={() => fetchAll(false)}
+    />
+    </>
   );
 }

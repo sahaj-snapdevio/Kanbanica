@@ -122,9 +122,33 @@ Each List has its own set of task statuses. This allows different Lists to refle
 - Add a new status (name + color)
 - Rename an existing status
 - Change status color
-- Reorder statuses (drag-and-drop)
+- Reorder statuses (drag-and-drop within group, or "Move up / Move down" from context menu)
 - Delete a status
   - If tasks exist with that status, user must reassign them to another status before deletion
+
+**Manage Statuses panel UI:**
+
+The status settings panel (`components/list/status-settings-panel.tsx`) is a Dialog that presents statuses in three labeled groups: **Not started** (OPEN), **Active** (ACTIVE), and **Closed** (CLOSED).
+
+Each group has:
+- A colored group header label (grey / blue / green) with a `+` button to add a status directly into that group
+- Status rows: drag handle (DotsSixVertical) + color dot + name + context menu (`···`)
+- An "Add status" dashed-border button at the bottom of the group
+
+Context menu per status row (DotsThree popover):
+- **Edit** — expands inline edit row with name input, color dot picker, and a type dropdown (to reassign to a different group)
+- **Move up** / **Move down** — reorders within the full list
+- **Delete** — guarded against statuses with assigned tasks and the last CLOSED status
+
+"Add status" inline row (per group):
+- Color dot picker (Popover with 10 swatches, defaults to group's default color)
+- Name input (autoFocus, Enter to save, Escape to cancel)
+- No type dropdown — the group determines the type
+
+**Entry points for Manage Statuses:**
+1. List header `···` menu → **Manage Statuses** (Full Access / Admin+)
+2. Sidebar list `···` menu → **Manage Statuses** (Full Access / Admin+) — fetches statuses on demand via `getListStatuses` server action
+3. Create Task modal → status popover → **Manage statuses** gear button at the bottom (only shown when `onManageStatuses` prop is provided)
 
 **Status types:**
 | Type | Meaning |
@@ -248,7 +272,7 @@ ListStatus
 | Calendar View | Tasks on calendar by due date | All Space members |
 | Create List modal | Triggered from sidebar `+` next to Space | Full Access / Admin+ |
 | Edit List modal | Accessible from List header `...` menu | Full Access / Admin+ |
-| Status settings panel | Manage statuses for a List | Full Access / Admin+ |
+| Status settings panel | Manage statuses for a List — grouped by type (Not started / Active / Closed). Entry points: List header `···` menu, sidebar list `···` menu, Create Task modal status popover | Full Access / Admin+ |
 | Archive / Delete confirmation | Confirmation dialog before destructive actions | Full Access / Admin+ |
 
 ---

@@ -4,20 +4,20 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
-interface SpaceSettingsNavProps {
+interface ListSettingsNavProps {
   workspaceId: string;
   spaceId: string;
+  listId: string;
 }
 
 const NAV_ITEMS = [
-  { label: "General", path: "general" },
-  { label: "Members", path: "members" },
-  { label: "Sprints", path: "sprints" },
+  { label: "General",  path: "general" },
+  { label: "Statuses", path: "statuses" },
 ];
 
-export function SpaceSettingsNav({ workspaceId, spaceId }: SpaceSettingsNavProps) {
+export function ListSettingsNav({ workspaceId, spaceId, listId }: ListSettingsNavProps) {
   const pathname = usePathname();
-  const base = `/${workspaceId}/${spaceId}/settings`;
+  const base = `/${workspaceId}/${spaceId}/list/${listId}/settings`;
 
   return (
     <nav className="flex gap-1 border-b mb-6">

@@ -94,18 +94,19 @@ export default async function WorkspaceLayout({
             name: space.name,
             color: space.color,
             isPrivate: space.isPrivate,
+            sprintDateFormat: space.sprintDateFormat,
           })
           .from(space)
           .where(and(inArray(space.id, spaceIds), eq(space.isArchived, false)))
           .orderBy(asc(space.orderIndex), asc(space.createdAt))
-      : Promise.resolve([] as { id: string; name: string; color: string | null; isPrivate: boolean }[]),
+      : Promise.resolve([] as { id: string; name: string; color: string | null; isPrivate: boolean; sprintDateFormat: string }[]),
     spaceIds.length > 0
       ? db
-          .select({ id: space.id, name: space.name, color: space.color, isPrivate: space.isPrivate })
+          .select({ id: space.id, name: space.name, color: space.color, isPrivate: space.isPrivate, sprintDateFormat: space.sprintDateFormat })
           .from(space)
           .where(and(inArray(space.id, spaceIds), eq(space.isArchived, true)))
           .orderBy(asc(space.orderIndex), asc(space.createdAt))
-      : Promise.resolve([] as { id: string; name: string; color: string | null; isPrivate: boolean }[]),
+      : Promise.resolve([] as { id: string; name: string; color: string | null; isPrivate: boolean; sprintDateFormat: string }[]),
   ]);
 
   const isAdminOrOwner =
@@ -194,17 +195,17 @@ export default async function WorkspaceLayout({
   }
 
   // Fetch active + planned sprints for all accessible spaces
-  const sprintsBySpace: Record<string, { id: string; name: string; status: "PLANNED" | "ACTIVE" | "CLOSED" }[]> = {};
+  const sprintsBySpace: Record<string, { id: string; name: string; status: "PLANNED" | "ACTIVE" | "CLOSED"; startDate: Date | null; endDate: Date | null }[]> = {};
   if (spaces.length > 0) {
     const spaceIdList = spaces.map((s) => s.id);
     const sprintRows = await db
-      .select({ id: sprint.id, name: sprint.name, status: sprint.status, spaceId: sprint.spaceId })
+      .select({ id: sprint.id, name: sprint.name, status: sprint.status, spaceId: sprint.spaceId, startDate: sprint.startDate, endDate: sprint.endDate })
       .from(sprint)
       .where(and(inArray(sprint.spaceId, spaceIdList), inArray(sprint.status, ["ACTIVE", "PLANNED"])))
       .orderBy(asc(sprint.createdAt));
     for (const sp of sprintRows) {
       if (!sprintsBySpace[sp.spaceId]) sprintsBySpace[sp.spaceId] = [];
-      sprintsBySpace[sp.spaceId].push({ id: sp.id, name: sp.name, status: sp.status });
+      sprintsBySpace[sp.spaceId].push({ id: sp.id, name: sp.name, status: sp.status, startDate: sp.startDate, endDate: sp.endDate });
     }
   }
 
@@ -229,6 +230,7 @@ export default async function WorkspaceLayout({
           archivedLists: [],
           sprints: [],
           canManageList: isAdminOrOwner,
+          sprintDateFormat: s.sprintDateFormat ?? "MM/DD",
         }))}
         channels={channels}
         user={{ name: session.user.name ?? null, email: session.user.email }}

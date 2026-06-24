@@ -78,6 +78,20 @@
       "when": 1782198538756,
       "tag": "0010_tricky_catseye",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1782276204288,
+      "tag": "0011_low_reavers",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1782277567255,
+      "tag": "0012_free_captain_britain",
+      "breakpoints": true
     }
   ]
 }

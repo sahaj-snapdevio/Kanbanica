@@ -17,7 +17,19 @@ Settings are accessed from two entry points in the sidebar bottom bar (see [desi
 - Profile & Account -> `/settings/account`
 - Sessions -> `/settings/sessions`
 - Notifications -> `/settings/notifications`
+- Project settings → inline project picker (see below)
 - Sign out
+
+**Project settings flow (sidebar profile popover → project picker):**
+
+Clicking "Project settings" in the profile popover replaces the popover content in place with an inline project picker — no new dialog or flyout. The picker shows:
+- A "← Back" button (returns to the main popover view)
+- A scrollable list of all Projects in the current workspace (`max-h-52 overflow-y-auto`)
+- Each row: colored dot + project name (clickable)
+
+Clicking a project navigates to `[workspaceId]/[spaceId]/settings/general` and closes the popover.
+
+This is a two-step inline replace pattern (not a nested flyout) implemented inside `workspace-shell.tsx` using a `showProjectPicker` boolean state and a `Popover` `onOpenChange` that resets the state when the popover closes.
 
 ---
 
@@ -232,7 +244,12 @@ L-- Pending Invites section (collapsible)
 
 ## 3. Space Settings
 
-Space settings are accessed via the Space sidebar `...` -> "Settings", or by navigating directly. Route prefix: `/[workspaceId]/[spaceId]/settings/`.
+Space settings are accessed via:
+- The Space sidebar `...` → "Settings"
+- The sidebar profile popover → "Project settings" → select a project
+- Route prefix: `/[workspaceId]/[spaceId]/settings/`
+
+Tabs: **General**, **Members**, **Sprints**
 
 ### 3.1 General — `/[workspaceId]/[spaceId]/settings/general`
 
@@ -297,6 +314,7 @@ L-- Add Members button -> inline search + permission picker
 | Workspace Themes | `/[workspaceId]/settings/themes` |
 | Space General | `/[workspaceId]/[spaceId]/settings/general` |
 | Space Members | `/[workspaceId]/[spaceId]/settings/members` |
+| Space Sprint Settings | `/[workspaceId]/[spaceId]/settings/sprints` |
 
 ### Settings page layout pattern
 
@@ -328,4 +346,5 @@ L----------------------------+--------------------------------------+
 | Workspace General, Members, Security + sidebar entry points | Phase 5 — Workspace |
 | Workspace Themes | Phase 5 — Workspace (added post-phase) |
 | Space General, Space Members | Phase 6 — Space |
+| Space Sprint Settings | Phase 7/8 — Sprint |
 | Notification Preferences | Phase 15 — Notifications |

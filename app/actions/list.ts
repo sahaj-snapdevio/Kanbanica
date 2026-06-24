@@ -445,3 +445,23 @@ export async function getWorkspaceLists(
 
   return { spaces: [...spaceMap.values()].filter((s) => s.lists.length > 0) };
 }
+
+export async function getListStatuses(
+  workspaceId: string,
+  spaceId: string,
+  listId: string,
+): Promise<{ id: string; name: string; color: string; type: "OPEN" | "ACTIVE" | "CLOSED"; orderIndex: number }[] | { error: string }> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return { error: "Unauthorized" };
+
+  const membership = await getWorkspaceMembership(session.user.id, workspaceId);
+  if (!membership) return { error: "Unauthorized" };
+
+  const statuses = await db
+    .select({ id: listStatus.id, name: listStatus.name, color: listStatus.color, type: listStatus.type, orderIndex: listStatus.orderIndex })
+    .from(listStatus)
+    .where(eq(listStatus.listId, listId))
+    .orderBy(listStatus.orderIndex);
+
+  return statuses;
+}

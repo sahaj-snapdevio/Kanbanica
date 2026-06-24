@@ -94,6 +94,21 @@ export async function addTaskTag(
   return { ok: true };
 }
 
+export async function deleteTag(
+  workspaceId: string,
+  tagId: string,
+): Promise<{ ok: true } | { error: string }> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return { error: "Unauthorized" };
+
+  const membership = await getWorkspaceMembership(session.user.id, workspaceId);
+  if (!membership) return { error: "Unauthorized" };
+
+  await db.delete(tag).where(and(eq(tag.id, tagId), eq(tag.workspaceId, workspaceId)));
+
+  return { ok: true };
+}
+
 export async function removeTaskTag(
   workspaceId: string,
   spaceId: string,

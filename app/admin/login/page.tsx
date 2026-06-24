@@ -10,7 +10,7 @@ export default async function AdminLoginPage() {
   if (session) redirect("/admin");
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 p-4">
+    <div className="relative flex h-full overflow-auto items-center justify-center bg-slate-950 p-4">
       {/* Ambient accent glow */}
       <div
         aria-hidden

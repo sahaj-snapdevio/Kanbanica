@@ -150,6 +150,15 @@ export const space = pgTable("space", {
   archivedAt: timestamp("archived_at", { withTimezone: true }),
   createdBy: text("created_by").notNull(),
   orderIndex: integer("order_index").notNull().default(0),
+  // Sprint settings (null sprint_start_day = not yet configured → show first-time setup modal)
+  sprintStartDay: integer("sprint_start_day"),                                    // 0=Sun, 1=Mon, …, 6=Sat; NULL = unconfigured
+  sprintDefaultDurationWeeks: integer("sprint_default_duration_weeks").notNull().default(2),
+  sprintNameFormat: text("sprint_name_format").notNull().default("Sprint {n}"),   // {n}=number, {project}=space name
+  sprintDateFormat: text("sprint_date_format").notNull().default("MM/DD"),        // date display format in sprint views
+  sprintAutoMarkDone: boolean("sprint_auto_mark_done").notNull().default(false),
+  sprintAutoCreateNext: boolean("sprint_auto_create_next").notNull().default(false),
+  sprintAutoMoveIncomplete: boolean("sprint_auto_move_incomplete").notNull().default(false),
+  sprintAutoArchiveAfterN: integer("sprint_auto_archive_after_n"),                // NULL = disabled
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
