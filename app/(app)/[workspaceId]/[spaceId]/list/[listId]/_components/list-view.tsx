@@ -209,6 +209,13 @@ function TaskRow({
   React.useEffect(() => { setLocalPriority(task.priority); }, [task.priority]);
   React.useEffect(() => { setLocalDueDate(task.dueDateStart ?? null); }, [task.dueDateStart]);
   React.useEffect(() => { setLocalPersonalPin(isPersonallyPinned ?? false); }, [isPersonallyPinned]);
+  React.useEffect(() => {
+    function onUnpin(e: Event) {
+      if ((e as CustomEvent<{ taskId: string }>).detail.taskId === task.id) setLocalPersonalPin(false);
+    }
+    window.addEventListener("task-personal-unpin", onUnpin);
+    return () => window.removeEventListener("task-personal-unpin", onUnpin);
+  }, [task.id]);
 
   async function handleTogglePersonalPin(e: React.MouseEvent) {
     e.stopPropagation();

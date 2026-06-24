@@ -8,7 +8,6 @@ import {
   PencilSimpleIcon,
   PlusIcon,
   TrashIcon,
-  XIcon,
 } from "@phosphor-icons/react";
 import {
   createListStatus,
@@ -25,6 +24,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -236,8 +236,6 @@ export function ListStatusesSettings({
   const [statuses, setStatuses] = React.useState(initialStatuses);
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [addingType, setAddingType] = React.useState<StatusType | null>(null);
-  const [deleteError, setDeleteError] = React.useState("");
-
   async function refresh() {
     const res = await getListStatuses(workspaceId, spaceId, listId);
     if (!("error" in res)) {
@@ -247,9 +245,8 @@ export function ListStatusesSettings({
   }
 
   async function handleDelete(statusId: string) {
-    setDeleteError("");
     const res = await deleteListStatus(workspaceId, spaceId, listId, statusId);
-    if ("error" in res) { setDeleteError(res.error); return; }
+    if ("error" in res) { toast.error(res.error); return; }
     await refresh();
   }
 
@@ -366,14 +363,6 @@ export function ListStatusesSettings({
         );
       })}
 
-      {deleteError && (
-        <div className="flex items-start gap-2 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive max-w-lg">
-          <span className="flex-1">{deleteError}</span>
-          <button onClick={() => setDeleteError("")}>
-            <XIcon className="size-4" />
-          </button>
-        </div>
-      )}
     </div>
   );
 }

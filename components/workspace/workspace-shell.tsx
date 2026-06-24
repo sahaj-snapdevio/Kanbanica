@@ -949,6 +949,7 @@ function PinnedTasksBar({ workspaceId }: { workspaceId: string }) {
     mutate(swrKey, (prev: { pinnedTasks: PinnedItem[] } | undefined) => ({
       pinnedTasks: (prev?.pinnedTasks ?? []).filter((t) => t.taskId !== taskId),
     }), { revalidate: false });
+    window.dispatchEvent(new CustomEvent("task-personal-unpin", { detail: { taskId } }));
     await fetch(`/api/tasks/${taskId}/pin`, { method: 'DELETE' });
     mutate(swrKey);
   }

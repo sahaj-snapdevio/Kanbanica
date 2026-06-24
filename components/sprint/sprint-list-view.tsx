@@ -217,6 +217,13 @@ function TaskRow({
       .then((d) => { if (typeof d?.pinned === "boolean") setLocalPersonalPin(d.pinned); })
       .catch(() => {});
   }, [task.id]);
+  React.useEffect(() => {
+    function onUnpin(e: Event) {
+      if ((e as CustomEvent<{ taskId: string }>).detail.taskId === task.id) setLocalPersonalPin(false);
+    }
+    window.addEventListener("task-personal-unpin", onUnpin);
+    return () => window.removeEventListener("task-personal-unpin", onUnpin);
+  }, [task.id]);
 
   async function handleTogglePersonalPin(e: React.MouseEvent) {
     e.stopPropagation();
