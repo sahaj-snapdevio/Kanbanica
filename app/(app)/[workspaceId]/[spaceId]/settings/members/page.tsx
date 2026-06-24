@@ -1,13 +1,13 @@
+import { and, eq, inArray } from "drizzle-orm";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
-import { and, eq, inArray } from "drizzle-orm";
-import { auth } from "@/lib/auth";
-import { db } from "@/lib/db";
-import { spaceMember, workspaceMember } from "@/db/schema";
-import { user } from "@/db/schema/auth";
-import { getWorkspaceMembership } from "@/lib/permissions";
 import { SpaceMembersManager } from "@/components/space/space-members-manager";
 import { PRODUCT_NAME } from "@/config/platform";
+import { spaceMember, workspaceMember } from "@/db/schema";
+import { user } from "@/db/schema/auth";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { getWorkspaceMembership } from "@/lib/permissions";
 
 interface PageProps {
   params: Promise<{ workspaceId: string; spaceId: string }>;
@@ -17,15 +17,23 @@ export const metadata = { title: `Project Members — ${PRODUCT_NAME}` };
 
 export default async function SpaceMembersPage({ params }: PageProps) {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) redirect("/login");
+  if (!session) {
+    redirect("/login");
+  }
 
   const { workspaceId, spaceId } = await params;
 
   const wm = await getWorkspaceMembership(session.user.id, workspaceId);
-  if (!wm) notFound();
+  if (!wm) {
+    notFound();
+  }
 
   const spaceMembers = await db
-    .select({ id: spaceMember.id, userId: spaceMember.userId, permission: spaceMember.permission })
+    .select({
+      id: spaceMember.id,
+      userId: spaceMember.userId,
+      permission: spaceMember.permission,
+    })
     .from(spaceMember)
     .where(eq(spaceMember.spaceId, spaceId))
     .orderBy(spaceMember.createdAt);
@@ -48,9 +56,16 @@ export default async function SpaceMembersPage({ params }: PageProps) {
   const wsMembersRaw = await db
     .select({ userId: workspaceMember.userId })
     .from(workspaceMember)
-    .where(and(eq(workspaceMember.workspaceId, workspaceId), eq(workspaceMember.status, "ACTIVE")));
+    .where(
+      and(
+        eq(workspaceMember.workspaceId, workspaceId),
+        eq(workspaceMember.status, "ACTIVE")
+      )
+    );
 
-  const wsUserIds = wsMembersRaw.map((m) => m.userId).filter((id): id is string => !!id);
+  const wsUserIds = wsMembersRaw
+    .map((m) => m.userId)
+    .filter((id): id is string => !!id);
   const wsUsers = wsUserIds.length
     ? await db
         .select({ id: user.id, name: user.name, email: user.email })
@@ -66,9 +81,9 @@ export default async function SpaceMembersPage({ params }: PageProps) {
 
   return (
     <SpaceMembersManager
-      workspaceId={workspaceId}
-      spaceId={spaceId}
       members={members}
+      spaceId={spaceId}
+      workspaceId={workspaceId}
       workspaceMembers={workspaceMembers}
     />
   );

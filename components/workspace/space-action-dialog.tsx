@@ -1,7 +1,7 @@
 "use client";
 
-import { useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,25 +15,27 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 
 interface SpaceActionDialogProps {
-  open: boolean;
+  action: () => Promise<{ ok: true } | { error: string }>;
   onOpenChange: (open: boolean) => void;
+  open: boolean;
   spaceName: string;
   variant: "archive" | "delete";
-  action: () => Promise<{ ok: true } | { error: string }>;
   workspaceId: string;
 }
 
 const CONFIG = {
   archive: {
     title: (name: string) => `Archive "${name}"?`,
-    description: "The Project will be hidden from the sidebar. All data is preserved and can be restored from Settings at any time.",
+    description:
+      "The Project will be hidden from the sidebar. All data is preserved and can be restored from Settings at any time.",
     confirmLabel: "Archive",
     buttonVariant: "default" as const,
     successMessage: (name: string) => `"${name}" archived`,
   },
   delete: {
     title: (name: string) => `Delete "${name}"?`,
-    description: "This will permanently delete the Project and all its Lists, Tasks, Comments, and uploaded files. This cannot be undone.",
+    description:
+      "This will permanently delete the Project and all its Lists, Tasks, Comments, and uploaded files. This cannot be undone.",
     confirmLabel: "Delete permanently",
     buttonVariant: "destructive" as const,
     successMessage: (name: string) => `"${name}" deleted`,
@@ -67,17 +69,26 @@ export function SpaceActionDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{config.title(spaceName)}</DialogTitle>
           <DialogDescription>{config.description}</DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={pending}>
+          <Button
+            disabled={pending}
+            onClick={() => onOpenChange(false)}
+            variant="outline"
+          >
             Cancel
           </Button>
-          <Button variant={config.buttonVariant} disabled={pending} onClick={handleConfirm} className="gap-2">
+          <Button
+            className="gap-2"
+            disabled={pending}
+            onClick={handleConfirm}
+            variant={config.buttonVariant}
+          >
             {pending && <Spinner className="size-4" />}
             {config.confirmLabel}
           </Button>

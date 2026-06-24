@@ -43,7 +43,7 @@ export function AppShell({
 
           <div className="flex items-center gap-3">
             {isAdmin && (
-              <Button asChild variant="outline" size="sm">
+              <Button asChild size="sm" variant="outline">
                 <Link href="/orbit">Admin Panel</Link>
               </Button>
             )}
@@ -51,7 +51,7 @@ export function AppShell({
               {email}
             </span>
             <form action={logoutAction}>
-              <Button type="submit" variant="secondary" size="sm">
+              <Button size="sm" type="submit" variant="secondary">
                 Sign out
               </Button>
             </form>

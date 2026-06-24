@@ -11,7 +11,9 @@ export default function AdminAuditLogPage() {
   const [page, setPage] = useState(1);
 
   const params = new URLSearchParams({ page: String(page) });
-  if (search) params.set("search", search);
+  if (search) {
+    params.set("search", search);
+  }
 
   const { data, isLoading } = useSWR(`/api/admin/audit-log?${params}`, fetcher);
   const logs: any[] = data?.logs ?? [];
@@ -23,14 +25,19 @@ export default function AdminAuditLogPage() {
     <div className="p-8 space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Audit Log</h1>
-        <p className="text-muted-foreground text-sm mt-1">{total.toLocaleString()} entries</p>
+        <p className="text-muted-foreground text-sm mt-1">
+          {total.toLocaleString()} entries
+        </p>
       </div>
 
       <Input
+        className="max-w-sm"
+        onChange={(e) => {
+          setSearch(e.target.value);
+          setPage(1);
+        }}
         placeholder="Search by action…"
         value={search}
-        onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-        className="max-w-sm"
       />
 
       <div className="rounded-lg border overflow-hidden">
@@ -46,22 +53,47 @@ export default function AdminAuditLogPage() {
           </thead>
           <tbody>
             {isLoading ? (
-              <tr><td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">Loading…</td></tr>
+              <tr>
+                <td
+                  className="px-4 py-6 text-center text-muted-foreground"
+                  colSpan={5}
+                >
+                  Loading…
+                </td>
+              </tr>
             ) : logs.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">No entries found</td></tr>
+              <tr>
+                <td
+                  className="px-4 py-6 text-center text-muted-foreground"
+                  colSpan={5}
+                >
+                  No entries found
+                </td>
+              </tr>
             ) : (
               logs.map((log) => (
-                <tr key={log.id} className="border-t hover:bg-muted/30">
+                <tr className="border-t hover:bg-muted/30" key={log.id}>
                   <td className="px-4 py-2 text-muted-foreground whitespace-nowrap text-xs">
                     {new Date(log.createdAt).toLocaleString()}
                   </td>
                   <td className="px-4 py-2 font-mono text-xs">{log.action}</td>
-                  <td className="px-4 py-2 text-muted-foreground text-xs">{log.actorEmail ?? log.actorId ?? "—"}</td>
-                  <td className="px-4 py-2 text-xs">
-                    <span className="text-muted-foreground">{log.entityType}</span>
-                    {log.entityId && <span className="text-muted-foreground"> / {log.entityId.slice(0, 8)}…</span>}
+                  <td className="px-4 py-2 text-muted-foreground text-xs">
+                    {log.actorEmail ?? log.actorId ?? "—"}
                   </td>
-                  <td className="px-4 py-2 text-muted-foreground text-xs">{log.description}</td>
+                  <td className="px-4 py-2 text-xs">
+                    <span className="text-muted-foreground">
+                      {log.entityType}
+                    </span>
+                    {log.entityId && (
+                      <span className="text-muted-foreground">
+                        {" "}
+                        / {log.entityId.slice(0, 8)}…
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-2 text-muted-foreground text-xs">
+                    {log.description}
+                  </td>
                 </tr>
               ))
             )}
@@ -71,9 +103,23 @@ export default function AdminAuditLogPage() {
 
       {totalPages > 1 && (
         <div className="flex items-center gap-2">
-          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="px-3 py-1 border rounded text-sm disabled:opacity-50">Previous</button>
-          <span className="text-sm text-muted-foreground">Page {page} of {totalPages}</span>
-          <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="px-3 py-1 border rounded text-sm disabled:opacity-50">Next</button>
+          <button
+            className="px-3 py-1 border rounded text-sm disabled:opacity-50"
+            disabled={page === 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            Previous
+          </button>
+          <span className="text-sm text-muted-foreground">
+            Page {page} of {totalPages}
+          </span>
+          <button
+            className="px-3 py-1 border rounded text-sm disabled:opacity-50"
+            disabled={page === totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          >
+            Next
+          </button>
         </div>
       )}
     </div>

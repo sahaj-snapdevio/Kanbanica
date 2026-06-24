@@ -1,6 +1,12 @@
 import { OrbitPageHeader } from "@/components/admin/orbit-page-header";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -21,15 +27,17 @@ export default async function OrbitQueuesPage() {
   return (
     <div>
       <OrbitPageHeader
+        description="pg-boss queue state grouped by queue name and state. Start the worker to create the pgboss schema."
         eyebrow="Admin"
         title="Queues"
-        description="pg-boss queue state grouped by queue name and state. Start the worker to create the pgboss schema."
       />
 
       <Card>
         <CardHeader>
           <CardTitle>pg-boss</CardTitle>
-          <CardDescription>Job queue states grouped by queue name. Run the worker to populate.</CardDescription>
+          <CardDescription>
+            Job queue states grouped by queue name. Run the worker to populate.
+          </CardDescription>
         </CardHeader>
         <CardContent className="overflow-x-auto p-0">
           <Table>

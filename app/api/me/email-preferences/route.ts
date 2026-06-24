@@ -1,14 +1,16 @@
-import { headers } from "next/headers";
-import { NextRequest, NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
 import { createId } from "@paralleldrive/cuid2";
+import { eq } from "drizzle-orm";
+import { headers } from "next/headers";
+import { type NextRequest, NextResponse } from "next/server";
+import { userEmailPreference } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { userEmailPreference } from "@/db/schema";
 
 export async function GET(_req: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const [pref] = await db
     .select()
@@ -27,7 +29,9 @@ export async function GET(_req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const body = await req.json();
   const { deliveryMode, digestTime, digestTimezone } = body;

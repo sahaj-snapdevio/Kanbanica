@@ -1,34 +1,34 @@
 "use client";
 
-import * as React from "react";
-import { useRouter } from "next/navigation";
-import { formatDistanceToNow } from "date-fns";
-import useSWR, { mutate } from "swr";
 import { XIcon } from "@phosphor-icons/react";
+import { formatDistanceToNow } from "date-fns";
+import { useRouter } from "next/navigation";
+import * as React from "react";
+import useSWR, { mutate } from "swr";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
 interface Notification {
-  id: string;
-  workspaceId: string;
   actorId: string | null;
-  triggerType: string;
-  entityType: string;
-  entityId: string;
-  title: string;
+  actorImage: string | null;
+  actorName: string | null;
   body: string | null;
+  createdAt: string;
+  entityId: string;
+  entityType: string;
+  id: string;
   isRead: boolean;
   readAt: string | null;
-  createdAt: string;
-  actorName: string | null;
-  actorImage: string | null;
+  title: string;
+  triggerType: string;
+  workspaceId: string;
 }
 
 interface NotificationsResponse {
@@ -39,8 +39,8 @@ interface NotificationsResponse {
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 interface NotificationPanelProps {
-  open: boolean;
   onClose: () => void;
+  open: boolean;
 }
 
 export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
@@ -56,7 +56,7 @@ export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
   } = useSWR<NotificationsResponse>(
     open ? `/api/me/notifications?filter=${activeTab}` : null,
     fetcher,
-    { refreshInterval: open ? 15000 : 0 },
+    { refreshInterval: open ? 15_000 : 0 }
   );
 
   const notifications = data?.notifications ?? [];
@@ -97,7 +97,9 @@ export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
   }
 
   function getActorInitials(name: string | null): string {
-    if (!name) return "?";
+    if (!name) {
+      return "?";
+    }
     return name
       .split(" ")
       .map((n) => n[0])
@@ -107,10 +109,10 @@ export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
   }
 
   return (
-    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
+    <Sheet onOpenChange={(o) => !o && onClose()} open={open}>
       <SheetContent
-        side="right"
         className="flex w-full flex-col p-0 sm:max-w-md rounded-l-4xl"
+        side="right"
       >
         <SheetHeader className="relative border-b pl-4 pr-10 pt-3 pb-2 flex flex-col gap-2">
           {/* Row 1: Title + actions (pr-10 clears the Sheet close button) */}
@@ -118,15 +120,17 @@ export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
             <SheetTitle>Notifications</SheetTitle>
             <div className="flex items-center gap-3">
               <button
-                onClick={markAllRead}
                 className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                onClick={markAllRead}
               >
                 Mark all as read
               </button>
-              <span className="text-muted-foreground/40 text-xs select-none">|</span>
+              <span className="text-muted-foreground/40 text-xs select-none">
+                |
+              </span>
               <button
-                onClick={clearAll}
                 className="text-xs text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
+                onClick={clearAll}
               >
                 Clear all
               </button>
@@ -135,17 +139,26 @@ export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
 
           {/* Row 2: Tabs */}
           <Tabs
-            value={activeTab}
             onValueChange={(v) => setActiveTab(v as typeof activeTab)}
+            value={activeTab}
           >
             <TabsList className="h-8 rounded-4xl p-2">
-              <TabsTrigger value="all" className="text-xs px-3 h-7 rounded-4xl cursor-pointer">
+              <TabsTrigger
+                className="text-xs px-3 h-7 rounded-4xl cursor-pointer"
+                value="all"
+              >
                 All
               </TabsTrigger>
-              <TabsTrigger value="unread" className="text-xs px-3 h-7 rounded-4xl cursor-pointer">
+              <TabsTrigger
+                className="text-xs px-3 h-7 rounded-4xl cursor-pointer"
+                value="unread"
+              >
                 Unread
               </TabsTrigger>
-              <TabsTrigger value="mentions" className="text-xs px-3 h-7 rounded-4xl cursor-pointer">
+              <TabsTrigger
+                className="text-xs px-3 h-7 rounded-4xl cursor-pointer"
+                value="mentions"
+              >
                 Mentions
               </TabsTrigger>
             </TabsList>
@@ -170,11 +183,11 @@ export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
           )}
           {notifications.map((n) => (
             <div
-              key={n.id}
               className={cn(
                 "group relative flex cursor-pointer items-start gap-3 border-b px-4 py-3 transition-colors hover:bg-accent/50",
-                !n.isRead && "bg-blue-50/50 dark:bg-blue-950/20",
+                !n.isRead && "bg-blue-50/50 dark:bg-blue-950/20"
               )}
+              key={n.id}
               onClick={() => handleNotificationClick(n)}
             >
               {/* Unread dot */}

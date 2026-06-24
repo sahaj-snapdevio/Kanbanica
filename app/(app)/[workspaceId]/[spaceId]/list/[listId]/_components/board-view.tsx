@@ -1,74 +1,93 @@
 "use client";
 
-import * as React from "react";
-import { useRouter } from "next/navigation";
 import {
+  closestCorners,
   DndContext,
+  type DragEndEvent,
+  type DragOverEvent,
   DragOverlay,
+  type DragStartEvent,
   PointerSensor,
+  useDroppable,
   useSensor,
   useSensors,
-  closestCorners,
-  type DragStartEvent,
-  type DragOverEvent,
-  type DragEndEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import {
-  MagnifyingGlassIcon,
   ArrowsDownUpIcon,
   FunnelIcon,
+  MagnifyingGlassIcon,
   PlusIcon,
 } from "@phosphor-icons/react";
+import { useRouter } from "next/navigation";
+import * as React from "react";
 import { updateTaskStatus } from "@/app/actions/task";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CreateTaskModal } from "@/components/task/create-task-modal";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { QuickCreateTask } from "./quick-create-task";
 
 function userInitials(name: string) {
-  if (!name) return "?";
+  if (!name) {
+    return "?";
+  }
   const clean = name.includes("@") ? name.split("@")[0] : name;
-  return clean.split(/[\s._-]+/).map((n) => n[0]).filter(Boolean).join("").toUpperCase().slice(0, 2) || "?";
+  return (
+    clean
+      .split(/[\s._-]+/)
+      .map((n) => n[0])
+      .filter(Boolean)
+      .join("")
+      .toUpperCase()
+      .slice(0, 2) || "?"
+  );
 }
 
 interface Status {
+  color: string;
   id: string;
   name: string;
-  color: string;
-  type: "OPEN" | "ACTIVE" | "CLOSED";
   orderIndex: number;
+  type: "OPEN" | "ACTIVE" | "CLOSED";
 }
 
 interface Task {
-  id: string;
-  title: string;
-  priority: "NONE" | "LOW" | "MEDIUM" | "HIGH" | "URGENT";
-  statusId: string | null;
-  seqNumber: number;
-  orderIndex: number;
-  tags: { id: string; name: string; color: string }[];
   assignees: { userId: string; name: string; image: string | null }[];
+  id: string;
+  orderIndex: number;
+  priority: "NONE" | "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+  seqNumber: number;
+  statusId: string | null;
+  tags: { id: string; name: string; color: string }[];
+  title: string;
 }
 
 interface BoardViewProps {
-  workspaceId: string;
-  space: { id: string; name: string; color: string | null };
-  list: { id: string; name: string; color?: string | null; description?: string | null };
-  statuses: Status[];
-  tasks: Task[];
-  headerless?: boolean;
   canEdit?: boolean;
+  headerless?: boolean;
   isAdmin?: boolean;
+  list: {
+    id: string;
+    name: string;
+    color?: string | null;
+    description?: string | null;
+  };
   members?: { userId: string; name: string | null; email: string | null }[];
+  space: { id: string; name: string; color: string | null };
+  statuses: Status[];
   tags?: { id: string; name: string; color: string }[];
+  tasks: Task[];
+  workspaceId: string;
 }
 
 const PRIORITY_ORDER: Record<Task["priority"], number> = {
@@ -106,7 +125,7 @@ function CardContent({
         "rounded-lg border bg-card p-3 shadow-sm",
         isDragging && "opacity-40 shadow-none border-dashed",
         overlay && "shadow-xl rotate-1 cursor-grabbing",
-        !isDragging && !overlay && "hover:shadow-md transition-shadow",
+        !isDragging && !overlay && "hover:shadow-md transition-shadow"
       )}
     >
       <div {...dragListeners} className={cn(!overlay && "cursor-grab active:cursor-grabbing")}>
@@ -115,8 +134,8 @@ function CardContent({
           <div className="mt-1.5 flex flex-wrap gap-1">
             {task.tags.map((tag) => (
               <span
-                key={tag.id}
                 className="rounded-full px-1.5 py-0.5 text-2xs font-medium"
+                key={tag.id}
                 style={{ backgroundColor: `${tag.color}20`, color: tag.color }}
               >
                 {tag.name}
@@ -127,20 +146,30 @@ function CardContent({
         <div className="mt-2 flex items-center justify-between gap-2">
           <span className="font-mono text-2xs text-muted-foreground shrink-0">#{task.seqNumber}</span>
           <div className="flex items-center gap-2 min-w-0">
-            {task.priority !== "NONE" && (() => {
-              const cfg = PRIORITY_CONFIG[task.priority];
-              return cfg ? (
-                <span className={cn("flex items-center gap-1 text-xs font-bold shrink-0", cfg.color)}>
-                  <span>{cfg.icon}</span>
-                  {cfg.label}
-                </span>
-              ) : null;
-            })()}
+            {task.priority !== "NONE" &&
+              (() => {
+                const cfg = PRIORITY_CONFIG[task.priority];
+                return cfg ? (
+                  <span
+                    className={cn(
+                      "flex items-center gap-1 text-xs font-bold shrink-0",
+                      cfg.color
+                    )}
+                  >
+                    <span>{cfg.icon}</span>
+                    {cfg.label}
+                  </span>
+                ) : null;
+              })()}
             {task.assignees.length > 0 && (
               <div className="flex -space-x-1.5 ml-auto">
                 {task.assignees.slice(0, 3).map((a) => (
-                  <Avatar key={a.userId} className="size-7 border-2 border-background" title={a.name}>
-                    {a.image && <AvatarImage src={a.image} alt={a.name} />}
+                  <Avatar
+                    className="size-7 border-2 border-background"
+                    key={a.userId}
+                    title={a.name}
+                  >
+                    {a.image && <AvatarImage alt={a.name} src={a.image} />}
                     <AvatarFallback className="text-xs font-semibold bg-primary text-primary-foreground">
                       {userInitials(a.name)}
                     </AvatarFallback>
@@ -195,9 +224,9 @@ function TaskCard({ task, workspaceId }: { task: Task; workspaceId: string }) {
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
       <CardContent
-        task={task}
-        isDragging={isDragging}
         dragListeners={clickableListeners}
+        isDragging={isDragging}
+        task={task}
       />
     </div>
   );
@@ -227,8 +256,13 @@ function Column({
     >
       {/* Column header */}
       <div className="flex items-center gap-2 px-1 py-1">
-        <span className="inline-block h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: status.color }} />
-        <span className="flex-1 font-semibold text-sm uppercase tracking-wide text-foreground/80">{status.name}</span>
+        <span
+          className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
+          style={{ backgroundColor: status.color }}
+        />
+        <span className="flex-1 font-semibold text-sm uppercase tracking-wide text-foreground/80">
+          {status.name}
+        </span>
         <span
           className="rounded-full px-2 py-0.5 text-xs font-semibold"
           style={{ backgroundColor: `${status.color}22`, color: status.color }}
@@ -238,14 +272,21 @@ function Column({
       </div>
 
       {/* Droppable task list — flex-1 + overflow-y-auto gives each column its own scroll */}
-      <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+      <SortableContext
+        items={tasks.map((t) => t.id)}
+        strategy={verticalListSortingStrategy}
+      >
         <div
-          ref={setNodeRef}
           className={cn(
             "flex flex-col gap-2 rounded-lg p-1 transition-all flex-1 overflow-y-auto min-h-0 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border",
-            tasks.length === 0 && "min-h-8",
+            tasks.length === 0 && "min-h-8"
           )}
-          style={isOver ? { boxShadow: `inset 0 0 0 2px ${status.color}` } : undefined}
+          ref={setNodeRef}
+          style={
+            isOver
+              ? { boxShadow: `inset 0 0 0 2px ${status.color}` }
+              : undefined
+          }
         >
           {tasks.map((t) => (
             <TaskCard key={t.id} task={t} workspaceId={workspaceId} />
@@ -254,11 +295,11 @@ function Column({
       </SortableContext>
 
       <QuickCreateTask
-        workspaceId={workspaceId}
-        spaceId={space.id}
         listId={list.id}
-        statusId={status.id}
         placeholder="Add task"
+        spaceId={space.id}
+        statusId={status.id}
+        workspaceId={workspaceId}
       />
     </div>
   );
@@ -272,7 +313,9 @@ export function BoardView({ workspaceId, space, list, statuses, tasks, members =
   const [activeTask, setActiveTask] = React.useState<Task | null>(null);
 
   // Sync when server data changes
-  React.useEffect(() => { setLocalTasks(tasks); }, [tasks]);
+  React.useEffect(() => {
+    setLocalTasks(tasks);
+  }, [tasks]);
 
   // ── Toolbar state ─────────────────────────────────────────────────────────
   const [createOpen, setCreateOpen] = React.useState(false);
@@ -285,28 +328,45 @@ export function BoardView({ workspaceId, space, list, statuses, tasks, members =
   const [priorityFilter, setPriorityFilter] = React.useState<string[]>([]);
   const [assigneeFilter, setAssigneeFilter] = React.useState<string[]>([]);
 
-  const hasActiveFilters = statusFilter.length > 0 || priorityFilter.length > 0 || assigneeFilter.length > 0;
+  const hasActiveFilters =
+    statusFilter.length > 0 ||
+    priorityFilter.length > 0 ||
+    assigneeFilter.length > 0;
 
   // ── Filtered + sorted tasks (for display) ────────────────────────────────
   const processedTasks = React.useMemo(() => {
     let result = localTasks.filter((t) => {
-      if (searchQuery.trim() && !t.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-      if (statusFilter.length && !statusFilter.includes(t.statusId ?? "")) return false;
-      if (priorityFilter.length && !priorityFilter.includes(t.priority)) return false;
+      if (
+        searchQuery.trim() &&
+        !t.title.toLowerCase().includes(searchQuery.toLowerCase())
+      ) {
+        return false;
+      }
+      if (statusFilter.length && !statusFilter.includes(t.statusId ?? "")) {
+        return false;
+      }
+      if (priorityFilter.length && !priorityFilter.includes(t.priority)) {
+        return false;
+      }
       if (assigneeFilter.length) {
         const hasUnassigned = assigneeFilter.includes("unassigned");
         const userIds = assigneeFilter.filter((a) => a !== "unassigned");
         const assigneeIds = t.assignees.map((a) => a.userId);
         const matchUnassigned = hasUnassigned && assigneeIds.length === 0;
-        const matchUser = userIds.length > 0 && assigneeIds.some((id) => userIds.includes(id));
-        if (!matchUnassigned && !matchUser) return false;
+        const matchUser =
+          userIds.length > 0 && assigneeIds.some((id) => userIds.includes(id));
+        if (!matchUnassigned && !matchUser) {
+          return false;
+        }
       }
       return true;
     });
 
     if (sortBy === "name") {
       result = [...result].sort((a, b) =>
-        sortOrder === "asc" ? a.title.localeCompare(b.title) : b.title.localeCompare(a.title),
+        sortOrder === "asc"
+          ? a.title.localeCompare(b.title)
+          : b.title.localeCompare(a.title)
       );
     } else if (sortBy === "priority") {
       result = [...result].sort((a, b) => {
@@ -316,19 +376,31 @@ export function BoardView({ workspaceId, space, list, statuses, tasks, members =
     }
 
     return result;
-  }, [localTasks, searchQuery, statusFilter, priorityFilter, assigneeFilter, sortBy, sortOrder]);
+  }, [
+    localTasks,
+    searchQuery,
+    statusFilter,
+    priorityFilter,
+    assigneeFilter,
+    sortBy,
+    sortOrder,
+  ]);
 
   // tasksByStatus uses processed tasks for display; DnD handlers still use localTasks
   const tasksByStatus = React.useMemo(() => {
-    const map: Record<string, Task[]> = Object.fromEntries(statuses.map((s) => [s.id, []]));
+    const map: Record<string, Task[]> = Object.fromEntries(
+      statuses.map((s) => [s.id, []])
+    );
     for (const t of processedTasks) {
-      if (t.statusId && map[t.statusId]) map[t.statusId].push(t);
+      if (t.statusId && map[t.statusId]) {
+        map[t.statusId].push(t);
+      }
     }
     return map;
   }, [processedTasks, statuses]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   );
 
   function findStatusForTask(taskId: string) {
@@ -340,40 +412,54 @@ export function BoardView({ workspaceId, space, list, statuses, tasks, members =
   }
 
   function onDragOver({ active, over }: DragOverEvent) {
-    if (!over) return;
+    if (!over) {
+      return;
+    }
 
     const activeId = active.id as string;
     const overId = over.id as string;
 
     const activeStatus = findStatusForTask(activeId);
     // over could be a column (statusId) or another task
-    const overStatus = statuses.find((s) => s.id === overId)?.id
-      ?? findStatusForTask(overId);
+    const overStatus =
+      statuses.find((s) => s.id === overId)?.id ?? findStatusForTask(overId);
 
-    if (!activeStatus || !overStatus || activeStatus === overStatus) return;
+    if (!activeStatus || !overStatus || activeStatus === overStatus) {
+      return;
+    }
 
     // Optimistically move to new column
     setLocalTasks((prev) =>
-      prev.map((t) => t.id === activeId ? { ...t, statusId: overStatus } : t),
+      prev.map((t) => (t.id === activeId ? { ...t, statusId: overStatus } : t))
     );
   }
 
   async function onDragEnd({ active, over }: DragEndEvent) {
     setActiveTask(null);
-    if (!over) return;
+    if (!over) {
+      return;
+    }
 
     const activeId = active.id as string;
     const overId = over.id as string;
 
-    const newStatus = statuses.find((s) => s.id === overId)?.id
-      ?? findStatusForTask(overId);
+    const newStatus =
+      statuses.find((s) => s.id === overId)?.id ?? findStatusForTask(overId);
 
     const originalStatus = tasks.find((t) => t.id === activeId)?.statusId;
 
-    if (!newStatus || newStatus === originalStatus) return;
+    if (!newStatus || newStatus === originalStatus) {
+      return;
+    }
 
     // Persist to server
-    const res = await updateTaskStatus(workspaceId, space.id, list.id, activeId, newStatus);
+    const res = await updateTaskStatus(
+      workspaceId,
+      space.id,
+      list.id,
+      activeId,
+      newStatus
+    );
     if ("error" in res) {
       // Revert on failure
       setLocalTasks(tasks);
@@ -383,11 +469,10 @@ export function BoardView({ workspaceId, space, list, statuses, tasks, members =
   return (
     <>
       <CreateTaskModal
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        workspaceId={workspaceId}
-        spaceId={space.id}
         listId={list.id}
+        onOpenChange={setCreateOpen}
+        open={createOpen}
+        spaceId={space.id}
         statuses={statuses}
         canManage={canEdit || isAdmin}
       />
@@ -399,8 +484,10 @@ export function BoardView({ workspaceId, space, list, statuses, tasks, members =
           <div className="relative">
             <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
             <input
-              type="text"
+              className="h-8 w-44 rounded-lg border border-gray-200 bg-white pl-8 pr-3 text-xs focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all focus:w-56"
+              onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search tasks…"
+              type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="h-8 w-44 rounded-lg border border-border bg-background text-foreground pl-8 pr-3 text-xs focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all focus:w-56 placeholder:text-muted-foreground"
@@ -426,10 +513,14 @@ export function BoardView({ workspaceId, space, list, statuses, tasks, members =
                   {statuses.map((s) => (
                     <label key={s.id} className="flex items-center gap-2 text-xs text-foreground cursor-pointer py-0.5 hover:bg-accent rounded">
                       <input
-                        type="checkbox"
                         checked={statusFilter.includes(s.id)}
+                        className="rounded border-gray-300 text-primary focus:ring-primary size-3.5"
                         onChange={(e) => {
-                          setStatusFilter((prev) => e.target.checked ? [...prev, s.id] : prev.filter((id) => id !== s.id));
+                          setStatusFilter((prev) =>
+                            e.target.checked
+                              ? [...prev, s.id]
+                              : prev.filter((id) => id !== s.id)
+                          );
                         }}
                         className="rounded border-border text-primary focus:ring-primary size-3.5"
                       />
@@ -446,14 +537,22 @@ export function BoardView({ workspaceId, space, list, statuses, tasks, members =
                   {["URGENT", "HIGH", "MEDIUM", "LOW", "NONE"].map((p) => (
                     <label key={p} className="flex items-center gap-2 text-xs text-foreground cursor-pointer py-0.5 hover:bg-accent rounded">
                       <input
-                        type="checkbox"
                         checked={priorityFilter.includes(p)}
+                        className="rounded border-gray-300 text-primary focus:ring-primary size-3.5"
                         onChange={(e) => {
-                          setPriorityFilter((prev) => e.target.checked ? [...prev, p] : prev.filter((v) => v !== p));
+                          setPriorityFilter((prev) =>
+                            e.target.checked
+                              ? [...prev, p]
+                              : prev.filter((v) => v !== p)
+                          );
                         }}
                         className="rounded border-border text-primary focus:ring-primary size-3.5"
                       />
-                      <span>{p === "NONE" ? "No Priority" : p.charAt(0) + p.slice(1).toLowerCase()}</span>
+                      <span>
+                        {p === "NONE"
+                          ? "No Priority"
+                          : p.charAt(0) + p.slice(1).toLowerCase()}
+                      </span>
                     </label>
                   ))}
                 </div>
@@ -466,10 +565,14 @@ export function BoardView({ workspaceId, space, list, statuses, tasks, members =
                   <div className="flex flex-col gap-1 max-h-36 overflow-y-auto">
                     <label className="flex items-center gap-2 text-xs text-foreground cursor-pointer py-0.5 hover:bg-accent rounded">
                       <input
-                        type="checkbox"
                         checked={assigneeFilter.includes("unassigned")}
+                        className="rounded border-gray-300 text-primary focus:ring-primary size-3.5"
                         onChange={(e) => {
-                          setAssigneeFilter((prev) => e.target.checked ? [...prev, "unassigned"] : prev.filter((v) => v !== "unassigned"));
+                          setAssigneeFilter((prev) =>
+                            e.target.checked
+                              ? [...prev, "unassigned"]
+                              : prev.filter((v) => v !== "unassigned")
+                          );
                         }}
                         className="rounded border-border text-primary focus:ring-primary size-3.5"
                       />
@@ -478,10 +581,14 @@ export function BoardView({ workspaceId, space, list, statuses, tasks, members =
                     {members.map((m) => (
                       <label key={m.userId} className="flex items-center gap-2 text-xs text-foreground cursor-pointer py-0.5 hover:bg-accent rounded">
                         <input
-                          type="checkbox"
                           checked={assigneeFilter.includes(m.userId)}
+                          className="rounded border-gray-300 text-primary focus:ring-primary size-3.5"
                           onChange={(e) => {
-                            setAssigneeFilter((prev) => e.target.checked ? [...prev, m.userId] : prev.filter((id) => id !== m.userId));
+                            setAssigneeFilter((prev) =>
+                              e.target.checked
+                                ? [...prev, m.userId]
+                                : prev.filter((id) => id !== m.userId)
+                            );
                           }}
                           className="rounded border-border text-primary focus:ring-primary size-3.5"
                         />
@@ -520,8 +627,8 @@ export function BoardView({ workspaceId, space, list, statuses, tasks, members =
 
         {/* Create Task button */}
         <button
-          onClick={() => setCreateOpen(true)}
           className="flex items-center gap-1.5 h-8 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/95 transition-all shadow-sm shrink-0 cursor-pointer select-none"
+          onClick={() => setCreateOpen(true)}
         >
           <PlusIcon className="size-3.5" weight="bold" />
           Create Task
@@ -529,29 +636,29 @@ export function BoardView({ workspaceId, space, list, statuses, tasks, members =
       </div>
 
       <DndContext
-        id="board-dnd"
-        sensors={sensors}
         collisionDetection={closestCorners}
-        onDragStart={onDragStart}
-        onDragOver={onDragOver}
+        id="board-dnd"
         onDragEnd={onDragEnd}
+        onDragOver={onDragOver}
+        onDragStart={onDragStart}
+        sensors={sensors}
       >
         <div className="flex gap-3 overflow-x-auto pb-4 items-start">
           {statuses.map((status) => (
             <Column
               key={status.id}
+              list={list}
+              space={space}
               status={status}
               tasks={tasksByStatus[status.id] ?? []}
               workspaceId={workspaceId}
-              space={space}
-              list={list}
             />
           ))}
         </div>
 
         {/* Drag overlay — shown while dragging */}
         <DragOverlay>
-          {activeTask && <CardContent task={activeTask} overlay />}
+          {activeTask && <CardContent overlay task={activeTask} />}
         </DragOverlay>
       </DndContext>
     </>

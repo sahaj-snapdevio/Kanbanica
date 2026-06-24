@@ -1,6 +1,6 @@
 import { and, eq, inArray, lt } from "drizzle-orm";
 import type { Job } from "pg-boss";
-import { sprint, taskSprint, task, listStatus } from "@/db/schema";
+import { listStatus, sprint, task, taskSprint } from "@/db/schema";
 import { db } from "@/lib/db";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -13,14 +13,16 @@ function addDays(date: Date, days: number): Date {
 
 function incrementSprintName(name: string): string {
   const match = name.match(/^(.*?)(\d+)(\s*)$/);
-  if (match) return `${match[1]}${parseInt(match[2], 10) + 1}${match[3]}`;
+  if (match) {
+    return `${match[1]}${Number.parseInt(match[2], 10) + 1}${match[3]}`;
+  }
   return `${name} 2`;
 }
 
 // ─── Handler ──────────────────────────────────────────────────────────────────
 
 export async function handleSprintAutoClose(
-  _jobs: Job<Record<string, never>>[],
+  _jobs: Job<Record<string, never>>[]
 ) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -44,13 +46,17 @@ export async function handleSprintAutoClose(
       and(
         eq(sprint.status, "ACTIVE"),
         eq(sprint.autoCloseOnNext, true),
-        lt(sprint.endDate, today),
-      ),
+        lt(sprint.endDate, today)
+      )
     );
 
-  if (eligibleSprints.length === 0) return;
+  if (eligibleSprints.length === 0) {
+    return;
+  }
 
-  console.log(`[sprint.auto-close] processing ${eligibleSprints.length} sprint(s)`);
+  console.log(
+    `[sprint.auto-close] processing ${eligibleSprints.length} sprint(s)`
+  );
 
   for (const s of eligibleSprints) {
     try {
@@ -70,7 +76,10 @@ async function processAutoClose(s: {
   durationWeeks: number;
   autoCreateNext: boolean;
   autoCloseOnNext: boolean;
-  autoIncompleteStrategy: "move_to_backlog" | "move_to_next_sprint" | "leave_as_is";
+  autoIncompleteStrategy:
+    | "move_to_backlog"
+    | "move_to_next_sprint"
+    | "leave_as_is";
   createdBy: string;
 }) {
   // Idempotency: re-fetch inside the operation to confirm it's still ACTIVE
@@ -81,7 +90,9 @@ async function processAutoClose(s: {
     .limit(1);
 
   if (!current || current.status !== "ACTIVE") {
-    console.log(`[sprint.auto-close] sprint ${s.id} is no longer ACTIVE, skipping`);
+    console.log(
+      `[sprint.auto-close] sprint ${s.id} is no longer ACTIVE, skipping`
+    );
     return;
   }
 
@@ -138,7 +149,9 @@ async function processAutoClose(s: {
       });
 
       nextSprintId = newId;
-      console.log(`[sprint.auto-close] created next sprint "${newName}" (${newId})`);
+      console.log(
+        `[sprint.auto-close] created next sprint "${newName}" (${newId})`
+      );
     }
   }
 
@@ -152,19 +165,20 @@ async function processAutoClose(s: {
         .where(
           and(
             eq(taskSprint.sprintId, s.id),
-            inArray(taskSprint.taskId, incompleteTaskIds),
-          ),
+            inArray(taskSprint.taskId, incompleteTaskIds)
+          )
         );
-      console.log(`[sprint.auto-close] moved ${incompleteTaskIds.length} task(s) to backlog`);
-
+      console.log(
+        `[sprint.auto-close] moved ${incompleteTaskIds.length} task(s) to backlog`
+      );
     } else if (strategy === "move_to_next_sprint" && nextSprintId) {
       await db
         .delete(taskSprint)
         .where(
           and(
             eq(taskSprint.sprintId, s.id),
-            inArray(taskSprint.taskId, incompleteTaskIds),
-          ),
+            inArray(taskSprint.taskId, incompleteTaskIds)
+          )
         );
 
       await db.insert(taskSprint).values(
@@ -173,10 +187,11 @@ async function processAutoClose(s: {
           sprintId: nextSprintId!,
           points: null,
           addedAt: now,
-        })),
+        }))
       );
-      console.log(`[sprint.auto-close] moved ${incompleteTaskIds.length} task(s) to next sprint`);
-
+      console.log(
+        `[sprint.auto-close] moved ${incompleteTaskIds.length} task(s) to next sprint`
+      );
     } else if (strategy === "move_to_next_sprint" && !nextSprintId) {
       // Fall back to backlog — no planned sprint available
       await db
@@ -184,11 +199,11 @@ async function processAutoClose(s: {
         .where(
           and(
             eq(taskSprint.sprintId, s.id),
-            inArray(taskSprint.taskId, incompleteTaskIds),
-          ),
+            inArray(taskSprint.taskId, incompleteTaskIds)
+          )
         );
       console.warn(
-        `[sprint.auto-close] strategy=move_to_next_sprint but no planned sprint found — fell back to backlog for sprint ${s.id}`,
+        `[sprint.auto-close] strategy=move_to_next_sprint but no planned sprint found — fell back to backlog for sprint ${s.id}`
       );
     }
     // leave_as_is: no changes to tasks

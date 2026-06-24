@@ -7,7 +7,7 @@ self.addEventListener("push", (event) => {
       badge: "/icon-192.png",
       data: { url: data.url ?? "/" },
       requireInteraction: false,
-    }),
+    })
   );
 });
 
@@ -26,6 +26,6 @@ self.addEventListener("notificationclick", (event) => {
         if (clients.openWindow) {
           return clients.openWindow(url);
         }
-      }),
+      })
   );
 });

@@ -12,7 +12,11 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 }
 
 async function registerAndSubscribe(): Promise<boolean> {
-  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !VAPID_PUBLIC_KEY) {
+  if (
+    !("serviceWorker" in navigator) ||
+    !("PushManager" in window) ||
+    !VAPID_PUBLIC_KEY
+  ) {
     return false;
   }
 
@@ -21,15 +25,21 @@ async function registerAndSubscribe(): Promise<boolean> {
     await navigator.serviceWorker.ready;
 
     const existing = await reg.pushManager.getSubscription();
-    if (existing) return true;
+    if (existing) {
+      return true;
+    }
 
     const sub = await reg.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as BufferSource,
+      applicationServerKey: urlBase64ToUint8Array(
+        VAPID_PUBLIC_KEY
+      ) as BufferSource,
     });
 
     const json = sub.toJSON();
-    if (!json.keys?.p256dh || !json.keys?.auth) return false;
+    if (!json.keys?.p256dh || !json.keys?.auth) {
+      return false;
+    }
 
     await fetch("/api/me/push-subscriptions", {
       method: "POST",
@@ -49,7 +59,8 @@ async function registerAndSubscribe(): Promise<boolean> {
 }
 
 export function usePushSubscription() {
-  const [permission, setPermission] = React.useState<NotificationPermission>("default");
+  const [permission, setPermission] =
+    React.useState<NotificationPermission>("default");
   const [subscribed, setSubscribed] = React.useState(false);
   const [supported, setSupported] = React.useState(false);
 
@@ -60,7 +71,9 @@ export function usePushSubscription() {
       "PushManager" in window &&
       !!VAPID_PUBLIC_KEY;
     setSupported(ok);
-    if (!ok) return;
+    if (!ok) {
+      return;
+    }
 
     setPermission(Notification.permission);
 
@@ -70,8 +83,12 @@ export function usePushSubscription() {
   }, []);
 
   async function enable(): Promise<boolean> {
-    if (!supported) return false;
-    if (Notification.permission === "denied") return false;
+    if (!supported) {
+      return false;
+    }
+    if (Notification.permission === "denied") {
+      return false;
+    }
 
     let perm: NotificationPermission = Notification.permission;
     if (perm !== "granted") {
@@ -79,7 +96,9 @@ export function usePushSubscription() {
       setPermission(perm);
     }
 
-    if (perm !== "granted") return false;
+    if (perm !== "granted") {
+      return false;
+    }
 
     const ok = await registerAndSubscribe();
     setSubscribed(ok);
@@ -87,14 +106,21 @@ export function usePushSubscription() {
   }
 
   async function disable(): Promise<void> {
-    if (!("serviceWorker" in navigator)) return;
+    if (!("serviceWorker" in navigator)) {
+      return;
+    }
     const reg = await navigator.serviceWorker.getRegistration("/sw.js");
-    if (!reg) return;
+    if (!reg) {
+      return;
+    }
     const sub = await reg.pushManager.getSubscription();
     if (sub) {
-      await fetch(`/api/me/push-subscriptions?endpoint=${encodeURIComponent(sub.endpoint)}`, {
-        method: "DELETE",
-      });
+      await fetch(
+        `/api/me/push-subscriptions?endpoint=${encodeURIComponent(sub.endpoint)}`,
+        {
+          method: "DELETE",
+        }
+      );
       await sub.unsubscribe();
     }
     setSubscribed(false);

@@ -28,7 +28,11 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
   return (
-    <html className={cn("scroll-smooth font-sans", inter.variable)} lang="en" suppressHydrationWarning>
+    <html
+      className={cn("scroll-smooth font-sans", inter.variable)}
+      lang="en"
+      suppressHydrationWarning
+    >
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -38,7 +42,7 @@ export default function RootLayout({
       </head>
       <body suppressHydrationWarning>
         {children}
-        <Toaster richColors position="top-right" />
+        <Toaster position="top-right" richColors />
       </body>
     </html>
   );

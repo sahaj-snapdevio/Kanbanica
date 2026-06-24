@@ -1,11 +1,11 @@
-import { type NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
+import { type NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { storage } from "@/lib/storage";
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: Promise<{ key: string[] }> },
+  { params }: { params: Promise<{ key: string[] }> }
 ) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {

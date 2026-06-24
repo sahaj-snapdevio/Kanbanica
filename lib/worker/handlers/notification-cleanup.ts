@@ -1,9 +1,11 @@
-import type { Job } from "pg-boss";
 import { lt } from "drizzle-orm";
-import { db } from "@/lib/db";
+import type { Job } from "pg-boss";
 import { notification } from "@/db/schema";
+import { db } from "@/lib/db";
 
-export async function handleNotificationCleanup(_jobs: Job<Record<string, never>>[]) {
+export async function handleNotificationCleanup(
+  _jobs: Job<Record<string, never>>[]
+) {
   const result = await db
     .delete(notification)
     .where(lt(notification.expiresAt, new Date()));

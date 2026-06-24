@@ -1,69 +1,121 @@
-import { NextRequest, NextResponse } from "next/server";
+import { count, eq, inArray, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
+import {
+  comment,
+  space,
+  task,
+  user,
+  workspace,
+  workspaceMember,
+} from "@/db/schema";
 import { getAdminSession } from "@/lib/admin-auth";
-import { db } from "@/lib/db";
-import { workspace, workspaceMember, user, space, task, comment } from "@/db/schema";
-import { eq, count, and, inArray, sql } from "drizzle-orm";
 import { audit } from "@/lib/audit";
+import { db } from "@/lib/db";
 import { enqueueEmail } from "@/lib/email";
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const adminSession = await getAdminSession();
-  if (!adminSession) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!adminSession) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const { id } = await params;
 
-  const [ws, members, [spacesCount], [tasksCount], [commentsCount]] = await Promise.all([
-    db.select().from(workspace).where(eq(workspace.id, id)).limit(1).then((r) => r[0] ?? null),
-    db
-      .select({
-        id: workspaceMember.id,
-        userId: workspaceMember.userId,
-        email: workspaceMember.email,
-        role: workspaceMember.role,
-        status: workspaceMember.status,
-        joinedAt: workspaceMember.joinedAt,
-        userName: user.name,
-        userEmail: user.email,
-      })
-      .from(workspaceMember)
-      .leftJoin(user, eq(workspaceMember.userId, user.id))
-      .where(eq(workspaceMember.workspaceId, id)),
-    db.select({ count: count() }).from(space).where(eq(space.workspaceId, id)),
-    db.select({ count: count() }).from(task).where(eq(task.workspaceId, id)),
-    // Count comments for tasks in this workspace via subquery
-    db.select({ count: sql<number>`count(*)` }).from(comment).where(
-      inArray(comment.taskId, db.select({ id: task.id }).from(task).where(eq(task.workspaceId, id)))
-    ),
-  ]);
+  const [ws, members, [spacesCount], [tasksCount], [commentsCount]] =
+    await Promise.all([
+      db
+        .select()
+        .from(workspace)
+        .where(eq(workspace.id, id))
+        .limit(1)
+        .then((r) => r[0] ?? null),
+      db
+        .select({
+          id: workspaceMember.id,
+          userId: workspaceMember.userId,
+          email: workspaceMember.email,
+          role: workspaceMember.role,
+          status: workspaceMember.status,
+          joinedAt: workspaceMember.joinedAt,
+          userName: user.name,
+          userEmail: user.email,
+        })
+        .from(workspaceMember)
+        .leftJoin(user, eq(workspaceMember.userId, user.id))
+        .where(eq(workspaceMember.workspaceId, id)),
+      db
+        .select({ count: count() })
+        .from(space)
+        .where(eq(space.workspaceId, id)),
+      db.select({ count: count() }).from(task).where(eq(task.workspaceId, id)),
+      // Count comments for tasks in this workspace via subquery
+      db
+        .select({ count: sql<number>`count(*)` })
+        .from(comment)
+        .where(
+          inArray(
+            comment.taskId,
+            db
+              .select({ id: task.id })
+              .from(task)
+              .where(eq(task.workspaceId, id))
+          )
+        ),
+    ]);
 
-  if (!ws) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!ws) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
   return NextResponse.json({
     workspace: ws,
     members,
-    stats: { spaces: spacesCount.count, tasks: tasksCount.count, comments: commentsCount.count },
+    stats: {
+      spaces: spacesCount.count,
+      tasks: tasksCount.count,
+      comments: commentsCount.count,
+    },
   });
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const adminSession = await getAdminSession();
-  if (!adminSession) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!adminSession) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const { id } = await params;
   const body = await req.json().catch(() => ({}));
   const reason = body.reason ?? null;
 
   const ws = await db
-    .select({ id: workspace.id, name: workspace.name, createdBy: workspace.createdBy })
+    .select({
+      id: workspace.id,
+      name: workspace.name,
+      createdBy: workspace.createdBy,
+    })
     .from(workspace)
     .where(eq(workspace.id, id))
     .limit(1)
     .then((r) => r[0] ?? null);
 
-  if (!ws) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!ws) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
   const ownerUser = ws.createdBy
-    ? await db.select({ email: user.email }).from(user).where(eq(user.id, ws.createdBy)).limit(1).then((r) => r[0] ?? null)
+    ? await db
+        .select({ email: user.email })
+        .from(user)
+        .where(eq(user.id, ws.createdBy))
+        .limit(1)
+        .then((r) => r[0] ?? null)
     : null;
 
   await audit({

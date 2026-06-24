@@ -1,44 +1,68 @@
 "use server";
 
-import { headers } from "next/headers";
-import { revalidatePath } from "next/cache";
 import { createId } from "@paralleldrive/cuid2";
 import { and, asc, desc, eq, inArray, isNull, notInArray } from "drizzle-orm";
-import { auth } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import {
-  sprint,
-  taskSprint,
-  task,
   list,
   listStatus,
-  taskAssignee,
-  taskTag,
+  sprint,
   tag,
+  task,
+  taskAssignee,
+  taskSprint,
+  taskTag,
   user,
   space,
 } from "@/db/schema";
-import { canAccessSpace, getSpacePermission, hasPermissionLevel } from "@/lib/permissions";
 import { writeActivityLog } from "@/lib/activity-log";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import {
+  canAccessSpace,
+  getSpacePermission,
+  hasPermissionLevel,
+} from "@/lib/permissions";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-async function requireAccess(userId: string, workspaceId: string, spaceId: string) {
+async function requireAccess(
+  userId: string,
+  workspaceId: string,
+  spaceId: string
+) {
   const accessible = await canAccessSpace(userId, workspaceId, spaceId);
-  if (!accessible) return { error: "Unauthorized" } as const;
+  if (!accessible) {
+    return { error: "Unauthorized" } as const;
+  }
   return null;
 }
 
-async function requireEditAccess(userId: string, workspaceId: string, spaceId: string) {
+async function requireEditAccess(
+  userId: string,
+  workspaceId: string,
+  spaceId: string
+) {
   const permission = await getSpacePermission(userId, workspaceId, spaceId);
-  if (permission === null) return { error: "Forbidden" } as const;
-  if (!hasPermissionLevel(permission, "edit")) return { error: "Forbidden" } as const;
+  if (permission === null) {
+    return { error: "Forbidden" } as const;
+  }
+  if (!hasPermissionLevel(permission, "edit")) {
+    return { error: "Forbidden" } as const;
+  }
   return null;
 }
 
-async function requireFullAccess(userId: string, workspaceId: string, spaceId: string) {
+async function requireFullAccess(
+  userId: string,
+  workspaceId: string,
+  spaceId: string
+) {
   const permission = await getSpacePermission(userId, workspaceId, spaceId);
-  if (permission === null) return { error: "Forbidden" } as const;
+  if (permission === null) {
+    return { error: "Forbidden" } as const;
+  }
   if (!hasPermissionLevel(permission, "full_access")) {
     return { error: "You need Full Access to manage sprints" } as const;
   }
@@ -64,7 +88,7 @@ function addDays(date: Date, days: number): Date {
 function incrementSprintName(name: string): string {
   const match = name.match(/^(.*?)(\d+)(\s*)$/);
   if (match) {
-    return `${match[1]}${parseInt(match[2], 10) + 1}${match[3]}`;
+    return `${match[1]}${Number.parseInt(match[2], 10) + 1}${match[3]}`;
   }
   return `${name} 2`;
 }
@@ -73,7 +97,7 @@ function incrementSprintName(name: string): string {
 
 export async function getSprints(
   workspaceId: string,
-  spaceId: string,
+  spaceId: string
 ): Promise<
   | {
       sprints: {
@@ -89,10 +113,14 @@ export async function getSprints(
   | { error: string }
 > {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const err = await requireAccess(session.user.id, workspaceId, spaceId);
-  if (err) return err;
+  if (err) {
+    return err;
+  }
 
   const rows = await db
     .select({
@@ -123,18 +151,29 @@ export async function createSprint(
     durationWeeks: number;
     autoCreateNext?: boolean;
     autoCloseOnNext?: boolean;
-    autoIncompleteStrategy?: "move_to_backlog" | "move_to_next_sprint" | "leave_as_is";
-  },
+    autoIncompleteStrategy?:
+      | "move_to_backlog"
+      | "move_to_next_sprint"
+      | "leave_as_is";
+  }
 ): Promise<{ sprintId: string } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const err = await requireFullAccess(session.user.id, workspaceId, spaceId);
-  if (err) return err;
+  if (err) {
+    return err;
+  }
 
   const name = data.name.trim();
-  if (!name) return { error: "Sprint name is required" };
-  if (data.durationWeeks < 1) return { error: "Duration must be at least 1 week" };
+  if (!name) {
+    return { error: "Sprint name is required" };
+  }
+  if (data.durationWeeks < 1) {
+    return { error: "Duration must be at least 1 week" };
+  }
 
   const startDate = new Date(data.startDate);
   const endDate = addDays(startDate, data.durationWeeks * 7);
@@ -168,13 +207,17 @@ export async function createSprint(
 export async function startSprint(
   workspaceId: string,
   spaceId: string,
-  sprintId: string,
+  sprintId: string
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const err = await requireFullAccess(session.user.id, workspaceId, spaceId);
-  if (err) return err;
+  if (err) {
+    return err;
+  }
 
   const [activeSprint] = await db
     .select({ id: sprint.id })
@@ -182,7 +225,9 @@ export async function startSprint(
     .where(and(eq(sprint.spaceId, spaceId), eq(sprint.status, "ACTIVE")))
     .limit(1);
 
-  if (activeSprint) return { error: "Another sprint is already active in this project" };
+  if (activeSprint) {
+    return { error: "Another sprint is already active in this project" };
+  }
 
   const [targetSprint] = await db
     .select({ id: sprint.id, status: sprint.status })
@@ -190,8 +235,12 @@ export async function startSprint(
     .where(and(eq(sprint.id, sprintId), eq(sprint.spaceId, spaceId)))
     .limit(1);
 
-  if (!targetSprint) return { error: "Sprint not found" };
-  if (targetSprint.status !== "PLANNED") return { error: "Only PLANNED sprints can be started" };
+  if (!targetSprint) {
+    return { error: "Sprint not found" };
+  }
+  if (targetSprint.status !== "PLANNED") {
+    return { error: "Only PLANNED sprints can be started" };
+  }
 
   const now = new Date();
   await db
@@ -209,13 +258,17 @@ export async function startSprint(
 export async function deleteSprint(
   workspaceId: string,
   spaceId: string,
-  sprintId: string,
+  sprintId: string
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const err = await requireFullAccess(session.user.id, workspaceId, spaceId);
-  if (err) return err;
+  if (err) {
+    return err;
+  }
 
   const [targetSprint] = await db
     .select({ id: sprint.id, status: sprint.status })
@@ -223,8 +276,12 @@ export async function deleteSprint(
     .where(and(eq(sprint.id, sprintId), eq(sprint.spaceId, spaceId)))
     .limit(1);
 
-  if (!targetSprint) return { error: "Sprint not found" };
-  if (targetSprint.status !== "PLANNED") return { error: "Only PLANNED sprints can be deleted" };
+  if (!targetSprint) {
+    return { error: "Sprint not found" };
+  }
+  if (targetSprint.status !== "PLANNED") {
+    return { error: "Only PLANNED sprints can be deleted" };
+  }
 
   await db.delete(taskSprint).where(eq(taskSprint.sprintId, sprintId));
   await db.delete(sprint).where(eq(sprint.id, sprintId));
@@ -239,7 +296,7 @@ export async function deleteSprint(
 export async function getSprintWithTasks(
   workspaceId: string,
   spaceId: string,
-  sprintId: string,
+  sprintId: string
 ): Promise<
   | {
       sprint: {
@@ -265,10 +322,14 @@ export async function getSprintWithTasks(
   | { error: string }
 > {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const err = await requireAccess(session.user.id, workspaceId, spaceId);
-  if (err) return err;
+  if (err) {
+    return err;
+  }
 
   const [targetSprint] = await db
     .select({
@@ -283,7 +344,9 @@ export async function getSprintWithTasks(
     .where(and(eq(sprint.id, sprintId), eq(sprint.spaceId, spaceId)))
     .limit(1);
 
-  if (!targetSprint) return { error: "Sprint not found" };
+  if (!targetSprint) {
+    return { error: "Sprint not found" };
+  }
 
   const tasks = await db
     .select({
@@ -312,20 +375,32 @@ export async function addTaskToSprint(
   spaceId: string,
   sprintId: string,
   taskId: string,
-  storyPoints?: number,
+  storyPoints?: number
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const err = await requireEditAccess(session.user.id, workspaceId, spaceId);
-  if (err) return err;
+  if (err) {
+    return err;
+  }
 
   const [targetTask] = await db
     .select({ id: task.id })
     .from(task)
-    .where(and(eq(task.id, taskId), eq(task.workspaceId, workspaceId), eq(task.isArchived, false)))
+    .where(
+      and(
+        eq(task.id, taskId),
+        eq(task.workspaceId, workspaceId),
+        eq(task.isArchived, false)
+      )
+    )
     .limit(1);
-  if (!targetTask) return { error: "Task not found" };
+  if (!targetTask) {
+    return { error: "Task not found" };
+  }
 
   const existingRows = await db
     .select({ sprintId: taskSprint.sprintId })
@@ -334,8 +409,8 @@ export async function addTaskToSprint(
     .where(
       and(
         eq(taskSprint.taskId, taskId),
-        inArray(sprint.status, ["PLANNED", "ACTIVE"]),
-      ),
+        inArray(sprint.status, ["PLANNED", "ACTIVE"])
+      )
     );
 
   if (existingRows.length > 0) {
@@ -360,17 +435,23 @@ export async function removeTaskFromSprint(
   workspaceId: string,
   spaceId: string,
   sprintId: string,
-  taskId: string,
+  taskId: string
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const err = await requireFullAccess(session.user.id, workspaceId, spaceId);
-  if (err) return err;
+  if (err) {
+    return err;
+  }
 
   await db
     .delete(taskSprint)
-    .where(and(eq(taskSprint.taskId, taskId), eq(taskSprint.sprintId, sprintId)));
+    .where(
+      and(eq(taskSprint.taskId, taskId), eq(taskSprint.sprintId, sprintId))
+    );
 
   revalidateSpace(workspaceId, spaceId);
 
@@ -384,26 +465,36 @@ export async function updateStoryPoints(
   spaceId: string,
   sprintId: string,
   taskId: string,
-  storyPoints: number | null,
+  storyPoints: number | null
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const err = await requireFullAccess(session.user.id, workspaceId, spaceId);
-  if (err) return err;
+  if (err) {
+    return err;
+  }
 
   const [row] = await db
     .select({ taskId: taskSprint.taskId })
     .from(taskSprint)
-    .where(and(eq(taskSprint.taskId, taskId), eq(taskSprint.sprintId, sprintId)))
+    .where(
+      and(eq(taskSprint.taskId, taskId), eq(taskSprint.sprintId, sprintId))
+    )
     .limit(1);
 
-  if (!row) return { error: "Task not found in sprint" };
+  if (!row) {
+    return { error: "Task not found in sprint" };
+  }
 
   await db
     .update(taskSprint)
     .set({ points: storyPoints })
-    .where(and(eq(taskSprint.taskId, taskId), eq(taskSprint.sprintId, sprintId)));
+    .where(
+      and(eq(taskSprint.taskId, taskId), eq(taskSprint.sprintId, sprintId))
+    );
 
   return { ok: true };
 }
@@ -414,13 +505,17 @@ export async function markAllSprintTasksDone(
   workspaceId: string,
   spaceId: string,
   listId: string,
-  sprintId: string,
+  sprintId: string
 ): Promise<{ affected: number } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const err = await requireFullAccess(session.user.id, workspaceId, spaceId);
-  if (err) return err;
+  if (err) {
+    return err;
+  }
 
   const [closedStatus] = await db
     .select({ id: listStatus.id })
@@ -429,7 +524,9 @@ export async function markAllSprintTasksDone(
     .orderBy(asc(listStatus.orderIndex))
     .limit(1);
 
-  if (!closedStatus) return { error: "No closed status found in this list" };
+  if (!closedStatus) {
+    return { error: "No closed status found in this list" };
+  }
 
   const sprintTasks = await db
     .select({ taskId: taskSprint.taskId, statusType: listStatus.type })
@@ -440,7 +537,9 @@ export async function markAllSprintTasksDone(
 
   const incompleteTasks = sprintTasks.filter((t) => t.statusType !== "CLOSED");
 
-  if (incompleteTasks.length === 0) return { affected: 0 };
+  if (incompleteTasks.length === 0) {
+    return { affected: 0 };
+  }
 
   const incompleteTaskIds = incompleteTasks.map((t) => t.taskId);
   const now = new Date();
@@ -455,8 +554,8 @@ export async function markAllSprintTasksDone(
       writeActivityLog(taskId, session.user.id, "status_changed", {
         to: closedStatus.id,
         reason: "mark_all_done_sprint",
-      }),
-    ),
+      })
+    )
   );
 
   revalidateList(workspaceId, spaceId, listId);
@@ -471,13 +570,17 @@ export async function closeSprint(
   spaceId: string,
   sprintId: string,
   strategy: "move_to_backlog" | "move_to_next_sprint" | "leave_as_is",
-  targetSprintId?: string,
+  targetSprintId?: string
 ): Promise<{ ok: true; nextSprintId?: string } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const err = await requireFullAccess(session.user.id, workspaceId, spaceId);
-  if (err) return err;
+  if (err) {
+    return err;
+  }
 
   const [targetSprint] = await db
     .select({
@@ -491,8 +594,12 @@ export async function closeSprint(
     .where(and(eq(sprint.id, sprintId), eq(sprint.spaceId, spaceId)))
     .limit(1);
 
-  if (!targetSprint) return { error: "Sprint not found" };
-  if (targetSprint.status !== "ACTIVE") return { error: "Only ACTIVE sprints can be closed" };
+  if (!targetSprint) {
+    return { error: "Sprint not found" };
+  }
+  if (targetSprint.status !== "ACTIVE") {
+    return { error: "Only ACTIVE sprints can be closed" };
+  }
 
   const sprintTasks = await db
     .select({ taskId: taskSprint.taskId, statusType: listStatus.type })
@@ -511,8 +618,8 @@ export async function closeSprint(
         .where(
           and(
             eq(taskSprint.sprintId, sprintId),
-            inArray(taskSprint.taskId, incompleteTaskIds),
-          ),
+            inArray(taskSprint.taskId, incompleteTaskIds)
+          )
         );
     }
   } else if (strategy === "move_to_next_sprint" && targetSprintId) {
@@ -522,14 +629,18 @@ export async function closeSprint(
       .where(and(eq(sprint.id, targetSprintId), eq(sprint.spaceId, spaceId)))
       .limit(1);
 
-    if (nextSprint && nextSprint.status === "PLANNED" && incompleteTaskIds.length > 0) {
+    if (
+      nextSprint &&
+      nextSprint.status === "PLANNED" &&
+      incompleteTaskIds.length > 0
+    ) {
       await db
         .delete(taskSprint)
         .where(
           and(
             eq(taskSprint.sprintId, sprintId),
-            inArray(taskSprint.taskId, incompleteTaskIds),
-          ),
+            inArray(taskSprint.taskId, incompleteTaskIds)
+          )
         );
 
       const now = new Date();
@@ -539,7 +650,7 @@ export async function closeSprint(
           sprintId: targetSprintId,
           points: null,
           addedAt: now,
-        })),
+        }))
       );
     } else if (incompleteTaskIds.length > 0) {
       await db
@@ -547,8 +658,8 @@ export async function closeSprint(
         .where(
           and(
             eq(taskSprint.sprintId, sprintId),
-            inArray(taskSprint.taskId, incompleteTaskIds),
-          ),
+            inArray(taskSprint.taskId, incompleteTaskIds)
+          )
         );
     }
   }
@@ -569,13 +680,17 @@ export async function closeSprint(
 export async function createNextSprintFromClosed(
   workspaceId: string,
   spaceId: string,
-  closedSprintId: string,
+  closedSprintId: string
 ): Promise<{ sprintId: string } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const err = await requireFullAccess(session.user.id, workspaceId, spaceId);
-  if (err) return err;
+  if (err) {
+    return err;
+  }
 
   const [closedSprint] = await db
     .select({
@@ -589,15 +704,23 @@ export async function createNextSprintFromClosed(
     .where(and(eq(sprint.id, closedSprintId), eq(sprint.spaceId, spaceId)))
     .limit(1);
 
-  if (!closedSprint) return { error: "Sprint not found" };
-  if (closedSprint.status !== "CLOSED") return { error: "Can only create next sprint from a CLOSED sprint" };
+  if (!closedSprint) {
+    return { error: "Sprint not found" };
+  }
+  if (closedSprint.status !== "CLOSED") {
+    return { error: "Can only create next sprint from a CLOSED sprint" };
+  }
 
   const prevStart = closedSprint.startDate ?? new Date();
   const prevEnd = closedSprint.endDate ?? new Date();
-  const durationDays = Math.round((prevEnd.getTime() - prevStart.getTime()) / (1000 * 60 * 60 * 24));
+  const durationDays = Math.round(
+    (prevEnd.getTime() - prevStart.getTime()) / (1000 * 60 * 60 * 24)
+  );
   const durationWeeks = Math.max(1, Math.round(durationDays / 7));
 
-  const newStartDate = closedSprint.endDate ? addDays(closedSprint.endDate, 1) : new Date();
+  const newStartDate = closedSprint.endDate
+    ? addDays(closedSprint.endDate, 1)
+    : new Date();
   const newEndDate = addDays(newStartDate, durationWeeks * 7);
   const newName = incrementSprintName(closedSprint.name);
 
@@ -646,13 +769,17 @@ export type BacklogList = {
 
 export async function getBacklogTasks(
   workspaceId: string,
-  spaceId: string,
+  spaceId: string
 ): Promise<{ lists: BacklogList[] } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const err = await requireAccess(session.user.id, workspaceId, spaceId);
-  if (err) return err;
+  if (err) {
+    return err;
+  }
 
   // 1. All non-archived lists in this space
   const spaceLists = await db
@@ -661,7 +788,9 @@ export async function getBacklogTasks(
     .where(and(eq(list.spaceId, spaceId), eq(list.isArchived, false)))
     .orderBy(asc(list.orderIndex));
 
-  if (spaceLists.length === 0) return { lists: [] };
+  if (spaceLists.length === 0) {
+    return { lists: [] };
+  }
 
   const listIds = spaceLists.map((l) => l.id);
 
@@ -669,7 +798,12 @@ export async function getBacklogTasks(
   const activeSprintRows = await db
     .select({ id: sprint.id })
     .from(sprint)
-    .where(and(eq(sprint.spaceId, spaceId), inArray(sprint.status, ["PLANNED", "ACTIVE"])));
+    .where(
+      and(
+        eq(sprint.spaceId, spaceId),
+        inArray(sprint.status, ["PLANNED", "ACTIVE"])
+      )
+    );
 
   const activeSprintIds = activeSprintRows.map((s) => s.id);
 
@@ -708,11 +842,13 @@ export async function getBacklogTasks(
     .where(
       taskIdsInSprints.length > 0
         ? and(...baseConditions, notInArray(task.id, taskIdsInSprints))
-        : and(...baseConditions),
+        : and(...baseConditions)
     )
     .orderBy(asc(task.orderIndex));
 
-  if (taskRows.length === 0) return { lists: [] };
+  if (taskRows.length === 0) {
+    return { lists: [] };
+  }
 
   // 5. Fetch assignees for those tasks
   const taskIds = taskRows.map((t) => t.id);
@@ -728,7 +864,10 @@ export async function getBacklogTasks(
     .where(inArray(taskAssignee.taskId, taskIds));
 
   // 6. Group assignees by taskId
-  const assigneesByTask = new Map<string, { userId: string; name: string | null; email: string | null }[]>();
+  const assigneesByTask = new Map<
+    string,
+    { userId: string; name: string | null; email: string | null }[]
+  >();
   for (const a of assigneeRows) {
     const arr = assigneesByTask.get(a.taskId) ?? [];
     arr.push({ userId: a.userId, name: a.name, email: a.email });
@@ -741,7 +880,9 @@ export async function getBacklogTasks(
   // 8. Group tasks by list, preserving list order
   const tasksByList = new Map<string, BacklogTask[]>();
   for (const t of taskRows) {
-    if (!t.listId) continue;
+    if (!t.listId) {
+      continue;
+    }
     const arr = tasksByList.get(t.listId) ?? [];
     arr.push({
       id: t.id,
@@ -764,7 +905,11 @@ export async function getBacklogTasks(
   for (const l of spaceLists) {
     const tasks = tasksByList.get(l.id);
     if (tasks && tasks.length > 0) {
-      lists.push({ listId: l.id, listName: listNameById.get(l.id) ?? l.id, tasks });
+      lists.push({
+        listId: l.id,
+        listName: listNameById.get(l.id) ?? l.id,
+        tasks,
+      });
     }
   }
 
@@ -776,7 +921,7 @@ export async function getBacklogTasks(
 
 export async function getActiveSprintView(
   workspaceId: string,
-  spaceId: string,
+  spaceId: string
 ): Promise<
   | {
       sprint: {
@@ -814,10 +959,14 @@ export async function getActiveSprintView(
   | { error: string }
 > {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const err = await requireAccess(session.user.id, workspaceId, spaceId);
-  if (err) return err;
+  if (err) {
+    return err;
+  }
 
   // Find active sprint for this space
   const [activeSprint] = await db
@@ -833,7 +982,9 @@ export async function getActiveSprintView(
     .where(and(eq(sprint.spaceId, spaceId), eq(sprint.status, "ACTIVE")))
     .limit(1);
 
-  if (!activeSprint) return { sprint: null, tasks: [], statuses: [] };
+  if (!activeSprint) {
+    return { sprint: null, tasks: [], statuses: [] };
+  }
 
   const sprintTasks = await db
     .select({
@@ -853,16 +1004,25 @@ export async function getActiveSprintView(
     .from(taskSprint)
     .innerJoin(task, eq(task.id, taskSprint.taskId))
     .leftJoin(listStatus, eq(task.statusId, listStatus.id))
-    .where(and(eq(taskSprint.sprintId, activeSprint.id), eq(task.isArchived, false)))
+    .where(
+      and(eq(taskSprint.sprintId, activeSprint.id), eq(task.isArchived, false))
+    )
     .orderBy(asc(task.orderIndex));
 
-  if (sprintTasks.length === 0) return { sprint: activeSprint, tasks: [], statuses: [] };
+  if (sprintTasks.length === 0) {
+    return { sprint: activeSprint, tasks: [], statuses: [] };
+  }
 
   const taskIds = sprintTasks.map((t) => t.id);
 
   const [tagRows, assigneeRows] = await Promise.all([
     db
-      .select({ taskId: taskTag.taskId, id: tag.id, name: tag.name, color: tag.color })
+      .select({
+        taskId: taskTag.taskId,
+        id: tag.id,
+        name: tag.name,
+        color: tag.color,
+      })
       .from(taskTag)
       .innerJoin(tag, eq(taskTag.tagId, tag.id))
       .where(inArray(taskTag.taskId, taskIds)),
@@ -879,14 +1039,20 @@ export async function getActiveSprintView(
       .where(inArray(taskAssignee.taskId, taskIds)),
   ]);
 
-  const tagsByTask = new Map<string, { id: string; name: string; color: string }[]>();
+  const tagsByTask = new Map<
+    string,
+    { id: string; name: string; color: string }[]
+  >();
   for (const r of tagRows) {
     const arr = tagsByTask.get(r.taskId) ?? [];
     arr.push({ id: r.id, name: r.name, color: r.color ?? "#9CA3AF" });
     tagsByTask.set(r.taskId, arr);
   }
 
-  const assigneesByTask = new Map<string, { userId: string; name: string; image: string | null }[]>();
+  const assigneesByTask = new Map<
+    string,
+    { userId: string; name: string; image: string | null }[]
+  >();
   for (const r of assigneeRows) {
     const arr = assigneesByTask.get(r.taskId) ?? [];
     arr.push({ userId: r.userId, name: r.name || r.email, image: r.image });
@@ -901,20 +1067,23 @@ export async function getActiveSprintView(
 
   // Fetch all statuses from every list that has tasks in this sprint
   // so the board view shows empty columns too (not just columns with tasks)
-  const listIds = [...new Set(sprintTasks.filter((t) => t.listId).map((t) => t.listId!))];
-  const allStatuses = listIds.length > 0
-    ? await db
-        .select({
-          id: listStatus.id,
-          name: listStatus.name,
-          color: listStatus.color,
-          type: listStatus.type,
-          orderIndex: listStatus.orderIndex,
-        })
-        .from(listStatus)
-        .where(inArray(listStatus.listId, listIds))
-        .orderBy(asc(listStatus.orderIndex))
-    : [];
+  const listIds = [
+    ...new Set(sprintTasks.filter((t) => t.listId).map((t) => t.listId!)),
+  ];
+  const allStatuses =
+    listIds.length > 0
+      ? await db
+          .select({
+            id: listStatus.id,
+            name: listStatus.name,
+            color: listStatus.color,
+            type: listStatus.type,
+            orderIndex: listStatus.orderIndex,
+          })
+          .from(listStatus)
+          .where(inArray(listStatus.listId, listIds))
+          .orderBy(asc(listStatus.orderIndex))
+      : [];
 
   return { sprint: activeSprint, tasks, statuses: allStatuses };
 }
@@ -926,15 +1095,21 @@ export async function bulkMoveTasksToSprint(
   spaceId: string,
   listId: string | null,
   taskIds: string[],
-  targetSprintId: string,
+  targetSprintId: string
 ): Promise<{ ok: true; moved: number } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const err = await requireFullAccess(session.user.id, workspaceId, spaceId);
-  if (err) return err;
+  if (err) {
+    return err;
+  }
 
-  if (taskIds.length === 0) return { ok: true, moved: 0 };
+  if (taskIds.length === 0) {
+    return { ok: true, moved: 0 };
+  }
 
   const [target] = await db
     .select({ id: sprint.id, status: sprint.status })
@@ -942,8 +1117,12 @@ export async function bulkMoveTasksToSprint(
     .where(and(eq(sprint.id, targetSprintId), eq(sprint.spaceId, spaceId)))
     .limit(1);
 
-  if (!target) return { error: "Sprint not found" };
-  if (target.status === "CLOSED") return { error: "Cannot move tasks into a closed sprint" };
+  if (!target) {
+    return { error: "Sprint not found" };
+  }
+  if (target.status === "CLOSED") {
+    return { error: "Cannot move tasks into a closed sprint" };
+  }
 
   let moved = 0;
   for (const taskId of taskIds) {
@@ -954,16 +1133,23 @@ export async function bulkMoveTasksToSprint(
       .where(
         and(
           eq(taskSprint.taskId, taskId),
-          inArray(sprint.status, ["PLANNED", "ACTIVE"]),
-        ),
+          inArray(sprint.status, ["PLANNED", "ACTIVE"])
+        )
       )
       .limit(1);
 
     if (existing.length > 0) {
-      if (existing[0].sprintId === targetSprintId) continue;
+      if (existing[0].sprintId === targetSprintId) {
+        continue;
+      }
       await db
         .delete(taskSprint)
-        .where(and(eq(taskSprint.taskId, taskId), eq(taskSprint.sprintId, existing[0].sprintId)));
+        .where(
+          and(
+            eq(taskSprint.taskId, taskId),
+            eq(taskSprint.sprintId, existing[0].sprintId)
+          )
+        );
     }
 
     await db.insert(taskSprint).values({
@@ -975,8 +1161,11 @@ export async function bulkMoveTasksToSprint(
     moved++;
   }
 
-  if (listId) revalidateList(workspaceId, spaceId, listId);
-  else revalidateSpace(workspaceId, spaceId);
+  if (listId) {
+    revalidateList(workspaceId, spaceId, listId);
+  } else {
+    revalidateSpace(workspaceId, spaceId);
+  }
   return { ok: true, moved };
 }
 
@@ -986,19 +1175,30 @@ export async function bulkRemoveTasksFromSprint(
   workspaceId: string,
   spaceId: string,
   sprintId: string,
-  taskIds: string[],
+  taskIds: string[]
 ): Promise<{ ok: true; removed: number } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const err = await requireFullAccess(session.user.id, workspaceId, spaceId);
-  if (err) return err;
+  if (err) {
+    return err;
+  }
 
-  if (taskIds.length === 0) return { ok: true, removed: 0 };
+  if (taskIds.length === 0) {
+    return { ok: true, removed: 0 };
+  }
 
   await db
     .delete(taskSprint)
-    .where(and(eq(taskSprint.sprintId, sprintId), inArray(taskSprint.taskId, taskIds)));
+    .where(
+      and(
+        eq(taskSprint.sprintId, sprintId),
+        inArray(taskSprint.taskId, taskIds)
+      )
+    );
 
   revalidateSpace(workspaceId, spaceId);
   return { ok: true, removed: taskIds.length };

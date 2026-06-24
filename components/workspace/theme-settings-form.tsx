@@ -121,7 +121,6 @@ export function ThemeSettingsForm() {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {/* Light Mode Card */}
             <button
-              type="button"
               className={cn(
                 "flex items-center gap-3 rounded-xl border p-4 text-left hover:bg-accent/50 transition-all focus:outline-none cursor-pointer",
                 appearanceMode === "light"
@@ -129,6 +128,7 @@ export function ThemeSettingsForm() {
                   : "border-border bg-card"
               )}
               onClick={() => setAppearance("light")}
+              type="button"
             >
               <div className="p-2 bg-yellow-500/10 text-yellow-500 rounded-lg">
                 <SunIcon className="size-5" />
@@ -146,7 +146,6 @@ export function ThemeSettingsForm() {
 
             {/* Dark Mode Card */}
             <button
-              type="button"
               className={cn(
                 "flex items-center gap-3 rounded-xl border p-4 text-left hover:bg-accent/50 transition-all focus:outline-none cursor-pointer",
                 appearanceMode === "dark"
@@ -154,6 +153,7 @@ export function ThemeSettingsForm() {
                   : "border-border bg-card"
               )}
               onClick={() => setAppearance("dark")}
+              type="button"
             >
               <div className="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg">
                 <MoonIcon className="size-5" />
@@ -171,7 +171,6 @@ export function ThemeSettingsForm() {
 
             {/* Auto / System Mode Card */}
             <button
-              type="button"
               className={cn(
                 "flex items-center gap-3 rounded-xl border p-4 text-left hover:bg-accent/50 transition-all focus:outline-none cursor-pointer",
                 appearanceMode === "auto"
@@ -179,6 +178,7 @@ export function ThemeSettingsForm() {
                   : "border-border bg-card"
               )}
               onClick={() => setAppearance("auto")}
+              type="button"
             >
               <div className="p-2 bg-muted text-muted-foreground rounded-lg">
                 <MonitorIcon className="size-5" />
@@ -204,7 +204,6 @@ export function ThemeSettingsForm() {
               const isSelected = currentTheme === theme.id;
               return (
                 <button
-                  type="button"
                   className={cn(
                     "flex flex-col items-center justify-center p-4 rounded-xl border text-center hover:bg-accent/50 transition-all focus:outline-none cursor-pointer gap-2",
                     isSelected
@@ -213,6 +212,7 @@ export function ThemeSettingsForm() {
                   )}
                   key={theme.id}
                   onClick={() => setTheme(theme.id)}
+                  type="button"
                 >
                   <div
                     className="size-8 rounded-full shadow-inner flex items-center justify-center border border-black/5"

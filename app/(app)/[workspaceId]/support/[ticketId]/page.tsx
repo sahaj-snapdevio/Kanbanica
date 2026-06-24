@@ -1,9 +1,9 @@
 "use client";
 
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
 import { use, useState } from "react";
 import useSWR from "swr";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,7 +23,10 @@ export default function TicketDetailPage({
   params: Promise<{ workspaceId: string; ticketId: string }>;
 }) {
   const { workspaceId, ticketId } = use(params);
-  const { data, mutate, isLoading } = useSWR(`/api/support/tickets/${ticketId}`, fetcher);
+  const { data, mutate, isLoading } = useSWR(
+    `/api/support/tickets/${ticketId}`,
+    fetcher
+  );
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -34,7 +37,9 @@ export default function TicketDetailPage({
 
   async function handleReply(e: React.FormEvent) {
     e.preventDefault();
-    if (!reply.trim()) return;
+    if (!reply.trim()) {
+      return;
+    }
     setError("");
     setSending(true);
     try {
@@ -77,7 +82,10 @@ export default function TicketDetailPage({
     return (
       <div className="p-8 text-center">
         <p className="text-muted-foreground">Ticket not found.</p>
-        <Link href={`/${workspaceId}/support`} className="text-sm text-primary hover:underline mt-2 inline-block">
+        <Link
+          className="text-sm text-primary hover:underline mt-2 inline-block"
+          href={`/${workspaceId}/support`}
+        >
           Back to Support
         </Link>
       </div>
@@ -87,15 +95,22 @@ export default function TicketDetailPage({
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
       <div className="flex items-center gap-3">
-        <Link href={`/${workspaceId}/support`} className="text-muted-foreground hover:text-foreground transition-colors">
+        <Link
+          className="text-muted-foreground hover:text-foreground transition-colors"
+          href={`/${workspaceId}/support`}
+        >
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs text-muted-foreground">{ticket.ticketNumber}</span>
+          <span className="font-mono text-xs text-muted-foreground">
+            {ticket.ticketNumber}
+          </span>
           <Badge variant={STATUS_COLORS[ticket.status] ?? "secondary"}>
             {ticket.status.replace("_", " ")}
           </Badge>
-          <span className="text-xs text-muted-foreground">{ticket.category}</span>
+          <span className="text-xs text-muted-foreground">
+            {ticket.category}
+          </span>
         </div>
       </div>
 
@@ -103,7 +118,8 @@ export default function TicketDetailPage({
         <h1 className="text-xl font-semibold">{ticket.subject}</h1>
         <p className="text-xs text-muted-foreground mt-1">
           Opened {new Date(ticket.createdAt).toLocaleDateString()}
-          {ticket.closedAt && ` · Closed ${new Date(ticket.closedAt).toLocaleDateString()}`}
+          {ticket.closedAt &&
+            ` · Closed ${new Date(ticket.closedAt).toLocaleDateString()}`}
         </p>
       </div>
 
@@ -111,13 +127,13 @@ export default function TicketDetailPage({
       <div className="space-y-3">
         {messages.map((msg) => (
           <div
-            key={msg.id}
             className={cn(
               "rounded-lg border p-4",
               msg.isAdmin
                 ? "bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800 ml-6"
-                : "bg-muted/30 mr-6",
+                : "bg-muted/30 mr-6"
             )}
+            key={msg.id}
           >
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium">
@@ -131,37 +147,49 @@ export default function TicketDetailPage({
           </div>
         ))}
         {messages.length === 0 && (
-          <p className="text-center text-sm text-muted-foreground py-6">No messages yet</p>
+          <p className="text-center text-sm text-muted-foreground py-6">
+            No messages yet
+          </p>
         )}
       </div>
 
       {/* Reply form */}
-      <form onSubmit={handleReply} className="border rounded-lg p-4 space-y-3">
+      <form className="border rounded-lg p-4 space-y-3" onSubmit={handleReply}>
         <Textarea
-          placeholder={ticket.status === "CLOSED" ? "Reply to reopen this ticket…" : "Write a reply…"}
-          value={reply}
-          onChange={(e) => setReply(e.target.value)}
-          rows={4}
           maxLength={5000}
+          onChange={(e) => setReply(e.target.value)}
+          placeholder={
+            ticket.status === "CLOSED"
+              ? "Reply to reopen this ticket…"
+              : "Write a reply…"
+          }
+          rows={4}
+          value={reply}
         />
-        <p className="text-xs text-muted-foreground text-right">{reply.length}/5000</p>
+        <p className="text-xs text-muted-foreground text-right">
+          {reply.length}/5000
+        </p>
         {error && <p className="text-sm text-destructive">{error}</p>}
         <div className="flex items-center justify-between">
           {ticket.status !== "CLOSED" && (
             <Button
+              className="text-muted-foreground"
+              disabled={closing}
+              onClick={handleClose}
+              size="sm"
               type="button"
               variant="ghost"
-              size="sm"
-              onClick={handleClose}
-              disabled={closing}
-              className="text-muted-foreground"
             >
               {closing ? "Closing…" : "Close Ticket"}
             </Button>
           )}
           <div className="ml-auto">
-            <Button type="submit" disabled={!reply.trim() || sending}>
-              {sending ? "Sending…" : ticket.status === "CLOSED" ? "Reply & Reopen" : "Reply"}
+            <Button disabled={!reply.trim() || sending} type="submit">
+              {sending
+                ? "Sending…"
+                : ticket.status === "CLOSED"
+                  ? "Reply & Reopen"
+                  : "Reply"}
             </Button>
           </div>
         </div>

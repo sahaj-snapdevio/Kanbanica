@@ -1,23 +1,29 @@
+import { and, count, desc, eq, inArray, lt } from "drizzle-orm";
 import { headers } from "next/headers";
-import { NextRequest, NextResponse } from "next/server";
-import { and, desc, eq, inArray, lt, count } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
+import { notification, user } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { notification, user } from "@/db/schema";
 
 export async function DELETE(req: NextRequest) {
   void req;
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-  await db.delete(notification).where(eq(notification.recipientId, session.user.id));
+  await db
+    .delete(notification)
+    .where(eq(notification.recipientId, session.user.id));
 
   return NextResponse.json({ ok: true });
 }
 
 export async function GET(req: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const userId = session.user.id;
   const { searchParams } = req.nextUrl;
@@ -30,7 +36,10 @@ export async function GET(req: NextRequest) {
     conditions.push(eq(notification.isRead, false));
   } else if (filter === "mentions") {
     conditions.push(
-      inArray(notification.triggerType, ["mention_comment", "mention_description"]),
+      inArray(notification.triggerType, [
+        "mention_comment",
+        "mention_description",
+      ])
     );
   }
 
@@ -63,7 +72,12 @@ export async function GET(req: NextRequest) {
     db
       .select({ count: count() })
       .from(notification)
-      .where(and(eq(notification.recipientId, userId), eq(notification.isRead, false))),
+      .where(
+        and(
+          eq(notification.recipientId, userId),
+          eq(notification.isRead, false)
+        )
+      ),
   ]);
 
   const unreadCount = unreadCountResult[0]?.count ?? 0;

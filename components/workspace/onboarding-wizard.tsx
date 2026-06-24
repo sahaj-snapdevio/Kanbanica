@@ -1,16 +1,16 @@
 "use client";
 
-import { useState, useTransition } from "react";
 import {
   ArrowRightIcon,
   BuildingsIcon,
   StackIcon,
   UserIcon,
 } from "@phosphor-icons/react";
+import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
-  createOnboardingWorkspace,
   createOnboardingSpace,
+  createOnboardingWorkspace,
   saveUserName,
 } from "@/app/actions/onboarding";
 import { Button } from "@/components/ui/button";
@@ -25,18 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
-const LOGO_EMOJIS = [
-  "🚀",
-  "🏢",
-  "⭐",
-  "🎯",
-  "💼",
-  "🔥",
-  "🛠️",
-  "📈",
-  "🎨",
-  "🌱",
-];
+const LOGO_EMOJIS = ["🚀", "🏢", "⭐", "🎯", "💼", "🔥", "🛠️", "📈", "🎨", "🌱"];
 
 const SPACE_COLORS = [
   "#6366F1",
@@ -62,7 +51,7 @@ export function OnboardingWizard({
   // Step 0 = collect name (only if blank), Step 1 = workspace, Step 2 = space
   const needsName = !userName.trim();
   const [step, setStep] = useState<"name" | "workspace" | "space">(
-    needsName ? "name" : existingWorkspace ? "space" : "workspace",
+    needsName ? "name" : existingWorkspace ? "space" : "workspace"
   );
 
   const [workspaceState, setWorkspaceState] = useState(existingWorkspace);
@@ -105,14 +94,18 @@ export function OnboardingWizard({
 
   function handleCreateSpace(e: React.FormEvent) {
     e.preventDefault();
-    if (!workspaceState) return;
+    if (!workspaceState) {
+      return;
+    }
     startTransition(async () => {
       const result = await createOnboardingSpace({
         workspaceId: workspaceState.id,
         name: spaceName,
         color: spaceColor,
       });
-      if (result && "error" in result) toast.error(result.error);
+      if (result && "error" in result) {
+        toast.error(result.error);
+      }
     });
   }
 
@@ -130,23 +123,23 @@ export function OnboardingWizard({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSaveName} className="space-y-5">
+          <form className="space-y-5" onSubmit={handleSaveName}>
             <div className="space-y-2">
               <Label htmlFor="display-name">Full name</Label>
               <Input
-                id="display-name"
-                placeholder="e.g. Priya Shah"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                maxLength={100}
                 autoFocus
+                id="display-name"
+                maxLength={100}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="e.g. Priya Shah"
                 required
+                value={displayName}
               />
             </div>
             <Button
-              type="submit"
               className="w-full gap-2"
               disabled={pending || displayName.trim().length < 2}
+              type="submit"
             >
               <ArrowRightIcon className="size-4" />
               Continue
@@ -172,17 +165,17 @@ export function OnboardingWizard({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleCreateWorkspace} className="space-y-5">
+          <form className="space-y-5" onSubmit={handleCreateWorkspace}>
             <div className="space-y-2">
               <Label htmlFor="workspace-name">Workspace name</Label>
               <Input
-                id="workspace-name"
-                placeholder="e.g. Acme Inc"
-                value={workspaceName}
-                onChange={(e) => setWorkspaceName(e.target.value)}
-                maxLength={100}
                 autoFocus
+                id="workspace-name"
+                maxLength={100}
+                onChange={(e) => setWorkspaceName(e.target.value)}
+                placeholder="e.g. Acme Inc"
                 required
+                value={workspaceName}
               />
             </div>
 
@@ -196,16 +189,16 @@ export function OnboardingWizard({
               <div className="flex flex-wrap gap-1.5">
                 {LOGO_EMOJIS.map((emoji) => (
                   <button
-                    key={emoji}
-                    type="button"
                     aria-pressed={logoEmoji === emoji}
+                    className={cn(
+                      "flex h-9 w-9 items-center justify-center rounded-lg border text-lg transition-colors hover:bg-accent",
+                      logoEmoji === emoji && "border-primary bg-primary/10"
+                    )}
+                    key={emoji}
                     onClick={() =>
                       setLogoEmoji(logoEmoji === emoji ? null : emoji)
                     }
-                    className={cn(
-                      "flex h-9 w-9 items-center justify-center rounded-lg border text-lg transition-colors hover:bg-accent",
-                      logoEmoji === emoji && "border-primary bg-primary/10",
-                    )}
+                    type="button"
                   >
                     {emoji}
                   </button>
@@ -214,9 +207,9 @@ export function OnboardingWizard({
             </div>
 
             <Button
-              type="submit"
               className="w-full gap-2"
               disabled={pending || !workspaceName.trim()}
+              type="submit"
             >
               <ArrowRightIcon className="size-4" />
               Continue
@@ -241,17 +234,17 @@ export function OnboardingWizard({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleCreateSpace} className="space-y-5">
+        <form className="space-y-5" onSubmit={handleCreateSpace}>
           <div className="space-y-2">
             <Label htmlFor="space-name">Space name</Label>
             <Input
-              id="space-name"
-              placeholder="e.g. Product, Engineering, Design"
-              value={spaceName}
-              onChange={(e) => setSpaceName(e.target.value)}
-              maxLength={100}
               autoFocus
+              id="space-name"
+              maxLength={100}
+              onChange={(e) => setSpaceName(e.target.value)}
+              placeholder="e.g. Product, Engineering, Design"
               required
+              value={spaceName}
             />
           </div>
 
@@ -260,26 +253,26 @@ export function OnboardingWizard({
             <div className="flex flex-wrap gap-1.5">
               {SPACE_COLORS.map((color) => (
                 <button
-                  key={color}
-                  type="button"
                   aria-pressed={spaceColor === color}
-                  onClick={() => setSpaceColor(color)}
                   className={cn(
                     "h-7 w-7 rounded-full border-2 transition-transform hover:scale-110",
                     spaceColor === color
                       ? "border-foreground scale-110"
-                      : "border-transparent",
+                      : "border-transparent"
                   )}
+                  key={color}
+                  onClick={() => setSpaceColor(color)}
                   style={{ backgroundColor: color }}
+                  type="button"
                 />
               ))}
             </div>
           </div>
 
           <Button
-            type="submit"
             className="w-full gap-2"
             disabled={pending || !spaceName.trim()}
+            type="submit"
           >
             <ArrowRightIcon className="size-4" />
             Create Space &amp; continue

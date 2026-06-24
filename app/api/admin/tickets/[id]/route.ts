@@ -1,12 +1,17 @@
-import { NextRequest, NextResponse } from "next/server";
+import { asc, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
+import { supportTicket, supportTicketMessage, user } from "@/db/schema";
 import { getAdminSession } from "@/lib/admin-auth";
 import { db } from "@/lib/db";
-import { supportTicket, supportTicketMessage, user } from "@/db/schema";
-import { eq, asc } from "drizzle-orm";
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const session = await getAdminSession();
-  if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!session) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const { id } = await params;
 
@@ -50,7 +55,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       .orderBy(asc(supportTicketMessage.createdAt)),
   ]);
 
-  if (!ticket) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!ticket) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
   return NextResponse.json({ ticket, messages });
 }

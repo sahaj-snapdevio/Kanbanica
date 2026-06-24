@@ -4,7 +4,13 @@ import { AppShell } from "@/components/scaffold/app-shell";
 import { PageHeader } from "@/components/scaffold/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -56,7 +62,9 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>Authentication</CardTitle>
-            <CardDescription>Email verification and magic-link login status.</CardDescription>
+            <CardDescription>
+              Email verification and magic-link login status.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <Badge
@@ -75,7 +83,9 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>Role</CardTitle>
-            <CardDescription>Your current access level in this workspace.</CardDescription>
+            <CardDescription>
+              Your current access level in this workspace.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <Badge
@@ -94,14 +104,16 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>Next Surface</CardTitle>
-            <CardDescription>Replace this with your own product UI.</CardDescription>
+            <CardDescription>
+              Replace this with your own product UI.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-muted-foreground text-sm">
               Replace this dashboard with your application logic while keeping
               the auth/admin/worker backbone.
             </p>
-            <Button asChild variant="secondary" size="sm">
+            <Button asChild size="sm" variant="secondary">
               <Link href="/dashboard/profile">Edit profile</Link>
             </Button>
           </CardContent>
@@ -112,7 +124,9 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>Recent Email Outbox</CardTitle>
-            <CardDescription>Latest transactional emails sent from this workspace.</CardDescription>
+            <CardDescription>
+              Latest transactional emails sent from this workspace.
+            </CardDescription>
           </CardHeader>
           <CardContent className="overflow-x-auto p-0">
             <Table>
@@ -148,7 +162,9 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>Recent Audit</CardTitle>
-            <CardDescription>Your recent account actions and security events.</CardDescription>
+            <CardDescription>
+              Your recent account actions and security events.
+            </CardDescription>
           </CardHeader>
           <CardContent className="overflow-x-auto p-0">
             <Table>

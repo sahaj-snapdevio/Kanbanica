@@ -1,7 +1,7 @@
 "use client";
 
-import * as React from "react";
 import { useRouter } from "next/navigation";
+import * as React from "react";
 import { createList } from "@/app/actions/list";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,16 +15,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 const COLOR_PALETTE = [
-  "#6B7280", "#EF4444", "#F97316", "#EAB308",
-  "#22C55E", "#14B8A6", "#3B82F6", "#8B5CF6",
-  "#EC4899", "#F43F5E",
+  "#6B7280",
+  "#EF4444",
+  "#F97316",
+  "#EAB308",
+  "#22C55E",
+  "#14B8A6",
+  "#3B82F6",
+  "#8B5CF6",
+  "#EC4899",
+  "#F43F5E",
 ];
 
 interface CreateListModalProps {
-  open: boolean;
   onOpenChange: (open: boolean) => void;
-  workspaceId: string;
+  open: boolean;
   spaceId: string;
+  workspaceId: string;
 }
 
 export function CreateListModal({
@@ -46,18 +53,26 @@ export function CreateListModal({
   }
 
   function handleOpenChange(val: boolean) {
-    if (!val) reset();
+    if (!val) {
+      reset();
+    }
     onOpenChange(val);
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) { setError("List name is required"); return; }
+    if (!name.trim()) {
+      setError("List name is required");
+      return;
+    }
 
     setLoading(true);
     setError("");
 
-    const result = await createList(workspaceId, spaceId, { name: name.trim(), color });
+    const result = await createList(workspaceId, spaceId, {
+      name: name.trim(),
+      color,
+    });
 
     setLoading(false);
     if ("error" in result) {
@@ -70,22 +85,22 @@ export function CreateListModal({
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md" aria-describedby={undefined}>
+    <Dialog onOpenChange={handleOpenChange} open={open}>
+      <DialogContent aria-describedby={undefined} className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Create List</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+        <form className="space-y-4 pt-2" onSubmit={handleSubmit}>
           <div className="space-y-1.5">
             <Label htmlFor="list-name">Name</Label>
             <Input
-              id="list-name"
-              placeholder="e.g. Backlog, Sprint 1, Bug Reports"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
               autoFocus
               disabled={loading}
+              id="list-name"
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Backlog, Sprint 1, Bug Reports"
+              value={name}
             />
           </div>
 
@@ -94,14 +109,17 @@ export function CreateListModal({
             <div className="flex flex-wrap gap-2">
               {COLOR_PALETTE.map((c) => (
                 <button
-                  key={c}
-                  type="button"
-                  onClick={() => setColor(c)}
                   className="h-6 w-6 rounded-full ring-offset-2 transition-all focus:outline-none"
+                  key={c}
+                  onClick={() => setColor(c)}
                   style={{
                     backgroundColor: c,
-                    boxShadow: color === c ? `0 0 0 2px white, 0 0 0 4px ${c}` : undefined,
+                    boxShadow:
+                      color === c
+                        ? `0 0 0 2px white, 0 0 0 4px ${c}`
+                        : undefined,
                   }}
+                  type="button"
                 />
               ))}
             </div>
@@ -110,10 +128,15 @@ export function CreateListModal({
           {error && <p className="text-sm text-destructive">{error}</p>}
 
           <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)} disabled={loading}>
+            <Button
+              disabled={loading}
+              onClick={() => handleOpenChange(false)}
+              type="button"
+              variant="ghost"
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading || !name.trim()}>
+            <Button disabled={loading || !name.trim()} type="submit">
               {loading ? "Creating…" : "Create List"}
             </Button>
           </DialogFooter>

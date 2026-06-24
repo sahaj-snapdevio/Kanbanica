@@ -1,25 +1,44 @@
 "use server";
 
+import { createId } from "@paralleldrive/cuid2";
+import { and, count, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { createId } from "@paralleldrive/cuid2";
+import { PRODUCT_NAME } from "@/config/platform";
+import {
+  list,
+  listStatus,
+  space,
+  tag,
+  task,
+  taskAssignee,
+  taskTag,
+  userOnboardingProgress,
+  user as userTable,
+  workspace,
+  workspaceMember,
+} from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { workspace, workspaceMember, space, listStatus, list, userOnboardingProgress, task, taskAssignee, tag, taskTag, user as userTable } from "@/db/schema";
-import { and, count, eq } from "drizzle-orm";
-import { PRODUCT_NAME } from "@/config/platform";
 
 const DEFAULT_STATUSES = [
   { name: "Todo", color: "#9CA3AF", type: "OPEN" as const, orderIndex: 0 },
-  { name: "In Progress", color: "#3B82F6", type: "ACTIVE" as const, orderIndex: 1 },
+  {
+    name: "In Progress",
+    color: "#3B82F6",
+    type: "ACTIVE" as const,
+    orderIndex: 1,
+  },
   { name: "Review", color: "#8B5CF6", type: "ACTIVE" as const, orderIndex: 2 },
   { name: "Done", color: "#22C55E", type: "CLOSED" as const, orderIndex: 3 },
 ];
 
 async function getSessionUser() {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) redirect("/login");
+  if (!session) {
+    redirect("/login");
+  }
   return session.user;
 }
 
@@ -43,19 +62,28 @@ async function generateUniqueSlug(name: string): Promise<string> {
       .from(workspace)
       .where(eq(workspace.slug, slug))
       .limit(1);
-    if (!existing) return slug;
+    if (!existing) {
+      return slug;
+    }
     slug = `${base}-${i}`;
   }
 }
 
 export async function saveUserName(
-  name: string,
+  name: string
 ): Promise<{ ok: true } | { error: string }> {
   const user = await getSessionUser();
   const trimmed = name.trim();
-  if (!trimmed || trimmed.length < 2) return { error: "Please enter your full name." };
-  if (trimmed.length > 100) return { error: "Name is too long." };
-  await db.update(userTable).set({ name: trimmed, updatedAt: new Date() }).where(eq(userTable.id, user.id));
+  if (!trimmed || trimmed.length < 2) {
+    return { error: "Please enter your full name." };
+  }
+  if (trimmed.length > 100) {
+    return { error: "Name is too long." };
+  }
+  await db
+    .update(userTable)
+    .set({ name: trimmed, updatedAt: new Date() })
+    .where(eq(userTable.id, user.id));
   return { ok: true };
 }
 
@@ -86,11 +114,13 @@ export async function createOnboardingWorkspace(input: {
         eq(workspace.name, name),
         eq(workspaceMember.userId, user.id),
         eq(workspaceMember.role, "OWNER"),
-        eq(workspaceMember.status, "ACTIVE"),
-      ),
+        eq(workspaceMember.status, "ACTIVE")
+      )
     )
     .limit(1);
-  if (existing.length > 0) return { error: `You already have a workspace named "${name}"` };
+  if (existing.length > 0) {
+    return { error: `You already have a workspace named "${name}"` };
+  }
 
   const slug = await generateUniqueSlug(name);
   const workspaceId = createId();
@@ -165,7 +195,11 @@ export async function createOnboardingSpace(input: {
       createdBy: user.id,
     });
 
-    const statusRows = DEFAULT_STATUSES.map((s) => ({ id: createId(), listId, ...s }));
+    const statusRows = DEFAULT_STATUSES.map((s) => ({
+      id: createId(),
+      listId,
+      ...s,
+    }));
     await tx.insert(listStatus).values(statusRows);
     const todoStatusId = statusRows[0].id;
 
@@ -200,7 +234,17 @@ export async function createOnboardingSpace(input: {
         title: `👋 Welcome to ${wsRow?.name ?? PRODUCT_NAME} — click to see how a task works`,
         description: {
           type: "doc",
-          content: [{ type: "paragraph", content: [{ type: "text", text: "This is a task. You can set a status, assign it to someone, add a due date, and leave comments. Try editing this task or create your own." }] }],
+          content: [
+            {
+              type: "paragraph",
+              content: [
+                {
+                  type: "text",
+                  text: "This is a task. You can set a status, assign it to someone, add a due date, and leave comments. Try editing this task or create your own.",
+                },
+              ],
+            },
+          ],
         },
         reporterId: user.id,
         priority: "NONE",
@@ -210,10 +254,30 @@ export async function createOnboardingSpace(input: {
       await tx.insert(taskAssignee).values({ taskId, userId: user.id });
 
       const tagId = createId();
-      const [insertedTag] = await tx.insert(tag).values({ id: tagId, workspaceId, name: "demo", color: "#9CA3AF", createdAt: new Date() }).onConflictDoNothing().returning({ id: tag.id });
-      const finalTagId = insertedTag?.id ?? (await tx.select({ id: tag.id }).from(tag).where(and(eq(tag.workspaceId, workspaceId), eq(tag.name, "demo"))).limit(1).then(r => r[0]?.id));
+      const [insertedTag] = await tx
+        .insert(tag)
+        .values({
+          id: tagId,
+          workspaceId,
+          name: "demo",
+          color: "#9CA3AF",
+          createdAt: new Date(),
+        })
+        .onConflictDoNothing()
+        .returning({ id: tag.id });
+      const finalTagId =
+        insertedTag?.id ??
+        (await tx
+          .select({ id: tag.id })
+          .from(tag)
+          .where(and(eq(tag.workspaceId, workspaceId), eq(tag.name, "demo")))
+          .limit(1)
+          .then((r) => r[0]?.id));
       if (finalTagId) {
-        await tx.insert(taskTag).values({ taskId, tagId: finalTagId }).onConflictDoNothing();
+        await tx
+          .insert(taskTag)
+          .values({ taskId, tagId: finalTagId })
+          .onConflictDoNothing();
       }
     }
   });

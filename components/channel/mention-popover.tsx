@@ -5,18 +5,18 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
 interface MentionMember {
-  id: string;
-  name: string;
   email: string;
+  id: string;
   image: string | null;
+  name: string;
 }
 
 interface MentionPopoverProps {
-  query: string;
   members: MentionMember[];
-  onSelect: (member: MentionMember) => void;
   onClose: () => void;
+  onSelect: (member: MentionMember) => void;
   position: { top: number; left: number } | null;
+  query: string;
   visible: boolean;
 }
 
@@ -32,10 +32,15 @@ export function MentionPopover({
   const listRef = React.useRef<HTMLDivElement>(null);
 
   const filtered = React.useMemo(() => {
-    if (!query) return members.slice(0, 8);
+    if (!query) {
+      return members.slice(0, 8);
+    }
     const q = query.toLowerCase();
     return members
-      .filter((m) => m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q))
+      .filter(
+        (m) =>
+          m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q)
+      )
       .slice(0, 8);
   }, [query, members]);
 
@@ -45,7 +50,9 @@ export function MentionPopover({
 
   // Keyboard navigation
   React.useEffect(() => {
-    if (!visible) return;
+    if (!visible) {
+      return;
+    }
 
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "ArrowDown") {
@@ -71,12 +78,16 @@ export function MentionPopover({
 
   // Scroll selected into view
   React.useEffect(() => {
-    if (!listRef.current) return;
+    if (!listRef.current) {
+      return;
+    }
     const el = listRef.current.children[selectedIndex] as HTMLElement;
     el?.scrollIntoView({ block: "nearest" });
   }, [selectedIndex]);
 
-  if (!visible || filtered.length === 0) return null;
+  if (!visible || filtered.length === 0) {
+    return null;
+  }
 
   function getInitials(name: string) {
     return name
@@ -96,28 +107,32 @@ export function MentionPopover({
           : { bottom: "100%", left: 0 }
       }
     >
-      <div ref={listRef} className="max-h-48 overflow-y-auto p-1">
+      <div className="max-h-48 overflow-y-auto p-1" ref={listRef}>
         {filtered.map((m, i) => (
           <button
+            className={cn(
+              "flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm transition-colors",
+              i === selectedIndex
+                ? "bg-accent text-accent-foreground"
+                : "text-foreground hover:bg-accent/50"
+            )}
             key={m.id}
             onMouseDown={(e) => {
               e.preventDefault();
               onSelect(m);
             }}
             onMouseEnter={() => setSelectedIndex(i)}
-            className={cn(
-              "flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm transition-colors",
-              i === selectedIndex
-                ? "bg-accent text-accent-foreground"
-                : "text-foreground hover:bg-accent/50",
-            )}
           >
             <Avatar className="size-6 shrink-0">
-              <AvatarFallback className="text-2xs">{getInitials(m.name)}</AvatarFallback>
+              <AvatarFallback className="text-2xs">
+                {getInitials(m.name)}
+              </AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium">{m.name}</p>
-              <p className="truncate text-xs text-muted-foreground">{m.email}</p>
+              <p className="truncate text-xs text-muted-foreground">
+                {m.email}
+              </p>
             </div>
           </button>
         ))}

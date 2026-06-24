@@ -1,31 +1,36 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { CalendarBlankIcon, LightningIcon } from "@phosphor-icons/react";
+import { format } from "date-fns";
+import { useEffect, useState } from "react";
+import { createSprint } from "@/app/actions/sprint";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ClickUpCalendar } from "@/components/ui/clickup-calendar";
-import { createSprint, getCreateSprintDefaults } from "@/app/actions/sprint";
-import { format } from "date-fns";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { getCreateSprintDefaults } from "@/app/actions/sprint";
+import { ClickUpCalendar } from "../ui/clickup-calendar";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface CreateSprintModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  workspaceId: string;
-  spaceId: string;
   onCreated: () => void;
+  onOpenChange: (open: boolean) => void;
+  open: boolean;
+  spaceId: string;
+  workspaceId: string;
   onOpenSettings?: () => void;
 }
 
@@ -80,8 +85,14 @@ export function CreateSprintModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    if (!name.trim()) { setError("Sprint name is required."); return; }
-    if (!startDate) { setError("Start date is required."); return; }
+    if (!name.trim()) {
+      setError("Sprint name is required.");
+      return;
+    }
+    if (!startDate) {
+      setError("Start date is required.");
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -94,7 +105,10 @@ export function CreateSprintModal({
         durationWeeks,
       });
 
-      if ("error" in result) { setError(result.error); return; }
+      if ("error" in result) {
+        setError(result.error);
+        return;
+      }
 
       onCreated();
       onOpenChange(false);
@@ -105,7 +119,15 @@ export function CreateSprintModal({
     }
   }
 
-  const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const DAY_NAMES = [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+  ];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -117,19 +139,19 @@ export function CreateSprintModal({
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-5 py-1">
+        <form className="space-y-5 py-1" onSubmit={handleSubmit}>
           {/* Sprint Name */}
           <div className="space-y-1.5">
             <Label htmlFor="sprint-name">
               Sprint Name <span className="text-destructive">*</span>
             </Label>
             <Input
+              autoFocus
               id="sprint-name"
+              maxLength={100}
+              onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Sprint 1, Q3 Week 2"
               value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={100}
-              autoFocus
             />
           </div>
 
@@ -137,18 +159,22 @@ export function CreateSprintModal({
           <div className="space-y-1.5">
             <Label htmlFor="sprint-goal">
               Goal{" "}
-              <span className="text-xs font-normal text-muted-foreground">(optional)</span>
+              <span className="text-xs font-normal text-muted-foreground">
+                (optional)
+              </span>
             </Label>
             <Textarea
-              id="sprint-goal"
-              placeholder="What does this sprint aim to achieve?"
-              value={goal}
-              onChange={(e) => setGoal(e.target.value)}
-              maxLength={200}
-              rows={2}
               className="resize-none"
+              id="sprint-goal"
+              maxLength={200}
+              onChange={(e) => setGoal(e.target.value)}
+              placeholder="What does this sprint aim to achieve?"
+              rows={2}
+              value={goal}
             />
-            <p className="text-xs text-muted-foreground text-right">{goal.length}/200</p>
+            <p className="text-xs text-muted-foreground text-right">
+              {goal.length}/200
+            </p>
           </div>
 
           {/* Start Date + End Date */}
@@ -157,22 +183,31 @@ export function CreateSprintModal({
               <Label>
                 Start Date <span className="text-destructive">*</span>
               </Label>
-              <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
+              <Popover onOpenChange={setStartDateOpen} open={startDateOpen}>
                 <PopoverTrigger asChild>
                   <button
                     type="button"
                     className="flex h-10 w-full items-center gap-2 rounded-md border border-input px-3 text-sm transition-colors hover:bg-accent"
                   >
                     <CalendarBlankIcon className="size-3.5 text-muted-foreground shrink-0" />
-                    <span className={startDate ? "text-foreground" : "text-muted-foreground"}>
-                      {startDate ? format(startDate, "MMM d, yyyy") : "Pick a date"}
+                    <span
+                      className={
+                        startDate ? "text-foreground" : "text-muted-foreground"
+                      }
+                    >
+                      {startDate
+                        ? format(startDate, "MMM d, yyyy")
+                        : "Pick a date"}
                     </span>
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
+                <PopoverContent align="start" className="w-auto p-0">
                   <ClickUpCalendar
                     selectedDate={startDate}
-                    onSelect={(date) => { setStartDate(date); setStartDateOpen(false); }}
+                    onSelect={(date) => {
+                      setStartDate(date);
+                      setStartDateOpen(false);
+                    }}
                     onClose={() => setStartDateOpen(false)}
                     allowedDayOfWeek={sprintStartDay ?? undefined}
                   />
@@ -189,12 +224,19 @@ export function CreateSprintModal({
               <Label>End Date</Label>
               <div className="flex h-10 w-full items-center gap-2 rounded-md border border-input bg-muted/40 px-3 text-sm">
                 <CalendarBlankIcon className="size-3.5 text-muted-foreground shrink-0" />
-                <span className={endDate ? "text-foreground" : "text-muted-foreground"}>
-                  {endDate ? format(endDate, "MMM d, yyyy") : `${durationWeeks}w from start`}
+                <span
+                  className={
+                    endDate ? "text-foreground" : "text-muted-foreground"
+                  }
+                >
+                  {endDate
+                    ? format(endDate, "MMM d, yyyy")
+                    : `${durationWeeks}w from start`}
                 </span>
               </div>
               <p className="text-xs text-muted-foreground">
-                {durationWeeks} {durationWeeks === 1 ? "week" : "weeks"} duration
+                {durationWeeks} {durationWeeks === 1 ? "week" : "weeks"}{" "}
+                duration
               </p>
             </div>
           </div>
@@ -205,13 +247,18 @@ export function CreateSprintModal({
             {onOpenSettings ? (
               <button
                 type="button"
-                onClick={() => { onOpenChange(false); onOpenSettings(); }}
+                onClick={() => {
+                  onOpenChange(false);
+                  onOpenSettings();
+                }}
                 className="text-primary underline underline-offset-2 hover:text-primary/80 transition-colors"
               >
                 Sprint Settings
               </button>
             ) : (
-              <span className="text-foreground font-medium">Sprint Settings</span>
+              <span className="text-foreground font-medium">
+                Sprint Settings
+              </span>
             )}
             .
           </p>
@@ -224,10 +271,15 @@ export function CreateSprintModal({
           )}
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={loading}
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button disabled={loading} type="submit">
               {loading ? "Creating…" : "Create Sprint"}
             </Button>
           </DialogFooter>

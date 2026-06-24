@@ -46,7 +46,7 @@ export function SessionsCard({ sessions }: { sessions: SessionRow[] }) {
         </div>
         {otherSessionCount > 0 && (
           <form action={signOutOtherSessionsAction}>
-            <Button type="submit" variant="secondary" size="sm">
+            <Button size="sm" type="submit" variant="secondary">
               Sign out other sessions
             </Button>
           </form>
@@ -90,7 +90,9 @@ export function SessionsCard({ sessions }: { sessions: SessionRow[] }) {
                 <TableCell>{formatDateTime(session.expiresAt)}</TableCell>
                 <TableCell>
                   {session.isCurrent ? (
-                    <span className="text-muted-foreground text-sm">Protected</span>
+                    <span className="text-muted-foreground text-sm">
+                      Protected
+                    </span>
                   ) : (
                     <form action={revokeSessionAction}>
                       <input
@@ -98,7 +100,7 @@ export function SessionsCard({ sessions }: { sessions: SessionRow[] }) {
                         type="hidden"
                         value={session.id}
                       />
-                      <Button type="submit" variant="secondary" size="sm">
+                      <Button size="sm" type="submit" variant="secondary">
                         Revoke
                       </Button>
                     </form>

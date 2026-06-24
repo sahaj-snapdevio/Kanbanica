@@ -58,12 +58,24 @@ export async function startWorker() {
   const { handleSprintAutoClose } = await import(
     "@/lib/worker/handlers/sprint-auto-close"
   );
-  const { handleNotificationCleanup } = await import("@/lib/worker/handlers/notification-cleanup");
-  const { handleDueDateReminder } = await import("@/lib/worker/handlers/due-date-reminder");
-  const { handleNotificationDigestScan } = await import("@/lib/worker/handlers/notification-digest-scan");
-  const { handleNotificationDigestSend } = await import("@/lib/worker/handlers/notification-digest-send");
-  const { handleImpersonationCleanup } = await import("@/lib/worker/handlers/impersonation-cleanup");
-  const { handleSupportTicketAutoClose } = await import("@/lib/worker/handlers/support-ticket-auto-close");
+  const { handleNotificationCleanup } = await import(
+    "@/lib/worker/handlers/notification-cleanup"
+  );
+  const { handleDueDateReminder } = await import(
+    "@/lib/worker/handlers/due-date-reminder"
+  );
+  const { handleNotificationDigestScan } = await import(
+    "@/lib/worker/handlers/notification-digest-scan"
+  );
+  const { handleNotificationDigestSend } = await import(
+    "@/lib/worker/handlers/notification-digest-send"
+  );
+  const { handleImpersonationCleanup } = await import(
+    "@/lib/worker/handlers/impersonation-cleanup"
+  );
+  const { handleSupportTicketAutoClose } = await import(
+    "@/lib/worker/handlers/support-ticket-auto-close"
+  );
 
   await Promise.all([
     work(JOB_NAMES.EMAIL_SEND, handleEmailSend),

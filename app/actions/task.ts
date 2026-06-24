@@ -1,34 +1,38 @@
 "use server";
 
-import { headers } from "next/headers";
-import { revalidatePath } from "next/cache";
 import { createId } from "@paralleldrive/cuid2";
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
-import { auth } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import {
-  list,
-  listStatus,
-  task,
-  taskAssignee,
-  taskWatcher,
-  taskTag,
-  tag,
-  taskDependency,
-  taskDescriptionSnapshot,
-  timeLog,
-  workspace,
-  workspaceMember,
   activityLog,
   checklist,
   checklistItem,
-  user,
-  taskSprint,
+  list,
+  listStatus,
   sprint,
+  tag,
+  task,
+  taskAssignee,
+  taskDependency,
+  taskDescriptionSnapshot,
+  taskSprint,
+  taskTag,
+  taskWatcher,
+  timeLog,
+  user,
+  workspace,
+  workspaceMember,
 } from "@/db/schema";
-import { canAccessSpace, getSpacePermission, hasPermissionLevel } from "@/lib/permissions";
 import { writeActivityLog } from "@/lib/activity-log";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
 import { createNotifications } from "@/lib/notifications/create-notification";
+import {
+  canAccessSpace,
+  getSpacePermission,
+  hasPermissionLevel,
+} from "@/lib/permissions";
 
 // ─── Permission helpers ──────────────────────────────────────────────────────
 
@@ -36,11 +40,15 @@ import { createNotifications } from "@/lib/notifications/create-notification";
 async function requireEditAccess(
   userId: string,
   workspaceId: string,
-  spaceId: string,
+  spaceId: string
 ): Promise<{ error: string } | null> {
   const permission = await getSpacePermission(userId, workspaceId, spaceId);
-  if (permission === null) return { error: "Forbidden" };
-  if (!hasPermissionLevel(permission, "edit")) return { error: "Forbidden" };
+  if (permission === null) {
+    return { error: "Forbidden" };
+  }
+  if (!hasPermissionLevel(permission, "edit")) {
+    return { error: "Forbidden" };
+  }
   return null;
 }
 
@@ -48,10 +56,12 @@ async function requireEditAccess(
 async function requireViewAccess(
   userId: string,
   workspaceId: string,
-  spaceId: string,
+  spaceId: string
 ): Promise<{ error: string } | null> {
   const accessible = await canAccessSpace(userId, workspaceId, spaceId);
-  if (!accessible) return { error: "Forbidden" };
+  if (!accessible) {
+    return { error: "Forbidden" };
+  }
   return null;
 }
 
@@ -59,11 +69,15 @@ async function requireViewAccess(
 async function requireFullAccess(
   userId: string,
   workspaceId: string,
-  spaceId: string,
+  spaceId: string
 ): Promise<{ error: string } | null> {
   const permission = await getSpacePermission(userId, workspaceId, spaceId);
-  if (permission === null) return { error: "Forbidden" };
-  if (!hasPermissionLevel(permission, "full_access")) return { error: "Forbidden" };
+  if (permission === null) {
+    return { error: "Forbidden" };
+  }
+  if (!hasPermissionLevel(permission, "full_access")) {
+    return { error: "Forbidden" };
+  }
   return null;
 }
 
@@ -84,16 +98,22 @@ export async function createTask(
   workspaceId: string,
   spaceId: string,
   listId: string | null,
-  data: { title: string; statusId?: string },
+  data: { title: string; statusId?: string }
 ): Promise<{ taskId: string } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const err = await requireEditAccess(session.user.id, workspaceId, spaceId);
-  if (err) return err;
+  if (err) {
+    return err;
+  }
 
   const title = data.title.trim();
-  if (!title) return { error: "Task title is required" };
+  if (!title) {
+    return { error: "Task title is required" };
+  }
 
   let statusId: string | undefined = data.statusId;
 
@@ -101,9 +121,17 @@ export async function createTask(
     const [currentList] = await db
       .select({ id: list.id })
       .from(list)
-      .where(and(eq(list.id, listId), eq(list.spaceId, spaceId), eq(list.isArchived, false)))
+      .where(
+        and(
+          eq(list.id, listId),
+          eq(list.spaceId, spaceId),
+          eq(list.isArchived, false)
+        )
+      )
       .limit(1);
-    if (!currentList) return { error: "List not found or archived" };
+    if (!currentList) {
+      return { error: "List not found or archived" };
+    }
 
     if (!statusId) {
       const [firstStatus] = await db
@@ -113,17 +141,19 @@ export async function createTask(
         .orderBy(asc(listStatus.orderIndex))
         .limit(1);
 
-      if (!firstStatus) {
+      if (firstStatus) {
+        statusId = firstStatus.id;
+      } else {
         const [anyStatus] = await db
           .select({ id: listStatus.id })
           .from(listStatus)
           .where(eq(listStatus.listId, listId))
           .orderBy(asc(listStatus.orderIndex))
           .limit(1);
-        if (!anyStatus) return { error: "List has no statuses" };
+        if (!anyStatus) {
+          return { error: "List has no statuses" };
+        }
         statusId = anyStatus.id;
-      } else {
-        statusId = firstStatus.id;
       }
     }
   }
@@ -150,11 +180,16 @@ export async function createTask(
       orderIndex: taskSeq * 1000,
     });
     // Auto-watch: creator
-    await tx.insert(taskWatcher).values({ taskId, userId: session.user.id }).onConflictDoNothing();
+    await tx
+      .insert(taskWatcher)
+      .values({ taskId, userId: session.user.id })
+      .onConflictDoNothing();
   });
 
   await writeActivityLog(taskId, session.user.id, "task_created", { title });
-  if (listId) revalidateList(workspaceId, spaceId, listId);
+  if (listId) {
+    revalidateList(workspaceId, spaceId, listId);
+  }
   return { taskId };
 }
 
@@ -163,114 +198,151 @@ export async function createTask(
 export async function getTaskDetail(
   workspaceId: string,
   spaceId: string,
-  taskId: string,
+  taskId: string
 ) {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
-  const permErr = await requireViewAccess(session.user.id, workspaceId, spaceId);
-  if (permErr) return permErr;
+  const permErr = await requireViewAccess(
+    session.user.id,
+    workspaceId,
+    spaceId
+  );
+  if (permErr) {
+    return permErr;
+  }
 
-  const [t] = await db
-    .select()
-    .from(task)
-    .where(eq(task.id, taskId))
-    .limit(1);
-  if (!t) return { error: "Task not found" };
+  const [t] = await db.select().from(task).where(eq(task.id, taskId)).limit(1);
+  if (!t) {
+    return { error: "Task not found" };
+  }
 
-  const [assignees, watchers, tags, checklists, dependencies, timeLogs, statuses, snapshot, subtasks, parentTaskInfo] =
-    await Promise.all([
-      db
-        .select({ userId: taskAssignee.userId, name: user.name, email: user.email, image: user.image })
-        .from(taskAssignee)
-        .leftJoin(user, eq(user.id, taskAssignee.userId))
-        .where(eq(taskAssignee.taskId, taskId)),
+  const [
+    assignees,
+    watchers,
+    tags,
+    checklists,
+    dependencies,
+    timeLogs,
+    statuses,
+    snapshot,
+    subtasks,
+    parentTaskInfo,
+  ] = await Promise.all([
+    db
+      .select({
+        userId: taskAssignee.userId,
+        name: user.name,
+        email: user.email,
+        image: user.image,
+      })
+      .from(taskAssignee)
+      .leftJoin(user, eq(user.id, taskAssignee.userId))
+      .where(eq(taskAssignee.taskId, taskId)),
 
-      db
-        .select({ userId: taskWatcher.userId, name: user.name, email: user.email, image: user.image })
-        .from(taskWatcher)
-        .leftJoin(user, eq(user.id, taskWatcher.userId))
-        .where(eq(taskWatcher.taskId, taskId)),
+    db
+      .select({
+        userId: taskWatcher.userId,
+        name: user.name,
+        email: user.email,
+        image: user.image,
+      })
+      .from(taskWatcher)
+      .leftJoin(user, eq(user.id, taskWatcher.userId))
+      .where(eq(taskWatcher.taskId, taskId)),
 
-      db
-        .select({ id: tag.id, name: tag.name, color: tag.color })
-        .from(taskTag)
-        .innerJoin(tag, eq(taskTag.tagId, tag.id))
-        .where(eq(taskTag.taskId, taskId)),
+    db
+      .select({ id: tag.id, name: tag.name, color: tag.color })
+      .from(taskTag)
+      .innerJoin(tag, eq(taskTag.tagId, tag.id))
+      .where(eq(taskTag.taskId, taskId)),
 
-      db
-        .select()
-        .from(checklist)
-        .where(eq(checklist.taskId, taskId))
-        .orderBy(asc(checklist.orderIndex))
-        .then(async (cls) => {
-          if (cls.length === 0) return [];
-          const items = await db
-            .select()
-            .from(checklistItem)
-            .where(inArray(checklistItem.checklistId, cls.map((c) => c.id)))
-            .orderBy(asc(checklistItem.orderIndex));
-          return cls.map((c) => ({
-            ...c,
-            items: items.filter((i) => i.checklistId === c.id),
-          }));
-        }),
+    db
+      .select()
+      .from(checklist)
+      .where(eq(checklist.taskId, taskId))
+      .orderBy(asc(checklist.orderIndex))
+      .then(async (cls) => {
+        if (cls.length === 0) {
+          return [];
+        }
+        const items = await db
+          .select()
+          .from(checklistItem)
+          .where(
+            inArray(
+              checklistItem.checklistId,
+              cls.map((c) => c.id)
+            )
+          )
+          .orderBy(asc(checklistItem.orderIndex));
+        return cls.map((c) => ({
+          ...c,
+          items: items.filter((i) => i.checklistId === c.id),
+        }));
+      }),
 
-      db
-        .select({
-          id: taskDependency.id,
-          type: taskDependency.type,
-          dependsOnTaskId: taskDependency.dependsOnTaskId,
-          dependsOnTitle: task.title,
-          dependsOnSeq: task.seqNumber,
-        })
-        .from(taskDependency)
-        .innerJoin(task, eq(taskDependency.dependsOnTaskId, task.id))
-        .where(eq(taskDependency.taskId, taskId)),
+    db
+      .select({
+        id: taskDependency.id,
+        type: taskDependency.type,
+        dependsOnTaskId: taskDependency.dependsOnTaskId,
+        dependsOnTitle: task.title,
+        dependsOnSeq: task.seqNumber,
+      })
+      .from(taskDependency)
+      .innerJoin(task, eq(taskDependency.dependsOnTaskId, task.id))
+      .where(eq(taskDependency.taskId, taskId)),
 
-      db
-        .select()
-        .from(timeLog)
-        .where(eq(timeLog.taskId, taskId))
-        .orderBy(desc(timeLog.loggedAt)),
+    db
+      .select()
+      .from(timeLog)
+      .where(eq(timeLog.taskId, taskId))
+      .orderBy(desc(timeLog.loggedAt)),
 
-      t.listId
-        ? db.select().from(listStatus).where(eq(listStatus.listId, t.listId)).orderBy(asc(listStatus.orderIndex))
-        : Promise.resolve([]),
+    t.listId
+      ? db
+          .select()
+          .from(listStatus)
+          .where(eq(listStatus.listId, t.listId))
+          .orderBy(asc(listStatus.orderIndex))
+      : Promise.resolve([]),
 
-      db
-        .select()
-        .from(taskDescriptionSnapshot)
-        .where(eq(taskDescriptionSnapshot.taskId, taskId))
-        .limit(1)
-        .then((r) => r[0] ?? null),
+    db
+      .select()
+      .from(taskDescriptionSnapshot)
+      .where(eq(taskDescriptionSnapshot.taskId, taskId))
+      .limit(1)
+      .then((r) => r[0] ?? null),
 
-      db
-        .select({
-          id: task.id,
-          seqNumber: task.seqNumber,
-          title: task.title,
-          priority: task.priority,
-          statusId: task.statusId,
-          orderIndex: task.orderIndex,
-          statusName: listStatus.name,
-          statusColor: listStatus.color,
-          statusType: listStatus.type,
-        })
-        .from(task)
-        .leftJoin(listStatus, eq(listStatus.id, task.statusId))
-        .where(and(eq(task.parentTaskId, taskId), eq(task.isArchived, false)))
-        .orderBy(asc(task.orderIndex)),
+    db
+      .select({
+        id: task.id,
+        seqNumber: task.seqNumber,
+        title: task.title,
+        priority: task.priority,
+        statusId: task.statusId,
+        orderIndex: task.orderIndex,
+        statusName: listStatus.name,
+        statusColor: listStatus.color,
+        statusType: listStatus.type,
+      })
+      .from(task)
+      .leftJoin(listStatus, eq(listStatus.id, task.statusId))
+      .where(and(eq(task.parentTaskId, taskId), eq(task.isArchived, false)))
+      .orderBy(asc(task.orderIndex)),
 
-      t.parentTaskId
-        ? db
-            .select({ id: task.id, title: task.title, seqNumber: task.seqNumber })
-            .from(task)
-            .where(eq(task.id, t.parentTaskId))
-            .limit(1)
-            .then((r) => r[0] ?? null)
-        : Promise.resolve(null),
-    ]);
+    t.parentTaskId
+      ? db
+          .select({ id: task.id, title: task.title, seqNumber: task.seqNumber })
+          .from(task)
+          .where(eq(task.id, t.parentTaskId))
+          .limit(1)
+          .then((r) => r[0] ?? null)
+      : Promise.resolve(null),
+  ]);
 
   return {
     task: t,
@@ -292,7 +364,9 @@ export async function getTaskDetail(
 
 export async function getWorkspaceMembers(workspaceId: string) {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const members = await db
     .select({
@@ -307,8 +381,8 @@ export async function getWorkspaceMembers(workspaceId: string) {
     .where(
       and(
         eq(workspaceMember.workspaceId, workspaceId),
-        eq(workspaceMember.status, "ACTIVE"),
-      ),
+        eq(workspaceMember.status, "ACTIVE")
+      )
     )
     .orderBy(asc(user.name));
 
@@ -329,20 +403,35 @@ export async function updateTask(
     dueDateStart?: Date | null;
     dueDateEnd?: Date | null;
     timeEstimate?: number | null;
-  },
+  }
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const err = await requireEditAccess(session.user.id, workspaceId, spaceId);
-  if (err) return err;
+  if (err) {
+    return err;
+  }
 
   const [existing] = await db
-    .select({ title: task.title, priority: task.priority, description: task.description })
+    .select({
+      title: task.title,
+      priority: task.priority,
+      description: task.description,
+    })
     .from(task)
-    .where(and(eq(task.id, taskId), listId != null ? eq(task.listId, listId) : isNull(task.listId)))
+    .where(
+      and(
+        eq(task.id, taskId),
+        listId == null ? isNull(task.listId) : eq(task.listId, listId)
+      )
+    )
     .limit(1);
-  if (!existing) return { error: "Task not found" };
+  if (!existing) {
+    return { error: "Task not found" };
+  }
 
   const updates: Partial<typeof task.$inferInsert> = { updatedAt: new Date() };
   const logs: Array<() => Promise<void>> = [];
@@ -353,7 +442,7 @@ export async function updateTask(
       writeActivityLog(taskId, session.user.id, "title_changed", {
         from: existing.title,
         to: updates.title,
-      }),
+      })
     );
   }
 
@@ -363,7 +452,7 @@ export async function updateTask(
       writeActivityLog(taskId, session.user.id, "priority_changed", {
         from: existing.priority,
         to: data.priority,
-      }),
+      })
     );
   }
 
@@ -389,12 +478,20 @@ export async function updateTask(
         });
     }
     updates.description = data.description as Record<string, unknown>;
-    logs.push(() => writeActivityLog(taskId, session.user.id, "description_updated"));
+    logs.push(() =>
+      writeActivityLog(taskId, session.user.id, "description_updated")
+    );
   }
 
-  if (data.dueDateStart !== undefined) updates.dueDateStart = data.dueDateStart;
-  if (data.dueDateEnd !== undefined) updates.dueDateEnd = data.dueDateEnd;
-  if (data.timeEstimate !== undefined) updates.timeEstimate = data.timeEstimate;
+  if (data.dueDateStart !== undefined) {
+    updates.dueDateStart = data.dueDateStart;
+  }
+  if (data.dueDateEnd !== undefined) {
+    updates.dueDateEnd = data.dueDateEnd;
+  }
+  if (data.timeEstimate !== undefined) {
+    updates.timeEstimate = data.timeEstimate;
+  }
 
   if (Object.keys(updates).length > 1) {
     await db.update(task).set(updates).where(eq(task.id, taskId));
@@ -424,7 +521,11 @@ export async function updateTask(
     }
   }
 
-  if (listId) revalidateList(workspaceId, spaceId, listId); else revalidateSpace(workspaceId, spaceId);
+  if (listId) {
+    revalidateList(workspaceId, spaceId, listId);
+  } else {
+    revalidateSpace(workspaceId, spaceId);
+  }
   return { ok: true };
 }
 
@@ -435,25 +536,40 @@ export async function updateTaskStatus(
   spaceId: string,
   listId: string | null,
   taskId: string,
-  statusId: string,
+  statusId: string
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
-  const permErr = await requireViewAccess(session.user.id, workspaceId, spaceId);
-  if (permErr) return permErr;
+  const permErr = await requireViewAccess(
+    session.user.id,
+    workspaceId,
+    spaceId
+  );
+  if (permErr) {
+    return permErr;
+  }
 
   const [existing] = await db
     .select({ statusId: task.statusId, title: task.title })
     .from(task)
     .where(eq(task.id, taskId))
     .limit(1);
-  if (!existing) return { error: "Task not found" };
+  if (!existing) {
+    return { error: "Task not found" };
+  }
 
   await db
     .update(task)
     .set({ statusId, updatedAt: new Date() })
-    .where(and(eq(task.id, taskId), listId != null ? eq(task.listId, listId) : isNull(task.listId)));
+    .where(
+      and(
+        eq(task.id, taskId),
+        listId == null ? isNull(task.listId) : eq(task.listId, listId)
+      )
+    );
 
   await writeActivityLog(taskId, session.user.id, "status_changed", {
     from: existing.statusId,
@@ -480,17 +596,23 @@ export async function updateTaskStatus(
       workspaceId,
       actorId: session.user.id,
       recipientIds: watcherIds,
-      triggerType: newStatus?.type === "CLOSED" ? "task_completed" : "task_status_changed",
+      triggerType:
+        newStatus?.type === "CLOSED" ? "task_completed" : "task_status_changed",
       entityType: "TASK",
       entityId: taskId,
-      title: newStatus?.type === "CLOSED"
-        ? `${actorName} completed "${existing.title}"`
-        : `${actorName} changed status of "${existing.title}" to "${newStatus?.name ?? statusId}"`,
+      title:
+        newStatus?.type === "CLOSED"
+          ? `${actorName} completed "${existing.title}"`
+          : `${actorName} changed status of "${existing.title}" to "${newStatus?.name ?? statusId}"`,
       muteCheckEntityIds: [taskId],
     });
   }
 
-  if (listId) revalidateList(workspaceId, spaceId, listId); else revalidateSpace(workspaceId, spaceId);
+  if (listId) {
+    revalidateList(workspaceId, spaceId, listId);
+  } else {
+    revalidateSpace(workspaceId, spaceId);
+  }
   return { ok: true };
 }
 
@@ -500,17 +622,36 @@ export async function deleteTask(
   workspaceId: string,
   spaceId: string,
   listId: string | null,
-  taskId: string,
+  taskId: string
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
-  const permErr = await requireFullAccess(session.user.id, workspaceId, spaceId);
-  if (permErr) return { error: "You don't have permission to delete tasks" };
+  const permErr = await requireFullAccess(
+    session.user.id,
+    workspaceId,
+    spaceId
+  );
+  if (permErr) {
+    return { error: "You don't have permission to delete tasks" };
+  }
 
-  await db.delete(task).where(and(eq(task.id, taskId), listId != null ? eq(task.listId, listId) : isNull(task.listId)));
+  await db
+    .delete(task)
+    .where(
+      and(
+        eq(task.id, taskId),
+        listId == null ? isNull(task.listId) : eq(task.listId, listId)
+      )
+    );
 
-  if (listId) revalidateList(workspaceId, spaceId, listId); else revalidateSpace(workspaceId, spaceId);
+  if (listId) {
+    revalidateList(workspaceId, spaceId, listId);
+  } else {
+    revalidateSpace(workspaceId, spaceId);
+  }
   return { ok: true };
 }
 
@@ -520,13 +661,17 @@ export async function archiveTask(
   workspaceId: string,
   spaceId: string,
   listId: string | null,
-  taskId: string,
+  taskId: string
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const err = await requireEditAccess(session.user.id, workspaceId, spaceId);
-  if (err) return err;
+  if (err) {
+    return err;
+  }
 
   await db
     .update(task)
@@ -539,10 +684,19 @@ export async function archiveTask(
       pinnedToListOrder: null,
       updatedAt: new Date(),
     })
-    .where(and(eq(task.id, taskId), listId != null ? eq(task.listId, listId) : isNull(task.listId)));
+    .where(
+      and(
+        eq(task.id, taskId),
+        listId == null ? isNull(task.listId) : eq(task.listId, listId)
+      )
+    );
 
   await writeActivityLog(taskId, session.user.id, "task_archived");
-  if (listId) revalidateList(workspaceId, spaceId, listId); else revalidateSpace(workspaceId, spaceId);
+  if (listId) {
+    revalidateList(workspaceId, spaceId, listId);
+  } else {
+    revalidateSpace(workspaceId, spaceId);
+  }
   return { ok: true };
 }
 
@@ -550,21 +704,34 @@ export async function unarchiveTask(
   workspaceId: string,
   spaceId: string,
   listId: string | null,
-  taskId: string,
+  taskId: string
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const err = await requireEditAccess(session.user.id, workspaceId, spaceId);
-  if (err) return err;
+  if (err) {
+    return err;
+  }
 
   await db
     .update(task)
     .set({ isArchived: false, archivedAt: null, updatedAt: new Date() })
-    .where(and(eq(task.id, taskId), listId != null ? eq(task.listId, listId) : isNull(task.listId)));
+    .where(
+      and(
+        eq(task.id, taskId),
+        listId == null ? isNull(task.listId) : eq(task.listId, listId)
+      )
+    );
 
   await writeActivityLog(taskId, session.user.id, "task_unarchived");
-  if (listId) revalidateList(workspaceId, spaceId, listId); else revalidateSpace(workspaceId, spaceId);
+  if (listId) {
+    revalidateList(workspaceId, spaceId, listId);
+  } else {
+    revalidateSpace(workspaceId, spaceId);
+  }
   return { ok: true };
 }
 
@@ -574,20 +741,26 @@ export async function duplicateTask(
   workspaceId: string,
   spaceId: string,
   listId: string | null,
-  taskId: string,
+  taskId: string
 ): Promise<{ taskId: string } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const err = await requireEditAccess(session.user.id, workspaceId, spaceId);
-  if (err) return err;
+  if (err) {
+    return err;
+  }
 
   const [original] = await db
     .select()
     .from(task)
     .where(eq(task.id, taskId))
     .limit(1);
-  if (!original) return { error: "Task not found" };
+  if (!original) {
+    return { error: "Task not found" };
+  }
 
   const [{ taskSeq }] = await db
     .update(workspace)
@@ -642,8 +815,14 @@ export async function duplicateTask(
     }
   }
 
-  await writeActivityLog(newTaskId, session.user.id, "task_created", { duplicatedFrom: taskId });
-  if (listId) revalidateList(workspaceId, spaceId, listId); else revalidateSpace(workspaceId, spaceId);
+  await writeActivityLog(newTaskId, session.user.id, "task_created", {
+    duplicatedFrom: taskId,
+  });
+  if (listId) {
+    revalidateList(workspaceId, spaceId, listId);
+  } else {
+    revalidateSpace(workspaceId, spaceId);
+  }
   return { taskId: newTaskId };
 }
 
@@ -653,20 +832,38 @@ export async function moveTask(
   workspaceId: string,
   spaceId: string,
   taskId: string,
-  targetListId: string,
+  targetListId: string
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
-  const permErr = await requireEditAccess(session.user.id, workspaceId, spaceId);
-  if (permErr) return permErr;
+  const permErr = await requireEditAccess(
+    session.user.id,
+    workspaceId,
+    spaceId
+  );
+  if (permErr) {
+    return permErr;
+  }
 
-  const [t] = await db.select({ listId: task.listId, statusId: task.statusId }).from(task).where(eq(task.id, taskId)).limit(1);
-  if (!t) return { error: "Task not found" };
+  const [t] = await db
+    .select({ listId: task.listId, statusId: task.statusId })
+    .from(task)
+    .where(eq(task.id, taskId))
+    .limit(1);
+  if (!t) {
+    return { error: "Task not found" };
+  }
 
   // Find matching status in target list by name
   const [currentStatus] = t.statusId
-    ? await db.select({ name: listStatus.name }).from(listStatus).where(eq(listStatus.id, t.statusId)).limit(1)
+    ? await db
+        .select({ name: listStatus.name })
+        .from(listStatus)
+        .where(eq(listStatus.id, t.statusId))
+        .limit(1)
     : [];
 
   let newStatusId: string;
@@ -674,7 +871,12 @@ export async function moveTask(
     const [match] = await db
       .select({ id: listStatus.id })
       .from(listStatus)
-      .where(and(eq(listStatus.listId, targetListId), eq(listStatus.name, currentStatus.name)))
+      .where(
+        and(
+          eq(listStatus.listId, targetListId),
+          eq(listStatus.name, currentStatus.name)
+        )
+      )
       .limit(1);
 
     if (match) {
@@ -683,10 +885,14 @@ export async function moveTask(
       const [firstOpen] = await db
         .select({ id: listStatus.id })
         .from(listStatus)
-        .where(and(eq(listStatus.listId, targetListId), eq(listStatus.type, "OPEN")))
+        .where(
+          and(eq(listStatus.listId, targetListId), eq(listStatus.type, "OPEN"))
+        )
         .orderBy(asc(listStatus.orderIndex))
         .limit(1);
-      if (!firstOpen) return { error: "Target list has no statuses" };
+      if (!firstOpen) {
+        return { error: "Target list has no statuses" };
+      }
       newStatusId = firstOpen.id;
     }
   } else {
@@ -694,10 +900,14 @@ export async function moveTask(
     const [firstOpen] = await db
       .select({ id: listStatus.id })
       .from(listStatus)
-      .where(and(eq(listStatus.listId, targetListId), eq(listStatus.type, "OPEN")))
+      .where(
+        and(eq(listStatus.listId, targetListId), eq(listStatus.type, "OPEN"))
+      )
       .orderBy(asc(listStatus.orderIndex))
       .limit(1);
-    if (!firstOpen) return { error: "Target list has no statuses" };
+    if (!firstOpen) {
+      return { error: "Target list has no statuses" };
+    }
     newStatusId = firstOpen.id;
   }
 
@@ -728,13 +938,21 @@ export async function moveTask(
 export async function getTaskActivity(
   workspaceId: string,
   spaceId: string,
-  taskId: string,
+  taskId: string
 ) {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
-  const permErr = await requireViewAccess(session.user.id, workspaceId, spaceId);
-  if (permErr) return permErr;
+  const permErr = await requireViewAccess(
+    session.user.id,
+    workspaceId,
+    spaceId
+  );
+  if (permErr) {
+    return permErr;
+  }
 
   const logs = await db
     .select({
@@ -762,24 +980,39 @@ export async function createSubtask(
   workspaceId: string,
   spaceId: string,
   parentTaskId: string,
-  title: string,
+  title: string
 ): Promise<{ taskId: string } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const err = await requireEditAccess(session.user.id, workspaceId, spaceId);
-  if (err) return err;
+  if (err) {
+    return err;
+  }
 
   const trimmedTitle = title.trim();
-  if (!trimmedTitle) return { error: "Subtask title is required" };
+  if (!trimmedTitle) {
+    return { error: "Subtask title is required" };
+  }
 
   const [parentTask] = await db
-    .select({ id: task.id, listId: task.listId, workspaceId: task.workspaceId, parentTaskId: task.parentTaskId })
+    .select({
+      id: task.id,
+      listId: task.listId,
+      workspaceId: task.workspaceId,
+      parentTaskId: task.parentTaskId,
+    })
     .from(task)
     .where(eq(task.id, parentTaskId))
     .limit(1);
-  if (!parentTask) return { error: "Parent task not found" };
-  if (parentTask.parentTaskId) return { error: "Cannot nest subtasks more than one level" };
+  if (!parentTask) {
+    return { error: "Parent task not found" };
+  }
+  if (parentTask.parentTaskId) {
+    return { error: "Cannot nest subtasks more than one level" };
+  }
 
   const listId = parentTask.listId;
 
@@ -801,7 +1034,9 @@ export async function createSubtask(
         .where(eq(listStatus.listId, listId))
         .orderBy(asc(listStatus.orderIndex))
         .limit(1);
-      if (!anyStatus) return { error: "List has no statuses" };
+      if (!anyStatus) {
+        return { error: "List has no statuses" };
+      }
       statusId = anyStatus.id;
     }
   }
@@ -827,8 +1062,13 @@ export async function createSubtask(
     orderIndex: taskSeq * 1000,
   });
 
-  await writeActivityLog(taskId, session.user.id, "subtask_created", { title: trimmedTitle, parentTaskId });
-  if (listId) revalidatePath(`/${workspaceId}/${spaceId}/list/${listId}`);
+  await writeActivityLog(taskId, session.user.id, "subtask_created", {
+    title: trimmedTitle,
+    parentTaskId,
+  });
+  if (listId) {
+    revalidatePath(`/${workspaceId}/${spaceId}/list/${listId}`);
+  }
   return { taskId };
 }
 
@@ -837,13 +1077,21 @@ export async function createSubtask(
 export async function getSubtasks(
   workspaceId: string,
   spaceId: string,
-  parentTaskId: string,
+  parentTaskId: string
 ) {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
-  const permErr = await requireViewAccess(session.user.id, workspaceId, spaceId);
-  if (permErr) return permErr;
+  const permErr = await requireViewAccess(
+    session.user.id,
+    workspaceId,
+    spaceId
+  );
+  if (permErr) {
+    return permErr;
+  }
 
   const subtasks = await db
     .select({
@@ -873,15 +1121,21 @@ export async function logTime(
   listId: string,
   taskId: string,
   durationMinutes: number,
-  note?: string,
+  note?: string
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const err = await requireEditAccess(session.user.id, workspaceId, spaceId);
-  if (err) return err;
+  if (err) {
+    return err;
+  }
 
-  if (durationMinutes <= 0) return { error: "Duration must be positive" };
+  if (durationMinutes <= 0) {
+    return { error: "Duration must be positive" };
+  }
 
   await db.insert(timeLog).values({
     id: createId(),
@@ -891,7 +1145,9 @@ export async function logTime(
     note: note ?? null,
   });
 
-  await writeActivityLog(taskId, session.user.id, "time_logged", { minutes: durationMinutes });
+  await writeActivityLog(taskId, session.user.id, "time_logged", {
+    minutes: durationMinutes,
+  });
   revalidateList(workspaceId, spaceId, listId);
   return { ok: true };
 }
@@ -903,12 +1159,20 @@ export async function bulkUpdateStatus(
   spaceId: string,
   listId: string,
   taskIds: string[],
-  statusId: string,
+  statusId: string
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
-  const permErr = await requireEditAccess(session.user.id, workspaceId, spaceId);
-  if (permErr) return permErr;
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
+  const permErr = await requireEditAccess(
+    session.user.id,
+    workspaceId,
+    spaceId
+  );
+  if (permErr) {
+    return permErr;
+  }
 
   await db
     .update(task)
@@ -923,12 +1187,20 @@ export async function bulkDeleteTasks(
   workspaceId: string,
   spaceId: string,
   listId: string,
-  taskIds: string[],
+  taskIds: string[]
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
-  const permErr = await requireFullAccess(session.user.id, workspaceId, spaceId);
-  if (permErr) return { error: "You don't have permission to delete tasks" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
+  const permErr = await requireFullAccess(
+    session.user.id,
+    workspaceId,
+    spaceId
+  );
+  if (permErr) {
+    return { error: "You don't have permission to delete tasks" };
+  }
 
   await db
     .delete(task)
@@ -942,12 +1214,20 @@ export async function bulkArchiveTasks(
   workspaceId: string,
   spaceId: string,
   listId: string,
-  taskIds: string[],
+  taskIds: string[]
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
-  const permErr = await requireEditAccess(session.user.id, workspaceId, spaceId);
-  if (permErr) return permErr;
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
+  const permErr = await requireEditAccess(
+    session.user.id,
+    workspaceId,
+    spaceId
+  );
+  if (permErr) {
+    return permErr;
+  }
 
   await db
     .update(task)
@@ -968,26 +1248,44 @@ export async function bulkMoveTasks(
   workspaceId: string,
   spaceId: string,
   taskIds: string[],
-  targetListId: string,
+  targetListId: string
 ): Promise<{ ok: true; moved: number } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
-  const permErr = await requireEditAccess(session.user.id, workspaceId, spaceId);
-  if (permErr) return permErr;
+  const permErr = await requireEditAccess(
+    session.user.id,
+    workspaceId,
+    spaceId
+  );
+  if (permErr) {
+    return permErr;
+  }
 
-  if (taskIds.length === 0) return { ok: true, moved: 0 };
+  if (taskIds.length === 0) {
+    return { ok: true, moved: 0 };
+  }
 
   // Pre-fetch all statuses for the target list once
   const targetStatuses = await db
-    .select({ id: listStatus.id, name: listStatus.name, type: listStatus.type, orderIndex: listStatus.orderIndex })
+    .select({
+      id: listStatus.id,
+      name: listStatus.name,
+      type: listStatus.type,
+      orderIndex: listStatus.orderIndex,
+    })
     .from(listStatus)
     .where(eq(listStatus.listId, targetListId))
     .orderBy(asc(listStatus.orderIndex));
 
-  if (targetStatuses.length === 0) return { error: "Target list has no statuses" };
+  if (targetStatuses.length === 0) {
+    return { error: "Target list has no statuses" };
+  }
 
-  const firstOpen = targetStatuses.find((s) => s.type === "OPEN") ?? targetStatuses[0];
+  const firstOpen =
+    targetStatuses.find((s) => s.type === "OPEN") ?? targetStatuses[0];
 
   let moved = 0;
   for (const taskId of taskIds) {
@@ -996,22 +1294,35 @@ export async function bulkMoveTasks(
       .from(task)
       .where(eq(task.id, taskId))
       .limit(1);
-    if (!t) continue;
-    if (t.listId === targetListId) continue; // already there
+    if (!t) {
+      continue;
+    }
+    if (t.listId === targetListId) {
+      continue; // already there
+    }
 
     // Map status by name
     const [currentStatus] = t.statusId
-      ? await db.select({ name: listStatus.name }).from(listStatus).where(eq(listStatus.id, t.statusId)).limit(1)
+      ? await db
+          .select({ name: listStatus.name })
+          .from(listStatus)
+          .where(eq(listStatus.id, t.statusId))
+          .limit(1)
       : [];
 
     const newStatusId =
-      (currentStatus && targetStatuses.find((s) => s.name === currentStatus.name)?.id) ??
+      (currentStatus &&
+        targetStatuses.find((s) => s.name === currentStatus.name)?.id) ??
       firstOpen.id;
 
     // Update task
     await db
       .update(task)
-      .set({ listId: targetListId, statusId: newStatusId, updatedAt: new Date() })
+      .set({
+        listId: targetListId,
+        statusId: newStatusId,
+        updatedAt: new Date(),
+      })
       .where(eq(task.id, taskId));
 
     // Clear any PLANNED/ACTIVE sprint assignment
@@ -1019,15 +1330,23 @@ export async function bulkMoveTasks(
       .select({ sprintId: taskSprint.sprintId })
       .from(taskSprint)
       .innerJoin(sprint, eq(taskSprint.sprintId, sprint.id))
-      .where(and(eq(taskSprint.taskId, taskId), inArray(sprint.status, ["PLANNED", "ACTIVE"])));
+      .where(
+        and(
+          eq(taskSprint.taskId, taskId),
+          inArray(sprint.status, ["PLANNED", "ACTIVE"])
+        )
+      );
 
     if (activeSprints.length > 0) {
-      await db
-        .delete(taskSprint)
-        .where(and(
+      await db.delete(taskSprint).where(
+        and(
           eq(taskSprint.taskId, taskId),
-          inArray(taskSprint.sprintId, activeSprints.map((r) => r.sprintId)),
-        ));
+          inArray(
+            taskSprint.sprintId,
+            activeSprints.map((r) => r.sprintId)
+          )
+        )
+      );
     }
 
     await writeActivityLog(taskId, session.user.id, "task_moved", {
@@ -1046,21 +1365,31 @@ export async function bulkMoveTasks(
 
 export async function getTaskLocation(
   workspaceId: string,
-  taskId: string,
+  taskId: string
 ): Promise<{ spaceId: string; listId: string | null } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const [row] = await db
-    .select({ listId: task.listId, taskSpaceId: task.spaceId, listSpaceId: list.spaceId })
+    .select({
+      listId: task.listId,
+      taskSpaceId: task.spaceId,
+      listSpaceId: list.spaceId,
+    })
     .from(task)
     .leftJoin(list, eq(task.listId, list.id))
     .where(and(eq(task.id, taskId), eq(task.workspaceId, workspaceId)))
     .limit(1);
 
-  if (!row) return { error: "Task not found" };
+  if (!row) {
+    return { error: "Task not found" };
+  }
   const spaceId = row.listSpaceId ?? row.taskSpaceId;
-  if (!spaceId) return { error: "Task has no space association" };
+  if (!spaceId) {
+    return { error: "Task has no space association" };
+  }
   return { spaceId, listId: row.listId };
 }
 
@@ -1069,18 +1398,35 @@ export async function getTaskLocation(
 export async function getArchivedTasksForList(
   workspaceId: string,
   spaceId: string,
-  listId: string,
-): Promise<{ tasks: { id: string; title: string; seqNumber: number }[] } | { error: string }> {
+  listId: string
+): Promise<
+  | { tasks: { id: string; title: string; seqNumber: number }[] }
+  | { error: string }
+> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
-  const permErr = await requireViewAccess(session.user.id, workspaceId, spaceId);
-  if (permErr) return permErr;
+  const permErr = await requireViewAccess(
+    session.user.id,
+    workspaceId,
+    spaceId
+  );
+  if (permErr) {
+    return permErr;
+  }
 
   const tasks = await db
     .select({ id: task.id, title: task.title, seqNumber: task.seqNumber })
     .from(task)
-    .where(and(eq(task.listId, listId), eq(task.isArchived, true), isNull(task.parentTaskId)))
+    .where(
+      and(
+        eq(task.listId, listId),
+        eq(task.isArchived, true),
+        isNull(task.parentTaskId)
+      )
+    )
     .orderBy(asc(task.orderIndex));
 
   return { tasks };

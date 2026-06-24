@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import {
   AtIcon,
   CaretDownIcon,
@@ -18,27 +17,28 @@ import {
   XCircleIcon,
   XIcon,
 } from "@phosphor-icons/react";
-import { formatDistanceToNow, format } from "date-fns";
-import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
 import Mention from "@tiptap/extension-mention";
-import { getWorkspaceMentionMembers, type MentionMember } from "@/app/actions/mention";
-import { buildMentionSuggestion } from "@/components/task/mention-suggestion";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { cn } from "@/lib/utils";
+import { EditorContent, useEditor } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import { format, formatDistanceToNow } from "date-fns";
+import * as React from "react";
 import {
-  getTaskComments,
-  createComment,
-  editComment,
-  deleteComment,
-  resolveComment,
-  unresolveComment,
-  toggleReaction,
   type CommentAttachment,
   type CommentWithReplies,
+  createComment,
+  deleteComment,
+  editComment,
+  getTaskComments,
+  resolveComment,
+  toggleReaction,
+  unresolveComment,
 } from "@/app/actions/comment";
+import {
+  getWorkspaceMentionMembers,
+  type MentionMember,
+} from "@/app/actions/mention";
 import { getTaskActivity } from "@/app/actions/task";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { buildMentionSuggestion } from "@/components/task/mention-suggestion";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,77 +49,126 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface ActivityEntry {
-  id: string;
-  eventType: string;
-  meta: unknown;
   createdAt: Date;
-  name: string | null;
   email: string | null;
+  eventType: string;
+  id: string;
   image?: string | null;
+  meta: unknown;
+  name: string | null;
 }
 
 interface FeedItem {
-  type: "comment" | "activity";
-  createdAt: Date;
-  comment?: CommentWithReplies;
   activity?: ActivityEntry;
+  comment?: CommentWithReplies;
+  createdAt: Date;
+  type: "comment" | "activity";
 }
 
 interface TaskActivityFeedProps {
-  workspaceId: string;
-  spaceId: string;
-  listId: string;
-  taskId: string;
   currentUserId: string;
   isAdmin?: boolean;
+  listId: string;
+  spaceId: string;
+  taskId: string;
+  workspaceId: string;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function initials(name: string | null, email: string | null) {
   const n = name?.trim();
-  if (n) return n.split(" ").map((s) => s[0]).join("").toUpperCase().slice(0, 2);
+  if (n) {
+    return n
+      .split(" ")
+      .map((s) => s[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  }
   return (email ?? "?").slice(0, 2).toUpperCase();
 }
 
-function describeEvent(eventType: string, meta: Record<string, unknown>): string {
+function describeEvent(
+  eventType: string,
+  meta: Record<string, unknown>
+): string {
   switch (eventType) {
-    case "task_created": return "created this task";
-    case "title_changed": return `renamed to "${meta.to}"`;
-    case "status_changed": return `changed status from ${meta.from_status_name ?? "—"} → ${meta.to_status_name ?? "—"}`;
-    case "priority_changed": return `changed priority to ${meta.to}`;
-    case "description_updated": return "updated the description";
-    case "assignee_added": return `assigned ${meta.user_name ?? "someone"}`;
-    case "assignee_removed": return `unassigned ${meta.user_name ?? "someone"}`;
-    case "watcher_added": return "started watching";
-    case "watcher_removed": return "stopped watching";
-    case "due_date_set": return `set due date to ${meta.date}`;
-    case "due_date_changed": return `changed due date from ${meta.from} → ${meta.to}`;
-    case "due_date_removed": return "removed due date";
-    case "tag_added": return `added tag "${meta.tagName}"`;
-    case "tag_removed": return `removed tag "${meta.tagName}"`;
-    case "checklist_created": return `added checklist "${meta.checklist_name}"`;
-    case "checklist_deleted": return `deleted checklist "${meta.checklist_name}"`;
-    case "checklist_item_checked": return `checked "${meta.item_title}"`;
-    case "checklist_item_unchecked": return `unchecked "${meta.item_title}"`;
-    case "dependency_added": return `added dependency on "${meta.depends_on_task_title}"`;
-    case "dependency_removed": return `removed dependency on "${meta.depends_on_task_title}"`;
-    case "attachment_uploaded": return `uploaded "${meta.file_name}"`;
-    case "attachment_deleted": return `deleted "${meta.file_name}"`;
-    case "task_archived": return "archived this task";
-    case "task_unarchived": return "unarchived this task";
-    case "task_moved": return "moved this task";
-    case "time_logged": return `logged ${meta.minutes} minutes`;
-    case "comment_added": return "left a comment";
-    case "subtask_created": return `created subtask "${meta.subtask_title}"`;
-    case "subtask_completed": return `completed subtask "${meta.subtask_title}"`;
-    case "sprint_assigned": return `added to ${meta.sprint_name}`;
-    case "sprint_unassigned": return `removed from ${meta.sprint_name}`;
-    default: return eventType.replace(/_/g, " ");
+    case "task_created":
+      return "created this task";
+    case "title_changed":
+      return `renamed to "${meta.to}"`;
+    case "status_changed":
+      return `changed status from ${meta.from_status_name ?? "—"} → ${meta.to_status_name ?? "—"}`;
+    case "priority_changed":
+      return `changed priority to ${meta.to}`;
+    case "description_updated":
+      return "updated the description";
+    case "assignee_added":
+      return `assigned ${meta.user_name ?? "someone"}`;
+    case "assignee_removed":
+      return `unassigned ${meta.user_name ?? "someone"}`;
+    case "watcher_added":
+      return "started watching";
+    case "watcher_removed":
+      return "stopped watching";
+    case "due_date_set":
+      return `set due date to ${meta.date}`;
+    case "due_date_changed":
+      return `changed due date from ${meta.from} → ${meta.to}`;
+    case "due_date_removed":
+      return "removed due date";
+    case "tag_added":
+      return `added tag "${meta.tagName}"`;
+    case "tag_removed":
+      return `removed tag "${meta.tagName}"`;
+    case "checklist_created":
+      return `added checklist "${meta.checklist_name}"`;
+    case "checklist_deleted":
+      return `deleted checklist "${meta.checklist_name}"`;
+    case "checklist_item_checked":
+      return `checked "${meta.item_title}"`;
+    case "checklist_item_unchecked":
+      return `unchecked "${meta.item_title}"`;
+    case "dependency_added":
+      return `added dependency on "${meta.depends_on_task_title}"`;
+    case "dependency_removed":
+      return `removed dependency on "${meta.depends_on_task_title}"`;
+    case "attachment_uploaded":
+      return `uploaded "${meta.file_name}"`;
+    case "attachment_deleted":
+      return `deleted "${meta.file_name}"`;
+    case "task_archived":
+      return "archived this task";
+    case "task_unarchived":
+      return "unarchived this task";
+    case "task_moved":
+      return "moved this task";
+    case "time_logged":
+      return `logged ${meta.minutes} minutes`;
+    case "comment_added":
+      return "left a comment";
+    case "subtask_created":
+      return `created subtask "${meta.subtask_title}"`;
+    case "subtask_completed":
+      return `completed subtask "${meta.subtask_title}"`;
+    case "sprint_assigned":
+      return `added to ${meta.sprint_name}`;
+    case "sprint_unassigned":
+      return `removed from ${meta.sprint_name}`;
+    default:
+      return eventType.replace(/_/g, " ");
   }
 }
 
@@ -171,11 +220,13 @@ function CommentEditor({
           `@${(node.attrs.label as string | null) ?? (node.attrs.id as string) ?? "someone"}`,
         suggestion: buildMentionSuggestion(
           () => membersRef.current,
-          (active) => { isMentionActiveRef.current = active; },
+          (active) => {
+            isMentionActiveRef.current = active;
+          }
         ),
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
+    []
   );
 
   const editor = useEditor({
@@ -187,15 +238,25 @@ function CommentEditor({
       handleKeyDown: (view, event) => {
         if (event.key === "Enter" && !event.metaKey && !event.ctrlKey) {
           // Let the mention suggestion handle Enter when popup is open
-          if (isMentionActiveRef.current) return false;
+          if (isMentionActiveRef.current) {
+            return false;
+          }
           const { $from } = view.state.selection;
           let inListItem = false;
           let inFormattedBlock = false;
           for (let d = $from.depth; d > 0; d--) {
             const name = $from.node(d).type.name;
-            if (name === "listItem") { inListItem = true; break; }
-            if (name === "heading" || name === "blockquote" || name === "codeBlock") {
-              inFormattedBlock = true; break;
+            if (name === "listItem") {
+              inListItem = true;
+              break;
+            }
+            if (
+              name === "heading" ||
+              name === "blockquote" ||
+              name === "codeBlock"
+            ) {
+              inFormattedBlock = true;
+              break;
             }
           }
           // Shift+Enter inside a list → new list item (same as plain Enter)
@@ -204,7 +265,9 @@ function CommentEditor({
             return true;
           }
           // Any Enter inside a formatted block → let Tiptap handle natively
-          if (inFormattedBlock || inListItem) return false;
+          if (inFormattedBlock || inListItem) {
+            return false;
+          }
           // Plain Enter in a paragraph → submit
           if (!event.shiftKey) {
             submitRef.current();
@@ -216,14 +279,16 @@ function CommentEditor({
       attributes: {
         class: cn(
           "prose prose-sm dark:prose-invert max-w-none outline-none px-3 py-2.5 text-sm",
-          compact ? "min-h-[44px]" : "min-h-[72px]",
+          compact ? "min-h-[44px]" : "min-h-[72px]"
         ),
       },
     },
   });
 
   async function handleSubmit() {
-    if (!editor || (editorEmpty && pendingFiles.length === 0)) return;
+    if (!editor || (editorEmpty && pendingFiles.length === 0)) {
+      return;
+    }
     setSubmitting(true);
     try {
       // Deep-clone through JSON.parse/stringify to convert ProseMirror's
@@ -254,7 +319,9 @@ function CommentEditor({
   // Keep submitRef pointing at the latest handleSubmit so the editor keydown
   // closure (created once) always calls the current version.
   submitRef.current = () => void handleSubmit();
-  splitListItemRef.current = () => { editor?.chain().splitListItem("listItem").run(); };
+  splitListItemRef.current = () => {
+    editor?.chain().splitListItem("listItem").run();
+  };
 
   return (
     <div className="rounded-xl border bg-background shadow-sm focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary/40 transition-all">
@@ -265,14 +332,14 @@ function CommentEditor({
         <div className="flex flex-wrap gap-2 px-3 pb-2 border-t pt-2">
           {pendingFiles.map((file, i) => (
             <div
-              key={`${file.name}-${i}`}
               className="flex items-center gap-1.5 rounded-md border bg-muted/40 px-2 py-1 text-xs"
+              key={`${file.name}-${i}`}
             >
               {file.type.startsWith("image/") ? (
                 <img
-                  src={URL.createObjectURL(file)}
                   alt={file.name}
                   className="size-4 object-cover rounded"
+                  src={URL.createObjectURL(file)}
                 />
               ) : file.type === "application/pdf" ? (
                 <FilePdfIcon className="size-4 text-red-500 shrink-0" />
@@ -281,8 +348,8 @@ function CommentEditor({
               )}
               <span className="truncate max-w-28">{file.name}</span>
               <button
-                onClick={() => removeFile(i)}
                 className="text-muted-foreground hover:text-destructive shrink-0"
+                onClick={() => removeFile(i)}
               >
                 <XIcon className="size-3" />
               </button>
@@ -294,24 +361,50 @@ function CommentEditor({
       {/* Toolbar */}
       <div className="flex items-center gap-0.5 border-t px-2 py-1.5">
         {/* Plus — formatting menu */}
-        <Popover open={plusOpen} onOpenChange={setPlusOpen}>
+        <Popover onOpenChange={setPlusOpen} open={plusOpen}>
           <PopoverTrigger asChild>
             <button className="size-7 flex items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
               <PlusIcon className="size-3.5" />
             </button>
           </PopoverTrigger>
-          <PopoverContent align="start" side="top" className="w-52 p-1 mb-1">
-            <p className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Text</p>
-            {([
-              { icon: "T",  label: "Normal text", cmd: () => editor?.chain().focus().setParagraph().run() },
-              { icon: "H1", label: "Heading 1",   cmd: () => editor?.chain().focus().setHeading({ level: 1 }).run() },
-              { icon: "H2", label: "Heading 2",   cmd: () => editor?.chain().focus().setHeading({ level: 2 }).run() },
-              { icon: "H3", label: "Heading 3",   cmd: () => editor?.chain().focus().setHeading({ level: 3 }).run() },
-            ] as const).map(({ icon, label, cmd }) => (
+          <PopoverContent align="start" className="w-52 p-1 mb-1" side="top">
+            <p className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              Text
+            </p>
+            {(
+              [
+                {
+                  icon: "T",
+                  label: "Normal text",
+                  cmd: () => editor?.chain().focus().setParagraph().run(),
+                },
+                {
+                  icon: "H1",
+                  label: "Heading 1",
+                  cmd: () =>
+                    editor?.chain().focus().setHeading({ level: 1 }).run(),
+                },
+                {
+                  icon: "H2",
+                  label: "Heading 2",
+                  cmd: () =>
+                    editor?.chain().focus().setHeading({ level: 2 }).run(),
+                },
+                {
+                  icon: "H3",
+                  label: "Heading 3",
+                  cmd: () =>
+                    editor?.chain().focus().setHeading({ level: 3 }).run(),
+                },
+              ] as const
+            ).map(({ icon, label, cmd }) => (
               <button
-                key={label}
-                onClick={() => { cmd(); setPlusOpen(false); }}
                 className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
+                key={label}
+                onClick={() => {
+                  cmd();
+                  setPlusOpen(false);
+                }}
               >
                 <span className="flex size-6 shrink-0 items-center justify-center rounded border border-border bg-background text-xs font-semibold">
                   {icon}
@@ -320,15 +413,30 @@ function CommentEditor({
               </button>
             ))}
 
-            <p className="px-2 pb-1 pt-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Lists</p>
-            {([
-              { icon: "•—", label: "Bullet list",   cmd: () => editor?.chain().focus().toggleBulletList().run() },
-              { icon: "1.", label: "Numbered list",  cmd: () => editor?.chain().focus().toggleOrderedList().run() },
-            ] as const).map(({ icon, label, cmd }) => (
+            <p className="px-2 pb-1 pt-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              Lists
+            </p>
+            {(
+              [
+                {
+                  icon: "•—",
+                  label: "Bullet list",
+                  cmd: () => editor?.chain().focus().toggleBulletList().run(),
+                },
+                {
+                  icon: "1.",
+                  label: "Numbered list",
+                  cmd: () => editor?.chain().focus().toggleOrderedList().run(),
+                },
+              ] as const
+            ).map(({ icon, label, cmd }) => (
               <button
-                key={label}
-                onClick={() => { cmd(); setPlusOpen(false); }}
                 className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
+                key={label}
+                onClick={() => {
+                  cmd();
+                  setPlusOpen(false);
+                }}
               >
                 <span className="flex size-6 shrink-0 items-center justify-center rounded border border-border bg-background text-xs font-semibold">
                   {icon}
@@ -337,15 +445,30 @@ function CommentEditor({
               </button>
             ))}
 
-            <p className="px-2 pb-1 pt-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Blocks</p>
-            {([
-              { icon: "❝",   label: "Blockquote",  cmd: () => editor?.chain().focus().setBlockquote().run() },
-              { icon: "</>", label: "Code block",   cmd: () => editor?.chain().focus().setCodeBlock().run() },
-            ] as const).map(({ icon, label, cmd }) => (
+            <p className="px-2 pb-1 pt-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              Blocks
+            </p>
+            {(
+              [
+                {
+                  icon: "❝",
+                  label: "Blockquote",
+                  cmd: () => editor?.chain().focus().setBlockquote().run(),
+                },
+                {
+                  icon: "</>",
+                  label: "Code block",
+                  cmd: () => editor?.chain().focus().setCodeBlock().run(),
+                },
+              ] as const
+            ).map(({ icon, label, cmd }) => (
               <button
-                key={label}
-                onClick={() => { cmd(); setPlusOpen(false); }}
                 className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
+                key={label}
+                onClick={() => {
+                  cmd();
+                  setPlusOpen(false);
+                }}
               >
                 <span className="flex size-6 shrink-0 items-center justify-center rounded border border-border bg-background text-xs font-semibold">
                   {icon}
@@ -365,13 +488,13 @@ function CommentEditor({
               <SmileyIcon className="size-4" />
             </button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-2" align="start">
+          <PopoverContent align="start" className="w-auto p-2">
             <div className="flex gap-1">
               {COMMON_EMOJIS.map((emoji) => (
                 <button
+                  className="rounded p-1 text-base hover:bg-accent transition-colors"
                   key={emoji}
                   onClick={() => editor?.commands.insertContent(emoji)}
-                  className="rounded p-1 text-base hover:bg-accent transition-colors"
                 >
                   {emoji}
                 </button>
@@ -384,26 +507,26 @@ function CommentEditor({
         {enableAttachments && (
           <>
             <button
-              onClick={() => fileInputRef.current?.click()}
               className="size-7 flex items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => fileInputRef.current?.click()}
               title="Attach file"
             >
               <PaperclipIcon className="size-4" />
             </button>
             <input
-              ref={fileInputRef}
-              type="file"
               className="hidden"
               multiple
               onChange={handleFileChange}
+              ref={fileInputRef}
+              type="file"
             />
           </>
         )}
 
         {/* Mention */}
         <button
-          onClick={() => editor?.chain().focus().insertContent("@").run()}
           className="size-7 flex items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+          onClick={() => editor?.chain().focus().insertContent("@").run()}
         >
           <AtIcon className="size-4" />
         </button>
@@ -413,40 +536,49 @@ function CommentEditor({
 
         {onCancel && (
           <button
-            onClick={onCancel}
             className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-accent transition-colors mr-1"
+            onClick={onCancel}
           >
             Cancel
           </button>
         )}
 
         {/* Submit group */}
-        <div className={cn(
-          "flex items-stretch rounded-lg overflow-hidden border transition-colors",
-          canSubmit ? "border-primary bg-primary" : "border-border bg-muted/40",
-        )}>
+        <div
+          className={cn(
+            "flex items-stretch rounded-lg overflow-hidden border transition-colors",
+            canSubmit
+              ? "border-primary bg-primary"
+              : "border-border bg-muted/40"
+          )}
+        >
           <button
-            onClick={handleSubmit}
-            disabled={submitting || !canSubmit}
             className={cn(
               "flex items-center px-3 py-1.5 text-xs font-medium transition-colors",
               canSubmit
                 ? "text-primary-foreground hover:bg-white/10"
-                : "text-muted-foreground cursor-not-allowed",
+                : "text-muted-foreground cursor-not-allowed"
             )}
+            disabled={submitting || !canSubmit}
+            onClick={handleSubmit}
           >
             {submitting ? <span>Sending…</span> : <span>Comment</span>}
           </button>
-          <div className={cn("w-px shrink-0", canSubmit ? "bg-white/25" : "bg-border")} />
+          <div
+            className={cn(
+              "w-px shrink-0",
+              canSubmit ? "bg-white/25" : "bg-border"
+            )}
+          />
           <button
-            onClick={handleSubmit}
-            disabled={submitting || !canSubmit}
             className={cn(
               "flex items-center justify-center px-2 transition-colors",
               canSubmit
                 ? "text-primary-foreground hover:bg-white/10"
-                : "text-muted-foreground cursor-not-allowed",
+                : "text-muted-foreground cursor-not-allowed"
             )}
+            disabled={submitting || !canSubmit}
+            onClick={handleSubmit}
           >
             <PaperPlaneRightIcon className="size-3.5" />
           </button>
@@ -472,7 +604,8 @@ function CommentBody({ body }: { body: unknown }) {
     editable: false,
     editorProps: {
       attributes: {
-        class: "prose prose-sm dark:prose-invert max-w-none outline-none text-sm",
+        class:
+          "prose prose-sm dark:prose-invert max-w-none outline-none text-sm",
       },
     },
   });
@@ -481,7 +614,11 @@ function CommentBody({ body }: { body: unknown }) {
 
 // ─── Comment attachments ──────────────────────────────────────────────────────
 
-function CommentAttachments({ attachments }: { attachments: CommentAttachment[] }) {
+function CommentAttachments({
+  attachments,
+}: {
+  attachments: CommentAttachment[];
+}) {
   const images = attachments.filter((a) => a.mimeType.startsWith("image/"));
   const files = attachments.filter((a) => !a.mimeType.startsWith("image/"));
 
@@ -489,25 +626,31 @@ function CommentAttachments({ attachments }: { attachments: CommentAttachment[] 
     <div className="px-3 pb-2 space-y-2">
       {/* Image grid */}
       {images.length > 0 && (
-        <div className={cn(
-          "grid gap-1.5",
-          images.length === 1 ? "grid-cols-1" : images.length === 2 ? "grid-cols-2" : "grid-cols-3",
-        )}>
+        <div
+          className={cn(
+            "grid gap-1.5",
+            images.length === 1
+              ? "grid-cols-1"
+              : images.length === 2
+                ? "grid-cols-2"
+                : "grid-cols-3"
+          )}
+        >
           {images.map((img) => (
             <a
-              key={img.id}
-              href={img.url}
-              target="_blank"
-              rel="noopener noreferrer"
               className="block overflow-hidden rounded-lg border bg-muted/30 hover:opacity-90 transition-opacity"
+              href={img.url}
+              key={img.id}
+              rel="noopener noreferrer"
+              target="_blank"
             >
               <img
-                src={img.url}
                 alt={img.fileName}
                 className={cn(
                   "w-full object-cover",
-                  images.length === 1 ? "max-h-64" : "h-28",
+                  images.length === 1 ? "max-h-64" : "h-28"
                 )}
+                src={img.url}
               />
             </a>
           ))}
@@ -519,18 +662,20 @@ function CommentAttachments({ attachments }: { attachments: CommentAttachment[] 
         <div className="space-y-1">
           {files.map((file) => (
             <a
-              key={file.id}
-              href={file.url}
-              target="_blank"
-              rel="noopener noreferrer"
               className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2 hover:bg-accent transition-colors"
+              href={file.url}
+              key={file.id}
+              rel="noopener noreferrer"
+              target="_blank"
             >
               {file.mimeType === "application/pdf" ? (
                 <FilePdfIcon className="size-4 text-red-500 shrink-0" />
               ) : (
                 <FileIcon className="size-4 text-muted-foreground shrink-0" />
               )}
-              <span className="text-xs font-medium truncate flex-1">{file.fileName}</span>
+              <span className="text-xs font-medium truncate flex-1">
+                {file.fileName}
+              </span>
               <span className="text-2xs text-muted-foreground shrink-0">
                 {(file.fileSize / 1024).toFixed(0)} KB
               </span>
@@ -575,7 +720,8 @@ function CommentItem({
   const isAuthor = comment.authorId === currentUserId;
   const canDelete = isAuthor || isAdmin;
   const canResolve = isAuthor || isAdmin;
-  const displayName = comment.authorName?.trim() || comment.authorEmail || "Unknown";
+  const displayName =
+    comment.authorName?.trim() || comment.authorEmail || "Unknown";
 
   async function handleDelete() {
     await deleteComment(workspaceId, spaceId, listId, taskId, comment.id);
@@ -609,7 +755,8 @@ function CommentItem({
   }
 
   const thumbsUpReaction = comment.reactions.find((r) => r.emoji === "👍");
-  const hasThumbsUp = thumbsUpReaction?.userIds.includes(currentUserId) ?? false;
+  const hasThumbsUp =
+    thumbsUpReaction?.userIds.includes(currentUserId) ?? false;
 
   return (
     <div className={cn("group/comment", depth > 0 && "ml-6 mt-2")}>
@@ -618,7 +765,7 @@ function CommentItem({
         className={cn(
           "rounded-xl border bg-card transition-colors",
           comment.isResolved && "opacity-60",
-          depth > 0 && "border-border/60",
+          depth > 0 && "border-border/60"
         )}
       >
         {/* Header */}
@@ -630,15 +777,21 @@ function CommentItem({
             </AvatarFallback>
           </Avatar>
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <span className="text-sm font-semibold leading-none">{displayName}</span>
+            <span className="text-sm font-semibold leading-none">
+              {displayName}
+            </span>
             <span
               className="text-2xs text-muted-foreground"
               title={format(new Date(comment.createdAt), "PPpp")}
             >
-              {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
+              {formatDistanceToNow(new Date(comment.createdAt), {
+                addSuffix: true,
+              })}
             </span>
             {comment.editedAt && (
-              <span className="text-2xs text-muted-foreground italic">(edited)</span>
+              <span className="text-2xs text-muted-foreground italic">
+                (edited)
+              </span>
             )}
             {comment.isResolved && (
               <span className="text-2xs text-green-600 font-medium flex items-center gap-0.5">
@@ -651,19 +804,21 @@ function CommentItem({
           <div className="opacity-0 group-hover/comment:opacity-100 flex items-center gap-0.5 transition-opacity shrink-0">
             {canResolve && depth === 0 && (
               <button
+                className="size-6 flex items-center justify-center rounded hover:bg-accent text-muted-foreground hover:text-foreground"
                 onClick={handleResolve}
                 title={comment.isResolved ? "Unresolve" : "Resolve"}
-                className="size-6 flex items-center justify-center rounded hover:bg-accent text-muted-foreground hover:text-foreground"
               >
-                {comment.isResolved
-                  ? <XCircleIcon className="size-3.5" />
-                  : <CheckCircleIcon className="size-3.5" />}
+                {comment.isResolved ? (
+                  <XCircleIcon className="size-3.5" />
+                ) : (
+                  <CheckCircleIcon className="size-3.5" />
+                )}
               </button>
             )}
             {isAuthor && !comment.isDeleted && (
               <button
-                onClick={() => setEditing((v) => !v)}
                 className="size-6 flex items-center justify-center rounded hover:bg-accent text-muted-foreground hover:text-foreground"
+                onClick={() => setEditing((v) => !v)}
               >
                 <PencilSimpleIcon className="size-3.5" />
               </button>
@@ -671,24 +826,25 @@ function CommentItem({
             {canDelete && (
               <>
                 <button
-                  onClick={() => setDeleteOpen(true)}
                   className="size-6 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                  onClick={() => setDeleteOpen(true)}
                 >
                   <TrashIcon className="size-3.5" />
                 </button>
-                <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+                <AlertDialog onOpenChange={setDeleteOpen} open={deleteOpen}>
                   <AlertDialogContent>
                     <AlertDialogHeader>
                       <AlertDialogTitle>Delete comment?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This comment will be permanently deleted and cannot be recovered.
+                        This comment will be permanently deleted and cannot be
+                        recovered.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
                       <AlertDialogAction
-                        onClick={() => void handleDelete()}
                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        onClick={() => void handleDelete()}
                       >
                         Delete
                       </AlertDialogAction>
@@ -703,15 +859,17 @@ function CommentItem({
         {/* Body */}
         <div className="px-3 pb-1">
           {comment.isDeleted ? (
-            <p className="text-sm italic text-muted-foreground py-1">[Comment deleted]</p>
+            <p className="text-sm italic text-muted-foreground py-1">
+              [Comment deleted]
+            </p>
           ) : editing ? (
             <CommentEditor
-              initialContent={comment.body}
-              onSubmit={handleEdit}
-              onCancel={() => setEditing(false)}
               autoFocus
               compact
+              initialContent={comment.body}
               members={members}
+              onCancel={() => setEditing(false)}
+              onSubmit={handleEdit}
             />
           ) : (
             <CommentBody body={comment.body} />
@@ -731,14 +889,14 @@ function CommentItem({
               const reacted = r.userIds.includes(currentUserId);
               return (
                 <button
-                  key={r.emoji}
-                  onClick={() => handleReaction(r.emoji)}
                   className={cn(
                     "flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors",
                     reacted
                       ? "border-primary/40 bg-primary/10 text-primary"
-                      : "border-border hover:bg-accent",
+                      : "border-border hover:bg-accent"
                   )}
+                  key={r.emoji}
+                  onClick={() => handleReaction(r.emoji)}
                 >
                   <span>{r.emoji}</span>
                   <span className="font-medium">{r.count}</span>
@@ -748,16 +906,19 @@ function CommentItem({
 
             {/* Thumbs up quick reaction */}
             <button
-              onClick={() => handleReaction("👍")}
               className={cn(
                 "size-7 flex items-center justify-center rounded-md border transition-colors",
                 hasThumbsUp
                   ? "border-primary/40 bg-primary/10 text-primary"
-                  : "border-border hover:bg-accent text-muted-foreground hover:text-foreground",
+                  : "border-border hover:bg-accent text-muted-foreground hover:text-foreground"
               )}
+              onClick={() => handleReaction("👍")}
               title="Like"
             >
-              <ThumbsUpIcon className="size-3.5" weight={hasThumbsUp ? "fill" : "regular"} />
+              <ThumbsUpIcon
+                className="size-3.5"
+                weight={hasThumbsUp ? "fill" : "regular"}
+              />
             </button>
 
             {/* Emoji picker */}
@@ -767,13 +928,13 @@ function CommentItem({
                   <SmileyIcon className="size-3.5" />
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-2" align="start">
+              <PopoverContent align="start" className="w-auto p-2">
                 <div className="flex gap-1">
                   {COMMON_EMOJIS.map((emoji) => (
                     <button
+                      className="rounded p-1 text-base hover:bg-accent transition-colors"
                       key={emoji}
                       onClick={() => handleReaction(emoji)}
-                      className="rounded p-1 text-base hover:bg-accent transition-colors"
                     >
                       {emoji}
                     </button>
@@ -787,8 +948,8 @@ function CommentItem({
             {/* Reply */}
             {depth === 0 && (
               <button
-                onClick={() => setReplying((v) => !v)}
                 className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors px-1"
+                onClick={() => setReplying((v) => !v)}
               >
                 Reply
               </button>
@@ -801,12 +962,12 @@ function CommentItem({
       {replying && (
         <div className="mt-2 ml-4">
           <CommentEditor
-            placeholder="Write a reply…"
-            onSubmit={handleReply}
-            onCancel={() => setReplying(false)}
             autoFocus
             compact
             members={members}
+            onCancel={() => setReplying(false)}
+            onSubmit={handleReply}
+            placeholder="Write a reply…"
           />
         </div>
       )}
@@ -815,29 +976,32 @@ function CommentItem({
       {comment.replies.length > 0 && (
         <div className="mt-2">
           <button
-            onClick={() => setRepliesOpen((v) => !v)}
             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground ml-3 mb-2 transition-colors"
+            onClick={() => setRepliesOpen((v) => !v)}
           >
-            {repliesOpen
-              ? <CaretDownIcon className="size-3" />
-              : <CaretRightIcon className="size-3" />}
-            {comment.replies.length} {comment.replies.length === 1 ? "reply" : "replies"}
+            {repliesOpen ? (
+              <CaretDownIcon className="size-3" />
+            ) : (
+              <CaretRightIcon className="size-3" />
+            )}
+            {comment.replies.length}{" "}
+            {comment.replies.length === 1 ? "reply" : "replies"}
           </button>
           {repliesOpen && (
             <div className="space-y-2">
               {comment.replies.map((reply) => (
                 <CommentItem
-                  key={reply.id}
                   comment={reply}
-                  workspaceId={workspaceId}
-                  spaceId={spaceId}
-                  listId={listId}
-                  taskId={taskId}
                   currentUserId={currentUserId}
-                  isAdmin={isAdmin}
                   depth={depth + 1}
-                  onRefresh={onRefresh}
+                  isAdmin={isAdmin}
+                  key={reply.id}
+                  listId={listId}
                   members={members}
+                  onRefresh={onRefresh}
+                  spaceId={spaceId}
+                  taskId={taskId}
+                  workspaceId={workspaceId}
                 />
               ))}
             </div>
@@ -860,8 +1024,9 @@ function ActivityRow({ entry }: { entry: ActivityEntry }) {
         </AvatarFallback>
       </Avatar>
       <div className="flex-1 min-w-0 text-xs text-muted-foreground">
-        <span className="font-medium text-foreground">{entry.name ?? entry.email ?? "System"}</span>
-        {" "}
+        <span className="font-medium text-foreground">
+          {entry.name ?? entry.email ?? "System"}
+        </span>{" "}
         {describeEvent(entry.eventType, entry.meta as Record<string, unknown>)}
         <span
           className="ml-2 text-2xs opacity-70"
@@ -895,28 +1060,40 @@ export function TaskActivityFeed({
       getTaskActivity(workspaceId, spaceId, taskId),
       getWorkspaceMentionMembers(workspaceId, spaceId),
     ]);
-    if (!("error" in commentsRes)) setComments(commentsRes.comments);
-    if (!("error" in activityRes)) setActivityLogs(activityRes.logs as ActivityEntry[]);
-    if (Array.isArray(membersRes)) setMembers(membersRes);
+    if (!("error" in commentsRes)) {
+      setComments(commentsRes.comments);
+    }
+    if (!("error" in activityRes)) {
+      setActivityLogs(activityRes.logs as ActivityEntry[]);
+    }
+    if (Array.isArray(membersRes)) {
+      setMembers(membersRes);
+    }
     setLoading(false);
   }, [workspaceId, spaceId, taskId]);
 
-  React.useEffect(() => { void load(); }, [load]);
+  React.useEffect(() => {
+    void load();
+  }, [load]);
 
   const feed: FeedItem[] = React.useMemo(() => {
     const items: FeedItem[] = [
-      ...comments.map((c): FeedItem => ({
-        type: "comment",
-        createdAt: new Date(c.createdAt),
-        comment: c,
-      })),
+      ...comments.map(
+        (c): FeedItem => ({
+          type: "comment",
+          createdAt: new Date(c.createdAt),
+          comment: c,
+        })
+      ),
       ...activityLogs
         .filter((a) => a.eventType !== "comment_added")
-        .map((a): FeedItem => ({
-          type: "activity",
-          createdAt: new Date(a.createdAt),
-          activity: a,
-        })),
+        .map(
+          (a): FeedItem => ({
+            type: "activity",
+            createdAt: new Date(a.createdAt),
+            activity: a,
+          })
+        ),
     ];
     items.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
     return items;
@@ -930,8 +1107,11 @@ export function TaskActivityFeed({
           const fd = new FormData();
           fd.append("file", file);
           fd.append("commentId", res.commentId);
-          return fetch(`/api/tasks/${taskId}/attachments`, { method: "POST", body: fd });
-        }),
+          return fetch(`/api/tasks/${taskId}/attachments`, {
+            method: "POST",
+            body: fd,
+          });
+        })
       );
     }
     void load();
@@ -946,7 +1126,7 @@ export function TaskActivityFeed({
       {loading ? (
         <div className="space-y-3 animate-pulse">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="flex gap-2">
+            <div className="flex gap-2" key={i}>
               <div className="size-7 rounded-full bg-muted shrink-0" />
               <div className="flex-1 h-20 rounded-xl bg-muted" />
             </div>
@@ -957,24 +1137,29 @@ export function TaskActivityFeed({
           {feed.map((item) =>
             item.type === "comment" && item.comment ? (
               <CommentItem
-                key={`c-${item.comment.id}`}
                 comment={item.comment}
-                workspaceId={workspaceId}
-                spaceId={spaceId}
-                listId={listId}
-                taskId={taskId}
                 currentUserId={currentUserId}
-                isAdmin={isAdmin}
                 depth={0}
-                onRefresh={load}
+                isAdmin={isAdmin}
+                key={`c-${item.comment.id}`}
+                listId={listId}
                 members={members}
+                onRefresh={load}
+                spaceId={spaceId}
+                taskId={taskId}
+                workspaceId={workspaceId}
               />
             ) : item.activity ? (
-              <ActivityRow key={`a-${item.activity.id}`} entry={item.activity} />
-            ) : null,
+              <ActivityRow
+                entry={item.activity}
+                key={`a-${item.activity.id}`}
+              />
+            ) : null
           )}
           {feed.length === 0 && (
-            <p className="text-xs text-muted-foreground py-2">No activity yet.</p>
+            <p className="text-xs text-muted-foreground py-2">
+              No activity yet.
+            </p>
           )}
         </div>
       )}
@@ -982,10 +1167,10 @@ export function TaskActivityFeed({
       {/* New comment editor */}
       <div className="pt-1">
         <CommentEditor
-          placeholder="Comment, use '/' for commands"
-          onSubmit={handleNewComment}
           enableAttachments
           members={members}
+          onSubmit={handleNewComment}
+          placeholder="Comment, use '/' for commands"
         />
       </div>
     </div>

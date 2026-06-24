@@ -1,15 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { CheckCircleIcon, ClockIcon, WarningIcon } from "@phosphor-icons/react";
+import { useEffect, useState } from "react";
+import {
+  closeSprint,
+  getSprints,
+  getSprintWithTasks,
+  markAllSprintTasksDone,
+} from "@/app/actions/sprint";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
@@ -19,16 +25,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  closeSprint,
-  getSprints,
-  getSprintWithTasks,
-  markAllSprintTasksDone,
-} from "@/app/actions/sprint";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type IncompleteStrategy = "move_to_backlog" | "move_to_next_sprint" | "leave_as_is";
+type IncompleteStrategy =
+  | "move_to_backlog"
+  | "move_to_next_sprint"
+  | "leave_as_is";
 
 interface PlannedSprint {
   id: string;
@@ -36,14 +39,14 @@ interface PlannedSprint {
 }
 
 interface CloseSprintModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  workspaceId: string;
-  spaceId: string;
   listId: string;
+  onClosed: () => void;
+  onOpenChange: (open: boolean) => void;
+  open: boolean;
+  spaceId: string;
   sprintId: string;
   sprintName: string;
-  onClosed: () => void;
+  workspaceId: string;
 }
 
 type Step = 1 | 2;
@@ -65,7 +68,8 @@ export function CloseSprintModal({
   const [loadingData, setLoadingData] = useState(false);
 
   const [step, setStep] = useState<Step>(1);
-  const [strategy, setStrategy] = useState<IncompleteStrategy>("move_to_backlog");
+  const [strategy, setStrategy] =
+    useState<IncompleteStrategy>("move_to_backlog");
   const [plannedSprints, setPlannedSprints] = useState<PlannedSprint[]>([]);
   const [targetSprintId, setTargetSprintId] = useState("");
   const [loadingPlanned, setLoadingPlanned] = useState(false);
@@ -77,7 +81,9 @@ export function CloseSprintModal({
   const incompleteTasks = totalTasks - closedTasks;
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
     setStep(1);
     setStrategy("move_to_backlog");
     setTargetSprintId("");
@@ -97,9 +103,13 @@ export function CloseSprintModal({
     setLoadingData(true);
     try {
       const result = await getSprintWithTasks(workspaceId, spaceId, sprintId);
-      if ("error" in result) return;
+      if ("error" in result) {
+        return;
+      }
       const total = result.tasks.length;
-      const closed = result.tasks.filter((t) => t.statusType === "CLOSED").length;
+      const closed = result.tasks.filter(
+        (t) => t.statusType === "CLOSED"
+      ).length;
       setTotalTasks(total);
       setClosedTasks(closed);
     } catch {
@@ -113,7 +123,9 @@ export function CloseSprintModal({
     setLoadingPlanned(true);
     try {
       const result = await getSprints(workspaceId, spaceId);
-      if ("error" in result) return;
+      if ("error" in result) {
+        return;
+      }
       const planned = result.sprints
         .filter((s) => s.status === "PLANNED")
         .map((s) => ({ id: s.id, name: s.name }));
@@ -136,7 +148,7 @@ export function CloseSprintModal({
         workspaceId,
         spaceId,
         listId,
-        sprintId,
+        sprintId
       );
       if ("error" in result) {
         setError(result.error);
@@ -176,7 +188,7 @@ export function CloseSprintModal({
         spaceId,
         sprintId,
         finalStrategy,
-        finalTarget,
+        finalTarget
       );
       if ("error" in result) {
         setError(result.error);
@@ -192,12 +204,14 @@ export function CloseSprintModal({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent className="sm:max-w-115">
         <DialogHeader>
           <DialogTitle className="text-base">
             Close Sprint —{" "}
-            <span className="text-muted-foreground font-normal">{sprintName}</span>
+            <span className="text-muted-foreground font-normal">
+              {sprintName}
+            </span>
           </DialogTitle>
         </DialogHeader>
 
@@ -229,7 +243,8 @@ export function CloseSprintModal({
                     />
                     <span className="text-sm">
                       <span className="font-semibold">{incompleteTasks}</span>{" "}
-                      {incompleteTasks === 1 ? "task" : "tasks"} still incomplete
+                      {incompleteTasks === 1 ? "task" : "tasks"} still
+                      incomplete
                     </span>
                   </div>
                 </div>
@@ -242,11 +257,11 @@ export function CloseSprintModal({
                       before closing.
                     </p>
                     <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={handleMarkAllDone}
-                      disabled={markingDone}
                       className="w-full"
+                      disabled={markingDone}
+                      onClick={handleMarkAllDone}
+                      size="sm"
+                      variant="secondary"
                     >
                       {markingDone
                         ? "Marking…"
@@ -265,15 +280,15 @@ export function CloseSprintModal({
 
             <DialogFooter>
               <Button
-                variant="outline"
-                onClick={() => onOpenChange(false)}
                 disabled={loadingData || markingDone}
+                onClick={() => onOpenChange(false)}
+                variant="outline"
               >
                 Cancel
               </Button>
               <Button
-                onClick={handleContinue}
                 disabled={loadingData || markingDone}
+                onClick={handleContinue}
               >
                 {incompleteTasks === 0 ? "Close Sprint" : "Continue"}
               </Button>
@@ -292,30 +307,30 @@ export function CloseSprintModal({
               <p className="text-sm text-amber-800 dark:text-amber-300">
                 <span className="font-semibold">{incompleteTasks}</span>{" "}
                 incomplete{" "}
-                {incompleteTasks === 1 ? "task remains" : "tasks remain"}. Choose
-                what to do with them.
+                {incompleteTasks === 1 ? "task remains" : "tasks remain"}.
+                Choose what to do with them.
               </p>
             </div>
 
             <div className="space-y-2">
               <Label>What should happen to incomplete tasks?</Label>
               <RadioGroup
-                value={strategy}
+                className="space-y-2 mt-2"
                 onValueChange={(v) => {
                   setStrategy(v as IncompleteStrategy);
                   setError(null);
                 }}
-                className="space-y-2 mt-2"
+                value={strategy}
               >
                 {/* Move to Backlog */}
                 <label
-                  htmlFor="strat-backlog"
                   className="flex items-start gap-3 rounded-md border p-3 cursor-pointer hover:bg-accent/50 transition-colors has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5"
+                  htmlFor="strat-backlog"
                 >
                   <RadioGroupItem
-                    value="move_to_backlog"
-                    id="strat-backlog"
                     className="mt-0.5"
+                    id="strat-backlog"
+                    value="move_to_backlog"
                   />
                   <div>
                     <p className="text-sm font-medium">Move to Backlog</p>
@@ -328,13 +343,13 @@ export function CloseSprintModal({
 
                 {/* Move to Next Sprint */}
                 <label
-                  htmlFor="strat-next"
                   className="flex items-start gap-3 rounded-md border p-3 cursor-pointer hover:bg-accent/50 transition-colors has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5"
+                  htmlFor="strat-next"
                 >
                   <RadioGroupItem
-                    value="move_to_next_sprint"
-                    id="strat-next"
                     className="mt-0.5"
+                    id="strat-next"
+                    value="move_to_next_sprint"
                   />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium">Move to Next Sprint</p>
@@ -351,8 +366,8 @@ export function CloseSprintModal({
                           </p>
                         ) : (
                           <Select
-                            value={targetSprintId}
                             onValueChange={setTargetSprintId}
+                            value={targetSprintId}
                           >
                             <SelectTrigger className="h-8 text-xs">
                               <SelectValue placeholder="Select a sprint…" />
@@ -373,13 +388,13 @@ export function CloseSprintModal({
 
                 {/* Leave as-is */}
                 <label
-                  htmlFor="strat-leave"
                   className="flex items-start gap-3 rounded-md border p-3 cursor-pointer hover:bg-accent/50 transition-colors has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5"
+                  htmlFor="strat-leave"
                 >
                   <RadioGroupItem
-                    value="leave_as_is"
-                    id="strat-leave"
                     className="mt-0.5"
+                    id="strat-leave"
+                    value="leave_as_is"
                   />
                   <div>
                     <p className="text-sm font-medium">Leave as-is</p>
@@ -400,20 +415,20 @@ export function CloseSprintModal({
 
             <DialogFooter>
               <Button
-                variant="outline"
-                onClick={() => setStep(1)}
                 disabled={closing}
+                onClick={() => setStep(1)}
+                variant="outline"
               >
                 Back
               </Button>
               <Button
-                variant="destructive"
-                onClick={() => void handleClose()}
                 disabled={
                   closing ||
                   (strategy === "move_to_next_sprint" &&
                     (plannedSprints.length === 0 || !targetSprintId))
                 }
+                onClick={() => void handleClose()}
+                variant="destructive"
               >
                 {closing ? "Closing…" : "Close Sprint"}
               </Button>

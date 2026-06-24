@@ -21,8 +21,9 @@ export function WorkspaceInviteEmail({
       <Text style={emailStyles.heading}>You&rsquo;re invited!</Text>
       <Text style={emailStyles.paragraph}>
         <strong style={{ color: "#111827" }}>{inviterName}</strong> has invited
-        you to join the <strong style={{ color: "#111827" }}>{workspaceName}</strong>{" "}
-        workspace on {productName}.
+        you to join the{" "}
+        <strong style={{ color: "#111827" }}>{workspaceName}</strong> workspace
+        on {productName}.
       </Text>
       <Section style={{ margin: "24px 0" }}>
         <Button href={inviteUrl} style={emailStyles.button}>

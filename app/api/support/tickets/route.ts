@@ -1,24 +1,28 @@
-import { NextRequest, NextResponse } from "next/server";
-import { headers } from "next/headers";
 import { and, count, desc, eq } from "drizzle-orm";
+import { headers } from "next/headers";
+import { type NextRequest, NextResponse } from "next/server";
+import { supportTicket } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { supportTicket } from "@/db/schema";
 import { createTicket } from "@/lib/support/tickets";
 
 export async function GET(req: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const { searchParams } = req.nextUrl;
-  const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
+  const page = Math.max(1, Number.parseInt(searchParams.get("page") ?? "1"));
   const status = searchParams.get("status") ?? "";
   const pageSize = 20;
   const offset = (page - 1) * pageSize;
 
   const conditions = [eq(supportTicket.userId, session.user.id)];
   if (status && ["OPEN", "IN_PROGRESS", "CLOSED"].includes(status)) {
-    conditions.push(eq(supportTicket.status, status as "OPEN" | "IN_PROGRESS" | "CLOSED"));
+    conditions.push(
+      eq(supportTicket.status, status as "OPEN" | "IN_PROGRESS" | "CLOSED")
+    );
   }
   const where = and(...conditions);
 
@@ -47,7 +51,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   let body: unknown;
   try {
@@ -56,16 +62,31 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { subject, body: messageBody, category } = body as Record<string, string>;
+  const {
+    subject,
+    body: messageBody,
+    category,
+  } = body as Record<string, string>;
 
   if (!subject || subject.length < 5 || subject.length > 200) {
-    return NextResponse.json({ error: "Subject must be between 5 and 200 characters" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Subject must be between 5 and 200 characters" },
+      { status: 400 }
+    );
   }
   if (!messageBody || messageBody.length < 20 || messageBody.length > 5000) {
-    return NextResponse.json({ error: "Message must be between 20 and 5000 characters" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Message must be between 20 and 5000 characters" },
+      { status: 400 }
+    );
   }
   const validCategories = ["GENERAL", "TASKS", "BILLING", "TECHNICAL", "OTHER"];
-  const cat = (category?.toUpperCase() ?? "GENERAL") as "GENERAL" | "TASKS" | "BILLING" | "TECHNICAL" | "OTHER";
+  const cat = (category?.toUpperCase() ?? "GENERAL") as
+    | "GENERAL"
+    | "TASKS"
+    | "BILLING"
+    | "TECHNICAL"
+    | "OTHER";
   if (!validCategories.includes(cat)) {
     return NextResponse.json({ error: "Invalid category" }, { status: 400 });
   }
@@ -79,7 +100,10 @@ export async function POST(req: NextRequest) {
   });
 
   if ("error" in result) {
-    return NextResponse.json({ error: result.error }, { status: result.status });
+    return NextResponse.json(
+      { error: result.error },
+      { status: result.status }
+    );
   }
 
   return NextResponse.json({ ticket: result.ticket }, { status: 201 });

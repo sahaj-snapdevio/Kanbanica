@@ -1,14 +1,19 @@
 "use server";
 
-import { headers } from "next/headers";
-import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+import { task, taskAssignee, taskWatcher } from "@/db/schema";
+import { writeActivityLog } from "@/lib/activity-log";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { task, taskAssignee, taskWatcher, user } from "@/db/schema";
-import { canAccessSpace, getSpacePermission, hasPermissionLevel, getWorkspaceMembership } from "@/lib/permissions";
-import { writeActivityLog } from "@/lib/activity-log";
 import { createNotifications } from "@/lib/notifications/create-notification";
+import {
+  canAccessSpace,
+  getSpacePermission,
+  getWorkspaceMembership,
+  hasPermissionLevel,
+} from "@/lib/permissions";
 
 function revalidateTask(workspaceId: string, spaceId: string, listId: string) {
   revalidatePath(`/${workspaceId}/${spaceId}/list/${listId}`);
@@ -19,16 +24,27 @@ export async function addAssignee(
   spaceId: string,
   listId: string | null,
   taskId: string,
-  assigneeUserId: string,
+  assigneeUserId: string
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
-  const permission = await getSpacePermission(session.user.id, workspaceId, spaceId);
-  if (permission === null || !hasPermissionLevel(permission, "edit")) return { error: "Forbidden" };
+  const permission = await getSpacePermission(
+    session.user.id,
+    workspaceId,
+    spaceId
+  );
+  if (permission === null || !hasPermissionLevel(permission, "edit")) {
+    return { error: "Forbidden" };
+  }
 
   // Verify assignee is active in workspace
-  const assigneeMembership = await getWorkspaceMembership(assigneeUserId, workspaceId);
+  const assigneeMembership = await getWorkspaceMembership(
+    assigneeUserId,
+    workspaceId
+  );
   if (!assigneeMembership || assigneeMembership.status !== "ACTIVE") {
     return { error: "User is not an active workspace member" };
   }
@@ -67,8 +83,12 @@ export async function addAssignee(
     }
   }
 
-  await writeActivityLog(taskId, session.user.id, "assignee_added", { userId: assigneeUserId });
-  if (listId) revalidateTask(workspaceId, spaceId, listId);
+  await writeActivityLog(taskId, session.user.id, "assignee_added", {
+    userId: assigneeUserId,
+  });
+  if (listId) {
+    revalidateTask(workspaceId, spaceId, listId);
+  }
   return { ok: true };
 }
 
@@ -77,20 +97,37 @@ export async function removeAssignee(
   spaceId: string,
   listId: string | null,
   taskId: string,
-  assigneeUserId: string,
+  assigneeUserId: string
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
-  const permission = await getSpacePermission(session.user.id, workspaceId, spaceId);
-  if (permission === null || !hasPermissionLevel(permission, "edit")) return { error: "Forbidden" };
+  const permission = await getSpacePermission(
+    session.user.id,
+    workspaceId,
+    spaceId
+  );
+  if (permission === null || !hasPermissionLevel(permission, "edit")) {
+    return { error: "Forbidden" };
+  }
 
   await db
     .delete(taskAssignee)
-    .where(and(eq(taskAssignee.taskId, taskId), eq(taskAssignee.userId, assigneeUserId)));
+    .where(
+      and(
+        eq(taskAssignee.taskId, taskId),
+        eq(taskAssignee.userId, assigneeUserId)
+      )
+    );
 
-  await writeActivityLog(taskId, session.user.id, "assignee_removed", { userId: assigneeUserId });
-  if (listId) revalidateTask(workspaceId, spaceId, listId);
+  await writeActivityLog(taskId, session.user.id, "assignee_removed", {
+    userId: assigneeUserId,
+  });
+  if (listId) {
+    revalidateTask(workspaceId, spaceId, listId);
+  }
   return { ok: true };
 }
 
@@ -99,13 +136,21 @@ export async function addWatcher(
   spaceId: string,
   listId: string,
   taskId: string,
-  watcherUserId?: string, // defaults to self
+  watcherUserId?: string // defaults to self
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
-  const accessible = await canAccessSpace(session.user.id, workspaceId, spaceId);
-  if (!accessible) return { error: "Unauthorized" };
+  const accessible = await canAccessSpace(
+    session.user.id,
+    workspaceId,
+    spaceId
+  );
+  if (!accessible) {
+    return { error: "Unauthorized" };
+  }
 
   const userId = watcherUserId ?? session.user.id;
 
@@ -121,13 +166,21 @@ export async function removeWatcher(
   spaceId: string,
   listId: string,
   taskId: string,
-  watcherUserId?: string, // defaults to self
+  watcherUserId?: string // defaults to self
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
-  const accessible = await canAccessSpace(session.user.id, workspaceId, spaceId);
-  if (!accessible) return { error: "Unauthorized" };
+  const accessible = await canAccessSpace(
+    session.user.id,
+    workspaceId,
+    spaceId
+  );
+  if (!accessible) {
+    return { error: "Unauthorized" };
+  }
 
   const userId = watcherUserId ?? session.user.id;
 
@@ -135,7 +188,9 @@ export async function removeWatcher(
     .delete(taskWatcher)
     .where(and(eq(taskWatcher.taskId, taskId), eq(taskWatcher.userId, userId)));
 
-  await writeActivityLog(taskId, session.user.id, "watcher_removed", { userId });
+  await writeActivityLog(taskId, session.user.id, "watcher_removed", {
+    userId,
+  });
   revalidateTask(workspaceId, spaceId, listId);
   return { ok: true };
 }
@@ -144,29 +199,49 @@ export async function toggleWatcher(
   workspaceId: string,
   spaceId: string,
   listId: string,
-  taskId: string,
+  taskId: string
 ): Promise<{ watching: boolean } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
-  const accessible = await canAccessSpace(session.user.id, workspaceId, spaceId);
-  if (!accessible) return { error: "Unauthorized" };
+  const accessible = await canAccessSpace(
+    session.user.id,
+    workspaceId,
+    spaceId
+  );
+  if (!accessible) {
+    return { error: "Unauthorized" };
+  }
 
   const [existing] = await db
     .select({ taskId: taskWatcher.taskId })
     .from(taskWatcher)
-    .where(and(eq(taskWatcher.taskId, taskId), eq(taskWatcher.userId, session.user.id)))
+    .where(
+      and(
+        eq(taskWatcher.taskId, taskId),
+        eq(taskWatcher.userId, session.user.id)
+      )
+    )
     .limit(1);
 
   if (existing) {
     await db
       .delete(taskWatcher)
-      .where(and(eq(taskWatcher.taskId, taskId), eq(taskWatcher.userId, session.user.id)));
+      .where(
+        and(
+          eq(taskWatcher.taskId, taskId),
+          eq(taskWatcher.userId, session.user.id)
+        )
+      );
     revalidateTask(workspaceId, spaceId, listId);
     return { watching: false };
-  } else {
-    await db.insert(taskWatcher).values({ taskId, userId: session.user.id }).onConflictDoNothing();
-    revalidateTask(workspaceId, spaceId, listId);
-    return { watching: true };
   }
+  await db
+    .insert(taskWatcher)
+    .values({ taskId, userId: session.user.id })
+    .onConflictDoNothing();
+  revalidateTask(workspaceId, spaceId, listId);
+  return { watching: true };
 }

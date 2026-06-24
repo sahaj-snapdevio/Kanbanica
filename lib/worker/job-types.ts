@@ -27,7 +27,11 @@ export type JobPayloads = {
   [JOB_NAMES.NOTIFICATION_CLEANUP]: Record<string, never>;
   [JOB_NAMES.DUE_DATE_REMINDER]: Record<string, never>;
   [JOB_NAMES.NOTIFICATION_DIGEST_SCAN]: Record<string, never>;
-  [JOB_NAMES.NOTIFICATION_DIGEST_SEND]: { userId: string; windowStart: string; windowEnd: string };
+  [JOB_NAMES.NOTIFICATION_DIGEST_SEND]: {
+    userId: string;
+    windowStart: string;
+    windowEnd: string;
+  };
   [JOB_NAMES.IMPERSONATION_CLEANUP]: Record<string, never>;
   [JOB_NAMES.SUPPORT_TICKET_AUTO_CLOSE]: { dryRun?: boolean };
 };

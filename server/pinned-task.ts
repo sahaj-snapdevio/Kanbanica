@@ -1,28 +1,41 @@
 "use server";
 
-import { and, count, desc, eq, max } from "drizzle-orm";
+import { and, count, eq, max } from "drizzle-orm";
+import { list, pinnedTask, space, task } from "@/db/schema";
 import { db } from "@/lib/db";
-import { pinnedTask, task, list, space } from "@/db/schema";
 
 export async function pinTask(
   taskId: string,
   userId: string,
-  workspaceId: string,
+  workspaceId: string
 ): Promise<{ ok: true } | { error: string; code?: string }> {
   return db.transaction(async (tx) => {
     const [{ total }] = await tx
       .select({ total: count() })
       .from(pinnedTask)
-      .where(and(eq(pinnedTask.userId, userId), eq(pinnedTask.workspaceId, workspaceId)));
+      .where(
+        and(
+          eq(pinnedTask.userId, userId),
+          eq(pinnedTask.workspaceId, workspaceId)
+        )
+      );
 
     if (total >= 50) {
-      return { error: "Pin limit reached (50). Unpin a task first.", code: "PIN_LIMIT_REACHED" };
+      return {
+        error: "Pin limit reached (50). Unpin a task first.",
+        code: "PIN_LIMIT_REACHED",
+      };
     }
 
     const [{ maxOrder }] = await tx
       .select({ maxOrder: max(pinnedTask.orderIndex) })
       .from(pinnedTask)
-      .where(and(eq(pinnedTask.userId, userId), eq(pinnedTask.workspaceId, workspaceId)));
+      .where(
+        and(
+          eq(pinnedTask.userId, userId),
+          eq(pinnedTask.workspaceId, workspaceId)
+        )
+      );
 
     await tx.insert(pinnedTask).values({
       id: crypto.randomUUID(),
@@ -39,7 +52,7 @@ export async function pinTask(
 
 export async function unpinTask(
   taskId: string,
-  userId: string,
+  userId: string
 ): Promise<{ ok: true } | { error: string }> {
   await db
     .delete(pinnedTask)
@@ -49,20 +62,20 @@ export async function unpinTask(
 
 export interface PinnedTaskItem {
   id: string;
-  taskId: string;
-  taskTitle: string;
-  taskStatus: { name: string; color: string; type: string } | null;
   listId: string | null;
   listName: string | null;
-  spaceId: string | null;
-  spaceName: string | null;
   orderIndex: number;
   pinnedAt: Date;
+  spaceId: string | null;
+  spaceName: string | null;
+  taskId: string;
+  taskStatus: { name: string; color: string; type: string } | null;
+  taskTitle: string;
 }
 
 export async function getPinnedTasks(
   userId: string,
-  workspaceId: string,
+  workspaceId: string
 ): Promise<{ pinnedTasks: PinnedTaskItem[] }> {
   const rows = await db
     .select({
@@ -80,7 +93,12 @@ export async function getPinnedTasks(
     .innerJoin(task, eq(pinnedTask.taskId, task.id))
     .leftJoin(list, eq(task.listId, list.id))
     .leftJoin(space, eq(list.spaceId, space.id))
-    .where(and(eq(pinnedTask.userId, userId), eq(pinnedTask.workspaceId, workspaceId)))
+    .where(
+      and(
+        eq(pinnedTask.userId, userId),
+        eq(pinnedTask.workspaceId, workspaceId)
+      )
+    )
     .orderBy(pinnedTask.orderIndex);
 
   return {
@@ -102,7 +120,7 @@ export async function getPinnedTasks(
 export async function reorderPinnedTasks(
   userId: string,
   workspaceId: string,
-  orderedIds: string[],
+  orderedIds: string[]
 ): Promise<{ ok: true } | { error: string }> {
   await db.transaction(async (tx) => {
     for (let i = 0; i < orderedIds.length; i++) {
@@ -113,8 +131,8 @@ export async function reorderPinnedTasks(
           and(
             eq(pinnedTask.id, orderedIds[i]),
             eq(pinnedTask.userId, userId),
-            eq(pinnedTask.workspaceId, workspaceId),
-          ),
+            eq(pinnedTask.workspaceId, workspaceId)
+          )
         );
     }
   });
@@ -123,7 +141,7 @@ export async function reorderPinnedTasks(
 
 export async function isTaskPinned(
   taskId: string,
-  userId: string,
+  userId: string
 ): Promise<boolean> {
   const [row] = await db
     .select({ id: pinnedTask.id })

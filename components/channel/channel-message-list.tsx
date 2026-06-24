@@ -1,14 +1,14 @@
 "use client";
 
+import { DownloadSimpleIcon, FileIcon } from "@phosphor-icons/react";
 import * as React from "react";
-import { FileIcon, DownloadSimpleIcon } from "@phosphor-icons/react";
+import type { ChannelMessageInfo } from "@/app/actions/channel";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import type { ChannelMessageInfo } from "@/app/actions/channel";
 
 interface ChannelMessageListProps {
-  messages: ChannelMessageInfo[];
   currentUserId: string;
+  messages: ChannelMessageInfo[];
 }
 
 function getInitials(name: string | null, email: string) {
@@ -24,7 +24,10 @@ function getInitials(name: string | null, email: string) {
 }
 
 function formatTime(date: Date) {
-  return new Date(date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return new Date(date).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function formatDate(date: Date) {
@@ -33,10 +36,18 @@ function formatDate(date: Date) {
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
 
-  if (d.toDateString() === today.toDateString()) return "Today";
-  if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
+  if (d.toDateString() === today.toDateString()) {
+    return "Today";
+  }
+  if (d.toDateString() === yesterday.toDateString()) {
+    return "Yesterday";
+  }
 
-  return d.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
+  return d.toLocaleDateString([], {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
 }
 
 function isSameDay(a: Date, b: Date) {
@@ -50,8 +61,12 @@ function isImageMime(mime: string) {
 }
 
 function formatFileSize(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  }
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
@@ -61,7 +76,10 @@ function renderContent(content: string) {
   return parts.map((part, i) => {
     if (part.startsWith("@")) {
       return (
-        <span key={i} className="rounded bg-primary/10 px-1 py-0.5 text-primary font-medium">
+        <span
+          className="rounded bg-primary/10 px-1 py-0.5 text-primary font-medium"
+          key={i}
+        >
           {part}
         </span>
       );
@@ -70,7 +88,10 @@ function renderContent(content: string) {
   });
 }
 
-export function ChannelMessageList({ messages, currentUserId }: ChannelMessageListProps) {
+export function ChannelMessageList({
+  messages,
+  currentUserId,
+}: ChannelMessageListProps) {
   const bottomRef = React.useRef<HTMLDivElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
   const prevLengthRef = React.useRef(0);
@@ -92,7 +113,9 @@ export function ChannelMessageList({ messages, currentUserId }: ChannelMessageLi
     return (
       <div className="flex flex-1 items-center justify-center">
         <div className="text-center">
-          <p className="text-lg font-medium text-muted-foreground">No messages yet</p>
+          <p className="text-lg font-medium text-muted-foreground">
+            No messages yet
+          </p>
           <p className="mt-1 text-sm text-muted-foreground/70">
             Be the first to send a message in this channel!
           </p>
@@ -102,16 +125,19 @@ export function ChannelMessageList({ messages, currentUserId }: ChannelMessageLi
   }
 
   return (
-    <div ref={containerRef} className="flex-1 overflow-y-auto px-4 py-4">
+    <div className="flex-1 overflow-y-auto px-4 py-4" ref={containerRef}>
       <div className="space-y-0.5">
         {messages.map((msg, idx) => {
           const prev = idx > 0 ? messages[idx - 1] : null;
-          const showDateSep = !prev || !isSameDay(prev.createdAt, msg.createdAt);
+          const showDateSep =
+            !prev || !isSameDay(prev.createdAt, msg.createdAt);
           const showAvatar =
             !prev ||
             prev.senderId !== msg.senderId ||
             showDateSep ||
-            new Date(msg.createdAt).getTime() - new Date(prev.createdAt).getTime() > 5 * 60 * 1000;
+            new Date(msg.createdAt).getTime() -
+              new Date(prev.createdAt).getTime() >
+              5 * 60 * 1000;
 
           return (
             <React.Fragment key={msg.id}>
@@ -130,7 +156,7 @@ export function ChannelMessageList({ messages, currentUserId }: ChannelMessageLi
               <div
                 className={cn(
                   "group flex gap-3 rounded-md px-2 py-1 transition-colors hover:bg-accent/30",
-                  showAvatar ? "mt-3" : "mt-0",
+                  showAvatar ? "mt-3" : "mt-0"
                 )}
               >
                 {/* Avatar column */}
@@ -173,36 +199,38 @@ export function ChannelMessageList({ messages, currentUserId }: ChannelMessageLi
                           {msg.attachments.map((att) =>
                             isImageMime(att.mimeType) ? (
                               <a
-                                key={att.id}
-                                href={att.fileUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
                                 className="block max-w-xs overflow-hidden rounded-lg border transition-opacity hover:opacity-80"
+                                href={att.fileUrl}
+                                key={att.id}
+                                rel="noopener noreferrer"
+                                target="_blank"
                               >
                                 <img
-                                  src={att.fileUrl}
                                   alt={att.fileName}
                                   className="max-h-64 object-contain"
+                                  src={att.fileUrl}
                                 />
                               </a>
                             ) : (
                               <a
-                                key={att.id}
-                                href={att.fileUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
                                 className="flex items-center gap-2 rounded-lg border bg-background px-3 py-2 text-sm transition-colors hover:bg-accent"
+                                href={att.fileUrl}
+                                key={att.id}
+                                rel="noopener noreferrer"
+                                target="_blank"
                               >
                                 <FileIcon className="size-5 shrink-0 text-muted-foreground" />
                                 <div className="min-w-0">
-                                  <p className="truncate font-medium">{att.fileName}</p>
+                                  <p className="truncate font-medium">
+                                    {att.fileName}
+                                  </p>
                                   <p className="text-xs text-muted-foreground">
                                     {formatFileSize(att.fileSize)}
                                   </p>
                                 </div>
                                 <DownloadSimpleIcon className="size-4 shrink-0 text-muted-foreground" />
                               </a>
-                            ),
+                            )
                           )}
                         </div>
                       )}

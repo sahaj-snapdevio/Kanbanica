@@ -1,6 +1,5 @@
 ﻿"use client";
 
-import * as React from "react";
 import {
   CalendarBlankIcon,
   CheckIcon,
@@ -12,11 +11,13 @@ import {
   UserIcon,
   XIcon,
 } from "@phosphor-icons/react";
-import { createTask } from "@/app/actions/task";
-import { getWorkspaceMembers } from "@/app/actions/task";
-import { getWorkspaceTags, createTag } from "@/app/actions/task-tag";
+import { format } from "date-fns";
+import * as React from "react";
+import { createTask, getWorkspaceMembers } from "@/app/actions/task";
+import { createTag, getWorkspaceTags } from "@/app/actions/task-tag";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { ClickUpCalendar } from "@/components/ui/clickup-calendar";
 import {
   Dialog,
   DialogContent,
@@ -32,34 +33,42 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
-import { ClickUpCalendar } from "@/components/ui/clickup-calendar";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
 import { ManageStatusesDialog } from "@/components/list/manage-statuses-dialog";
 
 type Priority = "NONE" | "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 
 interface Status {
+  color: string;
   id: string;
   name: string;
-  color: string;
   type: "OPEN" | "ACTIVE" | "CLOSED";
 }
 
 interface CreateTaskModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  workspaceId: string;
-  spaceId: string;
-  listId: string;
-  statuses: Status[];
   defaultStatusId?: string;
+  listId: string;
+  workspaceId: string;
   onCreated?: (taskId: string) => void;
+  onOpenChange: (open: boolean) => void;
+  open: boolean;
+  spaceId: string;
+  statuses: Status[];
   canManage?: boolean;
 }
 
-const PRIORITY_OPTIONS: { value: Priority; label: string; color: string; icon: string }[] = [
-  { value: "NONE", label: "No Priority", color: "text-muted-foreground", icon: "😴" },
+const PRIORITY_OPTIONS: {
+  value: Priority;
+  label: string;
+  color: string;
+  icon: string;
+}[] = [
+  {
+    value: "NONE",
+    label: "No Priority",
+    color: "text-muted-foreground",
+    icon: "😴",
+  },
   { value: "LOW", label: "Low", color: "text-blue-500", icon: "🐢" },
   { value: "MEDIUM", label: "Medium", color: "text-yellow-500", icon: "🚶" },
   { value: "HIGH", label: "High", color: "text-orange-500", icon: "🏃" },
@@ -67,7 +76,12 @@ const PRIORITY_OPTIONS: { value: Priority; label: string; color: string; icon: s
 ];
 
 function userInitials(name: string) {
-  return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 }
 
 export function CreateTaskModal({
@@ -102,8 +116,12 @@ export function CreateTaskModal({
   const [priorityPopoverOpen, setPriorityPopoverOpen] = React.useState(false);
   const [tagPopoverOpen, setTagPopoverOpen] = React.useState(false);
 
-  const [members, setMembers] = React.useState<{ userId: string; name: string; image: string | null }[]>([]);
-  const [allTags, setAllTags] = React.useState<{ id: string; name: string; color: string }[]>([]);
+  const [members, setMembers] = React.useState<
+    { userId: string; name: string; image: string | null }[]
+  >([]);
+  const [allTags, setAllTags] = React.useState<
+    { id: string; name: string; color: string }[]
+  >([]);
   const [tagSearch, setTagSearch] = React.useState("");
 
   React.useEffect(() => {
@@ -117,28 +135,42 @@ export function CreateTaskModal({
       setTagIds([]);
       setError("");
 
-      Promise.all([getWorkspaceMembers(workspaceId), getWorkspaceTags(workspaceId)]).then(
-        ([mem, tags]) => {
-          if (mem && !("error" in mem)) {
-            setMembers(
-              mem.members
-                .filter((m): m is typeof m & { userId: string } => m.userId !== null)
-                .map((m) => ({ userId: m.userId!, name: m.name, image: m.image })),
-            );
-          }
-          if (tags && !("error" in tags)) setAllTags(tags.tags);
-        },
-      );
+      Promise.all([
+        getWorkspaceMembers(workspaceId),
+        getWorkspaceTags(workspaceId),
+      ]).then(([mem, tags]) => {
+        if (mem && !("error" in mem)) {
+          setMembers(
+            mem.members
+              .filter(
+                (m): m is typeof m & { userId: string } => m.userId !== null
+              )
+              .map((m) => ({ userId: m.userId!, name: m.name, image: m.image }))
+          );
+        }
+        if (tags && !("error" in tags)) {
+          setAllTags(tags.tags);
+        }
+      });
     }
   }, [open, defaultStatusId]);
 
   async function handleSubmit() {
-    if (!title.trim()) { setError("Task name is required"); return; }
+    if (!title.trim()) {
+      setError("Task name is required");
+      return;
+    }
     setLoading(true);
     setError("");
-    const res = await createTask(workspaceId, spaceId, listId, { title: title.trim(), statusId });
+    const res = await createTask(workspaceId, spaceId, listId, {
+      title: title.trim(),
+      statusId,
+    });
     setLoading(false);
-    if ("error" in res) { setError(res.error); return; }
+    if ("error" in res) {
+      setError(res.error);
+      return;
+    }
     onCreated?.(res.taskId);
     onOpenChange(false);
   }
@@ -147,8 +179,12 @@ export function CreateTaskModal({
   const currentPriority = PRIORITY_OPTIONS.find((p) => p.value === priority)!;
   const selectedMembers = members.filter((m) => assigneeIds.includes(m.userId));
   const selectedTags = allTags.filter((t) => tagIds.includes(t.id));
-  const filteredTags = allTags.filter((t) => t.name.toLowerCase().includes(tagSearch.toLowerCase()));
-  const exactTagMatch = allTags.some((t) => t.name.toLowerCase() === tagSearch.toLowerCase());
+  const filteredTags = allTags.filter((t) =>
+    t.name.toLowerCase().includes(tagSearch.toLowerCase())
+  );
+  const exactTagMatch = allTags.some(
+    (t) => t.name.toLowerCase() === tagSearch.toLowerCase()
+  );
 
   return (
     <>
@@ -165,8 +201,8 @@ export function CreateTaskModal({
           </button>
           <div className="flex-1" />
           <button
-            onClick={() => onOpenChange(false)}
             className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+            onClick={() => onOpenChange(false)}
           >
             <XIcon className="size-4" />
           </button>
@@ -177,20 +213,25 @@ export function CreateTaskModal({
           {/* Title */}
           <input
             autoFocus
+            className="w-full text-xl font-semibold bg-transparent outline-none placeholder:text-muted-foreground/40"
+            onChange={(e) => setTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmit();
+              }
+            }}
             placeholder="Task Name"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
-            className="w-full text-xl font-semibold bg-transparent outline-none placeholder:text-muted-foreground/40"
           />
 
           {/* Description */}
           <Textarea
-            placeholder="Add a description…"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={3}
             className="resize-none border-none shadow-none focus-visible:ring-0 text-sm px-0 text-muted-foreground placeholder:text-muted-foreground/40"
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Add a description…"
+            rows={3}
+            value={description}
           />
 
           {error && <p className="text-sm text-destructive">{error}</p>}
@@ -198,11 +239,17 @@ export function CreateTaskModal({
           {/* Quick fields row */}
           <div className="flex flex-wrap items-center gap-2 pt-1">
             {/* Status */}
-            <Popover open={statusPopoverOpen} onOpenChange={setStatusPopoverOpen}>
+            <Popover
+              onOpenChange={setStatusPopoverOpen}
+              open={statusPopoverOpen}
+            >
               <PopoverTrigger asChild>
                 <button
                   className="flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-semibold transition-colors hover:bg-accent"
-                  style={{ borderColor: currentStatus?.color, color: currentStatus?.color }}
+                  style={{
+                    borderColor: currentStatus?.color,
+                    color: currentStatus?.color,
+                  }}
                 >
                   {currentStatus?.name ?? "Status"}
                 </button>
@@ -259,19 +306,31 @@ export function CreateTaskModal({
             </Popover>
 
             {/* Assignee */}
-            <Popover open={assigneePopoverOpen} onOpenChange={setAssigneePopoverOpen}>
+            <Popover
+              onOpenChange={setAssigneePopoverOpen}
+              open={assigneePopoverOpen}
+            >
               <PopoverTrigger asChild>
                 <button className="flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
                   {selectedMembers.length > 0 ? (
                     <>
                       <div className="flex -space-x-1">
                         {selectedMembers.slice(0, 2).map((m) => (
-                          <Avatar key={m.userId} className="size-4 border border-background">
-                            <AvatarFallback className="text-[8px]">{userInitials(m.name)}</AvatarFallback>
+                          <Avatar
+                            className="size-4 border border-background"
+                            key={m.userId}
+                          >
+                            <AvatarFallback className="text-[8px]">
+                              {userInitials(m.name)}
+                            </AvatarFallback>
                           </Avatar>
                         ))}
                       </div>
-                      <span>{selectedMembers.length === 1 ? selectedMembers[0].name.split(" ")[0] : `${selectedMembers.length} assignees`}</span>
+                      <span>
+                        {selectedMembers.length === 1
+                          ? selectedMembers[0].name.split(" ")[0]
+                          : `${selectedMembers.length} assignees`}
+                      </span>
                     </>
                   ) : (
                     <>
@@ -281,22 +340,36 @@ export function CreateTaskModal({
                   )}
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-52 p-2" align="start">
-                <p className="text-xs text-muted-foreground px-1 mb-1.5">Select members</p>
+              <PopoverContent align="start" className="w-52 p-2">
+                <p className="text-xs text-muted-foreground px-1 mb-1.5">
+                  Select members
+                </p>
                 <div className="space-y-0.5 max-h-48 overflow-y-auto">
                   {members.map((m) => {
                     const selected = assigneeIds.includes(m.userId);
                     return (
                       <button
-                        key={m.userId}
-                        onClick={() => setAssigneeIds((prev) => selected ? prev.filter((id) => id !== m.userId) : [...prev, m.userId])}
                         className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
+                        key={m.userId}
+                        onClick={() =>
+                          setAssigneeIds((prev) =>
+                            selected
+                              ? prev.filter((id) => id !== m.userId)
+                              : [...prev, m.userId]
+                          )
+                        }
                       >
                         <Avatar className="size-6 shrink-0">
-                          <AvatarFallback className="text-2xs">{userInitials(m.name)}</AvatarFallback>
+                          <AvatarFallback className="text-2xs">
+                            {userInitials(m.name)}
+                          </AvatarFallback>
                         </Avatar>
-                        <span className="flex-1 truncate text-left">{m.name}</span>
-                        {selected && <CheckIcon className="size-3.5 text-primary shrink-0" />}
+                        <span className="flex-1 truncate text-left">
+                          {m.name}
+                        </span>
+                        {selected && (
+                          <CheckIcon className="size-3.5 text-primary shrink-0" />
+                        )}
                       </button>
                     );
                   })}
@@ -305,56 +378,85 @@ export function CreateTaskModal({
             </Popover>
 
             {/* Due date */}
-            <Popover open={dueDatePopoverOpen} onOpenChange={setDueDatePopoverOpen}>
+            <Popover
+              onOpenChange={setDueDatePopoverOpen}
+              open={dueDatePopoverOpen}
+            >
               <PopoverTrigger asChild>
-                <button className={cn("flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs hover:bg-accent transition-colors", dueDate ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
+                <button
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs hover:bg-accent transition-colors",
+                    dueDate
+                      ? "text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
                   <CalendarBlankIcon className="size-3.5" />
                   {dueDate ? format(dueDate, "MMM d") : "Due date"}
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
+              <PopoverContent align="start" className="w-auto p-0">
                 <ClickUpCalendar
-                  selectedDate={dueDate}
-                  onSelect={(date) => { setDueDate(date); setDueDatePopoverOpen(false); }}
                   onClose={() => setDueDatePopoverOpen(false)}
+                  onSelect={(date) => {
+                    setDueDate(date);
+                    setDueDatePopoverOpen(false);
+                  }}
+                  selectedDate={dueDate}
                 />
               </PopoverContent>
             </Popover>
 
             {/* Priority */}
-            <Popover open={priorityPopoverOpen} onOpenChange={setPriorityPopoverOpen}>
+            <Popover
+              onOpenChange={setPriorityPopoverOpen}
+              open={priorityPopoverOpen}
+            >
               <PopoverTrigger asChild>
-                <button className={cn("flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs transition-colors hover:bg-accent", currentPriority.color)}>
-                  {priority !== "NONE" ? (
-                    <>
-                      <span>{currentPriority.icon}</span>
-                      {currentPriority.label}
-                    </>
-                  ) : (
+                <button
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs transition-colors hover:bg-accent",
+                    currentPriority.color
+                  )}
+                >
+                  {priority === "NONE" ? (
                     <>
                       <FlagIcon className="size-3.5" weight="regular" />
                       Priority
                     </>
+                  ) : (
+                    <>
+                      <span>{currentPriority.icon}</span>
+                      {currentPriority.label}
+                    </>
                   )}
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-40 p-1" align="start">
+              <PopoverContent align="start" className="w-40 p-1">
                 {PRIORITY_OPTIONS.map((p) => (
                   <button
+                    className={cn(
+                      "flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent",
+                      p.color
+                    )}
                     key={p.value}
-                    onClick={() => { setPriority(p.value); setPriorityPopoverOpen(false); }}
-                    className={cn("flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent", p.color)}
+                    onClick={() => {
+                      setPriority(p.value);
+                      setPriorityPopoverOpen(false);
+                    }}
                   >
                     <span>{p.icon}</span>
                     <span className="flex-1 text-left">{p.label}</span>
-                    {p.value === priority && <CheckIcon className="size-3.5 shrink-0" />}
+                    {p.value === priority && (
+                      <CheckIcon className="size-3.5 shrink-0" />
+                    )}
                   </button>
                 ))}
               </PopoverContent>
             </Popover>
 
             {/* Tags */}
-            <Popover open={tagPopoverOpen} onOpenChange={setTagPopoverOpen}>
+            <Popover onOpenChange={setTagPopoverOpen} open={tagPopoverOpen}>
               <PopoverTrigger asChild>
                 <button className="flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
                   <TagIcon className="size-3.5" />
@@ -365,40 +467,56 @@ export function CreateTaskModal({
                   )}
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-52 p-2" align="start">
+              <PopoverContent align="start" className="w-52 p-2">
                 <Input
                   autoFocus
+                  className="h-7 text-xs mb-2"
+                  onChange={(e) => setTagSearch(e.target.value)}
                   placeholder="Search or create tag…"
                   value={tagSearch}
-                  onChange={(e) => setTagSearch(e.target.value)}
-                  className="h-7 text-xs mb-2"
                 />
                 <div className="space-y-0.5 max-h-40 overflow-y-auto">
                   {filteredTags.map((t) => {
                     const selected = tagIds.includes(t.id);
                     return (
                       <button
-                        key={t.id}
-                        onClick={() => setTagIds((prev) => selected ? prev.filter((id) => id !== t.id) : [...prev, t.id])}
                         className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
+                        key={t.id}
+                        onClick={() =>
+                          setTagIds((prev) =>
+                            selected
+                              ? prev.filter((id) => id !== t.id)
+                              : [...prev, t.id]
+                          )
+                        }
                       >
-                        <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: t.color }} />
-                        <span className="flex-1 truncate text-left text-xs">{t.name}</span>
-                        {selected && <CheckIcon className="size-3.5 text-primary shrink-0" />}
+                        <span
+                          className="size-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: t.color }}
+                        />
+                        <span className="flex-1 truncate text-left text-xs">
+                          {t.name}
+                        </span>
+                        {selected && (
+                          <CheckIcon className="size-3.5 text-primary shrink-0" />
+                        )}
                       </button>
                     );
                   })}
                   {tagSearch && !exactTagMatch && (
                     <button
+                      className="flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-xs text-primary hover:bg-accent"
                       onClick={async () => {
-                        const res = await createTag(workspaceId, tagSearch.trim());
+                        const res = await createTag(
+                          workspaceId,
+                          tagSearch.trim()
+                        );
                         if ("tag" in res) {
                           setAllTags((prev) => [...prev, res.tag]);
                           setTagIds((prev) => [...prev, res.tag.id]);
                           setTagSearch("");
                         }
                       }}
-                      className="flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-xs text-primary hover:bg-accent"
                     >
                       <PlusIcon className="size-3.5" />
                       Create &ldquo;{tagSearch}&rdquo;
@@ -413,10 +531,10 @@ export function CreateTaskModal({
         {/* Footer */}
         <div className="flex items-center justify-end border-t px-6 py-3 bg-muted/30">
           <Button
-            variant="default"
-            onClick={handleSubmit}
-            disabled={loading || !title.trim()}
             className="h-8 text-sm"
+            disabled={loading || !title.trim()}
+            onClick={handleSubmit}
+            variant="default"
           >
             {loading ? "Creating…" : "Create Task"}
           </Button>

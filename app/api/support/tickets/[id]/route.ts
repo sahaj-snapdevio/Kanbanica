@@ -1,14 +1,19 @@
-import { NextRequest, NextResponse } from "next/server";
-import { headers } from "next/headers";
 import { and, asc, eq } from "drizzle-orm";
+import { headers } from "next/headers";
+import { type NextRequest, NextResponse } from "next/server";
+import { supportTicket, supportTicketMessage } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { supportTicket, supportTicketMessage } from "@/db/schema";
 import { closeTicketByUser } from "@/lib/support/tickets";
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const { id } = await params;
 
@@ -16,7 +21,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     db
       .select()
       .from(supportTicket)
-      .where(and(eq(supportTicket.id, id), eq(supportTicket.userId, session.user.id)))
+      .where(
+        and(eq(supportTicket.id, id), eq(supportTicket.userId, session.user.id))
+      )
       .limit(1)
       .then((r) => r[0] ?? null),
     db
@@ -28,18 +35,30 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         createdAt: supportTicketMessage.createdAt,
       })
       .from(supportTicketMessage)
-      .where(and(eq(supportTicketMessage.ticketId, id), eq(supportTicketMessage.isInternalNote, false)))
+      .where(
+        and(
+          eq(supportTicketMessage.ticketId, id),
+          eq(supportTicketMessage.isInternalNote, false)
+        )
+      )
       .orderBy(asc(supportTicketMessage.createdAt)),
   ]);
 
-  if (!ticket) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!ticket) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
   return NextResponse.json({ ticket, messages });
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const { id } = await params;
 
@@ -52,7 +71,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { action } = body as { action?: string };
   if (action !== "close") {
-    return NextResponse.json({ error: "Invalid action. Use action: 'close'" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid action. Use action: 'close'" },
+      { status: 400 }
+    );
   }
 
   const result = await closeTicketByUser({
@@ -62,7 +84,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   });
 
   if ("error" in result) {
-    return NextResponse.json({ error: result.error }, { status: result.status });
+    return NextResponse.json(
+      { error: result.error },
+      { status: result.status }
+    );
   }
 
   return NextResponse.json({ ok: true });

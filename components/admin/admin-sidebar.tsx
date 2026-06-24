@@ -1,20 +1,20 @@
 "use client";
 
+import {
+  BarChart3,
+  BookOpen,
+  Building2,
+  LayoutDashboard,
+  LogOut,
+  ScrollText,
+  TicketCheck,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  LayoutDashboard,
-  Users,
-  Building2,
-  TicketCheck,
-  BarChart3,
-  ScrollText,
-  LogOut,
-  BookOpen,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { authClient } from "@/lib/auth-client";
 import { PRODUCT_NAME } from "@/config/platform";
+import { authClient } from "@/lib/auth-client";
+import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -50,15 +50,17 @@ export function AdminSidebar({ email }: AdminSidebarProps) {
             viewBox="0 0 24 24"
           >
             <path
+              d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth={2}
-              d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
             />
           </svg>
         </div>
         <div>
-          <div className="text-2xs font-semibold text-slate-500 uppercase tracking-wider">{PRODUCT_NAME}</div>
+          <div className="text-2xs font-semibold text-slate-500 uppercase tracking-wider">
+            {PRODUCT_NAME}
+          </div>
           <div className="text-sm font-bold leading-tight">Admin Console</div>
         </div>
       </div>
@@ -72,19 +74,24 @@ export function AdminSidebar({ email }: AdminSidebarProps) {
               : pathname.startsWith(item.href);
           return (
             <Link
-              key={item.href}
-              href={item.href}
               className={cn(
                 "relative flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
                 isActive
                   ? "bg-emerald-500/10 text-emerald-300 font-medium"
                   : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
               )}
+              href={item.href}
+              key={item.href}
             >
               {isActive && (
                 <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-emerald-400" />
               )}
-              <Icon className={cn("w-4 h-4 shrink-0", isActive && "text-emerald-400")} />
+              <Icon
+                className={cn(
+                  "w-4 h-4 shrink-0",
+                  isActive && "text-emerald-400"
+                )}
+              />
               {item.label}
             </Link>
           );
@@ -98,8 +105,8 @@ export function AdminSidebar({ email }: AdminSidebarProps) {
           </div>
         )}
         <button
-          onClick={handleSignOut}
           className="flex w-full items-center gap-3 px-3 py-2 rounded-md text-sm text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-colors"
+          onClick={handleSignOut}
         >
           <LogOut className="w-4 h-4 shrink-0" />
           Sign out

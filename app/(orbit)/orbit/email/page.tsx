@@ -1,7 +1,13 @@
 import { desc } from "drizzle-orm";
 import { OrbitPageHeader } from "@/components/admin/orbit-page-header";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -35,16 +41,18 @@ export default async function OrbitEmailPage() {
   return (
     <div>
       <OrbitPageHeader
+        description="Transactional email queue and inbound delivery events."
         eyebrow="Admin"
         title="Email"
-        description="Transactional email queue and inbound delivery events."
       />
 
       <div className="grid gap-4 xl:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Outbox</CardTitle>
-            <CardDescription>Queued and delivered transactional emails.</CardDescription>
+            <CardDescription>
+              Queued and delivered transactional emails.
+            </CardDescription>
           </CardHeader>
           <CardContent className="overflow-x-auto p-0">
             <Table>
@@ -83,7 +91,9 @@ export default async function OrbitEmailPage() {
         <Card>
           <CardHeader>
             <CardTitle>Events</CardTitle>
-            <CardDescription>Inbound webhook events from your SMTP provider.</CardDescription>
+            <CardDescription>
+              Inbound webhook events from your SMTP provider.
+            </CardDescription>
           </CardHeader>
           <CardContent className="overflow-x-auto p-0">
             <Table>

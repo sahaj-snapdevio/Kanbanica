@@ -188,7 +188,11 @@ export async function inviteMember(data: {
 
   console.log(`[invite] ${email} → ${inviteUrl}`);
 
-  const { html, text } = await workspaceInviteTemplate({ inviterName, workspaceName, inviteUrl });
+  const { html, text } = await workspaceInviteTemplate({
+    inviterName,
+    workspaceName,
+    inviteUrl,
+  });
   await enqueueEmail({
     to: email,
     subject: `${inviterName} invited you to ${workspaceName}`,
@@ -242,7 +246,11 @@ export async function resendInvite(data: {
 
     console.log(`[invite] ${member.email} → ${inviteUrl}`);
 
-    const { html, text } = await workspaceInviteTemplate({ inviterName, workspaceName, inviteUrl });
+    const { html, text } = await workspaceInviteTemplate({
+      inviterName,
+      workspaceName,
+      inviteUrl,
+    });
     await enqueueEmail({
       to: member.email,
       subject: `${inviterName} invited you to ${workspaceName}`,
@@ -254,25 +262,33 @@ export async function resendInvite(data: {
   return { ok: true };
 }
 
-export async function acceptInvite(token: string): Promise<
-  { workspaceId: string } | { error: string }
-> {
+export async function acceptInvite(
+  token: string
+): Promise<{ workspaceId: string } | { error: string }> {
   const session = await requireSession();
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const [invite] = await db
     .select()
     .from(workspaceMember)
     .where(eq(workspaceMember.inviteToken, token));
 
-  if (!invite) return { error: "Invalid or expired invitation" };
-  if (invite.status !== "INVITED") return { error: "This invitation has already been used" };
-  if (invite.inviteExpiresAt && invite.inviteExpiresAt < new Date())
+  if (!invite) {
+    return { error: "Invalid or expired invitation" };
+  }
+  if (invite.status !== "INVITED") {
+    return { error: "This invitation has already been used" };
+  }
+  if (invite.inviteExpiresAt && invite.inviteExpiresAt < new Date()) {
     return { error: "This invitation has expired" };
+  }
 
   // Check email matches if invite was for a specific address
-  if (invite.email && invite.email !== session.user.email?.toLowerCase())
+  if (invite.email && invite.email !== session.user.email?.toLowerCase()) {
     return { error: "This invitation was sent to a different email address" };
+  }
 
   await db
     .update(workspaceMember)

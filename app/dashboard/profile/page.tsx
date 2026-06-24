@@ -79,7 +79,7 @@ export default async function ProfilePage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button asChild variant="secondary" size="sm">
+            <Button asChild size="sm" variant="secondary">
               <a download href="/api/account/export">
                 Download JSON export
               </a>

@@ -1,22 +1,22 @@
 "use client";
 
-import * as React from "react";
-import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import Placeholder from "@tiptap/extension-placeholder";
-import Underline from "@tiptap/extension-underline";
 import Link from "@tiptap/extension-link";
-import TextAlign from "@tiptap/extension-text-align";
-import TaskList from "@tiptap/extension-task-list";
+import Placeholder from "@tiptap/extension-placeholder";
 import TaskItem from "@tiptap/extension-task-item";
+import TaskList from "@tiptap/extension-task-list";
+import TextAlign from "@tiptap/extension-text-align";
+import Underline from "@tiptap/extension-underline";
+import { EditorContent, useEditor } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import * as React from "react";
 import { cn } from "@/lib/utils";
 
 interface TaskDescriptionEditorProps {
-  value: string;
+  className?: string;
   onChange: (json: string) => void;
   onSave?: () => void;
   placeholder?: string;
-  className?: string;
+  value: string;
 }
 
 function ToolbarButton({
@@ -32,18 +32,18 @@ function ToolbarButton({
 }) {
   return (
     <button
-      type="button"
-      title={title}
-      onMouseDown={(e) => {
-        e.preventDefault();
-        onClick();
-      }}
       className={cn(
         "flex h-7 min-w-7 items-center justify-center rounded px-1.5 text-sm transition-colors",
         active
           ? "bg-primary/10 text-primary"
-          : "text-muted-foreground hover:bg-accent hover:text-foreground",
+          : "text-muted-foreground hover:bg-accent hover:text-foreground"
       )}
+      onMouseDown={(e) => {
+        e.preventDefault();
+        onClick();
+      }}
+      title={title}
+      type="button"
     >
       {children}
     </button>
@@ -73,7 +73,9 @@ export function TaskDescriptionEditor({
       TaskItem.configure({ nested: true }),
     ],
     content: (() => {
-      if (!value) return "";
+      if (!value) {
+        return "";
+      }
       try {
         return JSON.parse(value);
       } catch {
@@ -90,8 +92,7 @@ export function TaskDescriptionEditor({
     },
     editorProps: {
       attributes: {
-        class:
-          "focus:outline-none min-h-[80px] px-0 py-1 tiptap-content",
+        class: "focus:outline-none min-h-[80px] px-0 py-1 tiptap-content",
       },
     },
     immediatelyRender: false,
@@ -99,7 +100,9 @@ export function TaskDescriptionEditor({
 
   // Sync external value when taskId changes
   React.useEffect(() => {
-    if (!editor || editor.isDestroyed) return;
+    if (!editor || editor.isDestroyed) {
+      return;
+    }
     const current = JSON.stringify(editor.getJSON());
     if (current !== value && value) {
       try {
@@ -110,70 +113,170 @@ export function TaskDescriptionEditor({
     }
   }, [value, editor]);
 
-  if (!editor) return null;
+  if (!editor) {
+    return null;
+  }
 
   return (
     <div
       className={cn(
         "rounded-lg border bg-card transition-all",
         focused ? "border-primary/50 ring-1 ring-primary/20" : "border-border",
-        className,
+        className
       )}
     >
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-0.5 border-b px-2 py-1.5">
         {/* Undo / Redo */}
-        <ToolbarButton title="Undo (Ctrl+Z)" onClick={() => editor.chain().focus().undo().run()}>
-          <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a4 4 0 0 1 0 8H9m-6-8 3-3-3-3" />
+        <ToolbarButton
+          onClick={() => editor.chain().focus().undo().run()}
+          title="Undo (Ctrl+Z)"
+        >
+          <svg
+            className="size-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M3 10h10a4 4 0 0 1 0 8H9m-6-8 3-3-3-3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
         </ToolbarButton>
-        <ToolbarButton title="Redo (Ctrl+Y)" onClick={() => editor.chain().focus().redo().run()}>
-          <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21 10H11a4 4 0 0 0 0 8h4m6-8-3-3 3-3" />
+        <ToolbarButton
+          onClick={() => editor.chain().focus().redo().run()}
+          title="Redo (Ctrl+Y)"
+        >
+          <svg
+            className="size-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M21 10H11a4 4 0 0 0 0 8h4m6-8-3-3 3-3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
         </ToolbarButton>
 
         <div className="mx-1.5 h-4 w-px bg-border shrink-0" />
 
         {/* Text formatting */}
-        <ToolbarButton title="Bold (Ctrl+B)" active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()}>
+        <ToolbarButton
+          active={editor.isActive("bold")}
+          onClick={() => editor.chain().focus().toggleBold().run()}
+          title="Bold (Ctrl+B)"
+        >
           <span className="font-bold text-sm leading-none">B</span>
         </ToolbarButton>
-        <ToolbarButton title="Italic (Ctrl+I)" active={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleItalic().run()}>
+        <ToolbarButton
+          active={editor.isActive("italic")}
+          onClick={() => editor.chain().focus().toggleItalic().run()}
+          title="Italic (Ctrl+I)"
+        >
           <span className="italic font-serif text-sm leading-none">I</span>
         </ToolbarButton>
-        <ToolbarButton title="Underline (Ctrl+U)" active={editor.isActive("underline")} onClick={() => editor.chain().focus().toggleUnderline().run()}>
+        <ToolbarButton
+          active={editor.isActive("underline")}
+          onClick={() => editor.chain().focus().toggleUnderline().run()}
+          title="Underline (Ctrl+U)"
+        >
           <span className="underline text-sm leading-none">U</span>
         </ToolbarButton>
-        <ToolbarButton title="Strikethrough" active={editor.isActive("strike")} onClick={() => editor.chain().focus().toggleStrike().run()}>
+        <ToolbarButton
+          active={editor.isActive("strike")}
+          onClick={() => editor.chain().focus().toggleStrike().run()}
+          title="Strikethrough"
+        >
           <span className="line-through text-sm leading-none">S</span>
         </ToolbarButton>
-        <ToolbarButton title="Inline code" active={editor.isActive("code")} onClick={() => editor.chain().focus().toggleCode().run()}>
-          <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="m16 18 6-6-6-6M8 6l-6 6 6 6" />
+        <ToolbarButton
+          active={editor.isActive("code")}
+          onClick={() => editor.chain().focus().toggleCode().run()}
+          title="Inline code"
+        >
+          <svg
+            className="size-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="m16 18 6-6-6-6M8 6l-6 6 6 6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
         </ToolbarButton>
 
         <div className="mx-1.5 h-4 w-px bg-border shrink-0" />
 
         {/* Lists */}
-        <ToolbarButton title="Bullet list" active={editor.isActive("bulletList")} onClick={() => editor.chain().focus().toggleBulletList().run()}>
-          <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+        <ToolbarButton
+          active={editor.isActive("bulletList")}
+          onClick={() => editor.chain().focus().toggleBulletList().run()}
+          title="Bullet list"
+        >
+          <svg
+            className="size-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
         </ToolbarButton>
-        <ToolbarButton title="Numbered list" active={editor.isActive("orderedList")} onClick={() => editor.chain().focus().toggleOrderedList().run()}>
-          <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M10 6h11M10 12h11M10 18h11M4 6h1V4H4l-1 1.5L4 7h1M4 12v-2l1.5-1-1.5-.5v-1H4M4 19v-1h2v-1H4l2-2v-1H4" />
+        <ToolbarButton
+          active={editor.isActive("orderedList")}
+          onClick={() => editor.chain().focus().toggleOrderedList().run()}
+          title="Numbered list"
+        >
+          <svg
+            className="size-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M10 6h11M10 12h11M10 18h11M4 6h1V4H4l-1 1.5L4 7h1M4 12v-2l1.5-1-1.5-.5v-1H4M4 19v-1h2v-1H4l2-2v-1H4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
         </ToolbarButton>
-        <ToolbarButton title="Task list" active={editor.isActive("taskList")} onClick={() => editor.chain().focus().toggleTaskList().run()}>
-          <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <rect x="3" y="5" width="4" height="4" rx="0.5" />
-            <path strokeLinecap="round" strokeLinejoin="round" d="m4 7 1 1 1.5-1.5M10 7h11M10 13h11M10 19h11" />
-            <rect x="3" y="11" width="4" height="4" rx="0.5" />
-            <rect x="3" y="17" width="4" height="4" rx="0.5" />
+        <ToolbarButton
+          active={editor.isActive("taskList")}
+          onClick={() => editor.chain().focus().toggleTaskList().run()}
+          title="Task list"
+        >
+          <svg
+            className="size-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+          >
+            <rect height="4" rx="0.5" width="4" x="3" y="5" />
+            <path
+              d="m4 7 1 1 1.5-1.5M10 7h11M10 13h11M10 19h11"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <rect height="4" rx="0.5" width="4" x="3" y="11" />
+            <rect height="4" rx="0.5" width="4" x="3" y="17" />
           </svg>
         </ToolbarButton>
 
@@ -182,10 +285,12 @@ export function TaskDescriptionEditor({
         {/* Headings */}
         {([1, 2, 3] as const).map((level) => (
           <ToolbarButton
-            key={level}
-            title={`Heading ${level}`}
             active={editor.isActive("heading", { level })}
-            onClick={() => editor.chain().focus().toggleHeading({ level }).run()}
+            key={level}
+            onClick={() =>
+              editor.chain().focus().toggleHeading({ level }).run()
+            }
+            title={`Heading ${level}`}
           >
             <span className="text-xs font-bold">H{level}</span>
           </ToolbarButton>
@@ -194,29 +299,67 @@ export function TaskDescriptionEditor({
         <div className="mx-1.5 h-4 w-px bg-border shrink-0" />
 
         {/* Align */}
-        <ToolbarButton title="Align left" active={editor.isActive({ textAlign: "left" })} onClick={() => editor.chain().focus().setTextAlign("left").run()}>
-          <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" d="M3 6h18M3 12h12M3 18h15" />
+        <ToolbarButton
+          active={editor.isActive({ textAlign: "left" })}
+          onClick={() => editor.chain().focus().setTextAlign("left").run()}
+          title="Align left"
+        >
+          <svg
+            className="size-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+          >
+            <path d="M3 6h18M3 12h12M3 18h15" strokeLinecap="round" />
           </svg>
         </ToolbarButton>
-        <ToolbarButton title="Align center" active={editor.isActive({ textAlign: "center" })} onClick={() => editor.chain().focus().setTextAlign("center").run()}>
-          <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" d="M3 6h18M6 12h12M4.5 18h15" />
+        <ToolbarButton
+          active={editor.isActive({ textAlign: "center" })}
+          onClick={() => editor.chain().focus().setTextAlign("center").run()}
+          title="Align center"
+        >
+          <svg
+            className="size-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+          >
+            <path d="M3 6h18M6 12h12M4.5 18h15" strokeLinecap="round" />
           </svg>
         </ToolbarButton>
-        <ToolbarButton title="Align right" active={editor.isActive({ textAlign: "right" })} onClick={() => editor.chain().focus().setTextAlign("right").run()}>
-          <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" d="M3 6h18M9 12h12M6 18h15" />
+        <ToolbarButton
+          active={editor.isActive({ textAlign: "right" })}
+          onClick={() => editor.chain().focus().setTextAlign("right").run()}
+          title="Align right"
+        >
+          <svg
+            className="size-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+          >
+            <path d="M3 6h18M9 12h12M6 18h15" strokeLinecap="round" />
           </svg>
         </ToolbarButton>
 
         <div className="mx-1.5 h-4 w-px bg-border shrink-0" />
 
         {/* Extras */}
-        <ToolbarButton title="Code block" active={editor.isActive("codeBlock")} onClick={() => editor.chain().focus().toggleCodeBlock().run()}>
+        <ToolbarButton
+          active={editor.isActive("codeBlock")}
+          onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+          title="Code block"
+        >
           <span className="text-xs font-mono leading-none">{"</>"}</span>
         </ToolbarButton>
-        <ToolbarButton title="Blockquote" active={editor.isActive("blockquote")} onClick={() => editor.chain().focus().toggleBlockquote().run()}>
+        <ToolbarButton
+          active={editor.isActive("blockquote")}
+          onClick={() => editor.chain().focus().toggleBlockquote().run()}
+          title="Blockquote"
+        >
           <svg className="size-4" fill="currentColor" viewBox="0 0 24 24">
             <path d="M4.583 17.321C3.553 16.227 3 15 3 13.011c0-3.5 2.457-6.637 6.03-8.188l.893 1.378c-3.335 1.804-3.987 4.145-4.247 5.621.537-.278 1.24-.375 1.929-.311 1.804.167 3.226 1.648 3.226 3.489a3.5 3.5 0 0 1-3.5 3.5c-1.073 0-2.099-.49-2.748-1.179zm10 0C13.553 16.227 13 15 13 13.011c0-3.5 2.457-6.637 6.03-8.188l.893 1.378c-3.335 1.804-3.987 4.145-4.247 5.621.537-.278 1.24-.375 1.929-.311 1.804.167 3.226 1.648 3.226 3.489a3.5 3.5 0 0 1-3.5 3.5c-1.073 0-2.099-.49-2.748-1.179z" />
           </svg>

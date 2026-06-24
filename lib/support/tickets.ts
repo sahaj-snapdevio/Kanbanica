@@ -1,8 +1,8 @@
 import { createId } from "@paralleldrive/cuid2";
 import { and, count, eq, sql } from "drizzle-orm";
-import { db } from "@/lib/db";
-import { supportTicket, supportTicketMessage, supportTicketSequence, user } from "@/db/schema";
+import { supportTicket, supportTicketMessage, user } from "@/db/schema";
 import { audit } from "@/lib/audit";
+import { db } from "@/lib/db";
 import { enqueueEmail } from "@/lib/email";
 import { supportTicketCreatedTemplate } from "@/lib/email/templates/support-ticket-created";
 import { supportTicketReplyTemplate } from "@/lib/email/templates/support-ticket-reply";
@@ -11,9 +11,9 @@ export const OPEN_TICKET_LIMIT = 5;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function nextTicketNumber(tx: any): Promise<string> {
-  const rows = await tx.execute(sql`
+  const rows = (await tx.execute(sql`
     UPDATE support_ticket_sequence SET value = value + 1 WHERE id = 1 RETURNING value AS "nextNum"
-  `) as { nextNum: number }[];
+  `)) as { nextNum: number }[];
   const nextNum = rows[0].nextNum;
   return `TKT-${String(nextNum).padStart(4, "0")}`;
 }
@@ -36,10 +36,15 @@ export async function createTicket({
     const [{ openCount }] = await tx
       .select({ openCount: count() })
       .from(supportTicket)
-      .where(and(eq(supportTicket.userId, userId), eq(supportTicket.status, "OPEN")));
+      .where(
+        and(eq(supportTicket.userId, userId), eq(supportTicket.status, "OPEN"))
+      );
 
     if (openCount >= OPEN_TICKET_LIMIT) {
-      return { error: `Open ticket limit reached (${OPEN_TICKET_LIMIT}). Please resolve existing tickets first.`, status: 422 } as const;
+      return {
+        error: `Open ticket limit reached (${OPEN_TICKET_LIMIT}). Please resolve existing tickets first.`,
+        status: 422,
+      } as const;
     }
 
     const ticketNumber = await nextTicketNumber(tx);
@@ -78,13 +83,25 @@ export async function createTicket({
     });
 
     // Send confirmation email (fire-and-forget)
-    void supportTicketCreatedTemplate({ userEmail, ticketNumber, subject }).then(
-      ({ html, text }) =>
-        enqueueEmail({ to: userEmail, subject: `Your ticket ${ticketNumber} has been received`, html, text }),
-    ).catch(() => {});
+    void supportTicketCreatedTemplate({ userEmail, ticketNumber, subject })
+      .then(({ html, text }) =>
+        enqueueEmail({
+          to: userEmail,
+          subject: `Your ticket ${ticketNumber} has been received`,
+          html,
+          text,
+        })
+      )
+      .catch(() => {});
 
     return {
-      ticket: { id: ticketId, ticketNumber, status: "OPEN" as const, subject, createdAt: now },
+      ticket: {
+        id: ticketId,
+        ticketNumber,
+        status: "OPEN" as const,
+        subject,
+        createdAt: now,
+      },
     };
   });
 }
@@ -101,13 +118,23 @@ export async function replyToTicket({
   body: string;
 }) {
   const ticket = await db
-    .select({ id: supportTicket.id, status: supportTicket.status, userId: supportTicket.userId, subject: supportTicket.subject, ticketNumber: supportTicket.ticketNumber })
+    .select({
+      id: supportTicket.id,
+      status: supportTicket.status,
+      userId: supportTicket.userId,
+      subject: supportTicket.subject,
+      ticketNumber: supportTicket.ticketNumber,
+    })
     .from(supportTicket)
-    .where(and(eq(supportTicket.id, ticketId), eq(supportTicket.userId, userId)))
+    .where(
+      and(eq(supportTicket.id, ticketId), eq(supportTicket.userId, userId))
+    )
     .limit(1)
     .then((r) => r[0] ?? null);
 
-  if (!ticket) return { error: "Not found", status: 404 } as const;
+  if (!ticket) {
+    return { error: "Not found", status: 404 } as const;
+  }
 
   const now = new Date();
   const wasReopened = ticket.status === "CLOSED";
@@ -154,16 +181,25 @@ export async function closeTicketByUser({
   const ticket = await db
     .select({ id: supportTicket.id, ticketNumber: supportTicket.ticketNumber })
     .from(supportTicket)
-    .where(and(eq(supportTicket.id, ticketId), eq(supportTicket.userId, userId)))
+    .where(
+      and(eq(supportTicket.id, ticketId), eq(supportTicket.userId, userId))
+    )
     .limit(1)
     .then((r) => r[0] ?? null);
 
-  if (!ticket) return { error: "Not found", status: 404 } as const;
+  if (!ticket) {
+    return { error: "Not found", status: 404 } as const;
+  }
 
   const now = new Date();
   await db
     .update(supportTicket)
-    .set({ status: "CLOSED", closedAt: now, closedReason: "user_closed", updatedAt: now })
+    .set({
+      status: "CLOSED",
+      closedAt: now,
+      closedReason: "user_closed",
+      updatedAt: now,
+    })
     .where(eq(supportTicket.id, ticketId));
 
   void audit({
@@ -197,10 +233,22 @@ export async function notifyUserOfAdminReply({
     .limit(1)
     .then((r) => r[0] ?? null);
 
-  if (!row) return;
+  if (!row) {
+    return;
+  }
 
-  void supportTicketReplyTemplate({ userEmail: row.userEmail, ticketNumber: row.ticketNumber, subject: row.subject }).then(
-    ({ html, text }) =>
-      enqueueEmail({ to: row.userEmail, subject: `New reply on your ticket ${row.ticketNumber}`, html, text }),
-  ).catch(() => {});
+  void supportTicketReplyTemplate({
+    userEmail: row.userEmail,
+    ticketNumber: row.ticketNumber,
+    subject: row.subject,
+  })
+    .then(({ html, text }) =>
+      enqueueEmail({
+        to: row.userEmail,
+        subject: `New reply on your ticket ${row.ticketNumber}`,
+        html,
+        text,
+      })
+    )
+    .catch(() => {});
 }

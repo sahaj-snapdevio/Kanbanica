@@ -1,12 +1,12 @@
 "use server";
 
-import { headers } from "next/headers";
-import { revalidatePath } from "next/cache";
 import { createId } from "@paralleldrive/cuid2";
-import { and, asc, eq, max } from "drizzle-orm";
+import { eq, max } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+import { checklist, checklistItem } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { checklist, checklistItem } from "@/db/schema";
 import { getSpacePermission, hasPermissionLevel } from "@/lib/permissions";
 
 function revalidateList(workspaceId: string, spaceId: string, listId: string) {
@@ -14,7 +14,11 @@ function revalidateList(workspaceId: string, spaceId: string, listId: string) {
 }
 
 // Checklist mutations require at least "edit" permission
-async function requireEditAccess(userId: string, workspaceId: string, spaceId: string) {
+async function requireEditAccess(
+  userId: string,
+  workspaceId: string,
+  spaceId: string
+) {
   const permission = await getSpacePermission(userId, workspaceId, spaceId);
   return permission !== null && hasPermissionLevel(permission, "edit");
 }
@@ -42,15 +46,21 @@ export async function createChecklist(
   spaceId: string,
   listId: string,
   taskId: string,
-  name: string,
+  name: string
 ): Promise<{ checklistId: string } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
-  if (!(await requireEditAccess(session.user.id, workspaceId, spaceId))) return { error: "Forbidden" };
+  if (!(await requireEditAccess(session.user.id, workspaceId, spaceId))) {
+    return { error: "Forbidden" };
+  }
 
   const trimmed = name.trim();
-  if (!trimmed) return { error: "Checklist name is required" };
+  if (!trimmed) {
+    return { error: "Checklist name is required" };
+  }
 
   const checklistId = createId();
   await db.insert(checklist).values({
@@ -69,15 +79,21 @@ export async function updateChecklist(
   spaceId: string,
   listId: string,
   checklistId: string,
-  name: string,
+  name: string
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
-  if (!(await requireEditAccess(session.user.id, workspaceId, spaceId))) return { error: "Forbidden" };
+  if (!(await requireEditAccess(session.user.id, workspaceId, spaceId))) {
+    return { error: "Forbidden" };
+  }
 
   const trimmed = name.trim();
-  if (!trimmed) return { error: "Name is required" };
+  if (!trimmed) {
+    return { error: "Name is required" };
+  }
 
   await db
     .update(checklist)
@@ -92,12 +108,16 @@ export async function deleteChecklist(
   workspaceId: string,
   spaceId: string,
   listId: string,
-  checklistId: string,
+  checklistId: string
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
-  if (!(await requireEditAccess(session.user.id, workspaceId, spaceId))) return { error: "Forbidden" };
+  if (!(await requireEditAccess(session.user.id, workspaceId, spaceId))) {
+    return { error: "Forbidden" };
+  }
 
   await db.delete(checklist).where(eq(checklist.id, checklistId));
 
@@ -112,15 +132,21 @@ export async function addChecklistItem(
   spaceId: string,
   listId: string,
   checklistId: string,
-  title: string,
+  title: string
 ): Promise<{ itemId: string } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
-  if (!(await requireEditAccess(session.user.id, workspaceId, spaceId))) return { error: "Forbidden" };
+  if (!(await requireEditAccess(session.user.id, workspaceId, spaceId))) {
+    return { error: "Forbidden" };
+  }
 
   const trimmed = title.trim();
-  if (!trimmed) return { error: "Item title is required" };
+  if (!trimmed) {
+    return { error: "Item title is required" };
+  }
 
   const itemId = createId();
   await db.insert(checklistItem).values({
@@ -139,15 +165,21 @@ export async function updateChecklistItem(
   spaceId: string,
   listId: string,
   itemId: string,
-  title: string,
+  title: string
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
-  if (!(await requireEditAccess(session.user.id, workspaceId, spaceId))) return { error: "Forbidden" };
+  if (!(await requireEditAccess(session.user.id, workspaceId, spaceId))) {
+    return { error: "Forbidden" };
+  }
 
   const trimmed = title.trim();
-  if (!trimmed) return { error: "Title is required" };
+  if (!trimmed) {
+    return { error: "Title is required" };
+  }
 
   await db
     .update(checklistItem)
@@ -162,19 +194,25 @@ export async function toggleChecklistItem(
   workspaceId: string,
   spaceId: string,
   listId: string,
-  itemId: string,
+  itemId: string
 ): Promise<{ isChecked: boolean } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
-  if (!(await requireEditAccess(session.user.id, workspaceId, spaceId))) return { error: "Forbidden" };
+  if (!(await requireEditAccess(session.user.id, workspaceId, spaceId))) {
+    return { error: "Forbidden" };
+  }
 
   const [item] = await db
     .select({ isChecked: checklistItem.isChecked })
     .from(checklistItem)
     .where(eq(checklistItem.id, itemId))
     .limit(1);
-  if (!item) return { error: "Item not found" };
+  if (!item) {
+    return { error: "Item not found" };
+  }
 
   const newChecked = !item.isChecked;
   await db
@@ -195,12 +233,16 @@ export async function deleteChecklistItem(
   workspaceId: string,
   spaceId: string,
   listId: string,
-  itemId: string,
+  itemId: string
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
-  if (!(await requireEditAccess(session.user.id, workspaceId, spaceId))) return { error: "Forbidden" };
+  if (!(await requireEditAccess(session.user.id, workspaceId, spaceId))) {
+    return { error: "Forbidden" };
+  }
 
   await db.delete(checklistItem).where(eq(checklistItem.id, itemId));
 

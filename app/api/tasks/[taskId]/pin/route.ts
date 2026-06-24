@@ -1,19 +1,21 @@
-import { type NextRequest, NextResponse } from "next/server";
-import { headers } from "next/headers";
 import { eq } from "drizzle-orm";
+import { headers } from "next/headers";
+import { type NextRequest, NextResponse } from "next/server";
+import { list, task } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { task, list } from "@/db/schema";
 import { canAccessSpace } from "@/lib/permissions";
-import { pinTask, unpinTask, isTaskPinned } from "@/server/pinned-task";
+import { isTaskPinned, pinTask, unpinTask } from "@/server/pinned-task";
 
 // GET /api/tasks/:taskId/pin — check if pinned by current user
 export async function GET(
   _request: NextRequest,
-  { params }: { params: Promise<{ taskId: string }> },
+  { params }: { params: Promise<{ taskId: string }> }
 ) {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const { taskId } = await params;
   const pinned = await isTaskPinned(taskId, session.user.id);
@@ -22,11 +24,17 @@ export async function GET(
 
 async function resolveTask(taskId: string) {
   const [row] = await db
-    .select({ workspaceId: task.workspaceId, spaceId: task.spaceId, listId: task.listId })
+    .select({
+      workspaceId: task.workspaceId,
+      spaceId: task.spaceId,
+      listId: task.listId,
+    })
     .from(task)
     .where(eq(task.id, taskId))
     .limit(1);
-  if (!row) return null;
+  if (!row) {
+    return null;
+  }
 
   // Tasks in a list may have spaceId null on the task row — fall back to the list's spaceId
   if (!row.spaceId && row.listId) {
@@ -35,7 +43,9 @@ async function resolveTask(taskId: string) {
       .from(list)
       .where(eq(list.id, row.listId))
       .limit(1);
-    if (l) return { ...row, spaceId: l.spaceId };
+    if (l) {
+      return { ...row, spaceId: l.spaceId };
+    }
   }
 
   return row;
@@ -44,20 +54,32 @@ async function resolveTask(taskId: string) {
 // POST /api/tasks/:taskId/pin — personal pin
 export async function POST(
   _request: NextRequest,
-  { params }: { params: Promise<{ taskId: string }> },
+  { params }: { params: Promise<{ taskId: string }> }
 ) {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const { taskId } = await params;
   const ctx = await resolveTask(taskId);
-  if (!ctx) return NextResponse.json({ error: "Task not found" }, { status: 404 });
+  if (!ctx) {
+    return NextResponse.json({ error: "Task not found" }, { status: 404 });
+  }
 
   const spaceId = ctx.spaceId;
-  if (!spaceId) return NextResponse.json({ error: "Task has no space" }, { status: 422 });
+  if (!spaceId) {
+    return NextResponse.json({ error: "Task has no space" }, { status: 422 });
+  }
 
-  const accessible = await canAccessSpace(session.user.id, ctx.workspaceId, spaceId);
-  if (!accessible) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const accessible = await canAccessSpace(
+    session.user.id,
+    ctx.workspaceId,
+    spaceId
+  );
+  if (!accessible) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const result = await pinTask(taskId, session.user.id, ctx.workspaceId);
   if ("error" in result) {
@@ -71,14 +93,18 @@ export async function POST(
 // DELETE /api/tasks/:taskId/pin — personal unpin
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: Promise<{ taskId: string }> },
+  { params }: { params: Promise<{ taskId: string }> }
 ) {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const { taskId } = await params;
   const result = await unpinTask(taskId, session.user.id);
-  if ("error" in result) return NextResponse.json({ error: result.error }, { status: 500 });
+  if ("error" in result) {
+    return NextResponse.json({ error: result.error }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true });
 }
