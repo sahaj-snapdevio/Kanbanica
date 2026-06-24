@@ -23,10 +23,10 @@ html {
 body {
   min-height: 100vh;
   margin: 0;
-  letter-spacing: 0;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  letter-spacing: 0;
 }
 
 @theme inline {
@@ -96,181 +96,183 @@ body {
 
 :root {
   /* ── 3-layer surface system ─────────────────────────── */
-  --bg-app:      #F7F9FB;
-  --bg-surface:  #FFFFFF;
-  --bg-elevated: #FFFFFF;
-  --bg-sidebar:  #1A1D23;
-  --bg-sidebar-item-hover:  rgba(255,255,255,0.06);
-  --bg-sidebar-item-active: rgba(255,255,255,0.10);
+  --bg-app: #f7f9fb;
+  --bg-surface: #ffffff;
+  --bg-elevated: #ffffff;
+  --bg-sidebar: #1a1d23;
+  --bg-sidebar-item-hover: rgba(255, 255, 255, 0.06);
+  --bg-sidebar-item-active: rgba(255, 255, 255, 0.1);
 
   /* ── Text ───────────────────────────────────────────── */
-  --text-primary:        #0F1117;
-  --text-secondary:      #5E6573;
-  --text-muted:          #9AA0AD;
-  --text-inverse:        #FFFFFF;
-  --text-sidebar:        #C9CDD6;
-  --text-sidebar-active: #FFFFFF;
+  --text-primary: #0f1117;
+  --text-secondary: #5e6573;
+  --text-muted: #9aa0ad;
+  --text-inverse: #ffffff;
+  --text-sidebar: #c9cdd6;
+  --text-sidebar-active: #ffffff;
 
   /* ── Brand (indigo) ─────────────────────────────────── */
-  --brand:       #5B6BF8;
-  --brand-hover: #4554E8;
-  --brand-muted: #EEF0FE;
+  --brand: #5b6bf8;
+  --brand-hover: #4554e8;
+  --brand-muted: #eef0fe;
 
   /* ── Shadows ────────────────────────────────────────── */
-  --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.05);
-  --shadow-md: 0 2px 8px 0 rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
-  --shadow-lg: 0 8px 24px 0 rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06);
-  --shadow-xl: 0 20px 40px 0 rgba(0,0,0,0.16), 0 0 0 1px rgba(0,0,0,0.08);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 2px 8px 0 rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 8px 24px 0 rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.06);
+  --shadow-xl: 0 20px 40px 0 rgba(0, 0, 0, 0.16), 0 0 0 1px rgba(0, 0, 0, 0.08);
 
   /* ── Motion ─────────────────────────────────────────── */
-  --ease-default:    cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-out:        cubic-bezier(0.0, 0, 0.2, 1);
-  --duration-fast:   120ms;
+  --ease-default: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --duration-fast: 120ms;
   --duration-normal: 200ms;
-  --duration-slow:   300ms;
+  --duration-slow: 300ms;
 
   /* ── Page background ────────────────────────────────── */
-  --page: #F4F5F7;
+  --page: #f4f5f7;
 
   /* ── Status ──────────────────────────────────────────── */
-  --success:          #16A34A;
-  --success-foreground: #14532D;
-  --success-subtle:   #DCFCE7;
-  --success-light:    #4ADE80;
-  --warning:          #D97706;
-  --warning-muted:    #FEF3C7;
-  --danger:           #DC2626;
-  --danger-muted:     #FEE2E2;
-  --info:             #2563EB;
-  --info-muted:       #DBEAFE;
+  --success: #16a34a;
+  --success-foreground: #14532d;
+  --success-subtle: #dcfce7;
+  --success-light: #4ade80;
+  --warning: #d97706;
+  --warning-muted: #fef3c7;
+  --danger: #dc2626;
+  --danger-muted: #fee2e2;
+  --info: #2563eb;
+  --info-muted: #dbeafe;
 
   /* ── Shadcn core tokens ──────────────────────────────── */
-  --background: #FFFFFF;
-  --foreground: #0F1117;
-  --card:       #FFFFFF;
-  --card-foreground: #0F1117;
-  --popover:    #FFFFFF;
-  --popover-foreground: #0F1117;
+  --background: #ffffff;
+  --foreground: #0f1117;
+  --card: #ffffff;
+  --card-foreground: #0f1117;
+  --popover: #ffffff;
+  --popover-foreground: #0f1117;
 
-  --primary:          #5B6BF8;
-  --primary-foreground: #FFFFFF;
+  --primary: #5b6bf8;
+  --primary-foreground: #ffffff;
 
-  --secondary:          #F4F5F7;
-  --secondary-foreground: #5E6573;
+  --secondary: #f4f5f7;
+  --secondary-foreground: #5e6573;
 
-  --muted:          #F4F5F7;
+  --muted: #f4f5f7;
   /* --muted-foreground: #9AA0AD; */
---muted-foreground: #5E6573;
-  --accent:          #EEF0FE;
-  --accent-foreground: #4554E8;
+  --muted-foreground: #5e6573;
+  --accent: #eef0fe;
+  --accent-foreground: #4554e8;
 
-  --destructive: #DC2626;
+  --destructive: #dc2626;
 
-  --border: #E4E7EC;
-  --input:  #E4E7EC;
-  --ring:   #5B6BF8;
+  --border: #e4e7ec;
+  --input: #e4e7ec;
+  --ring: #5b6bf8;
 
-  --chart-1: #5B6BF8;
-  --chart-2: #16A34A;
-  --chart-3: #D97706;
-  --chart-4: #DC2626;
-  --chart-5: #8B5CF6;
+  --chart-1: #5b6bf8;
+  --chart-2: #16a34a;
+  --chart-3: #d97706;
+  --chart-4: #dc2626;
+  --chart-5: #8b5cf6;
 
   /* Radius */
   --radius: 0.5rem;
 
   /* ── Sidebar tokens (for shadcn sidebar component) ───── */
-  --sidebar:                  #1A1D23;
-  --sidebar-foreground:       #C9CDD6;
-  --sidebar-primary:          #5B6BF8;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent:           rgba(255,255,255,0.08);
-  --sidebar-accent-foreground: #FFFFFF;
-  --sidebar-border:           rgba(255,255,255,0.08);
-  --sidebar-ring:             #5B6BF8;
+  --sidebar: #1a1d23;
+  --sidebar-foreground: #c9cdd6;
+  --sidebar-primary: #5b6bf8;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgba(255, 255, 255, 0.08);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: #5b6bf8;
 }
 
 .dark {
   /* ── 3-layer surface system ─────────────────────────── */
-  --bg-app:      #0D0F12;
-  --bg-surface:  #161A20;
-  --bg-elevated: #1E2229;
-  --bg-sidebar:  #0D0F12;
-  --bg-sidebar-item-hover:  rgba(255,255,255,0.05);
-  --bg-sidebar-item-active: rgba(255,255,255,0.09);
+  --bg-app: #0d0f12;
+  --bg-surface: #161a20;
+  --bg-elevated: #1e2229;
+  --bg-sidebar: #0d0f12;
+  --bg-sidebar-item-hover: rgba(255, 255, 255, 0.05);
+  --bg-sidebar-item-active: rgba(255, 255, 255, 0.09);
 
   /* ── Text ───────────────────────────────────────────── */
-  --text-primary:        #F0F2F5;
-  --text-secondary:      #8B919E;
-  --text-muted:          #545B68;
-  --text-sidebar:        #8B919E;
-  --text-sidebar-active: #F0F2F5;
+  --text-primary: #f0f2f5;
+  --text-secondary: #8b919e;
+  --text-muted: #545b68;
+  --text-sidebar: #8b919e;
+  --text-sidebar-active: #f0f2f5;
 
   /* ── Brand ──────────────────────────────────────────── */
-  --brand:       #6475FA;
-  --brand-hover: #7585FB;
-  --brand-muted: #1E2140;
+  --brand: #6475fa;
+  --brand-hover: #7585fb;
+  --brand-muted: #1e2140;
 
   /* ── Shadows (stronger in dark — compensate for low contrast) */
-  --shadow-md: 0 2px 8px 0 rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04);
-  --shadow-lg: 0 8px 24px 0 rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06);
+  --shadow-md:
+    0 2px 8px 0 rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --shadow-lg:
+    0 8px 24px 0 rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.06);
 
   /* ── Page ────────────────────────────────────────────── */
-  --page: #0D0F12;
+  --page: #0d0f12;
 
   /* ── Status ──────────────────────────────────────────── */
-  --success:          #4ADE80;
-  --success-foreground: #DCFCE7;
-  --success-subtle:   #14532D;
-  --success-light:    #4ADE80;
-  --warning:          #FCD34D;
-  --warning-muted:    #451A03;
-  --danger:           #F87171;
-  --danger-muted:     #450A0A;
-  --info:             #60A5FA;
-  --info-muted:       #1E3A5F;
+  --success: #4ade80;
+  --success-foreground: #dcfce7;
+  --success-subtle: #14532d;
+  --success-light: #4ade80;
+  --warning: #fcd34d;
+  --warning-muted: #451a03;
+  --danger: #f87171;
+  --danger-muted: #450a0a;
+  --info: #60a5fa;
+  --info-muted: #1e3a5f;
 
   /* ── Shadcn core tokens ──────────────────────────────── */
-  --background: #161A20;
-  --foreground: #F0F2F5;
-  --card:       #1E2229;
-  --card-foreground: #F0F2F5;
-  --popover:    #1E2229;
-  --popover-foreground: #F0F2F5;
+  --background: #161a20;
+  --foreground: #f0f2f5;
+  --card: #1e2229;
+  --card-foreground: #f0f2f5;
+  --popover: #1e2229;
+  --popover-foreground: #f0f2f5;
 
-  --primary:          #6475FA;
-  --primary-foreground: #0D0F12;
+  --primary: #6475fa;
+  --primary-foreground: #0d0f12;
 
-  --secondary:          #1E2229;
-  --secondary-foreground: #8B919E;
+  --secondary: #1e2229;
+  --secondary-foreground: #8b919e;
 
-  --muted:          #1E2229;
-  --muted-foreground: #545B68;
+  --muted: #1e2229;
+  --muted-foreground: #545b68;
 
-  --accent:          #1E2140;
-  --accent-foreground: #7585FB;
+  --accent: #1e2140;
+  --accent-foreground: #7585fb;
 
-  --destructive: #F87171;
+  --destructive: #f87171;
 
-  --border: #272B33;
-  --input:  #272B33;
-  --ring:   #6475FA;
+  --border: #272b33;
+  --input: #272b33;
+  --ring: #6475fa;
 
-  --chart-1: #6475FA;
-  --chart-2: #4ADE80;
-  --chart-3: #FCD34D;
-  --chart-4: #F87171;
-  --chart-5: #A78BFA;
+  --chart-1: #6475fa;
+  --chart-2: #4ade80;
+  --chart-3: #fcd34d;
+  --chart-4: #f87171;
+  --chart-5: #a78bfa;
 
   /* ── Sidebar tokens ──────────────────────────────────── */
-  --sidebar:                  #0D0F12;
-  --sidebar-foreground:       #8B919E;
-  --sidebar-primary:          #6475FA;
-  --sidebar-primary-foreground: #F0F2F5;
-  --sidebar-accent:           rgba(255,255,255,0.07);
-  --sidebar-accent-foreground: #F0F2F5;
-  --sidebar-border:           rgba(255,255,255,0.07);
-  --sidebar-ring:             #6475FA;
+  --sidebar: #0d0f12;
+  --sidebar-foreground: #8b919e;
+  --sidebar-primary: #6475fa;
+  --sidebar-primary-foreground: #f0f2f5;
+  --sidebar-accent: rgba(255, 255, 255, 0.07);
+  --sidebar-accent-foreground: #f0f2f5;
+  --sidebar-border: rgba(255, 255, 255, 0.07);
+  --sidebar-ring: #6475fa;
 }
 
 /* ── Tiptap / ProseMirror editor styles ─────────────────────────────── */
@@ -279,70 +281,70 @@ body {
 }
 
 .ProseMirror p.is-editor-empty:first-child::before {
-  content: attr(data-placeholder);
   float: left;
+  height: 0;
   color: var(--muted-foreground);
   pointer-events: none;
-  height: 0;
+  content: attr(data-placeholder);
 }
 
 /* Prose content */
 .ProseMirror h1 {
+  margin: 1rem 0 0.5rem;
   font-size: 1.5rem;
   font-weight: 700;
-  margin: 1rem 0 0.5rem;
 }
 .ProseMirror h2 {
+  margin: 0.875rem 0 0.4rem;
   font-size: 1.25rem;
   font-weight: 600;
-  margin: 0.875rem 0 0.4rem;
 }
 .ProseMirror h3 {
+  margin: 0.75rem 0 0.35rem;
   font-size: 1.1rem;
   font-weight: 600;
-  margin: 0.75rem 0 0.35rem;
 }
 .ProseMirror p {
   margin: 0.25rem 0;
   line-height: 1.65;
 }
 .ProseMirror ul {
-  list-style: disc;
   padding-left: 1.5rem;
   margin: 0.4rem 0;
+  list-style: disc;
 }
 .ProseMirror ol {
-  list-style: decimal;
   padding-left: 1.5rem;
   margin: 0.4rem 0;
+  list-style: decimal;
 }
 .ProseMirror li {
   margin: 0.15rem 0;
 }
 .ProseMirror blockquote {
-  border-left: 3px solid var(--border);
   padding-left: 1rem;
-  color: var(--muted-foreground);
   margin: 0.5rem 0;
   font-style: italic;
+  color: var(--muted-foreground);
+  border-left: 3px solid var(--border);
 }
 .ProseMirror code {
+  padding: 0.1em 0.35em;
+  font-family: monospace;
+  font-size: 0.875em;
   background: var(--muted);
   border-radius: 0.25rem;
-  padding: 0.1em 0.35em;
-  font-size: 0.875em;
-  font-family: monospace;
 }
 .ProseMirror pre {
+  padding: 0.75rem 1rem;
+  margin: 0.5rem 0;
+  overflow-x: auto;
   background: var(--muted);
   border-radius: 0.5rem;
-  padding: 0.75rem 1rem;
-  overflow-x: auto;
-  margin: 0.5rem 0;
 }
 .ProseMirror pre code {
-  background: none;
   padding: 0;
+  background: none;
 }
 .ProseMirror strong {
   font-weight: 600;
@@ -357,40 +359,40 @@ body {
   text-decoration: underline;
 }
 .ProseMirror hr {
+  margin: 1rem 0;
   border: none;
   border-top: 1px solid var(--border);
-  margin: 1rem 0;
 }
 
 /* Task list */
 .ProseMirror ul[data-type="taskList"] {
-  list-style: none;
   padding-left: 0.25rem;
+  list-style: none;
 }
 
 /* Mentions */
 .mention {
-  color: var(--primary);
-  background: color-mix(in oklch, var(--primary) 12%, transparent);
-  border-radius: 0.25rem;
   padding: 0 0.25rem;
   font-weight: 500;
+  color: var(--primary);
   cursor: default;
+  background: color-mix(in oklch, var(--primary) 12%, transparent);
+  border-radius: 0.25rem;
 }
 
 /* Tippy mention popup — reset default tippy theme */
 .tippy-box[data-theme~="mention-popup"] {
+  padding: 0;
   background: transparent;
   box-shadow: none;
-  padding: 0;
 }
 .tippy-box[data-theme~="mention-popup"] > .tippy-content {
   padding: 0;
 }
 .ProseMirror ul[data-type="taskList"] li {
   display: flex;
-  align-items: flex-start;
   gap: 0.5rem;
+  align-items: flex-start;
 }
 .ProseMirror ul[data-type="taskList"] li > label {
   margin-top: 2px;

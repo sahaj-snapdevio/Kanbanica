@@ -1,18 +1,25 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { CalendarBlankIcon, LightningIcon } from "@phosphor-icons/react";
+import { format } from "date-fns";
+import { useEffect, useState } from "react";
+import { createSprint } from "@/app/actions/sprint";
+import { Button } from "@/components/ui/button";
+import { ClickUpCalendar } from "@/components/ui/clickup-calendar";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -21,23 +28,23 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ClickUpCalendar } from "@/components/ui/clickup-calendar";
-import { createSprint } from "@/app/actions/sprint";
-import { format } from "date-fns";
+import { Textarea } from "@/components/ui/textarea";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface CreateSprintModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  workspaceId: string;
-  spaceId: string;
   onCreated: () => void;
+  onOpenChange: (open: boolean) => void;
+  open: boolean;
+  spaceId: string;
+  workspaceId: string;
 }
 
 type DurationWeeks = 1 | 2 | 3 | 4;
-type IncompleteStrategy = "move_to_backlog" | "move_to_next_sprint" | "leave_as_is";
+type IncompleteStrategy =
+  | "move_to_backlog"
+  | "move_to_next_sprint"
+  | "leave_as_is";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -86,7 +93,9 @@ export function CreateSprintModal({
 
   function handleAutoCreateChange(checked: boolean) {
     setAutoCreateNext(checked);
-    if (!checked) setAutoCloseOnNext(false);
+    if (!checked) {
+      setAutoCloseOnNext(false);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -130,7 +139,7 @@ export function CreateSprintModal({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent className="sm:max-w-130">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -139,19 +148,19 @@ export function CreateSprintModal({
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-5 py-1">
+        <form className="space-y-5 py-1" onSubmit={handleSubmit}>
           {/* Sprint Name */}
           <div className="space-y-1.5">
             <Label htmlFor="sprint-name">
               Sprint Name <span className="text-destructive">*</span>
             </Label>
             <Input
+              autoFocus
               id="sprint-name"
+              maxLength={100}
+              onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Sprint 1, Q3 Week 2"
               value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={100}
-              autoFocus
             />
           </div>
 
@@ -164,13 +173,13 @@ export function CreateSprintModal({
               </span>
             </Label>
             <Textarea
-              id="sprint-goal"
-              placeholder="What does this sprint aim to achieve?"
-              value={goal}
-              onChange={(e) => setGoal(e.target.value)}
-              maxLength={200}
-              rows={2}
               className="resize-none"
+              id="sprint-goal"
+              maxLength={200}
+              onChange={(e) => setGoal(e.target.value)}
+              placeholder="What does this sprint aim to achieve?"
+              rows={2}
+              value={goal}
             />
             <p className="text-xs text-muted-foreground text-right">
               {goal.length}/200
@@ -183,20 +192,29 @@ export function CreateSprintModal({
               <Label>
                 Start Date <span className="text-destructive">*</span>
               </Label>
-              <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
+              <Popover onOpenChange={setStartDateOpen} open={startDateOpen}>
                 <PopoverTrigger asChild>
                   <button className="flex h-10 w-full items-center gap-2 border border-input px-3 text-sm transition-colors hover:bg-accent">
                     <CalendarBlankIcon className="size-3.5 text-muted-foreground shrink-0" />
-                    <span className={startDate ? "text-foreground" : "text-muted-foreground"}>
-                      {startDate ? format(startDate, "MMM d, yyyy") : "Pick a date"}
+                    <span
+                      className={
+                        startDate ? "text-foreground" : "text-muted-foreground"
+                      }
+                    >
+                      {startDate
+                        ? format(startDate, "MMM d, yyyy")
+                        : "Pick a date"}
                     </span>
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
+                <PopoverContent align="start" className="w-auto p-0">
                   <ClickUpCalendar
-                    selectedDate={startDate}
-                    onSelect={(date) => { setStartDate(date); setStartDateOpen(false); }}
                     onClose={() => setStartDateOpen(false)}
+                    onSelect={(date) => {
+                      setStartDate(date);
+                      setStartDateOpen(false);
+                    }}
+                    selectedDate={startDate}
                   />
                 </PopoverContent>
               </Popover>
@@ -205,10 +223,10 @@ export function CreateSprintModal({
             <div className="space-y-1.5">
               <Label htmlFor="sprint-duration">Duration</Label>
               <Select
-                value={String(durationWeeks)}
                 onValueChange={(v) =>
                   setDurationWeeks(Number(v) as DurationWeeks)
                 }
+                value={String(durationWeeks)}
               >
                 <SelectTrigger id="sprint-duration">
                   <SelectValue />
@@ -227,7 +245,9 @@ export function CreateSprintModal({
           {endDate && (
             <div className="rounded-md bg-muted/50 px-3 py-2 text-sm flex items-center justify-between">
               <span className="text-muted-foreground">End date</span>
-              <span className="font-medium">{format(endDate, "MMM d, yyyy")}</span>
+              <span className="font-medium">
+                {format(endDate, "MMM d, yyyy")}
+              </span>
             </div>
           )}
 
@@ -272,10 +292,10 @@ export function CreateSprintModal({
                       Incomplete task strategy
                     </Label>
                     <Select
-                      value={incompleteStrategy}
                       onValueChange={(v) =>
                         setIncompleteStrategy(v as IncompleteStrategy)
                       }
+                      value={incompleteStrategy}
                     >
                       <SelectTrigger id="incomplete-strategy">
                         <SelectValue />
@@ -309,14 +329,14 @@ export function CreateSprintModal({
 
           <DialogFooter>
             <Button
+              disabled={loading}
+              onClick={() => onOpenChange(false)}
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={loading}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button disabled={loading} type="submit">
               {loading ? "Creating…" : "Create Sprint"}
             </Button>
           </DialogFooter>

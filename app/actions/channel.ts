@@ -1,62 +1,58 @@
 "use server";
 
-import { headers } from "next/headers";
-import { and, asc, desc, eq, lt } from "drizzle-orm";
 import { createId } from "@paralleldrive/cuid2";
-import { auth } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { and, asc, desc, eq, lt } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import {
   channel,
   channelMember,
   channelMessage,
   channelMessageAttachment,
-  workspaceMember,
   user,
+  workspaceMember,
 } from "@/db/schema";
-import { getWorkspaceMembership } from "@/lib/permissions";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
 import { createNotifications } from "@/lib/notifications/create-notification";
-import { revalidatePath } from "next/cache";
+import { getWorkspaceMembership } from "@/lib/permissions";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 async function getSessionUser() {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return null;
+  if (!session) {
+    return null;
+  }
   return session.user;
 }
 
 async function requireWorkspaceMember(userId: string, workspaceId: string) {
   const membership = await getWorkspaceMembership(userId, workspaceId);
-  if (!membership) return null;
+  if (!membership) {
+    return null;
+  }
   return membership;
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface ChannelSummary {
+  createdAt: Date;
   id: string;
   name: string;
-  createdAt: Date;
 }
 
 export interface ChannelMemberInfo {
-  userId: string;
-  name: string;
   email: string;
   image: string | null;
-  role: string;
   joinedAt: Date;
+  name: string;
+  role: string;
+  userId: string;
 }
 
 export interface ChannelMessageInfo {
-  id: string;
-  senderId: string;
-  senderName: string | null;
-  senderEmail: string;
-  senderImage: string | null;
-  content: string;
-  isDeleted: boolean;
-  createdAt: Date;
   attachments: {
     id: string;
     fileName: string;
@@ -64,18 +60,30 @@ export interface ChannelMessageInfo {
     fileSize: number;
     mimeType: string;
   }[];
+  content: string;
+  createdAt: Date;
+  id: string;
+  isDeleted: boolean;
+  senderEmail: string;
+  senderId: string;
+  senderImage: string | null;
+  senderName: string | null;
 }
 
 // ─── getChannels ──────────────────────────────────────────────────────────────
 
 export async function getChannels(
-  workspaceId: string,
+  workspaceId: string
 ): Promise<{ channels: ChannelSummary[] } | { error: string }> {
   const sessionUser = await getSessionUser();
-  if (!sessionUser) return { error: "Unauthorized" };
+  if (!sessionUser) {
+    return { error: "Unauthorized" };
+  }
 
   const membership = await requireWorkspaceMember(sessionUser.id, workspaceId);
-  if (!membership) return { error: "Unauthorized" };
+  if (!membership) {
+    return { error: "Unauthorized" };
+  }
 
   const channels = await db
     .select({
@@ -94,13 +102,17 @@ export async function getChannels(
 
 export async function getChannelDetails(
   workspaceId: string,
-  channelId: string,
+  channelId: string
 ): Promise<{ channel: ChannelSummary } | { error: string }> {
   const sessionUser = await getSessionUser();
-  if (!sessionUser) return { error: "Unauthorized" };
+  if (!sessionUser) {
+    return { error: "Unauthorized" };
+  }
 
   const membership = await requireWorkspaceMember(sessionUser.id, workspaceId);
-  if (!membership) return { error: "Unauthorized" };
+  if (!membership) {
+    return { error: "Unauthorized" };
+  }
 
   const [ch] = await db
     .select({
@@ -112,7 +124,9 @@ export async function getChannelDetails(
     .where(and(eq(channel.id, channelId), eq(channel.workspaceId, workspaceId)))
     .limit(1);
 
-  if (!ch) return { error: "Channel not found" };
+  if (!ch) {
+    return { error: "Channel not found" };
+  }
 
   return { channel: ch };
 }
@@ -121,17 +135,28 @@ export async function getChannelDetails(
 
 export async function createChannel(
   workspaceId: string,
-  name: string,
+  name: string
 ): Promise<{ channelId: string } | { error: string }> {
   const sessionUser = await getSessionUser();
-  if (!sessionUser) return { error: "Unauthorized" };
+  if (!sessionUser) {
+    return { error: "Unauthorized" };
+  }
 
   const membership = await requireWorkspaceMember(sessionUser.id, workspaceId);
-  if (!membership) return { error: "Unauthorized" };
+  if (!membership) {
+    return { error: "Unauthorized" };
+  }
 
-  const trimmed = name.trim().toLowerCase().replace(/[^a-z0-9\-_ ]/g, "");
-  if (!trimmed || trimmed.length < 1) return { error: "Channel name is required" };
-  if (trimmed.length > 50) return { error: "Channel name too long" };
+  const trimmed = name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\-_ ]/g, "");
+  if (!trimmed || trimmed.length < 1) {
+    return { error: "Channel name is required" };
+  }
+  if (trimmed.length > 50) {
+    return { error: "Channel name too long" };
+  }
 
   // Check uniqueness
   const [existing] = await db
@@ -140,7 +165,9 @@ export async function createChannel(
     .where(and(eq(channel.workspaceId, workspaceId), eq(channel.name, trimmed)))
     .limit(1);
 
-  if (existing) return { error: `Channel "${trimmed}" already exists` };
+  if (existing) {
+    return { error: `Channel "${trimmed}" already exists` };
+  }
 
   const channelId = createId();
   const now = new Date();
@@ -172,13 +199,17 @@ export async function createChannel(
 
 export async function deleteChannel(
   workspaceId: string,
-  channelId: string,
+  channelId: string
 ): Promise<{ ok: true } | { error: string }> {
   const sessionUser = await getSessionUser();
-  if (!sessionUser) return { error: "Unauthorized" };
+  if (!sessionUser) {
+    return { error: "Unauthorized" };
+  }
 
   const membership = await requireWorkspaceMember(sessionUser.id, workspaceId);
-  if (!membership) return { error: "Unauthorized" };
+  if (!membership) {
+    return { error: "Unauthorized" };
+  }
 
   // Only workspace admins/owners or channel admins can delete
   const isWsAdmin = membership.role === "OWNER" || membership.role === "ADMIN";
@@ -187,7 +218,12 @@ export async function deleteChannel(
     const [chMember] = await db
       .select({ role: channelMember.role })
       .from(channelMember)
-      .where(and(eq(channelMember.channelId, channelId), eq(channelMember.userId, sessionUser.id)))
+      .where(
+        and(
+          eq(channelMember.channelId, channelId),
+          eq(channelMember.userId, sessionUser.id)
+        )
+      )
       .limit(1);
 
     if (!chMember || chMember.role !== "ADMIN") {
@@ -195,7 +231,11 @@ export async function deleteChannel(
     }
   }
 
-  await db.delete(channel).where(and(eq(channel.id, channelId), eq(channel.workspaceId, workspaceId)));
+  await db
+    .delete(channel)
+    .where(
+      and(eq(channel.id, channelId), eq(channel.workspaceId, workspaceId))
+    );
 
   revalidatePath(`/${workspaceId}`);
   return { ok: true };
@@ -205,13 +245,17 @@ export async function deleteChannel(
 
 export async function getChannelMembers(
   workspaceId: string,
-  channelId: string,
+  channelId: string
 ): Promise<{ members: ChannelMemberInfo[] } | { error: string }> {
   const sessionUser = await getSessionUser();
-  if (!sessionUser) return { error: "Unauthorized" };
+  if (!sessionUser) {
+    return { error: "Unauthorized" };
+  }
 
   const membership = await requireWorkspaceMember(sessionUser.id, workspaceId);
-  if (!membership) return { error: "Unauthorized" };
+  if (!membership) {
+    return { error: "Unauthorized" };
+  }
 
   const rows = await db
     .select({
@@ -245,17 +289,23 @@ export async function addChannelMember(
   workspaceId: string,
   channelId: string,
   userId: string,
-  role: "ADMIN" | "MEMBER" = "MEMBER",
+  role: "ADMIN" | "MEMBER" = "MEMBER"
 ): Promise<{ ok: true } | { error: string }> {
   const sessionUser = await getSessionUser();
-  if (!sessionUser) return { error: "Unauthorized" };
+  if (!sessionUser) {
+    return { error: "Unauthorized" };
+  }
 
   const membership = await requireWorkspaceMember(sessionUser.id, workspaceId);
-  if (!membership) return { error: "Unauthorized" };
+  if (!membership) {
+    return { error: "Unauthorized" };
+  }
 
   // Verify target is a workspace member
   const targetMembership = await requireWorkspaceMember(userId, workspaceId);
-  if (!targetMembership) return { error: "User is not a workspace member" };
+  if (!targetMembership) {
+    return { error: "User is not a workspace member" };
+  }
 
   // Check channel exists and belongs to workspace
   const [ch] = await db
@@ -264,7 +314,9 @@ export async function addChannelMember(
     .where(and(eq(channel.id, channelId), eq(channel.workspaceId, workspaceId)))
     .limit(1);
 
-  if (!ch) return { error: "Channel not found" };
+  if (!ch) {
+    return { error: "Channel not found" };
+  }
 
   try {
     await db.insert(channelMember).values({
@@ -278,7 +330,12 @@ export async function addChannelMember(
     await db
       .update(channelMember)
       .set({ role })
-      .where(and(eq(channelMember.channelId, channelId), eq(channelMember.userId, userId)));
+      .where(
+        and(
+          eq(channelMember.channelId, channelId),
+          eq(channelMember.userId, userId)
+        )
+      );
   }
 
   return { ok: true };
@@ -289,17 +346,26 @@ export async function addChannelMember(
 export async function removeChannelMember(
   workspaceId: string,
   channelId: string,
-  userId: string,
+  userId: string
 ): Promise<{ ok: true } | { error: string }> {
   const sessionUser = await getSessionUser();
-  if (!sessionUser) return { error: "Unauthorized" };
+  if (!sessionUser) {
+    return { error: "Unauthorized" };
+  }
 
   const membership = await requireWorkspaceMember(sessionUser.id, workspaceId);
-  if (!membership) return { error: "Unauthorized" };
+  if (!membership) {
+    return { error: "Unauthorized" };
+  }
 
   await db
     .delete(channelMember)
-    .where(and(eq(channelMember.channelId, channelId), eq(channelMember.userId, userId)));
+    .where(
+      and(
+        eq(channelMember.channelId, channelId),
+        eq(channelMember.userId, userId)
+      )
+    );
 
   return { ok: true };
 }
@@ -309,13 +375,19 @@ export async function removeChannelMember(
 export async function getChannelMessages(
   workspaceId: string,
   channelId: string,
-  cursor?: string, // ISO date string for pagination
-): Promise<{ messages: ChannelMessageInfo[]; hasMore: boolean } | { error: string }> {
+  cursor?: string // ISO date string for pagination
+): Promise<
+  { messages: ChannelMessageInfo[]; hasMore: boolean } | { error: string }
+> {
   const sessionUser = await getSessionUser();
-  if (!sessionUser) return { error: "Unauthorized" };
+  if (!sessionUser) {
+    return { error: "Unauthorized" };
+  }
 
   const membership = await requireWorkspaceMember(sessionUser.id, workspaceId);
-  if (!membership) return { error: "Unauthorized" };
+  if (!membership) {
+    return { error: "Unauthorized" };
+  }
 
   const PAGE_SIZE = 50;
 
@@ -346,7 +418,7 @@ export async function getChannelMessages(
 
   // Fetch attachments for all messages
   const messageIds = pageRows.map((r) => r.id);
-  let attachmentMap = new Map<string, ChannelMessageInfo["attachments"]>();
+  const attachmentMap = new Map<string, ChannelMessageInfo["attachments"]>();
 
   if (messageIds.length > 0) {
     const { inArray } = await import("drizzle-orm");
@@ -364,7 +436,9 @@ export async function getChannelMessages(
       .orderBy(asc(channelMessageAttachment.createdAt));
 
     for (const a of attachments) {
-      if (!attachmentMap.has(a.messageId)) attachmentMap.set(a.messageId, []);
+      if (!attachmentMap.has(a.messageId)) {
+        attachmentMap.set(a.messageId, []);
+      }
       attachmentMap.get(a.messageId)!.push({
         id: a.id,
         fileName: a.fileName,
@@ -398,13 +472,17 @@ export async function sendChannelMessage(
   channelId: string,
   content: string,
   attachmentIds?: string[],
-  mentionedUserIds?: string[],
+  mentionedUserIds?: string[]
 ): Promise<{ messageId: string } | { error: string }> {
   const sessionUser = await getSessionUser();
-  if (!sessionUser) return { error: "Unauthorized" };
+  if (!sessionUser) {
+    return { error: "Unauthorized" };
+  }
 
   const membership = await requireWorkspaceMember(sessionUser.id, workspaceId);
-  if (!membership) return { error: "Unauthorized" };
+  if (!membership) {
+    return { error: "Unauthorized" };
+  }
 
   const trimmed = content.trim();
   if (!trimmed && (!attachmentIds || attachmentIds.length === 0)) {
@@ -463,21 +541,32 @@ export async function sendChannelMessage(
 export async function deleteChannelMessage(
   workspaceId: string,
   channelId: string,
-  messageId: string,
+  messageId: string
 ): Promise<{ ok: true } | { error: string }> {
   const sessionUser = await getSessionUser();
-  if (!sessionUser) return { error: "Unauthorized" };
+  if (!sessionUser) {
+    return { error: "Unauthorized" };
+  }
 
   const membership = await requireWorkspaceMember(sessionUser.id, workspaceId);
-  if (!membership) return { error: "Unauthorized" };
+  if (!membership) {
+    return { error: "Unauthorized" };
+  }
 
   const [msg] = await db
     .select({ senderId: channelMessage.senderId })
     .from(channelMessage)
-    .where(and(eq(channelMessage.id, messageId), eq(channelMessage.channelId, channelId)))
+    .where(
+      and(
+        eq(channelMessage.id, messageId),
+        eq(channelMessage.channelId, channelId)
+      )
+    )
     .limit(1);
 
-  if (!msg) return { error: "Message not found" };
+  if (!msg) {
+    return { error: "Message not found" };
+  }
 
   const isWsAdmin = membership.role === "OWNER" || membership.role === "ADMIN";
   if (msg.senderId !== sessionUser.id && !isWsAdmin) {
@@ -495,20 +584,24 @@ export async function deleteChannelMessage(
 // ─── getWorkspaceMembers (for mention autocomplete) ───────────────────────────
 
 export interface MentionableMember {
-  id: string;
-  name: string;
   email: string;
+  id: string;
   image: string | null;
+  name: string;
 }
 
 export async function getChannelMentionableMembers(
-  workspaceId: string,
+  workspaceId: string
 ): Promise<{ members: MentionableMember[] } | { error: string }> {
   const sessionUser = await getSessionUser();
-  if (!sessionUser) return { error: "Unauthorized" };
+  if (!sessionUser) {
+    return { error: "Unauthorized" };
+  }
 
   const membership = await requireWorkspaceMember(sessionUser.id, workspaceId);
-  if (!membership) return { error: "Unauthorized" };
+  if (!membership) {
+    return { error: "Unauthorized" };
+  }
 
   const rows = await db
     .select({
@@ -522,8 +615,8 @@ export async function getChannelMentionableMembers(
     .where(
       and(
         eq(workspaceMember.workspaceId, workspaceId),
-        eq(workspaceMember.status, "ACTIVE"),
-      ),
+        eq(workspaceMember.status, "ACTIVE")
+      )
     );
 
   return {

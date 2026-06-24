@@ -1,24 +1,28 @@
 "use client";
 
-import * as React from "react";
-import { useRouter } from "next/navigation";
 import {
-  MagnifyingGlassIcon,
-  XIcon,
+  ClockIcon,
   ListIcon,
+  MagnifyingGlassIcon,
   SquaresFourIcon,
   UserIcon,
-  ClockIcon,
+  XIcon,
 } from "@phosphor-icons/react";
-import { useDebouncedSearch } from "@/hooks/use-debounced-search";
-import { globalSearch, recordSearchVisit, type GlobalSearchResults } from "@/app/actions/search";
-import { cn } from "@/lib/utils";
 import { format, isPast } from "date-fns";
+import { useRouter } from "next/navigation";
+import * as React from "react";
+import {
+  type GlobalSearchResults,
+  globalSearch,
+  recordSearchVisit,
+} from "@/app/actions/search";
+import { useDebouncedSearch } from "@/hooks/use-debounced-search";
+import { cn } from "@/lib/utils";
 
 interface SearchPaletteProps {
-  workspaceId: string;
-  open: boolean;
   onClose: () => void;
+  open: boolean;
+  workspaceId: string;
 }
 
 const PRIORITY_LABELS: Record<string, string> = {
@@ -29,10 +33,16 @@ const PRIORITY_LABELS: Record<string, string> = {
   URGENT: "Urgent",
 };
 
-export function SearchPalette({ workspaceId, open, onClose }: SearchPaletteProps) {
+export function SearchPalette({
+  workspaceId,
+  open,
+  onClose,
+}: SearchPaletteProps) {
   const router = useRouter();
   const { query, setQuery, debouncedQuery } = useDebouncedSearch(300);
-  const [results, setResults] = React.useState<GlobalSearchResults | null>(null);
+  const [results, setResults] = React.useState<GlobalSearchResults | null>(
+    null
+  );
   const [loading, setLoading] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
@@ -54,16 +64,22 @@ export function SearchPalette({ workspaceId, open, onClose }: SearchPaletteProps
     setLoading(true);
     globalSearch(workspaceId, debouncedQuery)
       .then((res) => {
-        if (!("error" in res)) setResults(res);
+        if (!("error" in res)) {
+          setResults(res);
+        }
       })
       .finally(() => setLoading(false));
   }, [debouncedQuery, workspaceId]);
 
   // Close on Escape
   React.useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+      }
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
@@ -87,7 +103,9 @@ export function SearchPalette({ workspaceId, open, onClose }: SearchPaletteProps
     router.push(`/${workspaceId}/${spaceId}`);
   }
 
-  if (!open) return null;
+  if (!open) {
+    return null;
+  }
 
   const hasResults =
     results &&
@@ -110,15 +128,18 @@ export function SearchPalette({ workspaceId, open, onClose }: SearchPaletteProps
         <div className="flex items-center gap-2 border-b px-4 py-3">
           <MagnifyingGlassIcon className="size-4 shrink-0 text-muted-foreground" />
           <input
+            className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search tasks, lists, spaces, members…"
             ref={inputRef}
             type="text"
-            placeholder="Search tasks, lists, spaces, members…"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
           {query && (
-            <button onClick={() => setQuery("")} className="text-muted-foreground hover:text-foreground">
+            <button
+              className="text-muted-foreground hover:text-foreground"
+              onClick={() => setQuery("")}
+            >
               <XIcon className="size-4" />
             </button>
           )}
@@ -138,14 +159,18 @@ export function SearchPalette({ workspaceId, open, onClose }: SearchPaletteProps
           {!loading && debouncedQuery && !hasResults && (
             <div className="flex flex-col items-center gap-2 py-10">
               <MagnifyingGlassIcon className="size-8 text-muted-foreground/30" />
-              <p className="text-sm text-muted-foreground">No results for &ldquo;{debouncedQuery}&rdquo;</p>
+              <p className="text-sm text-muted-foreground">
+                No results for &ldquo;{debouncedQuery}&rdquo;
+              </p>
             </div>
           )}
 
           {!loading && !debouncedQuery && (
             <div className="flex flex-col items-center gap-2 py-10">
               <MagnifyingGlassIcon className="size-8 text-muted-foreground/20" />
-              <p className="text-sm text-muted-foreground">Type 2+ characters to search</p>
+              <p className="text-sm text-muted-foreground">
+                Type 2+ characters to search
+              </p>
             </div>
           )}
 
@@ -162,16 +187,20 @@ export function SearchPalette({ workspaceId, open, onClose }: SearchPaletteProps
                       t.dueDateEnd && isPast(new Date(t.dueDateEnd));
                     return (
                       <button
+                        className="flex w-full items-start gap-3 px-4 py-2.5 text-left hover:bg-accent transition-colors"
                         key={t.id}
                         onClick={() => navigateTask(t.id)}
-                        className="flex w-full items-start gap-3 px-4 py-2.5 text-left hover:bg-accent transition-colors"
                       >
                         <span
                           className="mt-0.5 inline-flex h-2 w-2 shrink-0 rounded-full"
-                          style={{ backgroundColor: t.statusColor ?? undefined }}
+                          style={{
+                            backgroundColor: t.statusColor ?? undefined,
+                          }}
                         />
                         <div className="flex-1 min-w-0">
-                          <p className="truncate text-sm font-medium">{t.title}</p>
+                          <p className="truncate text-sm font-medium">
+                            {t.title}
+                          </p>
                           <p className="text-xs text-muted-foreground">
                             {t.spaceName} › {t.listName}
                           </p>
@@ -181,7 +210,9 @@ export function SearchPalette({ workspaceId, open, onClose }: SearchPaletteProps
                             <span
                               className={cn(
                                 "text-xs",
-                                overdue ? "text-destructive" : "text-muted-foreground",
+                                overdue
+                                  ? "text-destructive"
+                                  : "text-muted-foreground"
                               )}
                             >
                               {format(new Date(t.dueDateEnd), "MMM d")}
@@ -189,7 +220,12 @@ export function SearchPalette({ workspaceId, open, onClose }: SearchPaletteProps
                           )}
                           <span
                             className="rounded-full px-2 py-0.5 text-2xs font-medium"
-                            style={{ backgroundColor: t.statusColor ? t.statusColor + "33" : undefined, color: t.statusColor ?? undefined }}
+                            style={{
+                              backgroundColor: t.statusColor
+                                ? t.statusColor + "33"
+                                : undefined,
+                              color: t.statusColor ?? undefined,
+                            }}
                           >
                             {t.statusName}
                           </span>
@@ -208,14 +244,16 @@ export function SearchPalette({ workspaceId, open, onClose }: SearchPaletteProps
                   </p>
                   {results.lists.map((l) => (
                     <button
+                      className="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-accent transition-colors"
                       key={l.id}
                       onClick={() => navigateList(l.id, l.spaceId)}
-                      className="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-accent transition-colors"
                     >
                       <ListIcon className="size-4 shrink-0 text-muted-foreground" />
                       <div className="flex-1 min-w-0">
                         <p className="truncate text-sm font-medium">{l.name}</p>
-                        <p className="text-xs text-muted-foreground">{l.spaceName}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {l.spaceName}
+                        </p>
                       </div>
                     </button>
                   ))}
@@ -230,9 +268,9 @@ export function SearchPalette({ workspaceId, open, onClose }: SearchPaletteProps
                   </p>
                   {results.spaces.map((s) => (
                     <button
+                      className="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-accent transition-colors"
                       key={s.id}
                       onClick={() => navigateSpace(s.id)}
-                      className="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-accent transition-colors"
                     >
                       <SquaresFourIcon className="size-4 shrink-0 text-muted-foreground" />
                       <p className="truncate text-sm font-medium">{s.name}</p>
@@ -249,14 +287,18 @@ export function SearchPalette({ workspaceId, open, onClose }: SearchPaletteProps
                   </p>
                   {results.members.map((m) => (
                     <div
-                      key={m.userId}
                       className="flex w-full items-center gap-3 px-4 py-2"
+                      key={m.userId}
                     >
                       <UserIcon className="size-4 shrink-0 text-muted-foreground" />
                       <div className="flex-1 min-w-0">
-                        <p className="truncate text-sm font-medium">{m.name ?? m.email}</p>
+                        <p className="truncate text-sm font-medium">
+                          {m.name ?? m.email}
+                        </p>
                         {m.name && (
-                          <p className="text-xs text-muted-foreground">{m.email}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {m.email}
+                          </p>
                         )}
                       </div>
                       <span className="text-2xs text-muted-foreground uppercase">

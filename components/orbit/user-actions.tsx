@@ -18,7 +18,7 @@ export function UserRoleForm({
     <form action={setUserRoleAction}>
       <input name="userId" type="hidden" value={userId} />
       <input name="role" type="hidden" value={nextRole} />
-      <Button type="submit" variant="secondary" size="sm">
+      <Button size="sm" type="submit" variant="secondary">
         Make {nextRole}
       </Button>
     </form>
@@ -36,7 +36,11 @@ export function UserBanForm({
     <form action={toggleUserBanAction}>
       <input name="userId" type="hidden" value={userId} />
       <input name="banned" type="hidden" value={String(!banned)} />
-      <Button type="submit" variant={banned ? "secondary" : "destructive"} size="sm">
+      <Button
+        size="sm"
+        type="submit"
+        variant={banned ? "secondary" : "destructive"}
+      >
         {banned ? "Unban" : "Ban"}
       </Button>
     </form>

@@ -1,35 +1,35 @@
 "use server";
 
+import { endOfDay, endOfWeek, startOfDay, startOfWeek } from "date-fns";
+import {
+  and,
+  desc,
+  eq,
+  gte,
+  ilike,
+  inArray,
+  isNull,
+  lt,
+  lte,
+  or,
+} from "drizzle-orm";
 import { headers } from "next/headers";
+import {
+  list,
+  listStatus,
+  savedFilter,
+  space,
+  tag,
+  task,
+  taskAssignee,
+  taskTag,
+  user,
+  userSearchHistory,
+  workspaceMember,
+} from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { canAccessSpace, getAccessibleSpaceIds } from "@/lib/permissions";
-import {
-  task,
-  taskAssignee,
-  list,
-  space,
-  listStatus,
-  workspaceMember,
-  userSearchHistory,
-  savedFilter,
-  tag,
-  taskTag,
-  user,
-} from "@/db/schema";
-import {
-  eq,
-  and,
-  ilike,
-  or,
-  inArray,
-  desc,
-  isNull,
-  lt,
-  gte,
-  lte,
-} from "drizzle-orm";
-import { startOfDay, endOfDay, startOfWeek, endOfWeek } from "date-fns";
 
 // ─── Global Search ──────────────────────────────────────────────────────────
 
@@ -80,10 +80,12 @@ export type GlobalSearchResults = {
 
 export async function globalSearch(
   workspaceId: string,
-  query: string,
+  query: string
 ): Promise<GlobalSearchResults | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   if (query.trim().length < 2) {
     return { tasks: [], lists: [], spaces: [], members: [] };
@@ -91,7 +93,7 @@ export async function globalSearch(
 
   const accessibleSpaceIds = await getAccessibleSpaceIds(
     session.user.id,
-    workspaceId,
+    workspaceId
   );
 
   if (accessibleSpaceIds.length === 0) {
@@ -128,15 +130,18 @@ export async function globalSearch(
         isNull(task.parentTaskId),
         eq(list.isArchived, false),
         inArray(space.id, accessibleSpaceIds),
-        ilike(task.title, q),
-      ),
+        ilike(task.title, q)
+      )
     )
     .orderBy(desc(task.updatedAt))
     .limit(10);
 
   // Fetch assignees for found tasks
   const taskIds = taskRows.map((t) => t.id);
-  let assigneeMap: Record<string, { userId: string; name: string | null; email: string | null }[]> = {};
+  const assigneeMap: Record<
+    string,
+    { userId: string; name: string | null; email: string | null }[]
+  > = {};
   if (taskIds.length > 0) {
     const assigneeRows = await db
       .select({
@@ -150,8 +155,14 @@ export async function globalSearch(
       .where(inArray(taskAssignee.taskId, taskIds));
 
     for (const row of assigneeRows) {
-      if (!assigneeMap[row.taskId]) assigneeMap[row.taskId] = [];
-      assigneeMap[row.taskId].push({ userId: row.userId, name: row.name, email: row.email });
+      if (!assigneeMap[row.taskId]) {
+        assigneeMap[row.taskId] = [];
+      }
+      assigneeMap[row.taskId].push({
+        userId: row.userId,
+        name: row.name,
+        email: row.email,
+      });
     }
   }
 
@@ -174,8 +185,8 @@ export async function globalSearch(
       and(
         inArray(list.spaceId, accessibleSpaceIds),
         eq(list.isArchived, false),
-        ilike(list.name, q),
-      ),
+        ilike(list.name, q)
+      )
     )
     .limit(10);
 
@@ -187,8 +198,8 @@ export async function globalSearch(
       and(
         eq(space.workspaceId, workspaceId),
         inArray(space.id, accessibleSpaceIds),
-        ilike(space.name, q),
-      ),
+        ilike(space.name, q)
+      )
     )
     .limit(10);
 
@@ -205,8 +216,8 @@ export async function globalSearch(
     .where(
       and(
         eq(workspaceMember.workspaceId, workspaceId),
-        or(ilike(user.name, q), ilike(workspaceMember.email, q)),
-      ),
+        or(ilike(user.name, q), ilike(workspaceMember.email, q))
+      )
     )
     .limit(10);
 
@@ -226,10 +237,15 @@ export async function globalSearch(
 // ─── Recent Search History ───────────────────────────────────────────────────
 
 export async function getRecentSearches(
-  workspaceId: string,
-): Promise<{ entityType: string; entityId: string; visitedAt: Date }[] | { error: string }> {
+  workspaceId: string
+): Promise<
+  | { entityType: string; entityId: string; visitedAt: Date }[]
+  | { error: string }
+> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const rows = await db
     .select({
@@ -241,8 +257,8 @@ export async function getRecentSearches(
     .where(
       and(
         eq(userSearchHistory.userId, session.user.id),
-        eq(userSearchHistory.workspaceId, workspaceId),
-      ),
+        eq(userSearchHistory.workspaceId, workspaceId)
+      )
     )
     .orderBy(desc(userSearchHistory.visitedAt))
     .limit(5);
@@ -253,10 +269,12 @@ export async function getRecentSearches(
 export async function recordSearchVisit(
   workspaceId: string,
   entityType: "task" | "list" | "space" | "member",
-  entityId: string,
+  entityId: string
 ): Promise<void | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const userId = session.user.id;
 
@@ -268,8 +286,8 @@ export async function recordSearchVisit(
         eq(userSearchHistory.userId, userId),
         eq(userSearchHistory.workspaceId, workspaceId),
         eq(userSearchHistory.entityType, entityType),
-        eq(userSearchHistory.entityId, entityId),
-      ),
+        eq(userSearchHistory.entityId, entityId)
+      )
     );
 
   await db.insert(userSearchHistory).values({
@@ -288,14 +306,16 @@ export async function recordSearchVisit(
     .where(
       and(
         eq(userSearchHistory.userId, userId),
-        eq(userSearchHistory.workspaceId, workspaceId),
-      ),
+        eq(userSearchHistory.workspaceId, workspaceId)
+      )
     )
     .orderBy(desc(userSearchHistory.visitedAt));
 
   if (all.length > 20) {
     const toDelete = all.slice(20).map((r) => r.id);
-    await db.delete(userSearchHistory).where(inArray(userSearchHistory.id, toDelete));
+    await db
+      .delete(userSearchHistory)
+      .where(inArray(userSearchHistory.id, toDelete));
   }
 }
 
@@ -309,15 +329,27 @@ export type SavedFilterRow = {
 };
 
 export async function getSavedFilters(
-  listId: string,
+  listId: string
 ): Promise<SavedFilterRow[] | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const rows = await db
-    .select({ id: savedFilter.id, name: savedFilter.name, filters: savedFilter.filters, createdAt: savedFilter.createdAt })
+    .select({
+      id: savedFilter.id,
+      name: savedFilter.name,
+      filters: savedFilter.filters,
+      createdAt: savedFilter.createdAt,
+    })
     .from(savedFilter)
-    .where(and(eq(savedFilter.userId, session.user.id), eq(savedFilter.listId, listId)))
+    .where(
+      and(
+        eq(savedFilter.userId, session.user.id),
+        eq(savedFilter.listId, listId)
+      )
+    )
     .orderBy(savedFilter.createdAt);
 
   return rows;
@@ -326,10 +358,12 @@ export async function getSavedFilters(
 export async function createSavedFilter(
   listId: string,
   name: string,
-  filters: object,
+  filters: object
 ): Promise<{ id: string } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const userId = session.user.id;
 
@@ -339,7 +373,10 @@ export async function createSavedFilter(
     .where(and(eq(savedFilter.userId, userId), eq(savedFilter.listId, listId)));
 
   if (count.length >= 10) {
-    return { error: "Saved filter limit reached (10 per list). Delete one to save a new filter." };
+    return {
+      error:
+        "Saved filter limit reached (10 per list). Delete one to save a new filter.",
+    };
   }
 
   const id = crypto.randomUUID();
@@ -358,10 +395,12 @@ export async function createSavedFilter(
 
 export async function renameSavedFilter(
   filterId: string,
-  name: string,
+  name: string
 ): Promise<void | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const rows = await db
     .select({ userId: savedFilter.userId })
@@ -379,10 +418,12 @@ export async function renameSavedFilter(
 }
 
 export async function deleteSavedFilter(
-  filterId: string,
+  filterId: string
 ): Promise<void | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const rows = await db
     .select({ userId: savedFilter.userId })
@@ -410,7 +451,7 @@ export async function getFilteredTasks(
   workspaceId: string,
   spaceId: string,
   listId: string,
-  filters: FilterState,
+  filters: FilterState
 ): Promise<
   | {
       id: string;
@@ -421,15 +462,27 @@ export async function getFilteredTasks(
       dueDateEnd: Date | null;
       orderIndex: number;
       tags: { id: string; name: string; color: string }[];
-      assignees: { userId: string; name: string | null; image: string | null }[];
+      assignees: {
+        userId: string;
+        name: string | null;
+        image: string | null;
+      }[];
     }[]
   | { error: string }
 > {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
-  const accessible = await canAccessSpace(session.user.id, workspaceId, spaceId);
-  if (!accessible) return { error: "Forbidden" };
+  const accessible = await canAccessSpace(
+    session.user.id,
+    workspaceId,
+    spaceId
+  );
+  if (!accessible) {
+    return { error: "Forbidden" };
+  }
 
   // Build where conditions manually
   const conditions: Parameters<typeof and> = [
@@ -443,7 +496,12 @@ export async function getFilteredTasks(
   }
 
   if (filters.priority?.length) {
-    conditions.push(inArray(task.priority, filters.priority as ("NONE" | "LOW" | "MEDIUM" | "HIGH" | "URGENT")[]));
+    conditions.push(
+      inArray(
+        task.priority,
+        filters.priority as ("NONE" | "LOW" | "MEDIUM" | "HIGH" | "URGENT")[]
+      )
+    );
   }
 
   if (filters.due) {
@@ -475,35 +533,59 @@ export async function getFilteredTasks(
     .where(and(...conditions))
     .orderBy(task.orderIndex);
 
-  if (taskRows.length === 0) return [];
+  if (taskRows.length === 0) {
+    return [];
+  }
 
   const ids = taskRows.map((t) => t.id);
 
   // Fetch tags
   const tagRows = await db
-    .select({ taskId: taskTag.taskId, id: tag.id, name: tag.name, color: tag.color })
+    .select({
+      taskId: taskTag.taskId,
+      id: tag.id,
+      name: tag.name,
+      color: tag.color,
+    })
     .from(taskTag)
     .innerJoin(tag, eq(taskTag.tagId, tag.id))
     .where(inArray(taskTag.taskId, ids));
 
   // Fetch assignees
   const assigneeRows = await db
-    .select({ taskId: taskAssignee.taskId, userId: taskAssignee.userId, name: user.name, image: user.image })
+    .select({
+      taskId: taskAssignee.taskId,
+      userId: taskAssignee.userId,
+      name: user.name,
+      image: user.image,
+    })
     .from(taskAssignee)
     .innerJoin(user, eq(taskAssignee.userId, user.id))
     .where(inArray(taskAssignee.taskId, ids));
 
   // Build maps
-  const tagMap: Record<string, { id: string; name: string; color: string }[]> = {};
+  const tagMap: Record<string, { id: string; name: string; color: string }[]> =
+    {};
   for (const r of tagRows) {
-    if (!tagMap[r.taskId]) tagMap[r.taskId] = [];
+    if (!tagMap[r.taskId]) {
+      tagMap[r.taskId] = [];
+    }
     tagMap[r.taskId].push({ id: r.id, name: r.name, color: r.color });
   }
 
-  const assigneeMap: Record<string, { userId: string; name: string | null; image: string | null }[]> = {};
+  const assigneeMap: Record<
+    string,
+    { userId: string; name: string | null; image: string | null }[]
+  > = {};
   for (const r of assigneeRows) {
-    if (!assigneeMap[r.taskId]) assigneeMap[r.taskId] = [];
-    assigneeMap[r.taskId].push({ userId: r.userId, name: r.name, image: r.image ?? null });
+    if (!assigneeMap[r.taskId]) {
+      assigneeMap[r.taskId] = [];
+    }
+    assigneeMap[r.taskId].push({
+      userId: r.userId,
+      name: r.name,
+      image: r.image ?? null,
+    });
   }
 
   // Filter by assignee in JS (to handle "unassigned" sentinel and OR logic)
@@ -517,8 +599,15 @@ export async function getFilteredTasks(
     const hasUnassigned = filters.assignee.includes("unassigned");
     const userIds = filters.assignee.filter((a) => a !== "unassigned");
     results = results.filter((t) => {
-      if (hasUnassigned && t.assignees.length === 0) return true;
-      if (userIds.length && t.assignees.some((a) => userIds.includes(a.userId))) return true;
+      if (hasUnassigned && t.assignees.length === 0) {
+        return true;
+      }
+      if (
+        userIds.length &&
+        t.assignees.some((a) => userIds.includes(a.userId))
+      ) {
+        return true;
+      }
       return false;
     });
   }
@@ -526,7 +615,7 @@ export async function getFilteredTasks(
   // Filter by tags in JS
   if (filters.tags?.length) {
     results = results.filter((t) =>
-      t.tags.some((tg) => filters.tags!.includes(tg.id)),
+      t.tags.some((tg) => filters.tags!.includes(tg.id))
     );
   }
 

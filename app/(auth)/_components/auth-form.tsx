@@ -1,19 +1,38 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  CheckCircleIcon,
+  EnvelopeIcon,
+  GoogleLogoIcon,
+  PaperPlaneTiltIcon,
+} from "@phosphor-icons/react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { toast } from "sonner";
-import { EnvelopeIcon, PaperPlaneTiltIcon, CheckCircleIcon, GoogleLogoIcon } from "@phosphor-icons/react";
-import { authClient } from "@/lib/auth-client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { z } from "zod";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
+import { authClient } from "@/lib/auth-client";
 
 const schema = z.object({
   email: z.string().email("Enter a valid email address"),
@@ -36,9 +55,14 @@ export function LoginForm() {
     form.clearErrors("root");
     setGoogleLoading(true);
     try {
-      await authClient.signIn.social({ provider: "google", callbackURL: "/post-auth" });
+      await authClient.signIn.social({
+        provider: "google",
+        callbackURL: "/post-auth",
+      });
     } catch {
-      form.setError("root", { message: "Failed to sign in with Google. Please try again." });
+      form.setError("root", {
+        message: "Failed to sign in with Google. Please try again.",
+      });
       setGoogleLoading(false);
     }
   }
@@ -49,11 +73,15 @@ export function LoginForm() {
       callbackURL: "/post-auth",
     });
     if (error) {
-      form.setError("root", { message: error.message ?? "Something went wrong" });
+      form.setError("root", {
+        message: error.message ?? "Something went wrong",
+      });
       return;
     }
     setSent(true);
-    toast.success("Magic link sent!", { description: "Check your inbox to sign in." });
+    toast.success("Magic link sent!", {
+      description: "Check your inbox to sign in.",
+    });
   }
 
   if (sent) {
@@ -67,14 +95,17 @@ export function LoginForm() {
             <h2 className="font-semibold text-lg">Check your inbox</h2>
             <p className="text-muted-foreground text-sm">
               We sent a sign-in link to{" "}
-              <span className="font-medium text-foreground">{form.getValues("email")}</span>.
+              <span className="font-medium text-foreground">
+                {form.getValues("email")}
+              </span>
+              .
             </p>
           </div>
           <p className="text-muted-foreground text-xs">
             {"Didn't receive it? "}
             <button
-              onClick={() => setSent(false)}
               className="underline underline-offset-4 transition-colors hover:text-foreground"
+              onClick={() => setSent(false)}
             >
               Try again
             </button>
@@ -99,11 +130,11 @@ export function LoginForm() {
       <CardContent className="space-y-4">
         {/* Google OAuth */}
         <Button
-          type="button"
-          variant="outline"
           className="w-full gap-2"
           disabled={isSubmitting || googleLoading}
           onClick={handleGoogleSignIn}
+          type="button"
+          variant="outline"
         >
           {googleLoading ? (
             <Spinner className="size-4" />
@@ -115,12 +146,14 @@ export function LoginForm() {
 
         <div className="flex items-center gap-3">
           <Separator className="flex-1" />
-          <span className="text-muted-foreground text-xs">or continue with email</span>
+          <span className="text-muted-foreground text-xs">
+            or continue with email
+          </span>
           <Separator className="flex-1" />
         </div>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
             <FormField
               control={form.control}
               name="email"
@@ -129,9 +162,9 @@ export function LoginForm() {
                   <FormLabel>Email address</FormLabel>
                   <FormControl>
                     <Input
-                      type="email"
                       autoComplete="email"
                       placeholder="you@example.com"
+                      type="email"
                       {...field}
                     />
                   </FormControl>
@@ -142,11 +175,17 @@ export function LoginForm() {
 
             {form.formState.errors.root && (
               <Alert variant="destructive">
-                <AlertDescription>{form.formState.errors.root.message}</AlertDescription>
+                <AlertDescription>
+                  {form.formState.errors.root.message}
+                </AlertDescription>
               </Alert>
             )}
 
-            <Button type="submit" disabled={!isValid || isSubmitting} className="w-full gap-2">
+            <Button
+              className="w-full gap-2"
+              disabled={!isValid || isSubmitting}
+              type="submit"
+            >
               {isSubmitting ? (
                 <>
                   <Spinner className="size-4" />
@@ -167,11 +206,17 @@ export function LoginForm() {
         <Separator />
         <p className="text-center text-muted-foreground text-xs">
           By signing in you agree to our{" "}
-          <a href="/terms" className="underline underline-offset-4 transition-colors hover:text-foreground">
+          <a
+            className="underline underline-offset-4 transition-colors hover:text-foreground"
+            href="/terms"
+          >
             Terms of Service
           </a>{" "}
           and{" "}
-          <a href="/privacy" className="underline underline-offset-4 transition-colors hover:text-foreground">
+          <a
+            className="underline underline-offset-4 transition-colors hover:text-foreground"
+            href="/privacy"
+          >
             Privacy Policy
           </a>
           .

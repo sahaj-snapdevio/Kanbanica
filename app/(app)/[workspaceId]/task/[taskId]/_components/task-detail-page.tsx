@@ -1,7 +1,5 @@
 ﻿"use client";
 
-import * as React from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArchiveIcon,
   ArrowLeftIcon,
@@ -17,7 +15,6 @@ import {
   FileIcon,
   FilePdfIcon,
   FlagIcon,
-  ImageIcon,
   LinkIcon,
   PaperclipIcon,
   PlusIcon,
@@ -28,44 +25,49 @@ import {
   UserIcon,
   XIcon,
 } from "@phosphor-icons/react";
+import { format } from "date-fns";
+import { useRouter, useSearchParams } from "next/navigation";
+import * as React from "react";
 import {
-  getTaskDetail,
-  updateTask,
-  updateTaskStatus,
-  deleteTask,
   archiveTask,
+  createSubtask,
+  deleteTask,
   duplicateTask,
+  getTaskDetail,
   getWorkspaceMembers,
   logTime,
-  createSubtask,
+  updateTask,
+  updateTaskStatus,
 } from "@/app/actions/task";
-import { TaskActivityFeed } from "@/components/task/task-activity-feed";
 import {
   addAssignee,
   removeAssignee,
   toggleWatcher,
 } from "@/app/actions/task-assignee";
 import {
-  getWorkspaceTags,
-  createTag,
-  addTaskTag,
-  removeTaskTag,
-} from "@/app/actions/task-tag";
-import {
+  addChecklistItem,
   createChecklist,
   deleteChecklist,
-  addChecklistItem,
-  toggleChecklistItem,
   deleteChecklistItem,
+  toggleChecklistItem,
 } from "@/app/actions/task-checklist";
 import {
   addDependency,
   removeDependency,
   searchTasksForDependency,
 } from "@/app/actions/task-dependency";
+import {
+  addTaskTag,
+  createTag,
+  getWorkspaceTags,
+  removeTaskTag,
+} from "@/app/actions/task-tag";
+import { TaskActivityFeed } from "@/components/task/task-activity-feed";
+import { TaskDescriptionEditor } from "@/components/task/task-description-editor";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ClickUpCalendar } from "@/components/ui/clickup-calendar";
 import { Input } from "@/components/ui/input";
 import {
   Popover,
@@ -74,12 +76,9 @@ import {
 } from "@/components/ui/popover";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
-import { TaskDescriptionEditor } from "@/components/task/task-description-editor";
-import { ClickUpCalendar } from "@/components/ui/clickup-calendar";
-import { format } from "date-fns";
-import { TaskDetailSkeleton } from "./task-detail-skeleton";
 import { useSetTopbar } from "@/lib/topbar-context";
+import { cn } from "@/lib/utils";
+import { TaskDetailSkeleton } from "./task-detail-skeleton";
 
 type Priority = "NONE" | "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 
@@ -120,13 +119,14 @@ const PRIORITY_CONFIG: Record<
 };
 
 function userInitials(name: string | null, email: string | null) {
-  if (name)
+  if (name) {
     return name
       .split(" ")
       .map((n) => n[0])
       .join("")
       .toUpperCase()
       .slice(0, 2);
+  }
   return (email ?? "?").slice(0, 2).toUpperCase();
 }
 
@@ -153,13 +153,13 @@ function FieldRow({
 }
 
 interface TaskDetailPageProps {
-  workspaceId: string;
-  spaceId: string;
-  listId: string;
-  taskId: string;
-  listName: string;
-  workspaceName: string;
   canPinToList?: boolean;
+  listId: string;
+  listName: string;
+  spaceId: string;
+  taskId: string;
+  workspaceId: string;
+  workspaceName: string;
 }
 
 export function TaskDetailPage({
@@ -176,7 +176,7 @@ export function TaskDetailPage({
   const fromView = searchParams.get("from");
   const fromSprintId = searchParams.get("sid");
 
-  const contextLabel = fromView === "sprint" ? "Sprint" : (listName || "List");
+  const contextLabel = fromView === "sprint" ? "Sprint" : listName || "List";
   useSetTopbar({
     breadcrumbs: [{ label: workspaceName }],
     title: contextLabel,
@@ -233,7 +233,9 @@ export function TaskDetailPage({
   const [endCalOpen, setEndCalOpen] = React.useState(false);
 
   async function fetchAll(showSpinner: boolean) {
-    if (showSpinner) setLoading(true);
+    if (showSpinner) {
+      setLoading(true);
+    }
     const [detail, mem, tags, attRes, pinRes] = await Promise.all([
       getTaskDetail(workspaceId, spaceId, taskId),
       getWorkspaceMembers(workspaceId),
@@ -242,7 +244,7 @@ export function TaskDetailPage({
         .then((r) => r.json())
         .catch(() => ({ attachments: [] })),
       fetch(`/api/tasks/${taskId}/pin`, { method: "GET" })
-        .then((r) => r.ok ? r.json() : { pinned: false })
+        .then((r) => (r.ok ? r.json() : { pinned: false }))
         .catch(() => ({ pinned: false })),
     ]);
     setData(detail && !("error" in detail) ? detail : null);
@@ -255,19 +257,27 @@ export function TaskDetailPage({
             name: m.name,
             email: m.email,
             image: m.image,
-          })),
+          }))
       );
     }
-    if (tags && !("error" in tags)) setAllTags(tags.tags);
-    if (attRes?.attachments) setAttachments(attRes.attachments);
+    if (tags && !("error" in tags)) {
+      setAllTags(tags.tags);
+    }
+    if (attRes?.attachments) {
+      setAttachments(attRes.attachments);
+    }
     setIsPinned(!!pinRes?.pinned);
-    if (showSpinner) setLoading(false);
+    if (showSpinner) {
+      setLoading(false);
+    }
   }
 
   async function handleTogglePin() {
     const next = !isPinned;
     setIsPinned(next);
-    const res = await fetch(`/api/tasks/${taskId}/pin`, { method: next ? "POST" : "DELETE" });
+    const res = await fetch(`/api/tasks/${taskId}/pin`, {
+      method: next ? "POST" : "DELETE",
+    });
     if (!res.ok) {
       setIsPinned(!next);
       const data = await res.json().catch(() => ({}));
@@ -291,14 +301,15 @@ export function TaskDetailPage({
           ? data.task.description
           : data.task.description
             ? JSON.stringify(data.task.description)
-            : "",
+            : ""
       );
     }
   }, [data]);
 
-  const listBackUrl = fromView === "sprint" && fromSprintId
-    ? `/${workspaceId}/${spaceId}/sprint/${fromSprintId}`
-    : `/${workspaceId}/${spaceId}/list/${listId}${fromView && fromView !== "sprint" ? `?view=${fromView}` : ""}`;
+  const listBackUrl =
+    fromView === "sprint" && fromSprintId
+      ? `/${workspaceId}/${spaceId}/sprint/${fromSprintId}`
+      : `/${workspaceId}/${spaceId}/list/${listId}${fromView && fromView !== "sprint" ? `?view=${fromView}` : ""}`;
 
   if (loading) {
     return <TaskDetailSkeleton />;
@@ -308,7 +319,7 @@ export function TaskDetailPage({
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4">
         <p className="text-muted-foreground">Task not found.</p>
-        <Button variant="ghost" onClick={() => router.push(listBackUrl)}>
+        <Button onClick={() => router.push(listBackUrl)} variant="ghost">
           <ArrowLeftIcon className="size-4 mr-2" /> Back to list
         </Button>
       </div>
@@ -342,10 +353,10 @@ export function TaskDetailPage({
   const checkProgress =
     totalItems > 0 ? Math.round((totalChecked / totalItems) * 100) : 0;
   const filteredTags = allTags.filter((t) =>
-    t.name.toLowerCase().includes(tagSearch.toLowerCase()),
+    t.name.toLowerCase().includes(tagSearch.toLowerCase())
   );
   const exactTagMatch = allTags.some(
-    (t) => t.name.toLowerCase() === tagSearch.toLowerCase(),
+    (t) => t.name.toLowerCase() === tagSearch.toLowerCase()
   );
 
   const dueDateStart = t.dueDateStart ? new Date(t.dueDateStart) : null;
@@ -382,27 +393,39 @@ export function TaskDetailPage({
     load();
   }
 
-  async function handleDueDateChange(field: "start" | "end", date: Date | null) {
-    if (field === "start")
-      await updateTask(workspaceId, spaceId, listId, taskId, { dueDateStart: date });
-    else
-      await updateTask(workspaceId, spaceId, listId, taskId, { dueDateEnd: date });
+  async function handleDueDateChange(
+    field: "start" | "end",
+    date: Date | null
+  ) {
+    if (field === "start") {
+      await updateTask(workspaceId, spaceId, listId, taskId, {
+        dueDateStart: date,
+      });
+    } else {
+      await updateTask(workspaceId, spaceId, listId, taskId, {
+        dueDateEnd: date,
+      });
+    }
     load();
   }
 
   async function handleToggleAssignee(userId: string) {
     const already = assignees.some((a) => a.userId === userId);
-    if (already)
+    if (already) {
       await removeAssignee(workspaceId, spaceId, listId, taskId, userId);
-    else await addAssignee(workspaceId, spaceId, listId, taskId, userId);
+    } else {
+      await addAssignee(workspaceId, spaceId, listId, taskId, userId);
+    }
     load();
   }
 
   async function handleToggleTag(tagId: string) {
     const already = tags.some((tag) => tag.id === tagId);
-    if (already)
+    if (already) {
       await removeTaskTag(workspaceId, spaceId, listId, taskId, tagId);
-    else await addTaskTag(workspaceId, spaceId, listId, taskId, tagId);
+    } else {
+      await addTaskTag(workspaceId, spaceId, listId, taskId, tagId);
+    }
     load();
   }
 
@@ -421,13 +444,15 @@ export function TaskDetailPage({
   }
 
   async function handleAddChecklist() {
-    if (!newChecklistName.trim()) return;
+    if (!newChecklistName.trim()) {
+      return;
+    }
     await createChecklist(
       workspaceId,
       spaceId,
       listId,
       taskId,
-      newChecklistName,
+      newChecklistName
     );
     setNewChecklistName("");
     setAddingChecklist(false);
@@ -441,7 +466,9 @@ export function TaskDetailPage({
 
   async function handleAddItem(checklistId: string) {
     const text = newItemTexts[checklistId] ?? "";
-    if (!text.trim()) return;
+    if (!text.trim()) {
+      return;
+    }
     await addChecklistItem(workspaceId, spaceId, listId, checklistId, text);
     setNewItemTexts((prev) => ({ ...prev, [checklistId]: "" }));
     load();
@@ -454,14 +481,15 @@ export function TaskDetailPage({
       return;
     }
     const res = await searchTasksForDependency(workspaceId, spaceId, q, taskId);
-    if ("tasks" in res)
+    if ("tasks" in res) {
       setDepResults(
         res.tasks?.map((t) => ({
           id: t.id,
           title: t.title,
           seqNumber: t.seqNumber,
-        })) ?? [],
+        })) ?? []
       );
+    }
   }
 
   async function handleAddDep(dependsOnTaskId: string) {
@@ -477,15 +505,17 @@ export function TaskDetailPage({
   }
 
   async function handleLogTime() {
-    const mins = parseInt(timeInput);
-    if (!mins || mins <= 0) return;
+    const mins = Number.parseInt(timeInput);
+    if (!mins || mins <= 0) {
+      return;
+    }
     await logTime(
       workspaceId,
       spaceId,
       listId,
       taskId,
       mins,
-      timeNote || undefined,
+      timeNote || undefined
     );
     setTimeInput("");
     setTimeNote("");
@@ -505,15 +535,16 @@ export function TaskDetailPage({
   }
 
   async function handleDelete() {
-    if (!confirm("Permanently delete this task? This cannot be undone."))
+    if (!confirm("Permanently delete this task? This cannot be undone.")) {
       return;
+    }
     await deleteTask(workspaceId, spaceId, listId, taskId);
     router.push(backUrl);
   }
 
   function copyLink() {
     navigator.clipboard.writeText(
-      `${window.location.origin}/${workspaceId}/task/${taskId}`,
+      `${window.location.origin}/${workspaceId}/task/${taskId}`
     );
   }
 
@@ -538,8 +569,12 @@ export function TaskDetailPage({
   }
 
   function formatBytes(bytes: number) {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    if (bytes < 1024) {
+      return `${bytes} B`;
+    }
+    if (bytes < 1024 * 1024) {
+      return `${(bytes / 1024).toFixed(1)} KB`;
+    }
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 
@@ -552,8 +587,8 @@ export function TaskDetailPage({
       {/* Top bar */}
       <div className="flex items-center gap-3 border-b px-5 py-3 shrink-0">
         <button
-          onClick={() => router.push(backUrl)}
           className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          onClick={() => router.push(backUrl)}
         >
           <ArrowLeftIcon className="size-4" />
         </button>
@@ -564,10 +599,10 @@ export function TaskDetailPage({
             <>
               <CaretRightIcon className="size-3.5" />
               <button
+                className="hover:text-foreground transition-colors truncate max-w-xs"
                 onClick={() =>
                   router.push(`/${workspaceId}/task/${parentTask.id}`)
                 }
-                className="hover:text-foreground transition-colors truncate max-w-xs"
               >
                 {parentTask.title}
               </button>
@@ -580,32 +615,35 @@ export function TaskDetailPage({
         </div>
         <div className="ml-auto flex items-center gap-1">
           <button
-            onClick={handleTogglePin}
-            title={isPinned ? "Unpin from sidebar" : "Pin to sidebar"}
             className={cn(
               "flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors",
               isPinned
                 ? "bg-primary/10 text-primary"
-                : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                : "text-muted-foreground hover:bg-accent hover:text-foreground"
             )}
+            onClick={handleTogglePin}
+            title={isPinned ? "Unpin from sidebar" : "Pin to sidebar"}
           >
-            <PushPinIcon className="size-3.5" weight={isPinned ? "fill" : "regular"} />
+            <PushPinIcon
+              className="size-3.5"
+              weight={isPinned ? "fill" : "regular"}
+            />
             {isPinned ? "Pinned" : "Pin"}
           </button>
           <button
-            onClick={copyLink}
             className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+            onClick={copyLink}
           >
             <LinkIcon className="size-3.5" /> Copy link
           </button>
           <button
-            onClick={handleToggleWatch}
             className={cn(
               "flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors",
               isWatching
                 ? "bg-primary/10 text-primary"
-                : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                : "text-muted-foreground hover:bg-accent hover:text-foreground"
             )}
+            onClick={handleToggleWatch}
           >
             {isWatching ? (
               <EyeSlashIcon className="size-3.5" />
@@ -622,16 +660,16 @@ export function TaskDetailPage({
             </PopoverTrigger>
             <PopoverContent align="end" className="w-44 p-1">
               <button
-                onClick={handleDuplicate}
-                disabled={saving}
                 className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
+                disabled={saving}
+                onClick={handleDuplicate}
               >
                 <CopyIcon className="size-3.5 text-muted-foreground" />{" "}
                 Duplicate
               </button>
               <button
-                onClick={handleArchive}
                 className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
+                onClick={handleArchive}
               >
                 <ArchiveIcon className="size-3.5 text-muted-foreground" />{" "}
                 Archive
@@ -641,35 +679,49 @@ export function TaskDetailPage({
                   <Separator className="my-1" />
                   {data?.task.isPinnedToList ? (
                     <button
-                      onClick={async () => {
-                        const res = await fetch(`/api/tasks/${taskId}/pin-to-list`, { method: "DELETE" });
-                        if (res.ok) load();
-                      }}
                       className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
+                      onClick={async () => {
+                        const res = await fetch(
+                          `/api/tasks/${taskId}/pin-to-list`,
+                          { method: "DELETE" }
+                        );
+                        if (res.ok) {
+                          load();
+                        }
+                      }}
                     >
-                      <PushPinIcon className="size-3.5 text-primary" weight="fill" /> Unpin from list
+                      <PushPinIcon
+                        className="size-3.5 text-primary"
+                        weight="fill"
+                      />{" "}
+                      Unpin from list
                     </button>
                   ) : (
                     <button
+                      className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
                       onClick={async () => {
-                        const res = await fetch(`/api/tasks/${taskId}/pin-to-list`, { method: "POST" });
-                        if (res.ok) load();
-                        else {
+                        const res = await fetch(
+                          `/api/tasks/${taskId}/pin-to-list`,
+                          { method: "POST" }
+                        );
+                        if (res.ok) {
+                          load();
+                        } else {
                           const d = await res.json().catch(() => ({}));
                           alert(d.error ?? "Failed to pin");
                         }
                       }}
-                      className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
                     >
-                      <PushPinIcon className="size-3.5 text-muted-foreground" /> Pin to list top
+                      <PushPinIcon className="size-3.5 text-muted-foreground" />{" "}
+                      Pin to list top
                     </button>
                   )}
                 </>
               )}
               <Separator className="my-1" />
               <button
-                onClick={handleDelete}
                 className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-destructive hover:bg-destructive/10"
+                onClick={handleDelete}
               >
                 <TrashIcon className="size-3.5" /> Delete
               </button>
@@ -686,14 +738,18 @@ export function TaskDetailPage({
           {titleEditing ? (
             <Input
               autoFocus
-              value={titleDraft}
-              onChange={(e) => setTitleDraft(e.target.value)}
-              onBlur={saveTitle}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") saveTitle();
-                if (e.key === "Escape") setTitleEditing(false);
-              }}
               className="text-2xl font-bold h-auto py-1 border-none shadow-none focus-visible:ring-0 px-0 mb-5"
+              onBlur={saveTitle}
+              onChange={(e) => setTitleDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  saveTitle();
+                }
+                if (e.key === "Escape") {
+                  setTitleEditing(false);
+                }
+              }}
+              value={titleDraft}
             />
           ) : (
             <h1
@@ -708,17 +764,17 @@ export function TaskDetailPage({
           <div className="rounded-lg border bg-card px-4 mb-6">
             {/* Status */}
             <FieldRow
-              label="Status"
               icon={
                 <span
                   className="size-3 rounded-full shrink-0"
                   style={{ backgroundColor: currentStatus?.color ?? "#9CA3AF" }}
                 />
               }
+              label="Status"
             >
               <Popover
-                open={statusPopoverOpen}
                 onOpenChange={setStatusPopoverOpen}
+                open={statusPopoverOpen}
               >
                 <PopoverTrigger asChild>
                   <button
@@ -731,12 +787,12 @@ export function TaskDetailPage({
                     {currentStatus?.name ?? "No status"}
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className="w-44 p-1" align="start">
+                <PopoverContent align="start" className="w-44 p-1">
                   {statuses.map((s) => (
                     <button
+                      className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
                       key={s.id}
                       onClick={() => handleStatusChange(s.id)}
-                      className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
                     >
                       <span
                         className="size-2.5 rounded-full shrink-0"
@@ -754,14 +810,14 @@ export function TaskDetailPage({
 
             {/* Assignees */}
             <FieldRow
-              label="Assignees"
               icon={<UserIcon className="size-3.5" />}
+              label="Assignees"
             >
               <div className="flex flex-wrap items-center gap-1.5">
                 {assignees.map((a) => (
                   <div
-                    key={a.userId}
                     className="flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs"
+                    key={a.userId}
                   >
                     <Avatar className="size-4">
                       <AvatarFallback className="text-[8px]">
@@ -770,36 +826,36 @@ export function TaskDetailPage({
                     </Avatar>
                     <span>{a.name ?? a.email}</span>
                     <button
-                      onClick={() => handleToggleAssignee(a.userId)}
                       className="text-muted-foreground hover:text-foreground"
+                      onClick={() => handleToggleAssignee(a.userId)}
                     >
                       <XIcon className="size-3" />
                     </button>
                   </div>
                 ))}
                 <Popover
-                  open={assigneePopoverOpen}
                   onOpenChange={setAssigneePopoverOpen}
+                  open={assigneePopoverOpen}
                 >
                   <PopoverTrigger asChild>
                     <button className="flex size-6 items-center justify-center rounded-full border border-dashed border-border text-muted-foreground hover:border-primary hover:text-primary transition-colors">
                       <PlusIcon className="size-3.5" />
                     </button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-52 p-2" align="start">
+                  <PopoverContent align="start" className="w-52 p-2">
                     <p className="text-xs text-muted-foreground px-1 mb-1.5">
                       Select members
                     </p>
                     <div className="space-y-0.5 max-h-48 overflow-y-auto">
                       {members.map((m) => {
                         const selected = assignees.some(
-                          (a) => a.userId === m.userId,
+                          (a) => a.userId === m.userId
                         );
                         return (
                           <button
+                            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
                             key={m.userId}
                             onClick={() => handleToggleAssignee(m.userId)}
-                            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
                           >
                             <Avatar className="size-6 shrink-0">
                               <AvatarFallback className="text-2xs">
@@ -823,42 +879,64 @@ export function TaskDetailPage({
 
             {/* Dates */}
             <FieldRow
-              label="Dates"
               icon={<CalendarBlankIcon className="size-3.5" />}
+              label="Dates"
             >
               <div className="flex items-center gap-2">
-                <Popover open={startCalOpen} onOpenChange={setStartCalOpen}>
+                <Popover onOpenChange={setStartCalOpen} open={startCalOpen}>
                   <PopoverTrigger asChild>
                     <button className="flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-xs w-32 hover:bg-accent transition-colors">
                       <CalendarBlankIcon className="size-3 text-muted-foreground shrink-0" />
-                      <span className={dueDateStart ? "text-foreground" : "text-muted-foreground"}>
-                        {dueDateStart ? format(dueDateStart, "MMM d, yyyy") : "Start date"}
+                      <span
+                        className={
+                          dueDateStart
+                            ? "text-foreground"
+                            : "text-muted-foreground"
+                        }
+                      >
+                        {dueDateStart
+                          ? format(dueDateStart, "MMM d, yyyy")
+                          : "Start date"}
                       </span>
                     </button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
+                  <PopoverContent align="start" className="w-auto p-0">
                     <ClickUpCalendar
-                      selectedDate={dueDateStart}
-                      onSelect={(date) => { handleDueDateChange("start", date); setStartCalOpen(false); }}
                       onClose={() => setStartCalOpen(false)}
+                      onSelect={(date) => {
+                        handleDueDateChange("start", date);
+                        setStartCalOpen(false);
+                      }}
+                      selectedDate={dueDateStart}
                     />
                   </PopoverContent>
                 </Popover>
                 <span className="text-muted-foreground text-xs">→</span>
-                <Popover open={endCalOpen} onOpenChange={setEndCalOpen}>
+                <Popover onOpenChange={setEndCalOpen} open={endCalOpen}>
                   <PopoverTrigger asChild>
                     <button className="flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-xs w-32 hover:bg-accent transition-colors">
                       <CalendarBlankIcon className="size-3 text-muted-foreground shrink-0" />
-                      <span className={dueDateEnd ? "text-foreground" : "text-muted-foreground"}>
-                        {dueDateEnd ? format(dueDateEnd, "MMM d, yyyy") : "End date"}
+                      <span
+                        className={
+                          dueDateEnd
+                            ? "text-foreground"
+                            : "text-muted-foreground"
+                        }
+                      >
+                        {dueDateEnd
+                          ? format(dueDateEnd, "MMM d, yyyy")
+                          : "End date"}
                       </span>
                     </button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
+                  <PopoverContent align="start" className="w-auto p-0">
                     <ClickUpCalendar
-                      selectedDate={dueDateEnd}
-                      onSelect={(date) => { handleDueDateChange("end", date); setEndCalOpen(false); }}
                       onClose={() => setEndCalOpen(false)}
+                      onSelect={(date) => {
+                        handleDueDateChange("end", date);
+                        setEndCalOpen(false);
+                      }}
+                      selectedDate={dueDateEnd}
                     />
                   </PopoverContent>
                 </Popover>
@@ -866,24 +944,24 @@ export function TaskDetailPage({
             </FieldRow>
 
             {/* Priority */}
-            <FieldRow label="Priority" icon={<FlagIcon className="size-3.5" />}>
+            <FieldRow icon={<FlagIcon className="size-3.5" />} label="Priority">
               <Popover
-                open={priorityPopoverOpen}
                 onOpenChange={setPriorityPopoverOpen}
+                open={priorityPopoverOpen}
               >
                 <PopoverTrigger asChild>
                   <button
                     className={cn(
                       "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors hover:opacity-80",
                       priority.bg,
-                      priority.color,
+                      priority.color
                     )}
                   >
                     <span>{priority.icon}</span>
                     {priority.label}
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className="w-44 p-1" align="start">
+                <PopoverContent align="start" className="w-44 p-1">
                   {(
                     Object.entries(PRIORITY_CONFIG) as [
                       Priority,
@@ -891,12 +969,12 @@ export function TaskDetailPage({
                     ][]
                   ).map(([key, cfg]) => (
                     <button
-                      key={key}
-                      onClick={() => handlePriorityChange(key)}
                       className={cn(
                         "flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent",
-                        cfg.color,
+                        cfg.color
                       )}
+                      key={key}
+                      onClick={() => handlePriorityChange(key)}
                     >
                       <span>{cfg.icon}</span>
                       <span className="flex-1 text-left">{cfg.label}</span>
@@ -910,12 +988,12 @@ export function TaskDetailPage({
             </FieldRow>
 
             {/* Tags */}
-            <FieldRow label="Tags" icon={<TagIcon className="size-3.5" />}>
+            <FieldRow icon={<TagIcon className="size-3.5" />} label="Tags">
               <div className="flex flex-wrap items-center gap-1.5">
                 {tags.map((tag) => (
                   <span
-                    key={tag.id}
                     className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
+                    key={tag.id}
                     style={{
                       backgroundColor: `${tag.color}20`,
                       color: tag.color,
@@ -923,35 +1001,35 @@ export function TaskDetailPage({
                   >
                     {tag.name}
                     <button
-                      onClick={() => handleToggleTag(tag.id)}
                       className="opacity-60 hover:opacity-100"
+                      onClick={() => handleToggleTag(tag.id)}
                     >
                       <XIcon className="size-3" />
                     </button>
                   </span>
                 ))}
-                <Popover open={tagPopoverOpen} onOpenChange={setTagPopoverOpen}>
+                <Popover onOpenChange={setTagPopoverOpen} open={tagPopoverOpen}>
                   <PopoverTrigger asChild>
                     <button className="flex size-6 items-center justify-center rounded-full border border-dashed border-border text-muted-foreground hover:border-primary hover:text-primary transition-colors">
                       <PlusIcon className="size-3.5" />
                     </button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-52 p-2" align="start">
+                  <PopoverContent align="start" className="w-52 p-2">
                     <Input
                       autoFocus
+                      className="h-7 text-xs mb-2"
+                      onChange={(e) => setTagSearch(e.target.value)}
                       placeholder="Search or create…"
                       value={tagSearch}
-                      onChange={(e) => setTagSearch(e.target.value)}
-                      className="h-7 text-xs mb-2"
                     />
                     <div className="space-y-0.5 max-h-40 overflow-y-auto">
                       {filteredTags.map((tag) => {
                         const selected = tags.some((t) => t.id === tag.id);
                         return (
                           <button
+                            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
                             key={tag.id}
                             onClick={() => handleToggleTag(tag.id)}
-                            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
                           >
                             <span
                               className="size-2.5 rounded-full shrink-0"
@@ -968,8 +1046,8 @@ export function TaskDetailPage({
                       })}
                       {tagSearch && !exactTagMatch && (
                         <button
-                          onClick={() => handleCreateTag(tagSearch.trim())}
                           className="flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-xs text-primary hover:bg-accent"
+                          onClick={() => handleCreateTag(tagSearch.trim())}
                         >
                           <PlusIcon className="size-3.5" /> Create &ldquo;
                           {tagSearch}&rdquo;
@@ -984,12 +1062,12 @@ export function TaskDetailPage({
             {/* Time logged */}
             {timeLogs.length > 0 && (
               <FieldRow
-                label="Track time"
                 icon={<TimerIcon className="size-3.5" />}
+                label="Track time"
               >
                 <span className="text-sm font-medium">
                   {Math.floor(
-                    timeLogs.reduce((s, l) => s + l.durationMinutes, 0) / 60,
+                    timeLogs.reduce((s, l) => s + l.durationMinutes, 0) / 60
                   )}
                   h {timeLogs.reduce((s, l) => s + l.durationMinutes, 0) % 60}m
                 </span>
@@ -1014,20 +1092,20 @@ export function TaskDetailPage({
                 <>
                   <div className="flex items-center gap-2 mb-3">
                     <Progress
+                      className="flex-1 h-1.5"
                       value={Math.round(
                         (subtasks.filter((s) => s.statusType === "CLOSED")
                           .length /
                           subtasks.length) *
-                          100,
+                          100
                       )}
-                      className="flex-1 h-1.5"
                     />
                   </div>
                   <div className="space-y-1 mb-3">
                     {subtasks.map((sub) => (
                       <div
-                        key={sub.id}
                         className="flex items-center gap-2 rounded-md border bg-card px-3 py-2 hover:bg-accent/30 cursor-pointer group"
+                        key={sub.id}
                         onClick={() =>
                           router.push(`/${workspaceId}/task/${sub.id}`)
                         }
@@ -1045,7 +1123,7 @@ export function TaskDetailPage({
                           className={cn(
                             "flex-1 text-sm truncate",
                             sub.statusType === "CLOSED" &&
-                              "line-through text-muted-foreground",
+                              "line-through text-muted-foreground"
                           )}
                         >
                           {sub.title}
@@ -1059,8 +1137,8 @@ export function TaskDetailPage({
 
               <div className="flex gap-2 items-center">
                 <Input
-                  placeholder="Add subtask…"
-                  value={subtaskInput}
+                  className="h-8 rounded-lg text-xs"
+                  disabled={creatingSubtask}
                   onChange={(e) => setSubtaskInput(e.target.value)}
                   onKeyDown={async (e) => {
                     if (e.key === "Enter" && subtaskInput.trim()) {
@@ -1069,33 +1147,35 @@ export function TaskDetailPage({
                         workspaceId,
                         spaceId,
                         taskId,
-                        subtaskInput.trim(),
+                        subtaskInput.trim()
                       );
                       setSubtaskInput("");
                       setCreatingSubtask(false);
                       load();
                     }
                   }}
-                  disabled={creatingSubtask}
-                  className="h-8 rounded-lg text-xs"
+                  placeholder="Add subtask…"
+                  value={subtaskInput}
                 />
                 <Button
-                  size="sm"
                   className="h-8 rounded-lg text-xs font-semibold shrink-0 px-3"
                   disabled={creatingSubtask || !subtaskInput.trim()}
                   onClick={async () => {
-                    if (!subtaskInput.trim()) return;
+                    if (!subtaskInput.trim()) {
+                      return;
+                    }
                     setCreatingSubtask(true);
                     await createSubtask(
                       workspaceId,
                       spaceId,
                       taskId,
-                      subtaskInput.trim(),
+                      subtaskInput.trim()
                     );
                     setSubtaskInput("");
                     setCreatingSubtask(false);
                     load();
                   }}
+                  size="sm"
                 >
                   Add
                 </Button>
@@ -1106,9 +1186,9 @@ export function TaskDetailPage({
           {/* Description */}
           <div className="mb-6">
             <TaskDescriptionEditor
-              value={descDraft}
               onChange={setDescDraft}
               onSave={saveDescription}
+              value={descDraft}
             />
           </div>
 
@@ -1121,23 +1201,21 @@ export function TaskDetailPage({
                 {attachments.filter((a) => !a.commentId).length > 0 && (
                   <span className="text-xs text-muted-foreground">
                     {attachments.filter((a) => !a.commentId).length} file
-                    {attachments.filter((a) => !a.commentId).length !== 1
-                      ? "s"
-                      : ""}
+                    {attachments.filter((a) => !a.commentId).length === 1
+                      ? ""
+                      : "s"}
                   </span>
                 )}
               </div>
               <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploadingFile}
                 className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs text-muted-foreground border hover:bg-accent hover:text-foreground transition-colors disabled:opacity-50"
+                disabled={uploadingFile}
+                onClick={() => fileInputRef.current?.click()}
               >
                 <PlusIcon className="size-3.5" />
                 {uploadingFile ? "Uploading…" : "Attach file"}
               </button>
               <input
-                ref={fileInputRef}
-                type="file"
                 className="hidden"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
@@ -1146,6 +1224,8 @@ export function TaskDetailPage({
                     e.target.value = "";
                   }
                 }}
+                ref={fileInputRef}
+                type="file"
               />
             </div>
 
@@ -1153,27 +1233,29 @@ export function TaskDetailPage({
             <div
               className="rounded-lg border-2 border-dashed border-border/50 p-4 transition-colors hover:border-primary/30 hover:bg-accent/20 cursor-pointer"
               onClick={() => fileInputRef.current?.click()}
+              onDragLeave={(e) => {
+                e.currentTarget.classList.remove(
+                  "border-primary/60",
+                  "bg-accent/30"
+                );
+              }}
               onDragOver={(e) => {
                 e.preventDefault();
                 e.currentTarget.classList.add(
                   "border-primary/60",
-                  "bg-accent/30",
-                );
-              }}
-              onDragLeave={(e) => {
-                e.currentTarget.classList.remove(
-                  "border-primary/60",
-                  "bg-accent/30",
+                  "bg-accent/30"
                 );
               }}
               onDrop={(e) => {
                 e.preventDefault();
                 e.currentTarget.classList.remove(
                   "border-primary/60",
-                  "bg-accent/30",
+                  "bg-accent/30"
                 );
                 const file = e.dataTransfer.files[0];
-                if (file) handleFileUpload(file);
+                if (file) {
+                  handleFileUpload(file);
+                }
               }}
             >
               {attachments.filter((a) => !a.commentId).length === 0 ? (
@@ -1191,28 +1273,28 @@ export function TaskDetailPage({
                     .filter((a) => !a.commentId)
                     .map((att) => (
                       <div
-                        key={att.id}
                         className="group relative rounded-md border bg-card overflow-hidden"
+                        key={att.id}
                       >
                         {isImage(att.mimeType) ? (
                           <a
                             href={att.url}
-                            target="_blank"
                             rel="noopener noreferrer"
+                            target="_blank"
                           >
                             <img
-                              src={att.url}
                               alt={att.fileName}
                               className="w-full h-24 object-cover"
+                              src={att.url}
                             />
                           </a>
                         ) : (
                           <a
-                            href={att.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            download={att.fileName}
                             className="flex flex-col items-center justify-center gap-2 h-24 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                            download={att.fileName}
+                            href={att.url}
+                            rel="noopener noreferrer"
+                            target="_blank"
                           >
                             {att.mimeType === "application/pdf" ? (
                               <FilePdfIcon className="size-8 text-red-500" />
@@ -1231,20 +1313,20 @@ export function TaskDetailPage({
                           </p>
                         </div>
                         <button
-                          onClick={() => handleDeleteAttachment(att.id)}
                           className="absolute top-1.5 right-1.5 size-6 inline-flex items-center justify-center leading-none rounded-full bg-black/70 text-white hover:bg-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                          onClick={() => handleDeleteAttachment(att.id)}
                         >
                           <XIcon className="size-3.5 shrink-0" weight="bold" />
                         </button>
                       </div>
                     ))}
                   <button
+                    className="flex flex-col items-center justify-center h-full min-h-24 rounded-md border-2 border-dashed border-border/50 text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors disabled:opacity-50"
+                    disabled={uploadingFile}
                     onClick={(e) => {
                       e.stopPropagation();
                       fileInputRef.current?.click();
                     }}
-                    disabled={uploadingFile}
-                    className="flex flex-col items-center justify-center h-full min-h-24 rounded-md border-2 border-dashed border-border/50 text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors disabled:opacity-50"
                   >
                     <PlusIcon className="size-5" />
                     <span className="text-2xs mt-1">
@@ -1266,7 +1348,7 @@ export function TaskDetailPage({
                   <span className="text-xs text-muted-foreground w-8 text-right">
                     {checkProgress}%
                   </span>
-                  <Progress value={checkProgress} className="flex-1 h-1.5" />
+                  <Progress className="flex-1 h-1.5" value={checkProgress} />
                 </div>
               )}
               {checklists.map((cl) => (
@@ -1276,16 +1358,16 @@ export function TaskDetailPage({
                       {cl.name}
                     </span>
                     <button
+                      className="text-muted-foreground hover:text-destructive"
                       onClick={async () => {
                         await deleteChecklist(
                           workspaceId,
                           spaceId,
                           listId,
-                          cl.id,
+                          cl.id
                         );
                         load();
                       }}
-                      className="text-muted-foreground hover:text-destructive"
                     >
                       <XIcon className="size-3.5" />
                     </button>
@@ -1293,34 +1375,34 @@ export function TaskDetailPage({
                   <div className="space-y-1 mb-2">
                     {cl.items.map((item) => (
                       <div
-                        key={item.id}
                         className="flex items-center gap-2 rounded-md py-1 px-1 hover:bg-accent/30 group"
+                        key={item.id}
                       >
                         <Checkbox
                           checked={item.isChecked}
-                          onCheckedChange={() => handleToggleItem(item.id)}
                           className="shrink-0"
+                          onCheckedChange={() => handleToggleItem(item.id)}
                         />
                         <span
                           className={cn(
                             "flex-1 text-sm",
                             item.isChecked &&
-                              "line-through text-muted-foreground",
+                              "line-through text-muted-foreground"
                           )}
                         >
                           {item.title}
                         </span>
                         <button
+                          className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
                           onClick={async () => {
                             await deleteChecklistItem(
                               workspaceId,
                               spaceId,
                               listId,
-                              item.id,
+                              item.id
                             );
                             load();
                           }}
-                          className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
                         >
                           <XIcon className="size-3.5" />
                         </button>
@@ -1329,8 +1411,7 @@ export function TaskDetailPage({
                   </div>
                   <div className="flex gap-2">
                     <Input
-                      placeholder="Add item…"
-                      value={newItemTexts[cl.id] ?? ""}
+                      className="h-7 rounded-lg text-xs"
                       onChange={(e) =>
                         setNewItemTexts((prev) => ({
                           ...prev,
@@ -1338,14 +1419,17 @@ export function TaskDetailPage({
                         }))
                       }
                       onKeyDown={(e) => {
-                        if (e.key === "Enter") handleAddItem(cl.id);
+                        if (e.key === "Enter") {
+                          handleAddItem(cl.id);
+                        }
                       }}
-                      className="h-7 rounded-lg text-xs"
+                      placeholder="Add item…"
+                      value={newItemTexts[cl.id] ?? ""}
                     />
                     <Button
-                      size="sm"
                       className="h-7 rounded-lg px-3 text-xs font-semibold"
                       onClick={() => handleAddItem(cl.id)}
+                      size="sm"
                     >
                       Add
                     </Button>
@@ -1363,8 +1447,8 @@ export function TaskDetailPage({
                 <div className="space-y-1 mb-3">
                   {dependencies.map((dep) => (
                     <div
-                      key={dep.id}
                       className="flex items-center gap-2 rounded-md border bg-card px-3 py-2"
+                      key={dep.id}
                     >
                       <span className="font-mono text-xs text-muted-foreground">
                         #{dep.dependsOnSeq}
@@ -1373,8 +1457,8 @@ export function TaskDetailPage({
                         {dep.dependsOnTitle}
                       </span>
                       <button
-                        onClick={() => handleRemoveDep(dep.dependsOnTaskId)}
                         className="text-muted-foreground hover:text-destructive"
+                        onClick={() => handleRemoveDep(dep.dependsOnTaskId)}
                       >
                         <XIcon className="size-3.5" />
                       </button>
@@ -1384,18 +1468,18 @@ export function TaskDetailPage({
               )}
               <div className="relative">
                 <Input
+                  className="h-8 rounded-lg text-xs"
+                  onChange={(e) => handleDepSearch(e.target.value)}
                   placeholder="Search task to depend on…"
                   value={depQuery}
-                  onChange={(e) => handleDepSearch(e.target.value)}
-                  className="h-8 rounded-lg text-xs"
                 />
                 {depResults.length > 0 && (
                   <div className="absolute z-10 mt-1 w-full rounded-md border bg-popover shadow-md">
                     {depResults.map((r) => (
                       <button
+                        className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-accent"
                         key={r.id}
                         onClick={() => handleAddDep(r.id)}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-accent"
                       >
                         <span className="font-mono text-xs text-muted-foreground">
                           #{r.seqNumber}
@@ -1411,54 +1495,59 @@ export function TaskDetailPage({
 
           {/* Action buttons */}
           <div className="flex flex-wrap gap-2">
-            {!addingChecklist ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 rounded-lg text-xs font-semibold"
-                onClick={() => setAddingChecklist(true)}
-              >
-                <PlusIcon className="size-3.5 mr-1.5" /> Create checklist
-              </Button>
-            ) : (
+            {addingChecklist ? (
               <div className="flex gap-2 items-center">
                 <Input
                   autoFocus
-                  placeholder="Checklist name…"
-                  value={newChecklistName}
+                  className="h-7 rounded-lg text-xs w-44"
                   onChange={(e) => setNewChecklistName(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") handleAddChecklist();
-                    if (e.key === "Escape") setAddingChecklist(false);
+                    if (e.key === "Enter") {
+                      handleAddChecklist();
+                    }
+                    if (e.key === "Escape") {
+                      setAddingChecklist(false);
+                    }
                   }}
-                  className="h-7 rounded-lg text-xs w-44"
+                  placeholder="Checklist name…"
+                  value={newChecklistName}
                 />
                 <Button
-                  size="sm"
                   className="h-7 rounded-lg px-3 text-xs font-semibold"
                   onClick={handleAddChecklist}
+                  size="sm"
                 >
                   Add
                 </Button>
                 <Button
-                  size="sm"
-                  variant="ghost"
                   className="h-7 rounded-lg text-xs"
                   onClick={() => setAddingChecklist(false)}
+                  size="sm"
+                  variant="ghost"
                 >
                   Cancel
                 </Button>
               </div>
+            ) : (
+              <Button
+                className="h-8 rounded-lg text-xs font-semibold"
+                onClick={() => setAddingChecklist(true)}
+                size="sm"
+                variant="outline"
+              >
+                <PlusIcon className="size-3.5 mr-1.5" /> Create checklist
+              </Button>
             )}
 
             {!showDepsSection && dependencies.length === 0 && (
               <Button
-                variant="outline"
-                size="sm"
                 className="h-8 rounded-lg text-xs font-semibold"
                 onClick={() => setShowDepsSection(true)}
+                size="sm"
+                variant="outline"
               >
-                <PlusIcon className="size-3.5 mr-1.5" /> Relate items or add dependencies
+                <PlusIcon className="size-3.5 mr-1.5" /> Relate items or add
+                dependencies
               </Button>
             )}
           </div>
@@ -1470,12 +1559,12 @@ export function TaskDetailPage({
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-muted-foreground">Minutes</label>
                 <Input
-                  type="number"
-                  min="1"
-                  placeholder="30"
-                  value={timeInput}
-                  onChange={(e) => setTimeInput(e.target.value)}
                   className="h-8 rounded-lg text-xs w-24"
+                  min="1"
+                  onChange={(e) => setTimeInput(e.target.value)}
+                  placeholder="30"
+                  type="number"
+                  value={timeInput}
                 />
               </div>
               <div className="flex-1 flex flex-col gap-1.5">
@@ -1483,16 +1572,16 @@ export function TaskDetailPage({
                   Note (optional)
                 </label>
                 <Input
+                  className="h-8 rounded-lg text-xs"
+                  onChange={(e) => setTimeNote(e.target.value)}
                   placeholder="What did you work on?"
                   value={timeNote}
-                  onChange={(e) => setTimeNote(e.target.value)}
-                  className="h-8 rounded-lg text-xs"
                 />
               </div>
               <Button
-                size="sm"
                 className="h-8 rounded-lg px-3 text-xs font-semibold shrink-0"
                 onClick={handleLogTime}
+                size="sm"
               >
                 Log
               </Button>
@@ -1504,11 +1593,11 @@ export function TaskDetailPage({
         <div className="w-80 xl:w-96 shrink-0 border-l flex flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto px-5 py-4">
             <TaskActivityFeed
-              workspaceId={workspaceId}
-              spaceId={spaceId}
-              listId={listId}
-              taskId={taskId}
               currentUserId={currentUserId}
+              listId={listId}
+              spaceId={spaceId}
+              taskId={taskId}
+              workspaceId={workspaceId}
             />
           </div>
 

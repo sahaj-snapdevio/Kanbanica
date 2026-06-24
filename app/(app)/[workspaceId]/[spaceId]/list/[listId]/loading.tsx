@@ -32,7 +32,7 @@ export default function ListLoading() {
       {/* Task rows grouped by status */}
       <div className="space-y-6">
         {[5, 3].map((count, groupIndex) => (
-          <div key={groupIndex} className="space-y-2">
+          <div className="space-y-2" key={groupIndex}>
             {/* Status group header */}
             <div className="flex items-center gap-2">
               <Skeleton className="h-2.5 w-2.5 rounded-full" />
@@ -44,8 +44,8 @@ export default function ListLoading() {
             <div className="space-y-1.5">
               {Array.from({ length: count }).map((_, rowIndex) => (
                 <div
-                  key={rowIndex}
                   className="flex items-center gap-3 rounded-md border px-3 py-2.5"
+                  key={rowIndex}
                 >
                   <Skeleton className="h-4 w-4 shrink-0 rounded" />
                   <Skeleton className="h-4 flex-1 max-w-[280px] rounded" />

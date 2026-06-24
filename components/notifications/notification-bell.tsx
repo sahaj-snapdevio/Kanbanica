@@ -1,7 +1,7 @@
 ﻿"use client";
 
-import * as React from "react";
 import { BellIcon } from "@phosphor-icons/react";
+import * as React from "react";
 import useSWR from "swr";
 import { Button } from "@/components/ui/button";
 import { NotificationPanel } from "./notification-panel";
@@ -18,7 +18,7 @@ export function NotificationBell() {
   const { data } = useSWR<NotificationsResponse>(
     "/api/me/notifications?filter=unread",
     fetcher,
-    { refreshInterval: 30000 },
+    { refreshInterval: 30_000 }
   );
 
   const unreadCount = data?.unreadCount ?? 0;
@@ -26,11 +26,11 @@ export function NotificationBell() {
   return (
     <>
       <Button
-        variant="ghost"
-        size="icon"
         className="relative size-8 shrink-0"
         onClick={() => setOpen((o) => !o)}
+        size="icon"
         title="Notifications"
+        variant="ghost"
       >
         <BellIcon className="size-4" />
         {unreadCount > 0 && (
@@ -39,7 +39,7 @@ export function NotificationBell() {
           </span>
         )}
       </Button>
-      <NotificationPanel open={open} onClose={() => setOpen(false)} />
+      <NotificationPanel onClose={() => setOpen(false)} open={open} />
     </>
   );
 }

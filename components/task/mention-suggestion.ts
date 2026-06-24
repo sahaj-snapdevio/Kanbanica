@@ -1,14 +1,14 @@
 import { ReactRenderer } from "@tiptap/react";
 import tippy, { type Instance as TippyInstance } from "tippy.js";
 import "tippy.js/dist/tippy.css";
-import { MentionList, type MentionListRef } from "./mention-list";
 import type { MentionMember } from "@/app/actions/mention";
+import { MentionList, type MentionListRef } from "./mention-list";
 
 // Accepts a getter so the suggestion always reads the latest members list,
 // even though the Tiptap extension is instantiated only once.
 export function buildMentionSuggestion(
   getMembers: () => MentionMember[],
-  onActiveChange?: (active: boolean) => void,
+  onActiveChange?: (active: boolean) => void
 ) {
   return {
     char: "@",
@@ -17,8 +17,7 @@ export function buildMentionSuggestion(
       const q = query.toLowerCase();
       return getMembers().filter(
         (m) =>
-          m.name.toLowerCase().includes(q) ||
-          m.email.toLowerCase().includes(q),
+          m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q)
       );
     },
 
@@ -31,7 +30,9 @@ export function buildMentionSuggestion(
 
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const mentionNodeType = editor.schema.nodes.mention;
-      if (!mentionNodeType) return;
+      if (!mentionNodeType) {
+        return;
+      }
 
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
       const mentionNode = mentionNodeType.create({ id, label });
@@ -64,7 +65,9 @@ export function buildMentionSuggestion(
           });
 
           // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-          if (!props.clientRect) return;
+          if (!props.clientRect) {
+            return;
+          }
 
           popup = tippy("body" as unknown as Element, {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access

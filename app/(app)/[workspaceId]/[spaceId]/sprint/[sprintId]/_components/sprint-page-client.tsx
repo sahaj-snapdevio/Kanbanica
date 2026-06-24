@@ -1,25 +1,34 @@
 "use client";
 
-import * as React from "react";
 import { TrayIcon } from "@phosphor-icons/react";
-import { SprintPanel } from "@/components/sprint/sprint-panel";
-import { SprintListView } from "@/components/sprint/sprint-list-view";
+import * as React from "react";
 import { BacklogView } from "@/components/sprint/backlog-view";
+import { SprintListView } from "@/components/sprint/sprint-list-view";
+import { SprintPanel } from "@/components/sprint/sprint-panel";
 import { Button } from "@/components/ui/button";
 import { useSetTopbar } from "@/lib/topbar-context";
 
 interface SprintPageClientProps {
-  workspaceId: string;
-  spaceId: string;
-  sprintId: string;
-  spaceName: string;
-  spaceColor: string | null;
-  isAdmin: boolean;
   canEdit: boolean;
+  isAdmin: boolean;
   members: { userId: string; name: string | null; email: string | null }[];
+  spaceColor: string | null;
+  spaceId: string;
+  spaceName: string;
+  sprintId: string;
+  workspaceId: string;
 }
 
-export function SprintPageClient({ workspaceId, spaceId, sprintId, spaceName, spaceColor, isAdmin, canEdit, members }: SprintPageClientProps) {
+export function SprintPageClient({
+  workspaceId,
+  spaceId,
+  sprintId,
+  spaceName,
+  spaceColor,
+  isAdmin,
+  canEdit,
+  members,
+}: SprintPageClientProps) {
   const [refreshKey, setRefreshKey] = React.useState(0);
   const [showBacklog, setShowBacklog] = React.useState(false);
 
@@ -35,26 +44,26 @@ export function SprintPageClient({ workspaceId, spaceId, sprintId, spaceName, sp
   return (
     <>
       <SprintPanel
-        workspaceId={workspaceId}
-        spaceId={spaceId}
         onDataChanged={handleDataChanged}
+        spaceId={spaceId}
+        workspaceId={workspaceId}
       />
       <SprintListView
-        workspaceId={workspaceId}
-        spaceId={spaceId}
-        isAdmin={isAdmin}
         canEdit={canEdit}
+        isAdmin={isAdmin}
         members={members}
         refreshKey={refreshKey}
+        spaceId={spaceId}
+        workspaceId={workspaceId}
       />
 
       {/* Backlog toggle */}
       <div className="pt-2">
         <Button
-          variant="ghost"
-          size="sm"
           className="gap-2 text-muted-foreground hover:text-foreground"
           onClick={() => setShowBacklog((v) => !v)}
+          size="sm"
+          variant="ghost"
         >
           <TrayIcon className="size-4" />
           {showBacklog ? "Hide Backlog" : "Show Backlog"}
@@ -63,10 +72,10 @@ export function SprintPageClient({ workspaceId, spaceId, sprintId, spaceName, sp
 
       {showBacklog && (
         <BacklogView
-          workspaceId={workspaceId}
+          refreshKey={refreshKey}
           spaceId={spaceId}
           sprintId={sprintId}
-          refreshKey={refreshKey}
+          workspaceId={workspaceId}
         />
       )}
     </>

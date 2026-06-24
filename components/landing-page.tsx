@@ -1,6 +1,12 @@
 "use client";
 
 import {
+  motion,
+  useMotionValueEvent,
+  useScroll,
+  useTransform,
+} from "framer-motion";
+import {
   AlertTriangle,
   ArrowRight,
   BarChart3,
@@ -29,7 +35,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import * as React from "react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -46,7 +52,6 @@ import {
   SUPPORT_EMAIL,
 } from "@/config/platform";
 import { cn } from "@/lib/utils";
-import { motion, useScroll, useTransform, useMotionValueEvent } from "framer-motion";
 
 function useInView(threshold = 0.12) {
   const ref = React.useRef<HTMLDivElement>(null);
@@ -63,7 +68,7 @@ function useInView(threshold = 0.12) {
           obs.disconnect();
         }
       },
-      { threshold },
+      { threshold }
     );
     obs.observe(el);
     return () => obs.disconnect();
@@ -96,7 +101,7 @@ function Animate({
         visible
           ? "opacity-100 translate-x-0 translate-y-0"
           : cn("opacity-0", translate),
-        className,
+        className
       )}
       ref={ref}
       style={{ transitionDelay: `${delay}ms` }}
@@ -175,21 +180,48 @@ const steps = [
 const testimonials = [
   {
     name: "Sarah Chen",
-    role: "Engineering Lead, Flowboard",
+    role: "Engineering Lead",
+    company: "Flowboard",
     initials: "SC",
+    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&h=150&q=80",
     body: "We switched from ClickUp and the onboarding took 20 minutes. The Board view is snappy, the permissions model is exactly what we needed for guest contractors.",
+    rating: 5,
   },
   {
     name: "Marcus Rivera",
-    role: "Product Manager, Stackd",
+    role: "Product Manager",
+    company: "Stackd",
     initials: "MR",
-    body: `Sprint planning used to take half a day. With ${PRODUCT_NAME}'s sprint view and story points, we're done in an hour. The burndown chart is a game-changer.`,
+    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=150&q=80",
+    body: "Sprint planning used to take half a day. With Kanbanica's sprint view and story points, we're done in an hour. The burndown chart is a game-changer.",
+    rating: 5,
   },
   {
     name: "Priya Nair",
-    role: "Founder, Loopback",
+    role: "Founder",
+    company: "Loopback",
     initials: "PN",
+    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&h=150&q=80",
     body: "My Tasks view is something I didn't know I needed. Seeing every task assigned to me across every project in one place — with a due date grouping — is brilliant.",
+    rating: 5,
+  },
+  {
+    name: "David K.",
+    role: "CTO",
+    company: "Acme Co",
+    initials: "DK",
+    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&h=150&q=80",
+    body: "We consolidated three different tools into Kanbanica. It is blazing fast and the security features with workspace-scoped permissions fit our enterprise requirements perfectly.",
+    rating: 5,
+  },
+  {
+    name: "Elena Rostova",
+    role: "Design Director",
+    company: "Nexus",
+    initials: "ER",
+    avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&h=150&q=80",
+    body: "The user interface is gorgeous, clean, and responsive. Designing workflows and managing task lists across our multiple departments is a breeze.",
+    rating: 5,
   },
 ];
 
@@ -235,7 +267,7 @@ function SectionLabel({
     <span
       className={cn(
         "inline-flex items-center rounded-full border border-[#174D38]/30 bg-[#174D38]/10 px-3 py-1 font-semibold text-[#174D38] text-xs uppercase tracking-wide",
-        className,
+        className
       )}
     >
       {children}
@@ -259,7 +291,7 @@ function Navbar() {
         "sticky top-0 z-40 transition-all duration-200",
         scrolled
           ? "border-b border-[#CBCBCB] bg-white/95 shadow-sm backdrop-blur-sm"
-          : "bg-transparent",
+          : "bg-transparent"
       )}
     >
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
@@ -366,11 +398,11 @@ function Navbar() {
 }
 
 interface TypewriterProps {
-  phrases: string[];
-  typingSpeed?: number;
+  colors?: string[];
   erasingSpeed?: number;
   pauseDuration?: number;
-  colors?: string[];
+  phrases: string[];
+  typingSpeed?: number;
 }
 
 function Typewriter({
@@ -395,7 +427,9 @@ function Typewriter({
   }, []);
 
   React.useEffect(() => {
-    if (!hasStarted) return;
+    if (!hasStarted) {
+      return;
+    }
 
     // Check for prefers-reduced-motion
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -481,14 +515,14 @@ function ListView() {
       <div className="flex items-center gap-2 border-b border-[#CBCBCB]/60 pb-3 shrink-0">
         {["Filter", "Group by: Status", "Sort"].map((label) => (
           <span
-            key={label}
             className="rounded border border-dashed border-[#CBCBCB] px-2.5 py-1 text-[#9ca3af] text-2xs font-semibold cursor-default"
+            key={label}
           >
             {label}
           </span>
         ))}
       </div>
-      
+
       {/* Table Headers */}
       <div className="grid grid-cols-12 gap-4 px-3 text-[10px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1 shrink-0">
         <div className="col-span-6">Task Name</div>
@@ -496,7 +530,7 @@ function ListView() {
         <div className="col-span-2 text-center">Priority</div>
         <div className="col-span-2 text-right">Assignee</div>
       </div>
-      
+
       {/* Table Rows */}
       <div className="flex-1 flex flex-col gap-1.5 overflow-y-auto pr-1">
         {[
@@ -547,15 +581,27 @@ function ListView() {
           >
             <div className="col-span-6 flex items-center gap-3">
               <span className="size-4 shrink-0 rounded border-2 border-[#CBCBCB]" />
-              <span className="font-semibold text-[#174D38] truncate">{t.title}</span>
+              <span className="font-semibold text-[#174D38] truncate">
+                {t.title}
+              </span>
             </div>
             <div className="col-span-2 flex justify-center">
-              <span className={cn("rounded px-2.5 py-0.5 text-[10px] font-bold tracking-wide", t.statusCls)}>
+              <span
+                className={cn(
+                  "rounded px-2.5 py-0.5 text-[10px] font-bold tracking-wide",
+                  t.statusCls
+                )}
+              >
                 {t.status}
               </span>
             </div>
             <div className="col-span-2 flex justify-center">
-              <span className={cn("rounded px-2.5 py-0.5 text-[10px] font-bold tracking-wide", t.pCls)}>
+              <span
+                className={cn(
+                  "rounded px-2.5 py-0.5 text-[10px] font-bold tracking-wide",
+                  t.pCls
+                )}
+              >
                 {t.priority}
               </span>
             </div>
@@ -584,47 +630,82 @@ function BoardView() {
           title: "Backlog",
           color: "#9ca3af",
           tasks: [
-            { title: "Write API documentation", priority: "Low", pCls: "bg-blue-50 text-blue-500", assignee: "PN" },
+            {
+              title: "Write API documentation",
+              priority: "Low",
+              pCls: "bg-blue-50 text-blue-500",
+              assignee: "PN",
+            },
           ],
         },
         {
           title: "Todo",
           color: "#3b82f6",
           tasks: [
-            { title: "Set up CI/CD pipeline", priority: "Urgent", pCls: "bg-red-50 text-red-500", assignee: "SC" },
+            {
+              title: "Set up CI/CD pipeline",
+              priority: "Urgent",
+              pCls: "bg-red-50 text-red-500",
+              assignee: "SC",
+            },
           ],
         },
         {
           title: "In Progress",
           color: "#174D38",
           tasks: [
-            { title: "Fix login redirect bug", priority: "High", pCls: "bg-orange-50 text-orange-500", assignee: "SC" },
-            { title: "Implement search indexing", priority: "High", pCls: "bg-orange-50 text-orange-500", assignee: "MR" },
+            {
+              title: "Fix login redirect bug",
+              priority: "High",
+              pCls: "bg-orange-50 text-orange-500",
+              assignee: "SC",
+            },
+            {
+              title: "Implement search indexing",
+              priority: "High",
+              pCls: "bg-orange-50 text-orange-500",
+              assignee: "MR",
+            },
           ],
         },
         {
           title: "Review",
           color: "#f59e0b",
           tasks: [
-            { title: "Design onboarding flow", priority: "Medium", pCls: "bg-yellow-50 text-yellow-600", assignee: "MR" },
+            {
+              title: "Design onboarding flow",
+              priority: "Medium",
+              pCls: "bg-yellow-50 text-yellow-600",
+              assignee: "MR",
+            },
           ],
         },
         {
           title: "Done",
           color: "#10b981",
           tasks: [
-            { title: "Database migration", priority: "Low", pCls: "bg-blue-50 text-blue-500", assignee: "PN" },
+            {
+              title: "Database migration",
+              priority: "Low",
+              pCls: "bg-blue-50 text-blue-500",
+              assignee: "PN",
+            },
           ],
         },
       ].map((col) => (
         <div
-          key={col.title}
           className="rounded-lg border border-[#CBCBCB]/60 bg-[#F5F5F5] p-3 flex flex-col gap-2 min-w-[170px] flex-1 max-h-full"
+          key={col.title}
         >
           <div className="flex items-center justify-between px-1 mb-1 shrink-0">
             <div className="flex items-center gap-2">
-              <span className="size-2 rounded-full" style={{ backgroundColor: col.color }} />
-              <span className="font-bold text-[#174D38] text-xs">{col.title}</span>
+              <span
+                className="size-2 rounded-full"
+                style={{ backgroundColor: col.color }}
+              />
+              <span className="font-bold text-[#174D38] text-xs">
+                {col.title}
+              </span>
             </div>
             <span className="rounded bg-[#E8E8E8] px-1.5 py-0.5 text-4xs font-bold text-[#6b7280]">
               {col.tasks.length}
@@ -633,14 +714,19 @@ function BoardView() {
           <div className="flex-1 flex flex-col gap-2 overflow-y-auto pr-0.5">
             {col.tasks.map((task) => (
               <div
-                key={task.title}
                 className="rounded-lg border border-[#CBCBCB]/60 bg-white p-3 shadow-xs flex flex-col gap-2 hover:border-[#174D38]/40 transition-colors cursor-grab"
+                key={task.title}
               >
                 <p className="font-medium text-[#174D38] text-2xs leading-tight line-clamp-2">
                   {task.title}
                 </p>
                 <div className="flex items-center justify-between mt-1">
-                  <span className={cn("rounded px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider", task.pCls)}>
+                  <span
+                    className={cn(
+                      "rounded px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider",
+                      task.pCls
+                    )}
+                  >
                     {task.priority}
                   </span>
                   <Avatar className="size-5">
@@ -666,38 +752,42 @@ function CalendarView() {
         <span className="font-bold text-[#174D38] text-sm">June 2026</span>
         <div className="flex items-center gap-3">
           <div className="flex rounded border border-[#CBCBCB] bg-[#F2F2F2] p-0.5 text-[9px] font-bold">
-            <span className="bg-white rounded px-2.5 py-0.5 text-[#174D38] shadow-xs">Month</span>
+            <span className="bg-white rounded px-2.5 py-0.5 text-[#174D38] shadow-xs">
+              Month
+            </span>
             <span className="px-2.5 py-0.5 text-[#6b7280]">Week</span>
             <span className="px-2.5 py-0.5 text-[#6b7280]">Day</span>
           </div>
         </div>
       </div>
-      
+
       {/* Weekday headers */}
       <div className="grid grid-cols-7 gap-1 text-center font-bold text-[#9ca3af] text-[9px] uppercase tracking-wider mb-1 shrink-0">
         {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
-          <div key={day} className="py-1">{day}</div>
+          <div className="py-1" key={day}>
+            {day}
+          </div>
         ))}
       </div>
-      
+
       {/* Calendar Grid */}
       <div className="flex-1 grid grid-cols-7 grid-rows-5 gap-1 min-h-0">
         {Array.from({ length: 35 }).map((_, idx) => {
           const dayNum = idx + 1; // June 1st is Monday (idx = 0)
           const isValidDay = dayNum > 0 && dayNum <= 30;
-          
+
           return (
             <div
-              key={idx}
               className={cn(
                 "border border-[#E8E8E8] rounded-md p-1 flex flex-col gap-1 min-h-0 relative bg-white transition-colors hover:border-[#174D38]/30",
                 isValidDay ? "text-[#174D38]" : "text-[#CBCBCB] bg-[#F9F9F9]"
               )}
+              key={idx}
             >
               <span className="text-[9px] font-bold leading-none mb-0.5">
                 {isValidDay ? dayNum : ""}
               </span>
-              
+
               {/* Event bars */}
               {dayNum === 2 && (
                 <div className="bg-[#174D38]/10 border-l-2 border-[#174D38] rounded px-1 py-0.5 text-[7px] text-[#174D38] font-bold truncate leading-none cursor-pointer">
@@ -745,7 +835,8 @@ function ProductShowcaseSection() {
   React.useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
     setPrefersReducedMotion(mediaQuery.matches);
-    const handler = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
+    const handler = (e: MediaQueryListEvent) =>
+      setPrefersReducedMotion(e.matches);
     mediaQuery.addEventListener("change", handler);
     return () => mediaQuery.removeEventListener("change", handler);
   }, []);
@@ -765,34 +856,78 @@ function ProductShowcaseSection() {
   const activeSidebarIndex = activeTabIdx === 2 ? 0 : activeTabIdx;
 
   // Scroll Transforms for List View
-  const listOpacityTransform = useTransform(scrollYProgress, [0, 0.2, 0.35], [1, 0.5, 0]);
-  const listScaleTransform = useTransform(scrollYProgress, [0, 0.35], [1, 0.95]);
+  const listOpacityTransform = useTransform(
+    scrollYProgress,
+    [0, 0.2, 0.35],
+    [1, 0.5, 0]
+  );
+  const listScaleTransform = useTransform(
+    scrollYProgress,
+    [0, 0.35],
+    [1, 0.95]
+  );
   const listYTransform = useTransform(scrollYProgress, [0, 0.35], [0, -50]);
 
   // Scroll Transforms for Board View
-  const boardOpacityTransform = useTransform(scrollYProgress, [0, 0.15, 0.35, 0.55, 0.7], [0, 0.4, 1, 0.5, 0]);
-  const boardScaleTransform = useTransform(scrollYProgress, [0, 0.35, 0.7], [0.9, 1, 0.95]);
-  const boardYTransform = useTransform(scrollYProgress, [0, 0.35, 0.7], [150, 0, -50]);
+  const boardOpacityTransform = useTransform(
+    scrollYProgress,
+    [0, 0.15, 0.35, 0.55, 0.7],
+    [0, 0.4, 1, 0.5, 0]
+  );
+  const boardScaleTransform = useTransform(
+    scrollYProgress,
+    [0, 0.35, 0.7],
+    [0.9, 1, 0.95]
+  );
+  const boardYTransform = useTransform(
+    scrollYProgress,
+    [0, 0.35, 0.7],
+    [150, 0, -50]
+  );
 
   // Scroll Transforms for Calendar View
-  const calendarOpacityTransform = useTransform(scrollYProgress, [0.35, 0.55, 0.7], [0, 0.4, 1]);
-  const calendarScaleTransform = useTransform(scrollYProgress, [0.35, 0.7], [0.9, 1]);
-  const calendarYTransform = useTransform(scrollYProgress, [0.35, 0.7], [150, 0]);
+  const calendarOpacityTransform = useTransform(
+    scrollYProgress,
+    [0.35, 0.55, 0.7],
+    [0, 0.4, 1]
+  );
+  const calendarScaleTransform = useTransform(
+    scrollYProgress,
+    [0.35, 0.7],
+    [0.9, 1]
+  );
+  const calendarYTransform = useTransform(
+    scrollYProgress,
+    [0.35, 0.7],
+    [150, 0]
+  );
 
-  const listOpacity = prefersReducedMotion ? (activeTabIdx === 0 ? 1 : 0) : listOpacityTransform;
+  const listOpacity = prefersReducedMotion
+    ? activeTabIdx === 0
+      ? 1
+      : 0
+    : listOpacityTransform;
   const listScale = prefersReducedMotion ? 1 : listScaleTransform;
   const listY = prefersReducedMotion ? 0 : listYTransform;
 
-  const boardOpacity = prefersReducedMotion ? (activeTabIdx === 1 ? 1 : 0) : boardOpacityTransform;
+  const boardOpacity = prefersReducedMotion
+    ? activeTabIdx === 1
+      ? 1
+      : 0
+    : boardOpacityTransform;
   const boardScale = prefersReducedMotion ? 1 : boardScaleTransform;
   const boardY = prefersReducedMotion ? 0 : boardYTransform;
 
-  const calendarOpacity = prefersReducedMotion ? (activeTabIdx === 2 ? 1 : 0) : calendarOpacityTransform;
+  const calendarOpacity = prefersReducedMotion
+    ? activeTabIdx === 2
+      ? 1
+      : 0
+    : calendarOpacityTransform;
   const calendarScale = prefersReducedMotion ? 1 : calendarScaleTransform;
   const calendarY = prefersReducedMotion ? 0 : calendarYTransform;
 
   return (
-    <section ref={sectionRef} className="relative h-[300vh] bg-white w-full">
+    <section className="relative h-[300vh] bg-white w-full" ref={sectionRef}>
       {/* Sticky container that centers the browser frame in the viewport */}
       <div className="sticky top-[100px] z-10 w-full flex items-center justify-center overflow-hidden py-12">
         <div className="relative mx-auto max-w-4xl w-full px-4 sm:px-6">
@@ -812,13 +947,13 @@ function ProductShowcaseSection() {
               <div className="flex w-14 flex-col items-center gap-4 border-r border-[#CBCBCB] bg-white px-3.5 py-4 shrink-0">
                 {[LayoutList, Kanban, Bell, Search, Users].map((Icon, i) => (
                   <div
-                    key={i}
                     className={cn(
                       "flex size-8 items-center justify-center rounded-md transition-colors",
                       i === activeSidebarIndex
                         ? "bg-[#174D38] text-white"
                         : "text-[#9ca3af] hover:bg-[#E8E8E8]"
                     )}
+                    key={i}
                   >
                     <Icon className="size-4" />
                   </div>
@@ -839,13 +974,13 @@ function ProductShowcaseSection() {
                   <div className="flex items-center gap-1">
                     {["List", "Board", "Calendar"].map((tab, idx) => (
                       <span
-                        key={tab}
                         className={cn(
                           "rounded px-2.5 py-1 font-semibold text-xs transition-all duration-200",
                           activeTabIdx === idx
                             ? "bg-[#174D38] text-white"
                             : "text-[#6b7280] hover:bg-[#E8E8E8] hover:text-[#174D38]"
                         )}
+                        key={tab}
                       >
                         {tab}
                       </span>
@@ -857,26 +992,34 @@ function ProductShowcaseSection() {
                 <div className="flex-1 relative min-h-0 overflow-hidden bg-[#F5F5F5]">
                   {/* List View */}
                   <motion.div
-                    style={{ opacity: listOpacity, scale: listScale, y: listY }}
                     className="absolute inset-0 p-4"
+                    style={{ opacity: listOpacity, scale: listScale, y: listY }}
                   >
                     <ListView />
                   </motion.div>
 
                   {/* Board View */}
                   <motion.div
-                    style={{ opacity: boardOpacity, scale: boardScale, y: boardY }}
                     className="absolute inset-0 p-4"
+                    style={{
+                      opacity: boardOpacity,
+                      scale: boardScale,
+                      y: boardY,
+                    }}
                   >
                     <BoardView />
                   </motion.div>
 
                   {/* Calendar View */}
                   <motion.div
-                    style={{ opacity: calendarOpacity, scale: calendarScale, y: calendarY }}
                     className="absolute inset-0 p-4"
+                    style={{
+                      opacity: calendarOpacity,
+                      scale: calendarScale,
+                      y: calendarY,
+                    }}
                   >
-                    <CalendarView />
+                    {/* <CalendarView /> */}
                   </motion.div>
                 </div>
               </div>
@@ -962,12 +1105,12 @@ function SocialProofBar() {
               {["Acme Co", "Flowboard", "Stackd", "Loopback", "Nexus"].map(
                 (name) => (
                   <span
-                    className="font-semibold text-[#CBCBCB] text-xs uppercase tracking-widest"
+                    className="font-semibold text-[#54705C] text-xs uppercase tracking-widest"
                     key={name}
                   >
                     {name}
                   </span>
-                ),
+                )
               )}
             </div>
           </div>
@@ -1010,7 +1153,7 @@ function FeaturesSection() {
                 "hover:-translate-y-0.5 hover:border-[#174D38]/40 hover:shadow-md",
                 visible
                   ? "translate-y-0 opacity-100"
-                  : "translate-y-4 opacity-0",
+                  : "translate-y-4 opacity-0"
               )}
               key={title}
               style={{
@@ -1076,7 +1219,7 @@ function StatsSection() {
                 "flex flex-col items-center text-center transition-all duration-500 sm:items-start sm:text-left",
                 visible
                   ? "translate-y-0 opacity-100"
-                  : "translate-y-4 opacity-0",
+                  : "translate-y-4 opacity-0"
               )}
               key={label}
               style={{ transitionDelay: visible ? `${i * 90}ms` : "0ms" }}
@@ -1156,7 +1299,7 @@ function BentoSection() {
                   "hover:-translate-y-0.5 hover:shadow-md hover:border-[#174D38]/40",
                   visible
                     ? "translate-y-0 opacity-100"
-                    : "translate-y-4 opacity-0",
+                    : "translate-y-4 opacity-0"
                 )}
                 key={card.title}
                 style={{ transitionDelay: visible ? `${i * 90}ms` : "0ms" }}
@@ -1193,6 +1336,16 @@ function HowItWorksSection() {
   const { ref, visible } = useInView();
   return (
     <section className="bg-white pt-8 pb-16 scroll-mt-14" id="how-it-works">
+      <style>{`
+        @keyframes marching-ants {
+          to {
+            stroke-dashoffset: -8;
+          }
+        }
+        .animate-marching-ants {
+          animation: marching-ants 0.6s linear infinite;
+        }
+      `}</style>
       <div className="mx-auto max-w-6xl px-6">
         <Animate className="mb-14 text-center">
           <SectionLabel className="mb-4">How it works</SectionLabel>
@@ -1224,14 +1377,13 @@ function HowItWorksSection() {
           className="relative grid gap-6 sm:grid-cols-2 lg:grid-cols-4"
           ref={ref}
         >
-          <div className="pointer-events-none absolute top-10 right-[12.5%] left-[12.5%] hidden border-t-2 border-dashed border-[#174D38]/20 lg:block" />
           {steps.map((step, i) => (
             <div
               className={cn(
                 "relative rounded-xl border border-[#CBCBCB] bg-white p-6 shadow-sm transition-all duration-500",
                 visible
                   ? "translate-y-0 opacity-100"
-                  : "translate-y-4 opacity-0",
+                  : "translate-y-4 opacity-0"
               )}
               key={step.number}
               style={{
@@ -1239,6 +1391,50 @@ function HowItWorksSection() {
                 transitionProperty: "opacity, transform",
               }}
             >
+              {i < 3 && (
+                <div
+                  className={cn(
+                    "pointer-events-none absolute top-10 left-[100%] w-6 h-6 hidden lg:block z-10 transition-all duration-700 ease-out",
+                    visible
+                      ? "opacity-100 translate-x-0 scale-100"
+                      : "opacity-0 -translate-x-2 scale-75"
+                  )}
+                  style={{
+                    transitionDelay: `${i * 120 + 150}ms`,
+                  }}
+                >
+                  <svg
+                    className="w-full h-full overflow-visible"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M -4 12 L 24 12"
+                      opacity="0.25"
+                      stroke="#174D38"
+                      strokeDasharray="4 4"
+                      strokeLinecap="round"
+                      strokeWidth="2"
+                    />
+                    <path
+                      className="animate-marching-ants"
+                      d="M -4 12 L 24 12"
+                      stroke="#174D38"
+                      strokeDasharray="4 4"
+                      strokeLinecap="round"
+                      strokeWidth="2"
+                    />
+                    <path
+                      d="M 18 8 L 24 12 L 18 16"
+                      stroke="#174D38"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                    />
+                  </svg>
+                </div>
+              )}
               <div
                 className="mb-3 select-none bg-clip-text text-5xl font-bold text-transparent"
                 style={{
@@ -1332,7 +1528,7 @@ function ViewsShowcaseSection() {
                           "flex items-center gap-3 rounded border px-3 py-2 text-sm",
                           done
                             ? "border-[#CBCBCB] bg-[#F2F2F2]"
-                            : "border-[#174D38]/20 bg-[#174D38]/5",
+                            : "border-[#174D38]/20 bg-[#174D38]/5"
                         )}
                         key={t}
                       >
@@ -1341,7 +1537,7 @@ function ViewsShowcaseSection() {
                             "flex size-4 shrink-0 items-center justify-center rounded border-2",
                             done
                               ? "border-[#174D38] bg-[#174D38]"
-                              : "border-[#CBCBCB]",
+                              : "border-[#CBCBCB]"
                           )}
                         >
                           {done && (
@@ -1356,7 +1552,7 @@ function ViewsShowcaseSection() {
                             "flex-1 text-xs",
                             done
                               ? "text-[#9ca3af] line-through"
-                              : "text-[#174D38]",
+                              : "text-[#174D38]"
                           )}
                         >
                           {t}
@@ -1593,7 +1789,7 @@ function BeforeAfterSection() {
     (e: React.TouchEvent) => {
       handleMove(e.touches[0].clientX);
     },
-    [handleMove],
+    [handleMove]
   );
 
   React.useEffect(() => {
@@ -1681,7 +1877,7 @@ function BeforeAfterSection() {
                       <div
                         className={cn(
                           "flex size-9 shrink-0 items-center justify-center rounded-lg",
-                          f.color,
+                          f.color
                         )}
                       >
                         <Icon className="size-4" />
@@ -1795,59 +1991,315 @@ function BeforeAfterSection() {
 }
 
 function TestimonialsSection() {
+  const [activeIndex, setActiveIndex] = React.useState(2);
+  const [hoveredIndex, setHoveredIndex] = React.useState<number | null>(null);
+  const [screenSize, setScreenSize] = React.useState({
+    isMobile: false,
+    isTablet: false,
+  });
+  const [isEntered, setIsEntered] = React.useState(false);
   const { ref, visible } = useInView();
+
+  React.useEffect(() => {
+    const handleResize = () => {
+      const w = window.innerWidth;
+      setScreenSize({
+        isMobile: w < 640,
+        isTablet: w >= 640 && w < 1024,
+      });
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  React.useEffect(() => {
+    if (visible) {
+      const timer = setTimeout(() => setIsEntered(true), 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [visible]);
+
+  const prev = () => {
+    setActiveIndex(
+      (prev) => (prev - 1 + testimonials.length) % testimonials.length
+    );
+  };
+
+  const next = () => {
+    setActiveIndex((prev) => (prev + 1) % testimonials.length);
+  };
+
+  const { isMobile, isTablet } = screenSize;
+
   return (
-    <section className="relative overflow-hidden bg-white py-16">
-      <div className="pointer-events-none absolute left-1/2 top-1/2 size-[480px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#174D38]/10 opacity-60 blur-3xl" />
+    <section
+      className="relative overflow-hidden py-24 border-t border-b border-white/[0.04]"
+      style={{
+        background:
+          "linear-gradient(135deg, #174D38 0%, #174D38 55%, #4D1717 100%)",
+      }}
+    >
+      {/* Dark Vignette Overlay for Stark-lab contrast */}
+      <div className="pointer-events-none absolute inset-0 bg-radial-[circle_at_center,transparent_30%,rgba(7,9,14,0.65)_100%]" />
+
+      {/* Cyber Grid Overlay */}
+      <div className="pointer-events-none absolute inset-0 opacity-[0.035] bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:30px_30px]" />
+
+      {/* Ambient Stark-lab backlights */}
+      <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-[600px] rounded-full bg-emerald-500/10 opacity-70 blur-3xl" />
+
       <div className="relative mx-auto max-w-6xl px-6">
         <Animate className="mb-12 text-center">
-          <SectionLabel className="mb-4">Testimonials</SectionLabel>
-          <h2 className="mt-4 text-3xl font-bold tracking-tight text-[#174D38]">
-            Teams love it
+          <SectionLabel className="mb-4 border-emerald-400/20 bg-emerald-400/10 text-emerald-300">
+            Showroom
+          </SectionLabel>
+          <h2 className="mt-4 text-3xl font-bold tracking-tight text-white">
+            Hall of Armor Feedback
           </h2>
+          <p className="mt-2 text-white/60 text-sm">
+            Experience our users' feedback displayed in a futuristic circular
+            showcase.
+          </p>
         </Animate>
-        <div className="grid gap-5 sm:grid-cols-3" ref={ref}>
-          {testimonials.map((t, i) => (
-            <div
-              className={cn(
-                "flex flex-col gap-4 rounded-xl border border-[#CBCBCB] bg-white p-6 shadow-sm transition-all duration-500",
-                visible
-                  ? "translate-y-0 opacity-100"
-                  : "translate-y-4 opacity-0",
-              )}
-              key={t.name}
-              style={{
-                transitionDelay: visible ? `${i * 100}ms` : "0ms",
-                transitionProperty: "opacity, transform",
-              }}
-            >
-              <div className="flex gap-0.5">
-                {Array.from({ length: 5 }).map((_, j) => (
-                  <Star
-                    className="size-4 fill-amber-400 text-amber-400"
-                    key={j}
-                  />
-                ))}
-              </div>
-              <p className="flex-1 text-[#174D38]/80 text-sm leading-relaxed">
-                &ldquo;{t.body}&rdquo;
-              </p>
-              <div className="flex items-center gap-3 border-t border-[#CBCBCB] pt-4">
-                <Avatar className="size-8">
-                  <AvatarFallback className="bg-[#4D1717]/25 text-[#174D38] text-xs">
-                    {t.initials}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="font-semibold text-[#174D38] text-sm">
-                    {t.name}
-                  </p>
-                  <p className="text-[#6b7280] text-xs">{t.role}</p>
-                </div>
-              </div>
+
+        {/* Showroom Display Pad & Arc Container */}
+        <div
+          className="relative flex items-center justify-center h-[460px] sm:h-[500px] w-full mt-10 overflow-visible"
+          ref={ref}
+          style={{ perspective: 1200 }}
+        >
+          {/* Holographic Glowing Neon Display Pad */}
+          <div className="pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 w-[350px] sm:w-[680px] h-[50px] sm:h-[80px] rounded-full bg-emerald-500/10 border border-emerald-500/20 blur-md shadow-[0_0_50px_rgba(16,185,129,0.2)]" />
+          <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 w-[280px] sm:w-[500px] h-[30px] sm:h-[40px] rounded-full bg-cyan-500/10 border border-cyan-500/25 blur-xs shadow-[0_0_30px_rgba(6,182,212,0.15)]" />
+
+          {/* Testimonial Cards Container */}
+          {visible && (
+            <div className="relative w-full h-full flex items-center justify-center overflow-visible">
+              {testimonials.map((t, idx) => {
+                // On desktop/tablet cards are statically arranged.
+                // On mobile they are stacked based on activeIndex.
+                const currentCenter = isMobile ? activeIndex : 2;
+                const diff = idx - currentCenter;
+                const isActive = idx === currentCenter;
+                const isHovered = hoveredIndex === idx;
+                const isAnyHovered = hoveredIndex !== null;
+
+                // Calculate responsive coordinates
+                let cardWidth = 290;
+                let radius = 580;
+
+                if (isMobile) {
+                  cardWidth = 270;
+                } else if (isTablet) {
+                  cardWidth = 240;
+                  radius = 350;
+                }
+
+                let x = 0;
+                let z = 0;
+                let rotateY = 0;
+                let y = 0;
+                let scale = 1;
+                let opacity = 1;
+                let blurVal = 0;
+                let brightness = 100;
+
+                if (isMobile) {
+                  // Stacked system on mobile
+                  if (idx === activeIndex) {
+                    x = 0;
+                    z = 0;
+                    scale = 1;
+                    opacity = 1;
+                  } else if (idx < activeIndex) {
+                    x = -320;
+                    z = -50;
+                    rotateY = -30;
+                    scale = 0.85;
+                    opacity = 0;
+                  } else {
+                    const stackPos = idx - activeIndex;
+                    x = 0;
+                    z = stackPos * -30;
+                    y = stackPos * 12;
+                    scale = 1 - stackPos * 0.05;
+                    opacity = 1 - stackPos * 0.3;
+                  }
+                } else {
+                  // 3D circular arc on desktop / tablet
+                  const angleMap = [-36, -18, 0, 18, 36];
+                  const angleRad = (angleMap[idx] * Math.PI) / 180;
+
+                  x = radius * Math.sin(angleRad);
+                  z = -radius * (1 - Math.cos(angleRad));
+                  rotateY = angleMap[idx] * -1;
+
+                  scale = 1 - Math.abs(idx - 2) * 0.06;
+                  opacity = 1 - Math.abs(idx - 2) * 0.15;
+                  blurVal = Math.abs(idx - 2) * 0.5;
+                }
+
+                // Apply hover overrides
+                if (isHovered) {
+                  z += 120; // moves card forward
+                  scale = 1.18;
+                  opacity = 1;
+                  blurVal = 0;
+                  brightness = 110;
+                } else if (isAnyHovered) {
+                  // Non-hovered cards remain in place, but blur and dim
+                  opacity = opacity * 0.45;
+                  blurVal = Math.max(blurVal, 2.5);
+                  brightness = 75;
+                }
+
+                return (
+                  <motion.div
+                    className={cn(
+                      "absolute top-12 rounded-2xl p-6 border backdrop-blur-md cursor-pointer select-none",
+                      isActive
+                        ? "border-emerald-500/30 bg-white/[0.04]"
+                        : "border-white/[0.05] bg-white/[0.015]",
+                      isHovered
+                        ? "border-emerald-400/50 bg-white/[0.07] shadow-[0_0_30px_rgba(16,185,129,0.25)]"
+                        : "shadow-2xl"
+                    )}
+                    key={t.name}
+                    style={{
+                      width: cardWidth,
+                      left: `calc(50% - ${cardWidth / 2}px)`,
+                      zIndex: isHovered ? 50 : 10 - Math.abs(diff),
+                      perspective: 1000,
+                    }}
+                    initial={{
+                      opacity: 0,
+                      scale: 0.3,
+                      y: 120,
+                      x: 0,
+                      z: -200,
+                      rotateY: 0,
+                    }}
+                    animate={{
+                      x,
+                      z,
+                      rotateY,
+                      scale,
+                      opacity,
+                      filter: `blur(${blurVal}px) brightness(${brightness}%)`,
+                      y: isEntered && !isHovered && !isMobile ? [0, -8, 0] : y,
+                    }}
+                    transition={{
+                      y: isEntered && !isHovered && !isMobile
+                        ? {
+                            repeat: Number.POSITIVE_INFINITY,
+                            repeatType: "reverse" as const,
+                            duration: 3 + idx * 0.3,
+                            ease: "easeInOut",
+                          }
+                        : {
+                            type: "spring",
+                            stiffness: 140,
+                            damping: 20,
+                            delay: isEntered ? 0 : idx * 0.15,
+                          },
+                      default: {
+                        type: "spring",
+                        stiffness: 140,
+                        damping: 20,
+                        delay: isEntered ? 0 : idx * 0.15,
+                      },
+                    }}
+                    onClick={() => {
+                      if (isMobile && !isActive) {
+                        setActiveIndex(idx);
+                      }
+                    }}
+                    onMouseEnter={() => setHoveredIndex(idx)}
+                    onMouseLeave={() => setHoveredIndex(null)}
+                    drag={isMobile ? "x" : false}
+                    dragConstraints={{ left: 0, right: 0 }}
+                    dragElastic={0.4}
+                    onDragEnd={(event, info) => {
+                      if (!isMobile) return;
+                      if (info.offset.x < -60) {
+                        next();
+                      } else if (info.offset.x > 60) {
+                        prev();
+                      }
+                    }}
+                  >
+                    {/* Futuristic HUD corner accents */}
+                    <div className="absolute top-2.5 left-2.5 size-2.5 border-t border-l border-emerald-500/40 rounded-tl-xs pointer-events-none" />
+                    <div className="absolute bottom-2.5 right-2.5 size-2.5 border-b border-r border-emerald-500/40 rounded-br-xs pointer-events-none" />
+                    <div className="absolute top-2.5 right-3.5 font-mono text-[7px] text-emerald-400/40 tracking-widest uppercase pointer-events-none">
+                      SUIT_ID.0{idx + 1}
+                    </div>
+
+                    {/* Star Rating */}
+                    <div className="flex gap-0.5 text-emerald-400 mb-4">
+                      {Array.from({ length: t.rating }).map((_, j) => (
+                        <Star
+                          className="size-3.5 fill-emerald-400 text-emerald-400 drop-shadow-[0_0_3px_rgba(52,211,153,0.5)]"
+                          key={j}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Review Text */}
+                    <p className="text-white/80 text-xs sm:text-sm leading-relaxed mb-6 font-medium italic min-h-[72px]">
+                      &ldquo;{t.body}&rdquo;
+                    </p>
+
+                    {/* User Info Section */}
+                    <div className="flex items-center gap-3 border-t border-white/[0.06] pt-4 mt-auto">
+                      <Avatar className="size-8.5 border border-white/[0.08] shadow-sm">
+                        {t.avatar && (
+                          <AvatarImage
+                            src={t.avatar}
+                            alt={t.name}
+                            className="object-cover"
+                          />
+                        )}
+                        <AvatarFallback className="bg-emerald-500/10 text-emerald-400 font-mono text-xs">
+                          {t.initials}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-semibold text-white text-xs sm:text-sm">
+                          {t.name}
+                        </p>
+                        <p className="text-white/50 text-[10px] sm:text-xs">
+                          {t.role} &middot; {t.company}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
             </div>
-          ))}
+          )}
         </div>
+
+        {/* Mobile Swipe Indicators */}
+        {isMobile && (
+          <div className="flex items-center justify-center gap-2 mt-6 relative z-20">
+            {testimonials.map((_, idx) => (
+              <button
+                aria-label={`Go to suit ${idx + 1}`}
+                className={cn(
+                  "h-1 rounded-full transition-all duration-300",
+                  idx === activeIndex
+                    ? "w-6 bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]"
+                    : "w-1.5 bg-white/20"
+                )}
+                key={idx}
+                onClick={() => setActiveIndex(idx)}
+                type="button"
+              />
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );
@@ -1875,7 +2327,7 @@ function FaqItem({
         <span
           className={cn(
             "font-semibold text-sm transition-colors duration-200",
-            isOpen ? "text-[#174D38]" : "text-[#174D38]",
+            isOpen ? "text-[#174D38]" : "text-[#174D38]"
           )}
         >
           {question}
@@ -1883,19 +2335,19 @@ function FaqItem({
         <div
           className={cn(
             "relative ml-6 h-5 w-5 shrink-0 transition-transform duration-300 ease-out",
-            isOpen ? "rotate-45" : "rotate-0",
+            isOpen ? "rotate-45" : "rotate-0"
           )}
         >
           <span
             className={cn(
               "absolute top-1/2 left-0 h-0.5 w-full -translate-y-1/2 rounded-full transition-colors duration-300",
-              isOpen ? "bg-[#174D38]" : "bg-[#6b7280]",
+              isOpen ? "bg-[#174D38]" : "bg-[#6b7280]"
             )}
           />
           <span
             className={cn(
               "absolute top-0 left-1/2 h-full w-0.5 -translate-x-1/2 rounded-full transition-all duration-300",
-              isOpen ? "bg-[#174D38]" : "bg-[#6b7280]",
+              isOpen ? "bg-[#174D38]" : "bg-[#6b7280]"
             )}
           />
         </div>

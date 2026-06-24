@@ -1,15 +1,17 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, count, desc, eq, ilike, or } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
+import { user } from "@/db/schema";
 import { getAdminSession } from "@/lib/admin-auth";
 import { db } from "@/lib/db";
-import { user } from "@/db/schema";
-import { and, eq, ilike, or, count, desc, asc } from "drizzle-orm";
 
 export async function GET(req: NextRequest) {
   const session = await getAdminSession();
-  if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!session) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const { searchParams } = req.nextUrl;
-  const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
+  const page = Math.max(1, Number.parseInt(searchParams.get("page") ?? "1"));
   const search = searchParams.get("search") ?? "";
   const status = searchParams.get("status") ?? "all";
   const pageSize = 50;
@@ -17,10 +19,16 @@ export async function GET(req: NextRequest) {
 
   const conditions = [];
   if (search) {
-    conditions.push(or(ilike(user.name, `%${search}%`), ilike(user.email, `%${search}%`)));
+    conditions.push(
+      or(ilike(user.name, `%${search}%`), ilike(user.email, `%${search}%`))
+    );
   }
-  if (status === "active") conditions.push(eq(user.banned, false));
-  if (status === "banned") conditions.push(eq(user.banned, true));
+  if (status === "active") {
+    conditions.push(eq(user.banned, false));
+  }
+  if (status === "banned") {
+    conditions.push(eq(user.banned, true));
+  }
 
   const where = conditions.length > 0 ? and(...conditions) : undefined;
 

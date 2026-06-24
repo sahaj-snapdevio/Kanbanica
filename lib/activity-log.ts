@@ -1,6 +1,6 @@
 import { createId } from "@paralleldrive/cuid2";
-import { db } from "@/lib/db";
 import { activityLog } from "@/db/schema";
+import { db } from "@/lib/db";
 
 export type ActivityEventType =
   | "task_created"
@@ -50,7 +50,7 @@ export async function writeActivityLog(
   taskId: string,
   userId: string,
   eventType: ActivityEventType,
-  meta: ActivityMeta = {},
+  meta: ActivityMeta = {}
 ): Promise<void> {
   try {
     await db.insert(activityLog).values({

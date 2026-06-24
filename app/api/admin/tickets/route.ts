@@ -1,24 +1,30 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, count, desc, eq, ilike } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
+import { supportTicket, user } from "@/db/schema";
 import { getAdminSession } from "@/lib/admin-auth";
 import { db } from "@/lib/db";
-import { supportTicket, user } from "@/db/schema";
-import { eq, ilike, and, count, desc, or } from "drizzle-orm";
 
 export async function GET(req: NextRequest) {
   const session = await getAdminSession();
-  if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!session) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const { searchParams } = req.nextUrl;
-  const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
+  const page = Math.max(1, Number.parseInt(searchParams.get("page") ?? "1"));
   const search = searchParams.get("search") ?? "";
   const status = searchParams.get("status") ?? "";
   const pageSize = 50;
   const offset = (page - 1) * pageSize;
 
   const conditions = [];
-  if (search) conditions.push(ilike(supportTicket.subject, `%${search}%`));
+  if (search) {
+    conditions.push(ilike(supportTicket.subject, `%${search}%`));
+  }
   if (status && ["OPEN", "IN_PROGRESS", "CLOSED"].includes(status)) {
-    conditions.push(eq(supportTicket.status, status as "OPEN" | "IN_PROGRESS" | "CLOSED"));
+    conditions.push(
+      eq(supportTicket.status, status as "OPEN" | "IN_PROGRESS" | "CLOSED")
+    );
   }
   const where = conditions.length > 0 ? and(...conditions) : undefined;
 

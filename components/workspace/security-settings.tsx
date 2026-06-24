@@ -1,16 +1,22 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import { CopyIcon, LinkIcon, WarningIcon } from "@phosphor-icons/react";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+import { toast } from "sonner";
 import {
   deleteWorkspace,
   disableInviteLink,
   regenerateInviteLink,
 } from "@/app/actions/workspace";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -25,10 +31,10 @@ import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 
 interface SecuritySettingsProps {
+  appUrl: string;
+  inviteLinkToken: string | null;
   workspaceId: string;
   workspaceName: string;
-  inviteLinkToken: string | null;
-  appUrl: string;
 }
 
 export function SecuritySettings({
@@ -43,9 +49,14 @@ export function SecuritySettings({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
 
-  const inviteUrl = inviteLinkToken ? `${appUrl}/join/${inviteLinkToken}` : null;
+  const inviteUrl = inviteLinkToken
+    ? `${appUrl}/join/${inviteLinkToken}`
+    : null;
 
-  function run(action: () => Promise<{ ok?: true; error?: string } | { error: string }>, onSuccess?: () => void) {
+  function run(
+    action: () => Promise<{ ok?: true; error?: string } | { error: string }>,
+    onSuccess?: () => void
+  ) {
     startTransition(async () => {
       const result = await action();
       if (result && "error" in result && result.error) {
@@ -58,7 +69,9 @@ export function SecuritySettings({
   }
 
   async function copyLink() {
-    if (!inviteUrl) return;
+    if (!inviteUrl) {
+      return;
+    }
     await navigator.clipboard.writeText(inviteUrl);
     toast.success("Invite link copied");
   }
@@ -71,23 +84,32 @@ export function SecuritySettings({
             Invite link
           </CardTitle>
           <CardDescription>
-            Anyone with this link can join the workspace as a Member. It never expires — disable
-            or regenerate it at any time.
+            Anyone with this link can join the workspace as a Member. It never
+            expires — disable or regenerate it at any time.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {inviteUrl ? (
             <>
               <div className="flex gap-2">
-                <Input readOnly value={inviteUrl} className="font-mono text-xs" />
-                <Button variant="outline" size="icon" onClick={copyLink} aria-label="Copy link">
+                <Input
+                  className="font-mono text-xs"
+                  readOnly
+                  value={inviteUrl}
+                />
+                <Button
+                  aria-label="Copy link"
+                  onClick={copyLink}
+                  size="icon"
+                  variant="outline"
+                >
                   <CopyIcon className="size-4" />
                 </Button>
               </div>
               <div className="flex gap-2">
-                <Dialog open={regenerateOpen} onOpenChange={setRegenerateOpen}>
+                <Dialog onOpenChange={setRegenerateOpen} open={regenerateOpen}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" disabled={pending}>
+                    <Button disabled={pending} variant="outline">
                       Regenerate
                     </Button>
                   </DialogTrigger>
@@ -95,22 +117,29 @@ export function SecuritySettings({
                     <DialogHeader>
                       <DialogTitle>Regenerate invite link?</DialogTitle>
                       <DialogDescription>
-                        This will immediately invalidate the current link. Anyone with the old link will no longer be able to join.
+                        This will immediately invalidate the current link.
+                        Anyone with the old link will no longer be able to join.
                       </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
-                      <Button variant="outline" onClick={() => setRegenerateOpen(false)}>
+                      <Button
+                        onClick={() => setRegenerateOpen(false)}
+                        variant="outline"
+                      >
                         Cancel
                       </Button>
                       <Button
+                        className="gap-2"
                         disabled={pending}
                         onClick={() =>
                           run(
                             () => regenerateInviteLink(workspaceId),
-                            () => { setRegenerateOpen(false); toast.success("New invite link generated"); },
+                            () => {
+                              setRegenerateOpen(false);
+                              toast.success("New invite link generated");
+                            }
                           )
                         }
-                        className="gap-2"
                       >
                         {pending && <Spinner className="size-4" />}
                         Regenerate link
@@ -119,9 +148,14 @@ export function SecuritySettings({
                   </DialogContent>
                 </Dialog>
                 <Button
-                  variant="outline"
                   disabled={pending}
-                  onClick={() => run(() => disableInviteLink(workspaceId), () => toast.success("Invite link disabled"))}
+                  onClick={() =>
+                    run(
+                      () => disableInviteLink(workspaceId),
+                      () => toast.success("Invite link disabled")
+                    )
+                  }
+                  variant="outline"
                 >
                   Disable link
                 </Button>
@@ -129,11 +163,20 @@ export function SecuritySettings({
             </>
           ) : (
             <Button
-              disabled={pending}
-              onClick={() => run(() => regenerateInviteLink(workspaceId), () => toast.success("Invite link enabled"))}
               className="gap-2"
+              disabled={pending}
+              onClick={() =>
+                run(
+                  () => regenerateInviteLink(workspaceId),
+                  () => toast.success("Invite link enabled")
+                )
+              }
             >
-              {pending ? <Spinner className="size-4" /> : <LinkIcon className="size-4" />}
+              {pending ? (
+                <Spinner className="size-4" />
+              ) : (
+                <LinkIcon className="size-4" />
+              )}
               Enable invite link
             </Button>
           )}
@@ -147,16 +190,22 @@ export function SecuritySettings({
             Danger Zone
           </CardTitle>
           <CardDescription>
-            Deleting the workspace permanently removes all Spaces, Lists, Tasks, comments and files. This cannot be undone.
+            Deleting the workspace permanently removes all Spaces, Lists, Tasks,
+            comments and files. This cannot be undone.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Dialog
+            onOpenChange={(open) => {
+              setDeleteOpen(open);
+              if (!open) {
+                setDeleteConfirm("");
+              }
+            }}
             open={deleteOpen}
-            onOpenChange={(open) => { setDeleteOpen(open); if (!open) setDeleteConfirm(""); }}
           >
             <DialogTrigger asChild>
-              <Button variant="destructive" className="gap-2">
+              <Button className="gap-2" variant="destructive">
                 <WarningIcon className="size-4" />
                 Delete workspace
               </Button>
@@ -165,7 +214,8 @@ export function SecuritySettings({
               <DialogHeader>
                 <DialogTitle>Delete {workspaceName}?</DialogTitle>
                 <DialogDescription>
-                  All data will be permanently deleted. There is no recovery period. Type the workspace name to confirm.
+                  All data will be permanently deleted. There is no recovery
+                  period. Type the workspace name to confirm.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-2">
@@ -178,24 +228,33 @@ export function SecuritySettings({
                 </Label>
                 <Input
                   id="delete-confirm"
-                  value={deleteConfirm}
                   onChange={(e) => setDeleteConfirm(e.target.value)}
+                  value={deleteConfirm}
                 />
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setDeleteOpen(false)}>
+                <Button onClick={() => setDeleteOpen(false)} variant="outline">
                   Cancel
                 </Button>
                 <Button
-                  variant="destructive"
-                  disabled={pending || deleteConfirm.trim() !== workspaceName.trim()}
+                  className="gap-2"
+                  disabled={
+                    pending || deleteConfirm.trim() !== workspaceName.trim()
+                  }
                   onClick={() =>
                     run(
-                      () => deleteWorkspace({ workspaceId, confirmName: deleteConfirm }),
-                      () => { toast.success("Workspace deletion started"); router.push("/onboarding"); },
+                      () =>
+                        deleteWorkspace({
+                          workspaceId,
+                          confirmName: deleteConfirm,
+                        }),
+                      () => {
+                        toast.success("Workspace deletion started");
+                        router.push("/onboarding");
+                      }
                     )
                   }
-                  className="gap-2"
+                  variant="destructive"
                 >
                   {pending && <Spinner className="size-4" />}
                   Delete forever

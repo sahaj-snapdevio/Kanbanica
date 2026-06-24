@@ -13,7 +13,10 @@ const envSchema = z.object({
     .enum(["development", "test", "production"])
     .default("development"),
   SMTP_HOST: optionalString,
-  SMTP_PORT: z.preprocess((v) => (v ? Number(v) : undefined), z.number().optional()),
+  SMTP_PORT: z.preprocess(
+    (v) => (v ? Number(v) : undefined),
+    z.number().optional()
+  ),
   SMTP_USER: optionalString,
   SMTP_PASS: optionalString,
   EMAIL_FROM: optionalString,

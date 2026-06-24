@@ -1,10 +1,18 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/admin-auth";
-import { updateHelpArticle, deleteHelpArticle } from "@/lib/support/help-articles";
+import {
+  deleteHelpArticle,
+  updateHelpArticle,
+} from "@/lib/support/help-articles";
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const session = await getAdminSession();
-  if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!session) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const { id } = await params;
 
@@ -19,7 +27,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const allowed = ["title", "slug", "category", "body", "isPublished"];
   const filtered: Record<string, unknown> = {};
   for (const key of allowed) {
-    if (key in updates) filtered[key] = updates[key];
+    if (key in updates) {
+      filtered[key] = updates[key];
+    }
   }
 
   const result = await updateHelpArticle({
@@ -30,15 +40,23 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   });
 
   if ("error" in result) {
-    return NextResponse.json({ error: result.error }, { status: result.status });
+    return NextResponse.json(
+      { error: result.error },
+      { status: result.status }
+    );
   }
 
   return NextResponse.json({ article: result.article });
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const session = await getAdminSession();
-  if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!session) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const { id } = await params;
 
@@ -49,7 +67,10 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   });
 
   if ("error" in result) {
-    return NextResponse.json({ error: result.error }, { status: result.status });
+    return NextResponse.json(
+      { error: result.error },
+      { status: result.status }
+    );
   }
 
   return NextResponse.json({ ok: true });

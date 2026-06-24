@@ -1,5 +1,8 @@
 import { existsSync } from "node:fs";
-if (existsSync(".env")) process.loadEnvFile();
+
+if (existsSync(".env")) {
+  process.loadEnvFile();
+}
 
 async function main() {
   await import("@/lib/env");
@@ -13,4 +16,7 @@ async function main() {
   process.exit(0);
 }
 
-main().catch((err) => { console.error(err); process.exit(1); });
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

@@ -1,8 +1,8 @@
 import { createId } from "@paralleldrive/cuid2";
-import { and, eq, ilike, or } from "drizzle-orm";
-import { db } from "@/lib/db";
+import { and, eq } from "drizzle-orm";
 import { helpArticle } from "@/db/schema";
 import { audit } from "@/lib/audit";
+import { db } from "@/lib/db";
 
 function slugify(title: string): string {
   return title
@@ -36,7 +36,9 @@ export async function createHelpArticle({
     .limit(1)
     .then((r) => r[0] ?? null);
 
-  if (existing) return { error: "Slug already in use", status: 409 } as const;
+  if (existing) {
+    return { error: "Slug already in use", status: 409 } as const;
+  }
 
   const id = createId();
   const now = new Date();
@@ -76,18 +78,30 @@ export async function updateHelpArticle({
   authorEmail,
 }: {
   id: string;
-  updates: { title?: string; slug?: string; category?: string; body?: unknown; isPublished?: boolean };
+  updates: {
+    title?: string;
+    slug?: string;
+    category?: string;
+    body?: unknown;
+    isPublished?: boolean;
+  };
   authorId: string;
   authorEmail: string;
 }) {
   const existing = await db
-    .select({ id: helpArticle.id, slug: helpArticle.slug, isPublished: helpArticle.isPublished })
+    .select({
+      id: helpArticle.id,
+      slug: helpArticle.slug,
+      isPublished: helpArticle.isPublished,
+    })
     .from(helpArticle)
     .where(eq(helpArticle.id, id))
     .limit(1)
     .then((r) => r[0] ?? null);
 
-  if (!existing) return { error: "Not found", status: 404 } as const;
+  if (!existing) {
+    return { error: "Not found", status: 404 } as const;
+  }
 
   if (updates.slug && updates.slug !== existing.slug) {
     const slugConflict = await db
@@ -103,7 +117,9 @@ export async function updateHelpArticle({
       .where(eq(helpArticle.slug, updates.slug))
       .limit(1)
       .then((r) => r[0] ?? null);
-    if (otherSlug && otherSlug.id !== id) return { error: "Slug already in use", status: 409 } as const;
+    if (otherSlug && otherSlug.id !== id) {
+      return { error: "Slug already in use", status: 409 } as const;
+    }
   }
 
   const now = new Date();
@@ -115,7 +131,9 @@ export async function updateHelpArticle({
       ...(updates.title !== undefined && { title: updates.title }),
       ...(updates.slug !== undefined && { slug: updates.slug }),
       ...(updates.category !== undefined && { category: updates.category }),
-      ...(updates.body !== undefined && { body: updates.body as Record<string, unknown> }),
+      ...(updates.body !== undefined && {
+        body: updates.body as Record<string, unknown>,
+      }),
       ...(updates.isPublished !== undefined && {
         isPublished: updates.isPublished,
         publishedAt: isPublishing ? now : undefined,
@@ -155,7 +173,9 @@ export async function deleteHelpArticle({
     .limit(1)
     .then((r) => r[0] ?? null);
 
-  if (!existing) return { error: "Not found", status: 404 } as const;
+  if (!existing) {
+    return { error: "Not found", status: 404 } as const;
+  }
 
   await db.delete(helpArticle).where(eq(helpArticle.id, id));
 

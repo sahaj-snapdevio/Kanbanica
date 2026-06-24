@@ -1,10 +1,11 @@
 import { existsSync } from "node:fs";
 import postgres from "postgres";
-import { env } from "@/lib/env";
 
 if (existsSync(".env")) {
   process.loadEnvFile();
 }
+
+const { env } = await import("@/lib/env");
 
 const sql = postgres(env.DATABASE_URL);
 

@@ -1,20 +1,20 @@
 import {
+  type _Object,
   DeleteObjectCommand,
   DeleteObjectsCommand,
   GetObjectCommand,
   HeadObjectCommand,
-  PutObjectCommand,
-  type _Object,
   ListObjectsV2Command,
+  PutObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { env } from "@/lib/env";
 import { BUCKET, getS3Client } from "@/lib/storage/s3-client";
 
 export interface UploadOptions {
-  contentType?: string;
-  cacheControl?: string;
   acl?: "public-read" | "private";
+  cacheControl?: string;
+  contentType?: string;
 }
 
 export async function s3Upload(
@@ -39,16 +39,18 @@ export async function s3Download(key: string): Promise<Buffer> {
   const res = await getS3Client().send(
     new GetObjectCommand({ Bucket: BUCKET(), Key: key })
   );
-  if (!res.Body) throw new Error(`S3 object ${key} has no body`);
+  if (!res.Body) {
+    throw new Error(`S3 object ${key} has no body`);
+  }
   return Buffer.from(await res.Body.transformToByteArray());
 }
 
 export interface S3ObjectMeta {
-  key: string;
-  sizeBytes: number;
-  lastModified: Date;
   contentType?: string;
   etag?: string;
+  key: string;
+  lastModified: Date;
+  sizeBytes: number;
 }
 
 export async function s3Head(key: string): Promise<S3ObjectMeta | null> {
@@ -65,7 +67,9 @@ export async function s3Head(key: string): Promise<S3ObjectMeta | null> {
     };
   } catch (err) {
     const name = (err as { name?: string }).name;
-    if (name === "NotFound" || name === "NoSuchKey") return null;
+    if (name === "NotFound" || name === "NoSuchKey") {
+      return null;
+    }
     throw err;
   }
 }
@@ -78,7 +82,9 @@ export async function s3Delete(key: string): Promise<void> {
   } catch (err) {
     const name = (err as { name?: string }).name;
     const code = (err as { Code?: string }).Code;
-    if (name === "NoSuchKey" || code === "NoSuchKey") return;
+    if (name === "NoSuchKey" || code === "NoSuchKey") {
+      return;
+    }
     throw err;
   }
 }
@@ -86,7 +92,9 @@ export async function s3Delete(key: string): Promise<void> {
 export async function s3DeleteMany(
   keys: string[]
 ): Promise<{ deleted: number; failed: number }> {
-  if (keys.length === 0) return { deleted: 0, failed: 0 };
+  if (keys.length === 0) {
+    return { deleted: 0, failed: 0 };
+  }
 
   let deleted = 0;
   let failed = 0;
@@ -118,8 +126,8 @@ export async function s3DeleteMany(
 
 export interface S3ListItem {
   key: string;
-  sizeBytes: number;
   lastModified: Date;
+  sizeBytes: number;
 }
 
 export async function s3List(prefix: string): Promise<S3ListItem[]> {
@@ -136,7 +144,9 @@ export async function s3List(prefix: string): Promise<S3ListItem[]> {
     );
 
     for (const obj of res.Contents ?? ([] as _Object[])) {
-      if (!obj.Key) continue;
+      if (!obj.Key) {
+        continue;
+      }
       results.push({
         key: obj.Key,
         sizeBytes: obj.Size ?? 0,

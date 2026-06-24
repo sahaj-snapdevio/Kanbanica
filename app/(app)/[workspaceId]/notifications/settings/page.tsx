@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import useSWR from "swr";
-import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -10,8 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { usePushSubscription } from "@/hooks/use-push-subscription";
 
 const TRIGGER_LABELS: Record<string, string> = {
@@ -44,10 +44,10 @@ const TRIGGER_LABELS: Record<string, string> = {
 };
 
 interface NotifPref {
-  triggerType: string;
-  inAppEnabled: boolean;
   emailEnabled: boolean;
+  inAppEnabled: boolean;
   pushEnabled: boolean;
+  triggerType: string;
 }
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -55,11 +55,11 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json());
 export default function NotificationSettingsPage() {
   const { data: emailPrefData, mutate: mutateEmail } = useSWR(
     "/api/me/email-preferences",
-    fetcher,
+    fetcher
   );
   const { data: notifPrefData, mutate: mutateNotif } = useSWR(
     "/api/me/notification-preferences",
-    fetcher,
+    fetcher
   );
 
   const [deliveryMode, setDeliveryMode] = React.useState<string>("instant");
@@ -67,7 +67,13 @@ export default function NotificationSettingsPage() {
   const [prefs, setPrefs] = React.useState<NotifPref[]>([]);
   const [saving, setSaving] = React.useState(false);
   const [pushEnabling, setPushEnabling] = React.useState(false);
-  const { supported: pushSupported, permission, subscribed, enable: enablePush, disable: disablePush } = usePushSubscription();
+  const {
+    supported: pushSupported,
+    permission,
+    subscribed,
+    enable: enablePush,
+    disable: disablePush,
+  } = usePushSubscription();
 
   React.useEffect(() => {
     if (emailPrefData?.preference) {
@@ -99,10 +105,10 @@ export default function NotificationSettingsPage() {
   async function saveNotifPref(
     triggerType: string,
     field: keyof Omit<NotifPref, "triggerType">,
-    value: boolean,
+    value: boolean
   ) {
     const updated = prefs.map((p) =>
-      p.triggerType === triggerType ? { ...p, [field]: value } : p,
+      p.triggerType === triggerType ? { ...p, [field]: value } : p
     );
     setPrefs(updated);
 
@@ -110,7 +116,12 @@ export default function NotificationSettingsPage() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        preferences: [{ triggerType, ...updated.find((p) => p.triggerType === triggerType) }],
+        preferences: [
+          {
+            triggerType,
+            ...updated.find((p) => p.triggerType === triggerType),
+          },
+        ],
       }),
     });
     await mutateNotif();
@@ -141,8 +152,6 @@ export default function NotificationSettingsPage() {
             </div>
             {permission !== "denied" && (
               <Button
-                size="sm"
-                variant={subscribed ? "outline" : "default"}
                 disabled={pushEnabling}
                 onClick={async () => {
                   setPushEnabling(true);
@@ -153,12 +162,10 @@ export default function NotificationSettingsPage() {
                   }
                   setPushEnabling(false);
                 }}
+                size="sm"
+                variant={subscribed ? "outline" : "default"}
               >
-                {pushEnabling
-                  ? "…"
-                  : subscribed
-                    ? "Disable"
-                    : "Enable"}
+                {pushEnabling ? "…" : subscribed ? "Disable" : "Enable"}
               </Button>
             )}
           </div>
@@ -174,11 +181,11 @@ export default function NotificationSettingsPage() {
       <div className="space-y-4 rounded-lg border p-4">
         <h3 className="font-medium">Email Delivery</h3>
         <div className="flex items-center gap-4">
-          <Label htmlFor="delivery-mode" className="w-32 shrink-0">
+          <Label className="w-32 shrink-0" htmlFor="delivery-mode">
             Delivery mode
           </Label>
-          <Select value={deliveryMode} onValueChange={setDeliveryMode}>
-            <SelectTrigger id="delivery-mode" className="w-40">
+          <Select onValueChange={setDeliveryMode} value={deliveryMode}>
+            <SelectTrigger className="w-40" id="delivery-mode">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -190,19 +197,19 @@ export default function NotificationSettingsPage() {
         </div>
         {deliveryMode === "digest" && (
           <div className="flex items-center gap-4">
-            <Label htmlFor="digest-time" className="w-32 shrink-0">
+            <Label className="w-32 shrink-0" htmlFor="digest-time">
               Digest time (UTC)
             </Label>
             <input
+              className="rounded-md border bg-background px-3 py-1.5 text-sm"
               id="digest-time"
+              onChange={(e) => setDigestTime(e.target.value)}
               type="time"
               value={digestTime}
-              onChange={(e) => setDigestTime(e.target.value)}
-              className="rounded-md border bg-background px-3 py-1.5 text-sm"
             />
           </div>
         )}
-        <Button onClick={saveEmailPrefs} disabled={saving} size="sm">
+        <Button disabled={saving} onClick={saveEmailPrefs} size="sm">
           {saving ? "Saving..." : "Save email preferences"}
         </Button>
       </div>
@@ -222,7 +229,7 @@ export default function NotificationSettingsPage() {
             </thead>
             <tbody>
               {prefs.map((pref) => (
-                <tr key={pref.triggerType} className="border-b last:border-0">
+                <tr className="border-b last:border-0" key={pref.triggerType}>
                   <td className="px-4 py-2.5 text-sm">
                     {TRIGGER_LABELS[pref.triggerType] ?? pref.triggerType}
                   </td>
@@ -254,7 +261,10 @@ export default function NotificationSettingsPage() {
               ))}
               {prefs.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                  <td
+                    className="px-4 py-8 text-center text-sm text-muted-foreground"
+                    colSpan={4}
+                  >
                     Loading preferences...
                   </td>
                 </tr>

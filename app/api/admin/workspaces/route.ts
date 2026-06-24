@@ -1,15 +1,17 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, count, desc, eq, ilike } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
+import { user, workspace } from "@/db/schema";
 import { getAdminSession } from "@/lib/admin-auth";
 import { db } from "@/lib/db";
-import { workspace, user } from "@/db/schema";
-import { eq, ilike, and, count, desc } from "drizzle-orm";
 
 export async function GET(req: NextRequest) {
   const session = await getAdminSession();
-  if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!session) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const { searchParams } = req.nextUrl;
-  const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
+  const page = Math.max(1, Number.parseInt(searchParams.get("page") ?? "1"));
   const search = searchParams.get("search") ?? "";
   const pageSize = 50;
   const offset = (page - 1) * pageSize;
@@ -38,5 +40,10 @@ export async function GET(req: NextRequest) {
     db.select({ count: count() }).from(workspace).where(where),
   ]);
 
-  return NextResponse.json({ workspaces, total: totalRow.count, page, pageSize });
+  return NextResponse.json({
+    workspaces,
+    total: totalRow.count,
+    page,
+    pageSize,
+  });
 }

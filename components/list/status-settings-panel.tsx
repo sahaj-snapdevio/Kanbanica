@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -9,6 +8,7 @@ import {
   TrashIcon,
   XIcon,
 } from "@phosphor-icons/react";
+import * as React from "react";
 import {
   createListStatus,
   deleteListStatus,
@@ -23,32 +23,38 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 const COLOR_OPTIONS = [
-  "#6B7280", "#EF4444", "#F97316", "#EAB308",
-  "#22C55E", "#14B8A6", "#3B82F6", "#8B5CF6",
-  "#EC4899", "#F43F5E",
+  "#6B7280",
+  "#EF4444",
+  "#F97316",
+  "#EAB308",
+  "#22C55E",
+  "#14B8A6",
+  "#3B82F6",
+  "#8B5CF6",
+  "#EC4899",
+  "#F43F5E",
 ];
 
 type StatusType = "OPEN" | "ACTIVE" | "CLOSED";
 
 interface Status {
+  color: string;
   id: string;
   name: string;
-  color: string;
-  type: StatusType;
   orderIndex: number;
+  type: StatusType;
 }
 
 interface StatusSettingsPanelProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  workspaceId: string;
-  spaceId: string;
   listId: string;
+  onOpenChange: (open: boolean) => void;
+  open: boolean;
+  spaceId: string;
   statuses: Status[];
+  workspaceId: string;
 }
 
 const TYPE_LABELS: Record<StatusType, string> = {
@@ -63,19 +69,26 @@ const TYPE_COLORS: Record<StatusType, string> = {
   CLOSED: "text-green-600",
 };
 
-function ColorPicker({ value, onChange }: { value: string; onChange: (c: string) => void }) {
+function ColorPicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (c: string) => void;
+}) {
   return (
     <div className="flex flex-wrap gap-1.5">
       {COLOR_OPTIONS.map((c) => (
         <button
-          key={c}
-          type="button"
-          onClick={() => onChange(c)}
           className="h-5 w-5 rounded-full focus:outline-none"
+          key={c}
+          onClick={() => onChange(c)}
           style={{
             backgroundColor: c,
-            boxShadow: value === c ? `0 0 0 2px white, 0 0 0 3px ${c}` : undefined,
+            boxShadow:
+              value === c ? `0 0 0 2px white, 0 0 0 3px ${c}` : undefined,
           }}
+          type="button"
         />
       ))}
     </div>
@@ -83,14 +96,20 @@ function ColorPicker({ value, onChange }: { value: string; onChange: (c: string)
 }
 
 interface EditRowProps {
-  status: Status;
-  workspaceId: string;
-  spaceId: string;
   listId: string;
   onDone: () => void;
+  spaceId: string;
+  status: Status;
+  workspaceId: string;
 }
 
-function EditRow({ status, workspaceId, spaceId, listId, onDone }: EditRowProps) {
+function EditRow({
+  status,
+  workspaceId,
+  spaceId,
+  listId,
+  onDone,
+}: EditRowProps) {
   const [name, setName] = React.useState(status.name);
   const [color, setColor] = React.useState(status.color);
   const [type, setType] = React.useState<StatusType>(status.type);
@@ -98,13 +117,27 @@ function EditRow({ status, workspaceId, spaceId, listId, onDone }: EditRowProps)
   const [error, setError] = React.useState("");
 
   async function save() {
-    if (!name.trim()) { setError("Name required"); return; }
+    if (!name.trim()) {
+      setError("Name required");
+      return;
+    }
     setLoading(true);
-    const res = await updateListStatus(workspaceId, spaceId, listId, status.id, {
-      name: name.trim(), color, type,
-    });
+    const res = await updateListStatus(
+      workspaceId,
+      spaceId,
+      listId,
+      status.id,
+      {
+        name: name.trim(),
+        color,
+        type,
+      }
+    );
     setLoading(false);
-    if ("error" in res) { setError(res.error); return; }
+    if ("error" in res) {
+      setError(res.error);
+      return;
+    }
     onDone();
   }
 
@@ -112,30 +145,30 @@ function EditRow({ status, workspaceId, spaceId, listId, onDone }: EditRowProps)
     <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
       <div className="flex gap-2">
         <Input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="h-8 text-sm flex-1"
           autoFocus
+          className="h-8 text-sm flex-1"
           disabled={loading}
+          onChange={(e) => setName(e.target.value)}
+          value={name}
         />
         <select
-          value={type}
-          onChange={(e) => setType(e.target.value as StatusType)}
           className="h-8 rounded-md border bg-background px-2 text-xs"
           disabled={loading}
+          onChange={(e) => setType(e.target.value as StatusType)}
+          value={type}
         >
           <option value="OPEN">Open</option>
           <option value="ACTIVE">Active</option>
           <option value="CLOSED">Closed</option>
         </select>
       </div>
-      <ColorPicker value={color} onChange={setColor} />
+      <ColorPicker onChange={setColor} value={color} />
       {error && <p className="text-xs text-destructive">{error}</p>}
       <div className="flex gap-2">
-        <Button size="sm" onClick={save} disabled={loading || !name.trim()}>
+        <Button disabled={loading || !name.trim()} onClick={save} size="sm">
           {loading ? "Saving…" : "Save"}
         </Button>
-        <Button size="sm" variant="ghost" onClick={onDone} disabled={loading}>
+        <Button disabled={loading} onClick={onDone} size="sm" variant="ghost">
           Cancel
         </Button>
       </div>
@@ -144,10 +177,10 @@ function EditRow({ status, workspaceId, spaceId, listId, onDone }: EditRowProps)
 }
 
 interface AddRowProps {
-  workspaceId: string;
-  spaceId: string;
   listId: string;
   onDone: () => void;
+  spaceId: string;
+  workspaceId: string;
 }
 
 function AddRow({ workspaceId, spaceId, listId, onDone }: AddRowProps) {
@@ -158,13 +191,21 @@ function AddRow({ workspaceId, spaceId, listId, onDone }: AddRowProps) {
   const [error, setError] = React.useState("");
 
   async function save() {
-    if (!name.trim()) { setError("Name required"); return; }
+    if (!name.trim()) {
+      setError("Name required");
+      return;
+    }
     setLoading(true);
     const res = await createListStatus(workspaceId, spaceId, listId, {
-      name: name.trim(), color, type,
+      name: name.trim(),
+      color,
+      type,
     });
     setLoading(false);
-    if ("error" in res) { setError(res.error); return; }
+    if ("error" in res) {
+      setError(res.error);
+      return;
+    }
     onDone();
   }
 
@@ -172,32 +213,37 @@ function AddRow({ workspaceId, spaceId, listId, onDone }: AddRowProps) {
     <div className="rounded-lg border border-dashed p-3 space-y-3">
       <div className="flex gap-2">
         <Input
+          autoFocus
+          className="h-8 text-sm flex-1"
+          disabled={loading}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              save();
+            }
+          }}
           placeholder="Status name"
           value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="h-8 text-sm flex-1"
-          autoFocus
-          disabled={loading}
-          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); save(); } }}
         />
         <select
-          value={type}
-          onChange={(e) => setType(e.target.value as StatusType)}
           className="h-8 rounded-md border bg-background px-2 text-xs"
           disabled={loading}
+          onChange={(e) => setType(e.target.value as StatusType)}
+          value={type}
         >
           <option value="OPEN">Open</option>
           <option value="ACTIVE">Active</option>
           <option value="CLOSED">Closed</option>
         </select>
       </div>
-      <ColorPicker value={color} onChange={setColor} />
+      <ColorPicker onChange={setColor} value={color} />
       {error && <p className="text-xs text-destructive">{error}</p>}
       <div className="flex gap-2">
-        <Button size="sm" onClick={save} disabled={loading || !name.trim()}>
+        <Button disabled={loading || !name.trim()} onClick={save} size="sm">
           {loading ? "Adding…" : "Add Status"}
         </Button>
-        <Button size="sm" variant="ghost" onClick={onDone} disabled={loading}>
+        <Button disabled={loading} onClick={onDone} size="sm" variant="ghost">
           Cancel
         </Button>
       </div>
@@ -226,22 +272,32 @@ export function StatusSettingsPanel({
   async function handleDelete(statusId: string) {
     setDeleteError("");
     const res = await deleteListStatus(workspaceId, spaceId, listId, statusId);
-    if ("error" in res) { setDeleteError(res.error); return; }
+    if ("error" in res) {
+      setDeleteError(res.error);
+      return;
+    }
     setStatuses((prev) => prev.filter((s) => s.id !== statusId));
   }
 
   async function handleMove(index: number, direction: -1 | 1) {
     const next = [...statuses];
     const target = index + direction;
-    if (target < 0 || target >= next.length) return;
+    if (target < 0 || target >= next.length) {
+      return;
+    }
     [next[index], next[target]] = [next[target], next[index]];
     setStatuses(next);
-    await reorderListStatuses(workspaceId, spaceId, listId, next.map((s) => s.id));
+    await reorderListStatuses(
+      workspaceId,
+      spaceId,
+      listId,
+      next.map((s) => s.id)
+    );
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg" aria-describedby={undefined}>
+    <Dialog onOpenChange={onOpenChange} open={open}>
+      <DialogContent aria-describedby={undefined} className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Manage Statuses</DialogTitle>
         </DialogHeader>
@@ -251,73 +307,81 @@ export function StatusSettingsPanel({
             editingId === status.id ? (
               <EditRow
                 key={status.id}
-                status={status}
-                workspaceId={workspaceId}
-                spaceId={spaceId}
                 listId={listId}
                 onDone={() => setEditingId(null)}
+                spaceId={spaceId}
+                status={status}
+                workspaceId={workspaceId}
               />
             ) : (
               <div
-                key={status.id}
                 className="group flex items-center gap-2 rounded-lg border px-3 py-2"
+                key={status.id}
               >
                 <span
                   className="h-3 w-3 shrink-0 rounded-full"
                   style={{ backgroundColor: status.color }}
                 />
-                <span className="flex-1 text-sm font-medium">{status.name}</span>
+                <span className="flex-1 text-sm font-medium">
+                  {status.name}
+                </span>
                 <span className={cn("text-xs", TYPE_COLORS[status.type])}>
                   {TYPE_LABELS[status.type]}
                 </span>
 
                 <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
-                    onClick={() => handleMove(i, -1)}
-                    disabled={i === 0}
                     className="flex size-6 items-center justify-center rounded hover:bg-accent disabled:opacity-30"
+                    disabled={i === 0}
+                    onClick={() => handleMove(i, -1)}
                     title="Move up"
                   >
                     <ArrowUpIcon className="size-3" />
                   </button>
                   <button
-                    onClick={() => handleMove(i, 1)}
-                    disabled={i === statuses.length - 1}
                     className="flex size-6 items-center justify-center rounded hover:bg-accent disabled:opacity-30"
+                    disabled={i === statuses.length - 1}
+                    onClick={() => handleMove(i, 1)}
                     title="Move down"
                   >
                     <ArrowDownIcon className="size-3" />
                   </button>
                   <button
-                    onClick={() => { setEditingId(status.id); setAdding(false); }}
                     className="flex size-6 items-center justify-center rounded hover:bg-accent"
+                    onClick={() => {
+                      setEditingId(status.id);
+                      setAdding(false);
+                    }}
                     title="Edit"
                   >
                     <PencilSimpleIcon className="size-3" />
                   </button>
                   <button
-                    onClick={() => handleDelete(status.id)}
                     className="flex size-6 items-center justify-center rounded hover:bg-destructive/10 text-destructive"
+                    onClick={() => handleDelete(status.id)}
                     title="Delete"
                   >
                     <TrashIcon className="size-3" />
                   </button>
                 </div>
               </div>
-            ),
+            )
           )}
 
           {adding ? (
             <AddRow
-              workspaceId={workspaceId}
-              spaceId={spaceId}
               listId={listId}
               onDone={() => setAdding(false)}
+              spaceId={spaceId}
+              workspaceId={workspaceId}
             />
           ) : (
             <button
-              onClick={() => { setAdding(true); setEditingId(null); }}
               className="flex w-full items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground hover:border-border hover:bg-accent hover:text-foreground transition-colors"
+              onClick={() => {
+                setAdding(true);
+                setEditingId(null);
+              }}
             >
               <PlusIcon className="size-4" />
               Add status

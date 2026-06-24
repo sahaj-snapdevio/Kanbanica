@@ -1,16 +1,16 @@
 "use client";
 
-import * as React from "react";
 import { PlusIcon } from "@phosphor-icons/react";
+import * as React from "react";
 import { createTask } from "@/app/actions/task";
 
 interface QuickCreateTaskProps {
-  workspaceId: string;
-  spaceId: string;
-  listId: string;
-  statusId?: string;
-  placeholder?: string;
   className?: string;
+  listId: string;
+  placeholder?: string;
+  spaceId: string;
+  statusId?: string;
+  workspaceId: string;
 }
 
 export function QuickCreateTask({
@@ -38,9 +38,15 @@ export function QuickCreateTask({
 
   async function submit() {
     const trimmed = title.trim();
-    if (!trimmed) { close(); return; }
+    if (!trimmed) {
+      close();
+      return;
+    }
     setLoading(true);
-    await createTask(workspaceId, spaceId, listId, { title: trimmed, statusId });
+    await createTask(workspaceId, spaceId, listId, {
+      title: trimmed,
+      statusId,
+    });
     setLoading(false);
     setTitle("");
     inputRef.current?.focus();
@@ -49,8 +55,8 @@ export function QuickCreateTask({
   if (!open) {
     return (
       <button
-        onClick={show}
         className={`flex items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-muted-foreground text-sm transition-colors hover:border-border hover:bg-accent hover:text-foreground w-full ${className ?? ""}`}
+        onClick={show}
       >
         <PlusIcon className="size-4 shrink-0" />
         {placeholder}
@@ -59,19 +65,30 @@ export function QuickCreateTask({
   }
 
   return (
-    <div className={`rounded-lg border bg-background px-3 py-2 shadow-sm ${className ?? ""}`}>
+    <div
+      className={`rounded-lg border bg-background px-3 py-2 shadow-sm ${className ?? ""}`}
+    >
       <input
-        ref={inputRef}
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        placeholder={placeholder}
         className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
         disabled={loading}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") { e.preventDefault(); submit(); }
-          if (e.key === "Escape") { close(); }
+        onBlur={() => {
+          if (!title.trim()) {
+            close();
+          }
         }}
-        onBlur={() => { if (!title.trim()) close(); }}
+        onChange={(e) => setTitle(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            submit();
+          }
+          if (e.key === "Escape") {
+            close();
+          }
+        }}
+        placeholder={placeholder}
+        ref={inputRef}
+        value={title}
       />
       <p className="mt-1 text-xs text-muted-foreground">
         Enter to save · Esc to cancel

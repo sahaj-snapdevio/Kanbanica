@@ -5,8 +5,8 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 interface SpaceSettingsNavProps {
-  workspaceId: string;
   spaceId: string;
+  workspaceId: string;
 }
 
 const NAV_ITEMS = [
@@ -14,7 +14,10 @@ const NAV_ITEMS = [
   { label: "Members", path: "members" },
 ];
 
-export function SpaceSettingsNav({ workspaceId, spaceId }: SpaceSettingsNavProps) {
+export function SpaceSettingsNav({
+  workspaceId,
+  spaceId,
+}: SpaceSettingsNavProps) {
   const pathname = usePathname();
   const base = `/${workspaceId}/${spaceId}/settings`;
 
@@ -25,14 +28,14 @@ export function SpaceSettingsNav({ workspaceId, spaceId }: SpaceSettingsNavProps
         const active = pathname === href;
         return (
           <Link
-            key={item.path}
-            href={href}
             className={cn(
               "px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
               active
                 ? "border-primary text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground",
+                : "border-transparent text-muted-foreground hover:text-foreground"
             )}
+            href={href}
+            key={item.path}
           >
             {item.label}
           </Link>

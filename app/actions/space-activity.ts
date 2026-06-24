@@ -1,38 +1,48 @@
 "use server";
 
+import { subDays } from "date-fns";
+import { and, desc, eq, gte } from "drizzle-orm";
 import { headers } from "next/headers";
-import { and, desc, eq, gte, inArray } from "drizzle-orm";
+import { activityLog, list, task, user } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { activityLog, task, list, user } from "@/db/schema";
 import { canAccessSpace } from "@/lib/permissions";
-import { subDays } from "date-fns";
 
 export interface SpaceActivityEntry {
-  id: string;
-  taskId: string;
-  taskTitle: string;
-  taskSeq: number;
-  listId: string;
-  listName: string;
-  eventType: string;
-  meta: unknown;
-  createdAt: Date;
-  actorName: string | null;
   actorEmail: string | null;
   actorImage: string | null;
+  actorName: string | null;
+  createdAt: Date;
+  eventType: string;
+  id: string;
+  listId: string;
+  listName: string;
+  meta: unknown;
+  taskId: string;
+  taskSeq: number;
+  taskTitle: string;
 }
 
 export async function getSpaceActivity(
   workspaceId: string,
   spaceId: string,
-  page = 1,
-): Promise<{ entries: SpaceActivityEntry[]; total: number } | { error: string }> {
+  page = 1
+): Promise<
+  { entries: SpaceActivityEntry[]; total: number } | { error: string }
+> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
-  const accessible = await canAccessSpace(session.user.id, workspaceId, spaceId);
-  if (!accessible) return { error: "Unauthorized" };
+  const accessible = await canAccessSpace(
+    session.user.id,
+    workspaceId,
+    spaceId
+  );
+  if (!accessible) {
+    return { error: "Unauthorized" };
+  }
 
   const since = subDays(new Date(), 30);
   const PAGE_SIZE = 50;
@@ -61,8 +71,8 @@ export async function getSpaceActivity(
       and(
         eq(list.spaceId, spaceId),
         eq(list.isArchived, false),
-        gte(activityLog.createdAt, since),
-      ),
+        gte(activityLog.createdAt, since)
+      )
     )
     .orderBy(desc(activityLog.createdAt))
     .limit(PAGE_SIZE)

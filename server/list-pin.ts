@@ -1,12 +1,12 @@
 "use server";
 
 import { and, count, eq, max } from "drizzle-orm";
-import { db } from "@/lib/db";
 import { task } from "@/db/schema";
+import { db } from "@/lib/db";
 
 export async function pinTaskToList(
   taskId: string,
-  actorId: string,
+  actorId: string
 ): Promise<{ ok: true } | { error: string; code?: string }> {
   return db.transaction(async (tx) => {
     const [t] = await tx
@@ -15,7 +15,9 @@ export async function pinTaskToList(
       .where(eq(task.id, taskId))
       .limit(1);
 
-    if (!t?.listId) return { error: "Task not found or has no list" };
+    if (!t?.listId) {
+      return { error: "Task not found or has no list" };
+    }
 
     const [{ pinCount }] = await tx
       .select({ pinCount: count() })
@@ -50,7 +52,7 @@ export async function pinTaskToList(
 }
 
 export async function unpinTaskFromList(
-  taskId: string,
+  taskId: string
 ): Promise<{ ok: true } | { error: string }> {
   await db
     .update(task)
@@ -68,7 +70,7 @@ export async function unpinTaskFromList(
 
 export async function reorderListPins(
   listId: string,
-  orderedTaskIds: string[],
+  orderedTaskIds: string[]
 ): Promise<{ ok: true } | { error: string }> {
   await db.transaction(async (tx) => {
     for (let i = 0; i < orderedTaskIds.length; i++) {

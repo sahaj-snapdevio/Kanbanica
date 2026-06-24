@@ -1,13 +1,13 @@
-import { type NextRequest, NextResponse } from "next/server";
-import { headers } from "next/headers";
-import { eq } from "drizzle-orm";
 import { createId } from "@paralleldrive/cuid2";
+import { eq } from "drizzle-orm";
+import { headers } from "next/headers";
+import { type NextRequest, NextResponse } from "next/server";
+import { list, task, taskAttachment } from "@/db/schema";
+import { writeActivityLog } from "@/lib/activity-log";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { task, list, taskAttachment } from "@/db/schema";
-import { storage, ALLOWED_MIME_TYPES, MAX_FILE_SIZE } from "@/lib/storage";
 import { canAccessSpace, getWorkspaceMembership } from "@/lib/permissions";
-import { writeActivityLog } from "@/lib/activity-log";
+import { MAX_FILE_SIZE, storage } from "@/lib/storage";
 
 async function resolveTask(taskId: string) {
   const [row] = await db
@@ -26,17 +26,27 @@ async function resolveTask(taskId: string) {
 // GET /api/tasks/:taskId/attachments — list attachments with serving URLs
 export async function GET(
   _request: NextRequest,
-  { params }: { params: Promise<{ taskId: string }> },
+  { params }: { params: Promise<{ taskId: string }> }
 ) {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const { taskId } = await params;
   const ctx = await resolveTask(taskId);
-  if (!ctx) return NextResponse.json({ error: "Task not found" }, { status: 404 });
+  if (!ctx) {
+    return NextResponse.json({ error: "Task not found" }, { status: 404 });
+  }
 
-  const accessible = await canAccessSpace(session.user.id, ctx.workspaceId, ctx.spaceId);
-  if (!accessible) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const accessible = await canAccessSpace(
+    session.user.id,
+    ctx.workspaceId,
+    ctx.spaceId
+  );
+  if (!accessible) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const rows = await db
     .select()
@@ -54,7 +64,7 @@ export async function GET(
       mimeType: a.mimeType,
       createdAt: a.createdAt,
       url: await storage.url(a.fileUrl),
-    })),
+    }))
   );
 
   return NextResponse.json({ attachments });
@@ -63,20 +73,26 @@ export async function GET(
 // POST /api/tasks/:taskId/attachments — upload a file (multipart/form-data)
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ taskId: string }> },
+  { params }: { params: Promise<{ taskId: string }> }
 ) {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const { taskId } = await params;
   const ctx = await resolveTask(taskId);
-  if (!ctx) return NextResponse.json({ error: "Task not found" }, { status: 404 });
+  if (!ctx) {
+    return NextResponse.json({ error: "Task not found" }, { status: 404 });
+  }
 
   const [membership, accessible] = await Promise.all([
     getWorkspaceMembership(session.user.id, ctx.workspaceId),
     canAccessSpace(session.user.id, ctx.workspaceId, ctx.spaceId),
   ]);
-  if (!membership || !accessible) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!membership || !accessible) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   // Only Edit / Full Access / Admin / Owner can upload
   const role = membership.role;
@@ -97,7 +113,10 @@ export async function POST(
   }
 
   if (file.size > MAX_FILE_SIZE) {
-    return NextResponse.json({ error: "File exceeds 10 MB limit" }, { status: 413 });
+    return NextResponse.json(
+      { error: "File exceeds 10 MB limit" },
+      { status: 413 }
+    );
   }
 
   const mimeType = file.type || "application/octet-stream";

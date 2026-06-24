@@ -1,12 +1,17 @@
-import { NextRequest, NextResponse } from "next/server";
+import { headers } from "next/headers";
+import { type NextRequest, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/admin-auth";
 import { audit } from "@/lib/audit";
 import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const adminSession = await getAdminSession();
-  if (!adminSession) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!adminSession) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const { id } = await params;
 
@@ -27,6 +32,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     return NextResponse.json({ url: "/", session: impersonationSession });
   } catch {
-    return NextResponse.json({ error: "Failed to impersonate user" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to impersonate user" },
+      { status: 500 }
+    );
   }
 }

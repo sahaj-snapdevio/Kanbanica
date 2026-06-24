@@ -1,53 +1,70 @@
 "use server";
 
-import { headers } from "next/headers";
-import { and, eq, inArray, asc } from "drizzle-orm";
 import { createId } from "@paralleldrive/cuid2";
+import { and, asc, eq, inArray } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+import {
+  comment,
+  commentReaction,
+  task,
+  taskAttachment,
+  taskWatcher,
+  user,
+} from "@/db/schema";
+import { writeActivityLog } from "@/lib/activity-log";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { comment, commentReaction, task, taskAttachment, taskWatcher, user } from "@/db/schema";
-import { canAccessSpace, getSpacePermission, hasPermissionLevel } from "@/lib/permissions";
-import { writeActivityLog } from "@/lib/activity-log";
 import { createNotifications } from "@/lib/notifications/create-notification";
+import {
+  canAccessSpace,
+  getSpacePermission,
+  hasPermissionLevel,
+} from "@/lib/permissions";
 import { storage } from "@/lib/storage";
-import { revalidatePath } from "next/cache";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface CommentAttachment {
-  id: string;
   fileName: string;
-  fileUrl: string;
-  mimeType: string;
   fileSize: number;
+  fileUrl: string;
+  id: string;
+  mimeType: string;
   url: string;
 }
 
 export interface CommentWithReplies {
-  id: string;
-  taskId: string;
-  parentCommentId: string | null;
-  authorId: string;
-  authorName: string | null;
+  attachments: CommentAttachment[];
   authorEmail: string | null;
+  authorId: string;
   authorImage: string | null;
+  authorName: string | null;
   body: unknown;
+  createdAt: Date;
+  editedAt: Date | null;
+  id: string;
   isDeleted: boolean;
   isResolved: boolean;
-  resolvedBy: string | null;
-  resolvedAt: Date | null;
-  editedAt: Date | null;
-  createdAt: Date;
+  parentCommentId: string | null;
   reactions: { emoji: string; userIds: string[]; count: number }[];
-  attachments: CommentAttachment[];
   replies: CommentWithReplies[];
+  resolvedAt: Date | null;
+  resolvedBy: string | null;
+  taskId: string;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-async function requireSpaceAccess(userId: string, workspaceId: string, spaceId: string) {
+async function requireSpaceAccess(
+  userId: string,
+  workspaceId: string,
+  spaceId: string
+) {
   const accessible = await canAccessSpace(userId, workspaceId, spaceId);
-  if (!accessible) return { error: "Unauthorized" } as const;
+  if (!accessible) {
+    return { error: "Unauthorized" } as const;
+  }
   return null;
 }
 
@@ -58,17 +75,25 @@ function revalidateTask(workspaceId: string, spaceId: string, listId: string) {
 // ─── extractMentionIds ────────────────────────────────────────────────────────
 
 function extractMentionIds(body: unknown): string[] {
-  if (!body || typeof body !== "object") return [];
+  if (!body || typeof body !== "object") {
+    return [];
+  }
   const ids: string[] = [];
   function walk(node: unknown) {
-    if (!node || typeof node !== "object") return;
+    if (!node || typeof node !== "object") {
+      return;
+    }
     const n = node as Record<string, unknown>;
     if (n.type === "mention" && n.attrs && typeof n.attrs === "object") {
       const attrs = n.attrs as Record<string, unknown>;
-      if (typeof attrs.id === "string") ids.push(attrs.id);
+      if (typeof attrs.id === "string") {
+        ids.push(attrs.id);
+      }
     }
     if (Array.isArray(n.content)) {
-      for (const child of n.content) walk(child);
+      for (const child of n.content) {
+        walk(child);
+      }
     }
   }
   walk(body);
@@ -80,13 +105,17 @@ function extractMentionIds(body: unknown): string[] {
 export async function getTaskComments(
   workspaceId: string,
   spaceId: string,
-  taskId: string,
+  taskId: string
 ): Promise<{ comments: CommentWithReplies[] } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const err = await requireSpaceAccess(session.user.id, workspaceId, spaceId);
-  if (err) return err;
+  if (err) {
+    return err;
+  }
 
   // Fetch all comments for this task (flat)
   const rows = await db
@@ -126,15 +155,21 @@ export async function getTaskComments(
       : [];
 
   for (const r of reactionRows) {
-    if (!reactionMap.has(r.commentId)) reactionMap.set(r.commentId, new Map());
+    if (!reactionMap.has(r.commentId)) {
+      reactionMap.set(r.commentId, new Map());
+    }
     const emojiMap = reactionMap.get(r.commentId)!;
-    if (!emojiMap.has(r.emoji)) emojiMap.set(r.emoji, []);
+    if (!emojiMap.has(r.emoji)) {
+      emojiMap.set(r.emoji, []);
+    }
     emojiMap.get(r.emoji)!.push(r.userId);
   }
 
   function buildReactions(commentId: string) {
     const emojiMap = reactionMap.get(commentId);
-    if (!emojiMap) return [];
+    if (!emojiMap) {
+      return [];
+    }
     return Array.from(emojiMap.entries()).map(([emoji, userIds]) => ({
       emoji,
       userIds,
@@ -159,12 +194,18 @@ export async function getTaskComments(
           .orderBy(asc(taskAttachment.createdAt))
       : [];
 
-  const attachmentUrls = await Promise.all(attachmentRows.map((a) => storage.url(a.fileUrl)));
+  const attachmentUrls = await Promise.all(
+    attachmentRows.map((a) => storage.url(a.fileUrl))
+  );
   const attachmentMap = new Map<string, CommentAttachment[]>();
   for (let i = 0; i < attachmentRows.length; i++) {
     const a = attachmentRows[i];
-    if (!a.commentId) continue;
-    if (!attachmentMap.has(a.commentId)) attachmentMap.set(a.commentId, []);
+    if (!a.commentId) {
+      continue;
+    }
+    if (!attachmentMap.has(a.commentId)) {
+      attachmentMap.set(a.commentId, []);
+    }
     attachmentMap.get(a.commentId)!.push({
       id: a.id,
       fileName: a.fileName,
@@ -205,10 +246,16 @@ export async function getTaskComments(
 
 // Extract plain text from Tiptap JSON for push notification body preview
 function tiptapToPlainText(node: unknown, depth = 0): string {
-  if (!node || typeof node !== "object") return "";
+  if (!node || typeof node !== "object") {
+    return "";
+  }
   const n = node as { type?: string; text?: string; content?: unknown[] };
-  if (n.text) return n.text;
-  if (n.content) return n.content.map((c) => tiptapToPlainText(c, depth + 1)).join("");
+  if (n.text) {
+    return n.text;
+  }
+  if (n.content) {
+    return n.content.map((c) => tiptapToPlainText(c, depth + 1)).join("");
+  }
   return "";
 }
 
@@ -220,13 +267,17 @@ export async function createComment(
   listId: string,
   taskId: string,
   body: unknown,
-  parentCommentId?: string,
+  parentCommentId?: string
 ): Promise<{ commentId: string } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const err = await requireSpaceAccess(session.user.id, workspaceId, spaceId);
-  if (err) return err;
+  if (err) {
+    return err;
+  }
 
   // Fetch task title for push notification
   const [taskRow] = await db
@@ -258,7 +309,9 @@ export async function createComment(
     updatedAt: now,
   });
 
-  void writeActivityLog(taskId, session.user.id, "comment_added", { comment_id: id });
+  void writeActivityLog(taskId, session.user.id, "comment_added", {
+    comment_id: id,
+  });
 
   // Fire-and-forget notifications
   const watchers = await db
@@ -343,13 +396,17 @@ export async function editComment(
   spaceId: string,
   listId: string,
   commentId: string,
-  body: unknown,
+  body: unknown
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const err = await requireSpaceAccess(session.user.id, workspaceId, spaceId);
-  if (err) return err;
+  if (err) {
+    return err;
+  }
 
   const [existing] = await db
     .select({ authorId: comment.authorId })
@@ -357,8 +414,12 @@ export async function editComment(
     .where(eq(comment.id, commentId))
     .limit(1);
 
-  if (!existing) return { error: "Comment not found" };
-  if (existing.authorId !== session.user.id) return { error: "You can only edit your own comments" };
+  if (!existing) {
+    return { error: "Comment not found" };
+  }
+  if (existing.authorId !== session.user.id) {
+    return { error: "You can only edit your own comments" };
+  }
 
   await db
     .update(comment)
@@ -376,13 +437,21 @@ export async function deleteComment(
   spaceId: string,
   listId: string,
   taskId: string,
-  commentId: string,
+  commentId: string
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
-  const permission = await getSpacePermission(session.user.id, workspaceId, spaceId);
-  if (permission === null) return { error: "Forbidden" };
+  const permission = await getSpacePermission(
+    session.user.id,
+    workspaceId,
+    spaceId
+  );
+  if (permission === null) {
+    return { error: "Forbidden" };
+  }
 
   const [existing] = await db
     .select({ authorId: comment.authorId })
@@ -390,7 +459,9 @@ export async function deleteComment(
     .where(eq(comment.id, commentId))
     .limit(1);
 
-  if (!existing) return { error: "Comment not found" };
+  if (!existing) {
+    return { error: "Comment not found" };
+  }
 
   // full_access can delete any comment; others can only delete their own
   const canDeleteAny = hasPermissionLevel(permission, "full_access");
@@ -402,7 +473,9 @@ export async function deleteComment(
   const [replyRow] = await db
     .select({ id: comment.id })
     .from(comment)
-    .where(and(eq(comment.parentCommentId, commentId), eq(comment.isDeleted, false)))
+    .where(
+      and(eq(comment.parentCommentId, commentId), eq(comment.isDeleted, false))
+    )
     .limit(1);
 
   if (replyRow) {
@@ -416,7 +489,9 @@ export async function deleteComment(
     await db.delete(comment).where(eq(comment.id, commentId));
   }
 
-  void writeActivityLog(taskId, session.user.id, "comment_deleted", { comment_id: commentId });
+  void writeActivityLog(taskId, session.user.id, "comment_deleted", {
+    comment_id: commentId,
+  });
   revalidateTask(workspaceId, spaceId, listId);
   return { ok: true };
 }
@@ -427,17 +502,26 @@ export async function resolveComment(
   workspaceId: string,
   spaceId: string,
   listId: string,
-  commentId: string,
+  commentId: string
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const err = await requireSpaceAccess(session.user.id, workspaceId, spaceId);
-  if (err) return err;
+  if (err) {
+    return err;
+  }
 
   await db
     .update(comment)
-    .set({ isResolved: true, resolvedBy: session.user.id, resolvedAt: new Date(), updatedAt: new Date() })
+    .set({
+      isResolved: true,
+      resolvedBy: session.user.id,
+      resolvedAt: new Date(),
+      updatedAt: new Date(),
+    })
     .where(eq(comment.id, commentId));
 
   revalidateTask(workspaceId, spaceId, listId);
@@ -448,17 +532,26 @@ export async function unresolveComment(
   workspaceId: string,
   spaceId: string,
   listId: string,
-  commentId: string,
+  commentId: string
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const err = await requireSpaceAccess(session.user.id, workspaceId, spaceId);
-  if (err) return err;
+  if (err) {
+    return err;
+  }
 
   await db
     .update(comment)
-    .set({ isResolved: false, resolvedBy: null, resolvedAt: null, updatedAt: new Date() })
+    .set({
+      isResolved: false,
+      resolvedBy: null,
+      resolvedAt: null,
+      updatedAt: new Date(),
+    })
     .where(eq(comment.id, commentId));
 
   revalidateTask(workspaceId, spaceId, listId);
@@ -471,13 +564,17 @@ export async function toggleReaction(
   workspaceId: string,
   spaceId: string,
   commentId: string,
-  emoji: string,
+  emoji: string
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return { error: "Unauthorized" };
+  if (!session) {
+    return { error: "Unauthorized" };
+  }
 
   const err = await requireSpaceAccess(session.user.id, workspaceId, spaceId);
-  if (err) return err;
+  if (err) {
+    return err;
+  }
 
   const [existing] = await db
     .select({ id: commentReaction.id })
@@ -486,8 +583,8 @@ export async function toggleReaction(
       and(
         eq(commentReaction.commentId, commentId),
         eq(commentReaction.userId, session.user.id),
-        eq(commentReaction.emoji, emoji),
-      ),
+        eq(commentReaction.emoji, emoji)
+      )
     )
     .limit(1);
 

@@ -1,31 +1,38 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
 import { MagnifyingGlassIcon, PlusIcon } from "@phosphor-icons/react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  addTaskToSprint,
+  type BacklogTask,
+  getBacklogTasks,
+} from "@/app/actions/sprint";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { getBacklogTasks, addTaskToSprint, type BacklogTask } from "@/app/actions/sprint";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface AddTasksToSprintModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  workspaceId: string;
-  spaceId: string;
   listId?: string;
+  onAdded: () => void;
+  onOpenChange: (open: boolean) => void;
+  open: boolean;
+  spaceId: string;
   sprintId: string;
   sprintName: string;
-  onAdded: () => void;
+  workspaceId: string;
 }
 
-const PRIORITY_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
+const PRIORITY_CONFIG: Record<
+  string,
+  { label: string; color: string; icon: string }
+> = {
   NONE: { label: "No Priority", color: "text-muted-foreground", icon: "😴" },
   LOW: { label: "Low", color: "text-blue-500", icon: "🐢" },
   MEDIUM: { label: "Medium", color: "text-yellow-500", icon: "🚶" },
@@ -53,7 +60,9 @@ export function AddTasksToSprintModal({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
     setSelected(new Set());
     setSearch("");
     setError(null);
@@ -65,7 +74,10 @@ export function AddTasksToSprintModal({
     setLoading(true);
     try {
       const result = await getBacklogTasks(workspaceId, spaceId);
-      if ("error" in result) { setError(result.error); return; }
+      if ("error" in result) {
+        setError(result.error);
+        return;
+      }
       // Flatten tasks from all list groups, preserving list order
       setTasks(result.lists.flatMap((l) => l.tasks));
     } catch {
@@ -77,19 +89,23 @@ export function AddTasksToSprintModal({
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return tasks;
+    if (!q) {
+      return tasks;
+    }
     return tasks.filter(
       (t) =>
-        t.title.toLowerCase().includes(q) ||
-        String(t.seqNumber).includes(q),
+        t.title.toLowerCase().includes(q) || String(t.seqNumber).includes(q)
     );
   }, [tasks, search]);
 
   function toggle(id: string) {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
   }
@@ -103,15 +119,17 @@ export function AddTasksToSprintModal({
   }
 
   async function handleAdd() {
-    if (selected.size === 0) return;
+    if (selected.size === 0) {
+      return;
+    }
     setAdding(true);
     setError(null);
     try {
       const ids = Array.from(selected);
       const results = await Promise.all(
         ids.map((taskId) =>
-          addTaskToSprint(workspaceId, spaceId, sprintId, taskId),
-        ),
+          addTaskToSprint(workspaceId, spaceId, sprintId, taskId)
+        )
       );
       const failed = results.filter((r) => "error" in r);
       if (failed.length > 0) {
@@ -130,12 +148,14 @@ export function AddTasksToSprintModal({
     filtered.length > 0 && filtered.every((t) => selected.has(t.id));
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent className="sm:max-w-125">
         <DialogHeader>
           <DialogTitle className="text-base">
             Add tasks to{" "}
-            <span className="text-muted-foreground font-normal">{sprintName}</span>
+            <span className="text-muted-foreground font-normal">
+              {sprintName}
+            </span>
           </DialogTitle>
         </DialogHeader>
 
@@ -144,12 +164,12 @@ export function AddTasksToSprintModal({
           <div className="relative">
             <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
             <input
-              type="text"
-              placeholder="Search backlog tasks…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-9 w-full rounded-md border bg-background pl-8 pr-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
               autoFocus
+              className="h-9 w-full rounded-md border bg-background pl-8 pr-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search backlog tasks…"
+              type="text"
+              value={search}
             />
           </div>
 
@@ -158,7 +178,10 @@ export function AddTasksToSprintModal({
             {loading ? (
               <div className="space-y-px p-1">
                 {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="h-10 rounded bg-muted animate-pulse" />
+                  <div
+                    className="h-10 rounded bg-muted animate-pulse"
+                    key={i}
+                  />
                 ))}
               </div>
             ) : filtered.length === 0 ? (
@@ -173,45 +196,52 @@ export function AddTasksToSprintModal({
               <div className="w-full max-h-80 overflow-y-auto overflow-x-hidden">
                 {/* Select all header */}
                 <button
-                  onClick={toggleAll}
                   className="flex w-full items-center gap-3 border-b bg-muted/30 px-3 py-2 text-left hover:bg-muted/50 transition-colors"
+                  onClick={toggleAll}
                 >
                   <input
-                    type="checkbox"
-                    readOnly
                     checked={allFilteredSelected}
                     className="rounded"
+                    readOnly
+                    type="checkbox"
                   />
                   <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    {allFilteredSelected ? "Deselect all" : "Select all"} ({filtered.length})
+                    {allFilteredSelected ? "Deselect all" : "Select all"} (
+                    {filtered.length})
                   </span>
                 </button>
 
                 {filtered.map((task) => (
                   <button
+                    className="flex w-full min-w-0 overflow-hidden items-center gap-3 px-3 py-2.5 text-left hover:bg-accent/50 transition-colors border-b last:border-b-0"
                     key={task.id}
                     onClick={() => toggle(task.id)}
-                    className="flex w-full min-w-0 overflow-hidden items-center gap-3 px-3 py-2.5 text-left hover:bg-accent/50 transition-colors border-b last:border-b-0"
                   >
                     <input
-                      type="checkbox"
-                      readOnly
                       checked={selected.has(task.id)}
                       className="rounded shrink-0"
+                      readOnly
+                      type="checkbox"
                     />
                     <span className="font-mono text-xs text-muted-foreground/60 shrink-0 w-8">
                       #{task.seqNumber}
                     </span>
-                    <span className="flex-1 min-w-0 text-sm truncate">{task.title}</span>
-                    {task.priority && task.priority !== "NONE" && (() => {
-                      const cfg = PRIORITY_CONFIG[task.priority];
-                      return cfg ? (
-                        <span className={`flex items-center gap-1 text-xs font-medium shrink-0 ${cfg.color}`}>
-                          <span>{cfg.icon}</span>
-                          {cfg.label}
-                        </span>
-                      ) : null;
-                    })()}
+                    <span className="flex-1 min-w-0 text-sm truncate">
+                      {task.title}
+                    </span>
+                    {task.priority &&
+                      task.priority !== "NONE" &&
+                      (() => {
+                        const cfg = PRIORITY_CONFIG[task.priority];
+                        return cfg ? (
+                          <span
+                            className={`flex items-center gap-1 text-xs font-medium shrink-0 ${cfg.color}`}
+                          >
+                            <span>{cfg.icon}</span>
+                            {cfg.label}
+                          </span>
+                        ) : null;
+                      })()}
                   </button>
                 ))}
               </div>
@@ -226,10 +256,14 @@ export function AddTasksToSprintModal({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={adding}>
+          <Button
+            disabled={adding}
+            onClick={() => onOpenChange(false)}
+            variant="outline"
+          >
             Cancel
           </Button>
-          <Button onClick={handleAdd} disabled={adding || selected.size === 0}>
+          <Button disabled={adding || selected.size === 0} onClick={handleAdd}>
             <PlusIcon className="size-3.5 mr-1.5" />
             {adding
               ? "Adding…"

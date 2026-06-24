@@ -1,25 +1,29 @@
 import { createId } from "@paralleldrive/cuid2";
 import { addDays } from "date-fns";
+import { and, eq, inArray, isNull, or } from "drizzle-orm";
+import {
+  mutedEntity,
+  notification,
+  userNotificationPreference,
+} from "@/db/schema";
 import { db } from "@/lib/db";
-import { notification, mutedEntity, userNotificationPreference } from "@/db/schema";
-import { and, eq, inArray, or, isNull } from "drizzle-orm";
-import type { NotificationTriggerType } from "./types";
 import { sendPushToUser } from "./push";
+import type { NotificationTriggerType } from "./types";
 
 export interface CreateNotificationParams {
-  workspaceId: string;
   actorId: string | null;
-  recipientIds: string[];
-  triggerType: NotificationTriggerType;
-  entityType: "TASK" | "COMMENT" | "SPACE" | "WORKSPACE" | "SPRINT";
-  entityId: string;
-  title: string;
   body?: string;
+  entityId: string;
+  entityType: "TASK" | "COMMENT" | "SPACE" | "WORKSPACE" | "SPRINT";
   muteCheckEntityIds?: string[];
+  pushBody?: string;
   // Push-specific overrides — separate from in-app title/body
   pushTitle?: string;
-  pushBody?: string;
   pushUrl?: string;
+  recipientIds: string[];
+  title: string;
+  triggerType: NotificationTriggerType;
+  workspaceId: string;
 }
 
 // Fire-and-forget — never await this in a mutation handler
@@ -47,7 +51,9 @@ async function _create(params: CreateNotificationParams) {
 
   // Remove actor from recipients (no self-notifications), deduplicate
   const eligibleIds = [...new Set(recipientIds.filter((id) => id !== actorId))];
-  if (eligibleIds.length === 0) return;
+  if (eligibleIds.length === 0) {
+    return;
+  }
 
   // Check muted entities — exclude users who muted this task/space
   const entitiesToCheck = muteCheckEntityIds ?? [entityId];
@@ -57,12 +63,14 @@ async function _create(params: CreateNotificationParams) {
     .where(
       and(
         inArray(mutedEntity.userId, eligibleIds),
-        inArray(mutedEntity.entityId, entitiesToCheck),
-      ),
+        inArray(mutedEntity.entityId, entitiesToCheck)
+      )
     );
   const mutedUserIds = new Set(mutedRows.map((r) => r.userId));
   const finalRecipients = eligibleIds.filter((id) => !mutedUserIds.has(id));
-  if (finalRecipients.length === 0) return;
+  if (finalRecipients.length === 0) {
+    return;
+  }
 
   // Fetch per-trigger preferences for all eligible recipients
   const prefs = await db
@@ -78,9 +86,9 @@ async function _create(params: CreateNotificationParams) {
         eq(userNotificationPreference.triggerType, triggerType),
         or(
           isNull(userNotificationPreference.workspaceId),
-          eq(userNotificationPreference.workspaceId, workspaceId),
-        ),
-      ),
+          eq(userNotificationPreference.workspaceId, workspaceId)
+        )
+      )
     );
 
   // Build pref maps — default is enabled if no row exists
@@ -114,7 +122,7 @@ async function _create(params: CreateNotificationParams) {
         isRead: false,
         createdAt: now,
         expiresAt,
-      })),
+      }))
     );
   }
 
@@ -126,8 +134,8 @@ async function _create(params: CreateNotificationParams) {
           title: pushTitle ?? title,
           body: pushBody ?? body ?? "",
           url: pushUrl ?? `/${workspaceId}/task/${entityId}`,
-        }),
-      ),
+        })
+      )
     );
   }
 }

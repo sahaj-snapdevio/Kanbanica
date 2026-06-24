@@ -1,7 +1,7 @@
-import { existsSync } from "node:fs";
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { existsSync } from "node:fs";
 import { hashPassword } from "better-auth/crypto";
+import { eq } from "drizzle-orm";
 import { ADMIN_ROLE } from "@/config/platform";
 
 if (existsSync(".env")) {
@@ -13,7 +13,9 @@ async function main() {
 
   if (!email || !password) {
     console.error("Usage: pnpm create:admin <email> <password> [name]");
-    console.error("  e.g. pnpm create:admin admin@example.com secret123 'Super Admin'");
+    console.error(
+      "  e.g. pnpm create:admin admin@example.com secret123 'Super Admin'"
+    );
     process.exit(1);
   }
 
@@ -61,7 +63,9 @@ async function main() {
       });
     }
 
-    console.log(`✓ Existing user ${email} promoted to admin with new password.`);
+    console.log(
+      `✓ Existing user ${email} promoted to admin with new password.`
+    );
     process.exit(0);
   }
 
@@ -91,7 +95,7 @@ async function main() {
   });
 
   console.log(`✓ Admin user created: ${email} (name: "${name}")`);
-  console.log(`  Login at /admin/login with the password you provided.`);
+  console.log("  Login at /admin/login with the password you provided.");
   process.exit(0);
 }
 

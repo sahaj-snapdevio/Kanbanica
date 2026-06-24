@@ -12,7 +12,10 @@ export default function SpaceSettingsLoading() {
       <div className="mt-6 space-y-3">
         {/* Member / field rows */}
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="flex items-center gap-3 rounded-md border px-3 py-2.5">
+          <div
+            className="flex items-center gap-3 rounded-md border px-3 py-2.5"
+            key={i}
+          >
             <Skeleton className="h-8 w-8 rounded-full" />
             <div className="space-y-1.5">
               <Skeleton className="h-3.5 w-36 rounded" />

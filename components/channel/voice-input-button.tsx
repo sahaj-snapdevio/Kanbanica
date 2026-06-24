@@ -1,22 +1,26 @@
 "use client";
 
-import * as React from "react";
 import { MicrophoneIcon, StopIcon } from "@phosphor-icons/react";
+import * as React from "react";
 import { cn } from "@/lib/utils";
 
 interface VoiceInputButtonProps {
-  onTranscript: (text: string) => void;
   disabled?: boolean;
+  onTranscript: (text: string) => void;
 }
 
-export function VoiceInputButton({ onTranscript, disabled }: VoiceInputButtonProps) {
+export function VoiceInputButton({
+  onTranscript,
+  disabled,
+}: VoiceInputButtonProps) {
   const [listening, setListening] = React.useState(false);
   const [supported, setSupported] = React.useState(true);
   const recognitionRef = React.useRef<any>(null);
 
   React.useEffect(() => {
     const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
       setSupported(false);
       return;
@@ -67,7 +71,9 @@ export function VoiceInputButton({ onTranscript, disabled }: VoiceInputButtonPro
   }, [onTranscript]);
 
   function toggleListening() {
-    if (!recognitionRef.current) return;
+    if (!recognitionRef.current) {
+      return;
+    }
 
     if (listening) {
       recognitionRef.current._shouldRestart = false;
@@ -84,21 +90,23 @@ export function VoiceInputButton({ onTranscript, disabled }: VoiceInputButtonPro
     }
   }
 
-  if (!supported) return null;
+  if (!supported) {
+    return null;
+  }
 
   return (
     <button
-      type="button"
-      onClick={toggleListening}
-      disabled={disabled}
       className={cn(
         "relative flex size-8 items-center justify-center rounded-md transition-colors",
         listening
           ? "bg-red-500/10 text-red-500 hover:bg-red-500/20"
           : "text-muted-foreground hover:bg-accent hover:text-foreground",
-        disabled && "opacity-50 cursor-not-allowed",
+        disabled && "opacity-50 cursor-not-allowed"
       )}
+      disabled={disabled}
+      onClick={toggleListening}
       title={listening ? "Stop voice input" : "Start voice input"}
+      type="button"
     >
       {listening ? (
         <>

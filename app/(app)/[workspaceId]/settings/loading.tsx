@@ -21,7 +21,7 @@ export default function SettingsLoading() {
 
         {/* Field rows */}
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="space-y-2">
+          <div className="space-y-2" key={i}>
             <Skeleton className="h-3.5 w-24 rounded" />
             <Skeleton className="h-9 w-full rounded-md" />
           </div>

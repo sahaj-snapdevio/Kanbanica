@@ -27,4 +27,5 @@ export const NOTIFICATION_TRIGGERS = {
   SPRINT_AUTO_CREATED: "sprint_auto_created",
 } as const;
 
-export type NotificationTriggerType = (typeof NOTIFICATION_TRIGGERS)[keyof typeof NOTIFICATION_TRIGGERS];
+export type NotificationTriggerType =
+  (typeof NOTIFICATION_TRIGGERS)[keyof typeof NOTIFICATION_TRIGGERS];

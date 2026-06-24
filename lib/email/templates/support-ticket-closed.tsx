@@ -16,17 +16,23 @@ function SupportTicketClosedEmail({
   productName: string;
 }) {
   return (
-    <EmailLayout preview={`Your ticket ${ticketNumber} has been closed`} productName={productName}>
+    <EmailLayout
+      preview={`Your ticket ${ticketNumber} has been closed`}
+      productName={productName}
+    >
       <Text style={emailStyles.heading}>Your ticket has been closed</Text>
       <Text style={emailStyles.paragraph}>
         Hi {userEmail}, your support ticket{" "}
-        <strong style={{ color: "#171717" }}>{ticketNumber}</strong> ({subject}) has been automatically closed due to 14
-        days of inactivity.
+        <strong style={{ color: "#171717" }}>{ticketNumber}</strong> ({subject})
+        has been automatically closed due to 14 days of inactivity.
       </Text>
       <Text style={emailStyles.paragraph}>
-        If you still need help, you can reply to this ticket to reopen it, or create a new ticket.
+        If you still need help, you can reply to this ticket to reopen it, or
+        create a new ticket.
       </Text>
-      <Text style={emailStyles.muted}>Manage your tickets in Settings → Support.</Text>
+      <Text style={emailStyles.muted}>
+        Manage your tickets in Settings → Support.
+      </Text>
     </EmailLayout>
   );
 }
@@ -41,7 +47,12 @@ export async function supportTicketClosedTemplate({
   subject: string;
 }) {
   const html = await renderEmailTemplate(
-    createElement(SupportTicketClosedEmail, { userEmail, ticketNumber, subject, productName: PRODUCT_NAME }),
+    createElement(SupportTicketClosedEmail, {
+      userEmail,
+      ticketNumber,
+      subject,
+      productName: PRODUCT_NAME,
+    })
   );
 
   const text = `Your ticket has been closed

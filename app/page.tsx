@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { getCurrentSession } from "@/lib/authz";
 import LandingPage from "@/components/landing-page";
 import {
   LOGO_PATH,
   PRODUCT_DESCRIPTION,
   PRODUCT_NAME,
 } from "@/config/platform";
+import { getCurrentSession } from "@/lib/authz";
 
 const title = `${PRODUCT_NAME} — Project management your team will actually use`;
 
@@ -39,7 +39,9 @@ export const metadata: Metadata = {
 
 export default async function HomePage() {
   const session = await getCurrentSession();
-  if (session) redirect("/post-auth");
+  if (session) {
+    redirect("/post-auth");
+  }
 
   return <LandingPage />;
 }

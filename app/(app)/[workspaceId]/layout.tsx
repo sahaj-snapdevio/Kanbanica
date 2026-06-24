@@ -98,14 +98,33 @@ export default async function WorkspaceLayout({
           .from(space)
           .where(and(inArray(space.id, spaceIds), eq(space.isArchived, false)))
           .orderBy(asc(space.orderIndex), asc(space.createdAt))
-      : Promise.resolve([] as { id: string; name: string; color: string | null; isPrivate: boolean }[]),
+      : Promise.resolve(
+          [] as {
+            id: string;
+            name: string;
+            color: string | null;
+            isPrivate: boolean;
+          }[]
+        ),
     spaceIds.length > 0
       ? db
-          .select({ id: space.id, name: space.name, color: space.color, isPrivate: space.isPrivate })
+          .select({
+            id: space.id,
+            name: space.name,
+            color: space.color,
+            isPrivate: space.isPrivate,
+          })
           .from(space)
           .where(and(inArray(space.id, spaceIds), eq(space.isArchived, true)))
           .orderBy(asc(space.orderIndex), asc(space.createdAt))
-      : Promise.resolve([] as { id: string; name: string; color: string | null; isPrivate: boolean }[]),
+      : Promise.resolve(
+          [] as {
+            id: string;
+            name: string;
+            color: string | null;
+            isPrivate: boolean;
+          }[]
+        ),
   ]);
 
   const isAdminOrOwner =
@@ -122,7 +141,15 @@ export default async function WorkspaceLayout({
   > = {};
   // Per-space canManageList: OWNER/ADMIN always can; others need FULL_ACCESS in spaceMember
   const spaceCanManageMap: Record<string, boolean> = {};
-  const archivedListsBySpace: Record<string, { id: string; name: string; color: string | null; description: string | null }[]> = {};
+  const archivedListsBySpace: Record<
+    string,
+    {
+      id: string;
+      name: string;
+      color: string | null;
+      description: string | null;
+    }[]
+  > = {};
 
   if (spaces.length > 0) {
     const spaceIdList = spaces.map((s) => s.id);
@@ -159,15 +186,30 @@ export default async function WorkspaceLayout({
 
       // Fetch archived lists for active spaces
       db
-        .select({ id: list.id, name: list.name, spaceId: list.spaceId, color: list.color, description: list.description })
+        .select({
+          id: list.id,
+          name: list.name,
+          spaceId: list.spaceId,
+          color: list.color,
+          description: list.description,
+        })
         .from(list)
-        .where(and(inArray(list.spaceId, spaceIdList), eq(list.isArchived, true)))
+        .where(
+          and(inArray(list.spaceId, spaceIdList), eq(list.isArchived, true))
+        )
         .orderBy(asc(list.orderIndex), asc(list.createdAt)),
     ]);
 
     for (const l of archivedListRows) {
-      if (!archivedListsBySpace[l.spaceId]) archivedListsBySpace[l.spaceId] = [];
-      archivedListsBySpace[l.spaceId].push({ id: l.id, name: l.name, color: l.color, description: l.description });
+      if (!archivedListsBySpace[l.spaceId]) {
+        archivedListsBySpace[l.spaceId] = [];
+      }
+      archivedListsBySpace[l.spaceId].push({
+        id: l.id,
+        name: l.name,
+        color: l.color,
+        description: l.description,
+      });
     }
 
     for (const l of lists) {
@@ -194,17 +236,36 @@ export default async function WorkspaceLayout({
   }
 
   // Fetch active + planned sprints for all accessible spaces
-  const sprintsBySpace: Record<string, { id: string; name: string; status: "PLANNED" | "ACTIVE" | "CLOSED" }[]> = {};
+  const sprintsBySpace: Record<
+    string,
+    { id: string; name: string; status: "PLANNED" | "ACTIVE" | "CLOSED" }[]
+  > = {};
   if (spaces.length > 0) {
     const spaceIdList = spaces.map((s) => s.id);
     const sprintRows = await db
-      .select({ id: sprint.id, name: sprint.name, status: sprint.status, spaceId: sprint.spaceId })
+      .select({
+        id: sprint.id,
+        name: sprint.name,
+        status: sprint.status,
+        spaceId: sprint.spaceId,
+      })
       .from(sprint)
-      .where(and(inArray(sprint.spaceId, spaceIdList), inArray(sprint.status, ["ACTIVE", "PLANNED"])))
+      .where(
+        and(
+          inArray(sprint.spaceId, spaceIdList),
+          inArray(sprint.status, ["ACTIVE", "PLANNED"])
+        )
+      )
       .orderBy(asc(sprint.createdAt));
     for (const sp of sprintRows) {
-      if (!sprintsBySpace[sp.spaceId]) sprintsBySpace[sp.spaceId] = [];
-      sprintsBySpace[sp.spaceId].push({ id: sp.id, name: sp.name, status: sp.status });
+      if (!sprintsBySpace[sp.spaceId]) {
+        sprintsBySpace[sp.spaceId] = [];
+      }
+      sprintsBySpace[sp.spaceId].push({
+        id: sp.id,
+        name: sp.name,
+        status: sp.status,
+      });
     }
   }
 
@@ -215,14 +276,6 @@ export default async function WorkspaceLayout({
       workspaceId={workspaceId}
     >
       <WorkspaceShell
-        role={membership.role}
-        spaces={spaces.map((s) => ({
-          ...s,
-          lists: spaceListMap[s.id] ?? [],
-          archivedLists: archivedListsBySpace[s.id] ?? [],
-          canManageList: spaceCanManageMap[s.id] ?? isAdminOrOwner,
-          sprints: sprintsBySpace[s.id] ?? [],
-        }))}
         archivedSpaces={archivedSpaces.map((s) => ({
           ...s,
           lists: [],
@@ -231,6 +284,14 @@ export default async function WorkspaceLayout({
           canManageList: isAdminOrOwner,
         }))}
         channels={channels}
+        role={membership.role}
+        spaces={spaces.map((s) => ({
+          ...s,
+          lists: spaceListMap[s.id] ?? [],
+          archivedLists: archivedListsBySpace[s.id] ?? [],
+          canManageList: spaceCanManageMap[s.id] ?? isAdminOrOwner,
+          sprints: sprintsBySpace[s.id] ?? [],
+        }))}
         user={{ name: session.user.name ?? null, email: session.user.email }}
         workspace={ws}
         workspaces={allMemberships.map((m) => ({

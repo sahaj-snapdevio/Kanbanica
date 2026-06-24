@@ -1,7 +1,13 @@
 import { count, desc } from "drizzle-orm";
 import { OrbitPageHeader } from "@/components/admin/orbit-page-header";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { ADMIN_ROLE } from "@/config/platform";
 import { emailOutbox, user } from "@/db/schema";
 import { db } from "@/lib/db";
@@ -22,9 +28,9 @@ export default async function OrbitPage() {
   return (
     <div>
       <OrbitPageHeader
+        description="Operator surface for users, queues, email, and audit-ready admin actions."
         eyebrow="Admin"
         title="Overview"
-        description="Operator surface for users, queues, email, and audit-ready admin actions."
       />
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -36,7 +42,9 @@ export default async function OrbitPage() {
       <Card className="mt-6">
         <CardHeader>
           <CardTitle>Recent Users</CardTitle>
-          <CardDescription>The five most recently registered accounts.</CardDescription>
+          <CardDescription>
+            The five most recently registered accounts.
+          </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           <div className="divide-y divide-border">
@@ -51,11 +59,15 @@ export default async function OrbitPage() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{item.email}</p>
                   {item.name && (
-                    <p className="truncate text-muted-foreground text-xs">{item.name}</p>
+                    <p className="truncate text-muted-foreground text-xs">
+                      {item.name}
+                    </p>
                   )}
                 </div>
                 <Badge
-                  className={item.role === ADMIN_ROLE ? "text-success" : undefined}
+                  className={
+                    item.role === ADMIN_ROLE ? "text-success" : undefined
+                  }
                   variant={item.role === ADMIN_ROLE ? "default" : "secondary"}
                 >
                   {item.role}

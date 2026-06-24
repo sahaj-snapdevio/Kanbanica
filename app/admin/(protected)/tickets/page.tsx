@@ -1,14 +1,17 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import useSWR from "swr";
-import Link from "next/link";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
-const STATUS_COLORS: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+const STATUS_COLORS: Record<
+  string,
+  "default" | "secondary" | "destructive" | "outline"
+> = {
   OPEN: "default",
   IN_PROGRESS: "secondary",
   CLOSED: "outline",
@@ -27,8 +30,12 @@ export default function AdminTicketsPage() {
   const [page, setPage] = useState(1);
 
   const params = new URLSearchParams({ page: String(page) });
-  if (search) params.set("search", search);
-  if (status) params.set("status", status);
+  if (search) {
+    params.set("search", search);
+  }
+  if (status) {
+    params.set("status", status);
+  }
 
   const { data, isLoading } = useSWR(`/api/admin/tickets?${params}`, fetcher);
   const tickets: any[] = data?.tickets ?? [];
@@ -40,14 +47,31 @@ export default function AdminTicketsPage() {
     <div className="p-8 space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Support Tickets</h1>
-        <p className="text-muted-foreground text-sm mt-1">{total.toLocaleString()} tickets</p>
+        <p className="text-muted-foreground text-sm mt-1">
+          {total.toLocaleString()} tickets
+        </p>
       </div>
 
       <div className="flex gap-4 items-center">
-        <Input placeholder="Search by subject…" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="max-w-sm" />
+        <Input
+          className="max-w-sm"
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+          }}
+          placeholder="Search by subject…"
+          value={search}
+        />
         <div className="flex gap-1 border rounded-md p-1">
           {STATUS_TABS.map((tab) => (
-            <button key={tab.key} onClick={() => { setStatus(tab.key); setPage(1); }} className={`px-3 py-1 text-sm rounded transition-colors ${status === tab.key ? "bg-foreground text-background" : "hover:bg-muted"}`}>
+            <button
+              className={`px-3 py-1 text-sm rounded transition-colors ${status === tab.key ? "bg-foreground text-background" : "hover:bg-muted"}`}
+              key={tab.key}
+              onClick={() => {
+                setStatus(tab.key);
+                setPage(1);
+              }}
+            >
               {tab.label}
             </button>
           ))}
@@ -68,32 +92,77 @@ export default function AdminTicketsPage() {
           </thead>
           <tbody>
             {isLoading ? (
-              <tr><td colSpan={6} className="px-4 py-6 text-center text-muted-foreground">Loading…</td></tr>
-            ) : tickets.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-6 text-center text-muted-foreground">No tickets found</td></tr>
-            ) : tickets.map((t) => (
-              <tr key={t.id} className="border-t hover:bg-muted/30">
-                <td className="px-4 py-2 font-mono text-xs text-muted-foreground">{t.ticketNumber}</td>
-                <td className="px-4 py-2">
-                  <Link href={`/admin/tickets/${t.id}`} className="hover:underline font-medium">{t.subject}</Link>
+              <tr>
+                <td
+                  className="px-4 py-6 text-center text-muted-foreground"
+                  colSpan={6}
+                >
+                  Loading…
                 </td>
-                <td className="px-4 py-2 text-muted-foreground">{t.category}</td>
-                <td className="px-4 py-2">
-                  <Badge variant={STATUS_COLORS[t.status] ?? "secondary"}>{t.status.replace("_", " ")}</Badge>
-                </td>
-                <td className="px-4 py-2 text-muted-foreground">{t.userEmail ?? t.userId}</td>
-                <td className="px-4 py-2 text-muted-foreground">{new Date(t.createdAt).toLocaleDateString()}</td>
               </tr>
-            ))}
+            ) : tickets.length === 0 ? (
+              <tr>
+                <td
+                  className="px-4 py-6 text-center text-muted-foreground"
+                  colSpan={6}
+                >
+                  No tickets found
+                </td>
+              </tr>
+            ) : (
+              tickets.map((t) => (
+                <tr className="border-t hover:bg-muted/30" key={t.id}>
+                  <td className="px-4 py-2 font-mono text-xs text-muted-foreground">
+                    {t.ticketNumber}
+                  </td>
+                  <td className="px-4 py-2">
+                    <Link
+                      className="hover:underline font-medium"
+                      href={`/admin/tickets/${t.id}`}
+                    >
+                      {t.subject}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-2 text-muted-foreground">
+                    {t.category}
+                  </td>
+                  <td className="px-4 py-2">
+                    <Badge variant={STATUS_COLORS[t.status] ?? "secondary"}>
+                      {t.status.replace("_", " ")}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-2 text-muted-foreground">
+                    {t.userEmail ?? t.userId}
+                  </td>
+                  <td className="px-4 py-2 text-muted-foreground">
+                    {new Date(t.createdAt).toLocaleDateString()}
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
 
       {totalPages > 1 && (
         <div className="flex items-center gap-2">
-          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="px-3 py-1 border rounded text-sm disabled:opacity-50">Previous</button>
-          <span className="text-sm text-muted-foreground">Page {page} of {totalPages}</span>
-          <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="px-3 py-1 border rounded text-sm disabled:opacity-50">Next</button>
+          <button
+            className="px-3 py-1 border rounded text-sm disabled:opacity-50"
+            disabled={page === 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            Previous
+          </button>
+          <span className="text-sm text-muted-foreground">
+            Page {page} of {totalPages}
+          </span>
+          <button
+            className="px-3 py-1 border rounded text-sm disabled:opacity-50"
+            disabled={page === totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          >
+            Next
+          </button>
         </div>
       )}
     </div>
