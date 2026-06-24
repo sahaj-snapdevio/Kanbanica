@@ -1642,6 +1642,7 @@ export function SprintListView({ workspaceId, spaceId, listId = "", statuses = [
         spaceId={spaceId}
         listId={listId || ""}
         statuses={effectiveStatuses}
+        canManage={canEdit || isAdmin}
         onCreated={async (taskId) => {
           if (sprintInfo?.id) {
             await addTaskToSprint(workspaceId, spaceId, sprintInfo.id, taskId);

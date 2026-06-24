@@ -1788,6 +1788,7 @@ export function ListView({
         listId={listId}
         statuses={statuses}
         defaultStatusId={createForStatusId ?? undefined}
+        canManage={canEdit || isAdmin}
       />
 
       <DndContext

@@ -36,7 +36,7 @@ export default function InvitePage({
 
   if (status === "success") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-muted/30">
+      <div className="h-full overflow-auto flex items-center justify-center bg-muted/30">
         <div className="bg-background rounded-xl border shadow-sm p-8 max-w-sm w-full text-center space-y-4">
           <CheckCircleIcon className="size-12 text-green-500 mx-auto" weight="fill" />
           <h1 className="text-lg font-semibold">You&rsquo;re in!</h1>
@@ -51,7 +51,7 @@ export default function InvitePage({
 
   if (status === "error") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-muted/30">
+      <div className="h-full overflow-auto flex items-center justify-center bg-muted/30">
         <div className="bg-background rounded-xl border shadow-sm p-8 max-w-sm w-full text-center space-y-4">
           <XCircleIcon className="size-12 text-destructive mx-auto" weight="fill" />
           <h1 className="text-lg font-semibold">Invitation invalid</h1>
@@ -65,7 +65,7 @@ export default function InvitePage({
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30">
+    <div className="h-full overflow-auto flex items-center justify-center bg-muted/30">
       <div className="bg-background rounded-xl border shadow-sm p-8 max-w-sm w-full text-center space-y-4">
         <h1 className="text-lg font-semibold">Workspace invitation</h1>
         <p className="text-sm text-muted-foreground">

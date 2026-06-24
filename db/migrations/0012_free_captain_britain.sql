@@ -1,0 +1,1 @@
+ALTER TABLE "space" ADD COLUMN "sprint_date_format" text DEFAULT 'MM/DD' NOT NULL;

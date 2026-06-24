@@ -17,11 +17,14 @@
 }
 
 html {
+  height: 100%;
+  overflow: hidden;
   background: var(--background);
 }
 
 body {
-  min-height: 100vh;
+  height: 100%;
+  overflow: hidden;
   margin: 0;
   letter-spacing: 0;
   -webkit-font-smoothing: antialiased;
@@ -401,6 +404,34 @@ body {
 }
 .ProseMirror ul[data-type="taskList"] li > div {
   flex: 1;
+}
+
+/* Force light-mode variables regardless of .dark on <html> */
+.force-light {
+  --bg-app:      #F7F9FB;
+  --bg-surface:  #FFFFFF;
+  --bg-elevated: #FFFFFF;
+  --background:  #FFFFFF;
+  --foreground:  #0F1117;
+  --card:        #FFFFFF;
+  --card-foreground: #0F1117;
+  --popover:     #FFFFFF;
+  --popover-foreground: #0F1117;
+  --muted:       #F4F5F7;
+  --muted-foreground: #9AA0AD;
+  --secondary:   #F4F5F7;
+  --secondary-foreground: #5E6573;
+  --accent:      rgba(23, 77, 56, 0.08);
+  --accent-foreground: #174D38;
+  --border:      #E4E7EC;
+  --input:       #E4E7EC;
+  /* Brand green — matches landing page */
+  --primary:           #174D38;
+  --primary-foreground: #FFFFFF;
+  --ring:              #174D38;
+  --color-primary:     #174D38;
+  --color-primary-foreground: #FFFFFF;
+  --color-ring:        #174D38;
 }
 
 @layer base {

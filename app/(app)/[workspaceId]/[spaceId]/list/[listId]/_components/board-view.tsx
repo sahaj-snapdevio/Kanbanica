@@ -266,7 +266,7 @@ function Column({
 
 // ─── Board ────────────────────────────────────────────────────────────────────
 
-export function BoardView({ workspaceId, space, list, statuses, tasks, members = [] }: BoardViewProps) {
+export function BoardView({ workspaceId, space, list, statuses, tasks, members = [], canEdit, isAdmin }: BoardViewProps) {
   // Local task state for optimistic drag updates
   const [localTasks, setLocalTasks] = React.useState<Task[]>(tasks);
   const [activeTask, setActiveTask] = React.useState<Task | null>(null);
@@ -389,6 +389,7 @@ export function BoardView({ workspaceId, space, list, statuses, tasks, members =
         spaceId={space.id}
         listId={list.id}
         statuses={statuses}
+        canManage={canEdit || isAdmin}
       />
 
       {/* Toolbar */}

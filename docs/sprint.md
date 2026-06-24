@@ -40,25 +40,12 @@ Workspace
 
 - **Who can create:** Members with **Full Access** on the Space, Admin, Owner
 - Required fields:
-  - Sprint Name (required, e.g. `Sprint 1`, `Q3 Week 2`)
-  - Start Date (required)
-  - Duration in weeks (required — user picks: 1 week / 2 weeks / 3 weeks / 4 weeks)
-  - End Date is **auto-calculated** from Start Date + Duration (shown as read-only preview, not manually entered)
+  - Sprint Name (required, e.g. `Sprint 1`, `Q3 Week 2`) — pre-filled from smart defaults (see [Sprint Settings](#sprint-settings))
+  - Start Date (required) — pre-filled to the next occurrence of the project's configured `sprint_start_day`
+  - End Date (required) — pre-filled to Start Date + `sprint_default_duration_weeks`; user can adjust freely
+  - Both dates are shown as side-by-side date pickers. The Start Date calendar constrains selectable days to the configured `sprint_start_day` (e.g. only Mondays if start day = Monday), preventing misaligned sprint starts. End Date is unconstrained.
 - Optional fields:
   - Sprint Goal (short description of what the sprint aims to achieve)
-- Sprint settings:
-  - **Auto-create next sprint** (toggle — default: off)
-    - When enabled: as soon as the current sprint's end date is reached, a new sprint is automatically created with the same duration, starting the day after the current sprint ends
-    - Name is auto-incremented (e.g. `Sprint 1` → `Sprint 2`)
-    - New sprint starts in **Planned** status — it is NOT auto-started
-  - **Auto-close current sprint when next sprint is created** (toggle — only visible when Auto-create is enabled, default: off)
-    - When enabled: at the time the new sprint is auto-created, the current sprint is automatically closed
-    - When disabled: current sprint remains Active even after the new sprint is created — user must close it manually
-  - **Incomplete task strategy** (dropdown — only visible when Auto-close is enabled, default: `move_to_backlog`)
-    - `Move to Backlog` — incomplete tasks are unassigned from the sprint and return to the List backlog
-    - `Move to Next Sprint` — incomplete tasks are automatically assigned to the newly created sprint. If no planned sprint exists at close time, falls back to Move to Backlog
-    - `Leave as-is` — incomplete tasks remain in the closed sprint for reference only (visible in Sprint History)
-    - This setting removes the guesswork from automated closes — teams configure their preferred strategy once upfront
 - On creation:
   - Sprint status is set to **Planned**
   - No tasks are added yet — tasks are added separately
@@ -694,6 +681,53 @@ function incrementSprintName(name: string): string {
 ```
 
 New sprint: `status = PLANNED`, `startDate = closedSprint.endDate + 1 day`, `durationWeeks = closedSprint.durationWeeks`, `autoCreateNext = closedSprint.autoCreateNext`, `autoCloseOnNext = closedSprint.autoCloseOnNext`, `autoIncompleteStrategy = closedSprint.autoIncompleteStrategy`.
+
+---
+
+## Sprint Settings
+
+Sprint Settings are stored per-Project (space) and control cadence, naming, and automation behavior across all sprints in a project.
+
+### First-Time Setup Flow
+
+When a user clicks "Create Sprint" for the first time in a project (i.e. `space.sprint_start_day IS NULL`), they are shown a **Sprint Setup modal** first. After saving, the Create Sprint modal opens with smart defaults pre-filled.
+
+On subsequent sprint creations, the Setup modal is skipped — the Create Sprint modal opens directly with smart defaults.
+
+### Settings Fields
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `sprint_start_day` | `int` (0–6) or NULL | NULL | Day of week sprints start (0=Sun, 1=Mon, …). NULL = settings not yet configured (triggers first-time setup). |
+| `sprint_default_duration_weeks` | `int` | 2 | Default duration in weeks when creating a new sprint |
+| `sprint_name_format` | `text` | `"Sprint {n}"` | Name template; `{n}` = auto-incremented number, `{project}` = project name |
+| `sprint_date_format` | `text` | `"MM/DD"` | Date display format used throughout sprint views (e.g. "MM/DD", "DD/MM", "MMM D") |
+| `sprint_auto_mark_done` | `bool` | false | Auto-close sprint when its end date passes |
+| `sprint_auto_create_next` | `bool` | false | Auto-create next sprint when one is completed |
+| `sprint_auto_move_incomplete` | `bool` | false | Auto-move incomplete tasks to next sprint (requires `sprint_auto_create_next`) |
+| `sprint_auto_archive_after_n` | `int` or NULL | NULL | Archive old sprints so only the last N are visible in the sidebar |
+
+### Smart Defaults in Create Sprint Modal
+
+When creating a sprint (after settings are configured):
+
+1. **Sprint number**: Infer from the trailing number in the last sprint's name (e.g. "Sprint 3" → next is 4). Falls back to 1 if no prior sprints.
+2. **Sprint name**: Apply `sprint_name_format` with inferred number and project name.
+3. **Start date**: Last sprint's `end_date + 1 day`, then snap forward to the next occurrence of `sprint_start_day`. If no prior sprint, snap today → next `sprint_start_day`.
+4. **Duration**: Use `sprint_default_duration_weeks`.
+
+### Sprint Settings Page
+
+Available from:
+- First-time "Create Sprint" click when `sprint_start_day` is NULL — shows setup modal, then opens Create Sprint modal with defaults pre-filled
+- Project settings sidebar: **Settings → Sprints** (`/[workspaceId]/[spaceId]/settings/sprints`)
+
+Sections:
+- **General**: Sprint starts on (day picker), Default duration (1–4 weeks), Date format (MM/DD, DD/MM, MMM D)
+- **Naming**: Name format selector with live preview (e.g. "Sprint 1, Sprint 2, …")
+- **Automations**: All four automation toggles with sub-options (move incomplete only shows when auto-create-next is on; archive N input only shows when archive toggle is on)
+
+The settings form fills the full content area of the settings layout (`max-w-3xl mx-auto`). The Save button is right-aligned at the bottom of the form.
 
 ### Folder Mapping
 

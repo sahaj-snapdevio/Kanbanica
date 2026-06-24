@@ -16,6 +16,7 @@ import {
   taskTag,
   tag,
   user,
+  space,
 } from "@/db/schema";
 import { canAccessSpace, getSpacePermission, hasPermissionLevel } from "@/lib/permissions";
 import { writeActivityLog } from "@/lib/activity-log";
@@ -1001,4 +1002,157 @@ export async function bulkRemoveTasksFromSprint(
 
   revalidateSpace(workspaceId, spaceId);
   return { ok: true, removed: taskIds.length };
+}
+
+// ─── getCreateSprintDefaults ──────────────────────────────────────────────────
+
+export interface CreateSprintDefaults {
+  sprintNumber: number;
+  suggestedName: string;
+  suggestedStartDate: Date | null;
+  durationWeeks: number;
+  nameFormat: string;
+  sprintStartDay: number | null;
+}
+
+export async function getCreateSprintDefaults(
+  workspaceId: string,
+  spaceId: string,
+): Promise<CreateSprintDefaults | { error: string }> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return { error: "Unauthorized" };
+
+  const err = await requireAccess(session.user.id, workspaceId, spaceId);
+  if (err) return err;
+
+  const [settings, lastSprintRow] = await Promise.all([
+    db
+      .select({
+        sprintStartDay: space.sprintStartDay,
+        sprintDefaultDurationWeeks: space.sprintDefaultDurationWeeks,
+        sprintNameFormat: space.sprintNameFormat,
+      })
+      .from(space)
+      .where(eq(space.id, spaceId))
+      .limit(1)
+      .then((r) => r[0] ?? null),
+    db
+      .select({ id: sprint.id, name: sprint.name, endDate: sprint.endDate, createdAt: sprint.createdAt })
+      .from(sprint)
+      .where(eq(sprint.spaceId, spaceId))
+      .orderBy(desc(sprint.createdAt))
+      .limit(1)
+      .then((r) => r[0] ?? null),
+  ]);
+
+  if (!settings) return { error: "Space not found" };
+
+  const durationWeeks = settings.sprintDefaultDurationWeeks;
+  const nameFormat = settings.sprintNameFormat;
+  const startDay = settings.sprintStartDay ?? 1; // default Monday
+
+  // Infer sprint number from name of last sprint
+  let sprintNumber = 1;
+  if (lastSprintRow) {
+    const match = lastSprintRow.name.match(/(\d+)\s*$/);
+    if (match) sprintNumber = parseInt(match[1], 10) + 1;
+    else sprintNumber = 2;
+  }
+
+  // Compute suggested start date: lastSprint.endDate + 1 day, snapped to startDay
+  let suggestedStartDate: Date | null = null;
+  if (lastSprintRow?.endDate) {
+    const afterLast = addDays(new Date(lastSprintRow.endDate), 1);
+    // Snap forward to next occurrence of startDay
+    const dayOfWeek = afterLast.getDay();
+    const daysUntilStart = (startDay - dayOfWeek + 7) % 7;
+    suggestedStartDate = addDays(afterLast, daysUntilStart);
+  } else {
+    // No prior sprint: next occurrence of startDay from today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dayOfWeek = today.getDay();
+    const daysUntilStart = (startDay - dayOfWeek + 7) % 7;
+    suggestedStartDate = daysUntilStart === 0 ? today : addDays(today, daysUntilStart);
+  }
+
+  const suggestedName = nameFormat
+    .replace("{n}", String(sprintNumber))
+    .replace("{project}", "");
+
+  return { sprintNumber, suggestedName: suggestedName.trim(), suggestedStartDate, durationWeeks, nameFormat, sprintStartDay: settings.sprintStartDay };
+}
+
+// ─── getSprintSettings ────────────────────────────────────────────────────────
+
+export interface SprintSettings {
+  sprintStartDay: number | null;
+  sprintDefaultDurationWeeks: number;
+  sprintNameFormat: string;
+  sprintDateFormat: string;
+  sprintAutoMarkDone: boolean;
+  sprintAutoCreateNext: boolean;
+  sprintAutoMoveIncomplete: boolean;
+  sprintAutoArchiveAfterN: number | null;
+}
+
+export async function getSprintSettings(
+  workspaceId: string,
+  spaceId: string,
+): Promise<SprintSettings | { error: string }> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return { error: "Unauthorized" };
+
+  const err = await requireAccess(session.user.id, workspaceId, spaceId);
+  if (err) return err;
+
+  const [row] = await db
+    .select({
+      sprintStartDay: space.sprintStartDay,
+      sprintDefaultDurationWeeks: space.sprintDefaultDurationWeeks,
+      sprintNameFormat: space.sprintNameFormat,
+      sprintDateFormat: space.sprintDateFormat,
+      sprintAutoMarkDone: space.sprintAutoMarkDone,
+      sprintAutoCreateNext: space.sprintAutoCreateNext,
+      sprintAutoMoveIncomplete: space.sprintAutoMoveIncomplete,
+      sprintAutoArchiveAfterN: space.sprintAutoArchiveAfterN,
+    })
+    .from(space)
+    .where(eq(space.id, spaceId))
+    .limit(1);
+
+  if (!row) return { error: "Space not found" };
+  return row;
+}
+
+// ─── saveSprintSettings ───────────────────────────────────────────────────────
+
+export async function saveSprintSettings(
+  workspaceId: string,
+  spaceId: string,
+  settings: SprintSettings,
+): Promise<{ ok: true } | { error: string }> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return { error: "Unauthorized" };
+
+  const err = await requireFullAccess(session.user.id, workspaceId, spaceId);
+  if (err) return err;
+
+  await db
+    .update(space)
+    .set({
+      sprintStartDay: settings.sprintStartDay,
+      sprintDefaultDurationWeeks: settings.sprintDefaultDurationWeeks,
+      sprintNameFormat: settings.sprintNameFormat,
+      sprintDateFormat: settings.sprintDateFormat,
+      sprintAutoMarkDone: settings.sprintAutoMarkDone,
+      sprintAutoCreateNext: settings.sprintAutoCreateNext,
+      sprintAutoMoveIncomplete: settings.sprintAutoMoveIncomplete,
+      sprintAutoArchiveAfterN: settings.sprintAutoArchiveAfterN,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(space.id, spaceId), eq(space.workspaceId, workspaceId)));
+
+  revalidateSpace(workspaceId, spaceId);
+  return { ok: true };
 }

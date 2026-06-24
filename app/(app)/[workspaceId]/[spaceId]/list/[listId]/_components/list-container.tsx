@@ -8,7 +8,6 @@ import {
   CopyIcon,
   DotsThreeIcon,
   GearIcon,
-  PencilSimpleIcon,
   RowsIcon,
   SquaresFourIcon,
   TrashIcon,
@@ -16,9 +15,7 @@ import {
 import { archiveList, duplicateList } from "@/app/actions/list";
 import { getArchivedTasksForList } from "@/app/actions/task";
 import { useSetTopbar } from "@/lib/topbar-context";
-import { EditListDialog } from "@/components/list/edit-list-dialog";
 import { DeleteListDialog } from "@/components/list/delete-list-dialog";
-import { StatusSettingsPanel } from "@/components/list/status-settings-panel";
 import { CreateTaskModal } from "@/components/task/create-task-modal";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -106,11 +103,8 @@ export function ListContainer({
         <PopoverContent align="end" className="w-48 p-1">
           {canManage && (
             <>
-              <button onClick={() => setEditOpen(true)} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors hover:bg-accent">
-                <PencilSimpleIcon className="size-3.5 shrink-0 text-muted-foreground" /> Edit List
-              </button>
-              <button onClick={() => setStatusOpen(true)} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors hover:bg-accent">
-                <GearIcon className="size-3.5 shrink-0 text-muted-foreground" /> Manage Statuses
+              <button onClick={() => router.push(`/${workspaceId}/${space.id}/list/${list.id}/settings/general`)} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors hover:bg-accent">
+                <GearIcon className="size-3.5 shrink-0 text-muted-foreground" /> Settings
               </button>
               <button onClick={async () => { await duplicateList(workspaceId, space.id, list.id); }} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors hover:bg-accent">
                 <CopyIcon className="size-3.5 shrink-0 text-muted-foreground" /> Duplicate
@@ -146,9 +140,7 @@ export function ListContainer({
   }
 
   const showBoardSkeleton = isViewPending && pendingView === "board";
-  const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [statusOpen, setStatusOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [showArchived, setShowArchived] = React.useState(false);
   const [archivedTasks, setArchivedTasks] = React.useState<{ id: string; title: string; seqNumber: number }[]>([]);
@@ -173,26 +165,8 @@ export function ListContainer({
         spaceId={space.id}
         listId={list.id}
         statuses={statuses}
+        canManage={canManage}
       />
-      {canManage && (
-        <>
-          <EditListDialog
-            open={editOpen}
-            onOpenChange={setEditOpen}
-            workspaceId={workspaceId}
-            spaceId={space.id}
-            list={list}
-          />
-          <StatusSettingsPanel
-            open={statusOpen}
-            onOpenChange={setStatusOpen}
-            workspaceId={workspaceId}
-            spaceId={space.id}
-            listId={list.id}
-            statuses={statuses}
-          />
-        </>
-      )}
       {isAdmin && (
         <DeleteListDialog
           open={deleteOpen}

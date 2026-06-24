@@ -22,9 +22,11 @@ interface ClickUpCalendarProps {
   selectedDate: Date | null;
   onSelect: (date: Date | null) => void;
   onClose: () => void;
+  /** If set, only dates matching this day-of-week (0=Sun,1=Mon…6=Sat) are selectable */
+  allowedDayOfWeek?: number;
 }
 
-export function ClickUpCalendar({ selectedDate, onSelect, onClose }: ClickUpCalendarProps) {
+export function ClickUpCalendar({ selectedDate, onSelect, onClose, allowedDayOfWeek }: ClickUpCalendarProps) {
   const [currentMonth, setCurrentMonth] = React.useState<Date>(() => selectedDate || new Date());
 
   const handlePrevMonth = (e: React.MouseEvent) => {
@@ -42,6 +44,13 @@ export function ClickUpCalendar({ selectedDate, onSelect, onClose }: ClickUpCale
   const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
   const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
   const days = eachDayOfInterval({ start: startDate, end: endDate });
+
+  function snapToAllowed(date: Date): Date {
+    if (allowedDayOfWeek === undefined) return date;
+    const d = new Date(date);
+    const diff = (allowedDayOfWeek - d.getDay() + 7) % 7;
+    return addDays(d, diff);
+  }
 
   return (
     <div
@@ -78,25 +87,29 @@ export function ClickUpCalendar({ selectedDate, onSelect, onClose }: ClickUpCale
           const isCurrentM = isSameMonth(day, currentMonth);
           const isSel = selectedDate ? isSameDay(day, selectedDate) : false;
           const isTod = isToday(day);
+          const isDisabled = allowedDayOfWeek !== undefined && day.getDay() !== allowedDayOfWeek;
 
           return (
             <button
               key={day.toString()}
+              disabled={isDisabled}
               onClick={(e) => {
                 e.stopPropagation();
                 onSelect(day);
                 onClose();
               }}
               className={cn(
-                "h-7 w-7 mx-auto rounded-full flex items-center justify-center text-xs transition-all relative font-medium cursor-pointer",
+                "h-7 w-7 mx-auto rounded-full flex items-center justify-center text-xs transition-all relative font-medium",
+                isDisabled && "opacity-25 cursor-not-allowed",
+                !isDisabled && "cursor-pointer",
                 !isCurrentM && "text-gray-300",
-                isCurrentM && "text-gray-700 hover:bg-gray-50",
-                isTod && "border border-primary text-primary font-bold",
+                isCurrentM && !isDisabled && "text-gray-700 hover:bg-gray-50",
+                isTod && !isDisabled && "border border-primary text-primary font-bold",
                 isSel && "bg-primary text-white hover:bg-primary/95",
               )}
             >
               {format(day, "d")}
-              {isTod && !isSel && <span className="absolute bottom-1 size-1 rounded-full bg-primary" />}
+              {isTod && !isSel && !isDisabled && <span className="absolute bottom-1 size-1 rounded-full bg-primary" />}
             </button>
           );
         })}
@@ -107,13 +120,13 @@ export function ClickUpCalendar({ selectedDate, onSelect, onClose }: ClickUpCale
       <div className="flex flex-col gap-1.5">
         <div className="grid grid-cols-2 gap-1.5">
           <button
-            onClick={(e) => { e.stopPropagation(); onSelect(new Date()); onClose(); }}
+            onClick={(e) => { e.stopPropagation(); onSelect(snapToAllowed(new Date())); onClose(); }}
             className="px-2 py-1 bg-gray-50 text-gray-600 rounded-lg text-xs font-semibold hover:bg-gray-100 transition-colors cursor-pointer"
           >
             Today
           </button>
           <button
-            onClick={(e) => { e.stopPropagation(); onSelect(addDays(new Date(), 1)); onClose(); }}
+            onClick={(e) => { e.stopPropagation(); onSelect(snapToAllowed(addDays(new Date(), 1))); onClose(); }}
             className="px-2 py-1 bg-gray-50 text-gray-600 rounded-lg text-xs font-semibold hover:bg-gray-100 transition-colors cursor-pointer"
           >
             Tomorrow

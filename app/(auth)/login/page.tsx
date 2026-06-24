@@ -11,7 +11,7 @@ export default async function LoginPage() {
   if (session) redirect("/post-auth");
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-[#F2F2F2] p-4">
+    <div className="force-light relative flex h-full overflow-auto items-center justify-center bg-[#F2F2F2] p-4">
       <WatermarkBackground />
       <div className="relative z-10 w-full max-w-sm">
         <div className="mb-8 text-center">

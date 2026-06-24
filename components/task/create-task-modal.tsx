@@ -4,7 +4,9 @@ import * as React from "react";
 import {
   CalendarBlankIcon,
   CheckIcon,
+  DotsThreeIcon,
   FlagIcon,
+  GearIcon,
   PlusIcon,
   TagIcon,
   UserIcon,
@@ -14,7 +16,6 @@ import { createTask } from "@/app/actions/task";
 import { getWorkspaceMembers } from "@/app/actions/task";
 import { getWorkspaceTags, createTag } from "@/app/actions/task-tag";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -24,10 +25,17 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { ClickUpCalendar } from "@/components/ui/clickup-calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { ManageStatusesDialog } from "@/components/list/manage-statuses-dialog";
 
 type Priority = "NONE" | "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 
@@ -47,6 +55,7 @@ interface CreateTaskModalProps {
   statuses: Status[];
   defaultStatusId?: string;
   onCreated?: (taskId: string) => void;
+  canManage?: boolean;
 }
 
 const PRIORITY_OPTIONS: { value: Priority; label: string; color: string; icon: string }[] = [
@@ -67,13 +76,20 @@ export function CreateTaskModal({
   workspaceId,
   spaceId,
   listId,
-  statuses,
+  statuses: initialStatuses,
   defaultStatusId,
   onCreated,
+  canManage,
 }: CreateTaskModalProps) {
+  const [localStatuses, setLocalStatuses] = React.useState(initialStatuses);
+  const [manageStatusesOpen, setManageStatusesOpen] = React.useState(false);
   const [title, setTitle] = React.useState("");
   const [description, setDescription] = React.useState("");
-  const [statusId, setStatusId] = React.useState(defaultStatusId ?? statuses[0]?.id ?? "");
+  const [statusId, setStatusId] = React.useState(defaultStatusId ?? initialStatuses[0]?.id ?? "");
+
+  React.useEffect(() => {
+    setLocalStatuses(initialStatuses);
+  }, [initialStatuses]);
   const [priority, setPriority] = React.useState<Priority>("NONE");
   const [dueDate, setDueDate] = React.useState<Date | null>(null);
   const [assigneeIds, setAssigneeIds] = React.useState<string[]>([]);
@@ -92,7 +108,7 @@ export function CreateTaskModal({
 
   React.useEffect(() => {
     if (open) {
-      setStatusId(defaultStatusId ?? statuses[0]?.id ?? "");
+      setStatusId(defaultStatusId ?? localStatuses[0]?.id ?? "");
       setTitle("");
       setDescription("");
       setPriority("NONE");
@@ -127,7 +143,7 @@ export function CreateTaskModal({
     onOpenChange(false);
   }
 
-  const currentStatus = statuses.find((s) => s.id === statusId);
+  const currentStatus = localStatuses.find((s) => s.id === statusId);
   const currentPriority = PRIORITY_OPTIONS.find((p) => p.value === priority)!;
   const selectedMembers = members.filter((m) => assigneeIds.includes(m.userId));
   const selectedTags = allTags.filter((t) => tagIds.includes(t.id));
@@ -135,6 +151,7 @@ export function CreateTaskModal({
   const exactTagMatch = allTags.some((t) => t.name.toLowerCase() === tagSearch.toLowerCase());
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent showCloseButton={false} className="sm:max-w-2xl p-0 gap-0 overflow-hidden" aria-describedby={undefined}>
         <DialogHeader className="sr-only">
@@ -190,18 +207,54 @@ export function CreateTaskModal({
                   {currentStatus?.name ?? "Status"}
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-44 p-1" align="start">
-                {statuses.map((s) => (
-                  <button
-                    key={s.id}
-                    onClick={() => { setStatusId(s.id); setStatusPopoverOpen(false); }}
-                    className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
-                  >
-                    <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
-                    <span className="flex-1 text-left">{s.name}</span>
-                    {s.id === statusId && <CheckIcon className="size-3.5 text-primary" />}
-                  </button>
-                ))}
+              <PopoverContent className="w-52 p-0" align="start">
+                <div className="max-h-60 overflow-y-auto p-1" onWheel={(e) => e.stopPropagation()}>
+                  {(["OPEN", "ACTIVE", "CLOSED"] as const).map((type) => {
+                    const group = localStatuses.filter((s) => s.type === type);
+                    if (group.length === 0) return null;
+                    const label = type === "OPEN" ? "Not started" : type === "ACTIVE" ? "Active" : "Closed";
+                    return (
+                      <div key={type}>
+                        <div className="flex items-center px-2 pt-2 pb-0.5">
+                          <span className="flex-1 text-2xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            {label}
+                          </span>
+                          {canManage && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="flex size-4 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                                >
+                                  <DotsThreeIcon className="size-3.5" weight="bold" />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent side="right" align="start" className="w-36">
+                                <DropdownMenuItem
+                                  onClick={() => { setStatusPopoverOpen(false); setManageStatusesOpen(true); }}
+                                >
+                                  <GearIcon className="size-3.5" />
+                                  Edit statuses
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </div>
+                        {group.map((s) => (
+                          <button
+                            key={s.id}
+                            onClick={() => { setStatusId(s.id); setStatusPopoverOpen(false); }}
+                            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
+                          >
+                            <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
+                            <span className="flex-1 text-left">{s.name}</span>
+                            {s.id === statusId && <CheckIcon className="size-3.5 text-primary" />}
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
               </PopoverContent>
             </Popover>
 
@@ -370,5 +423,20 @@ export function CreateTaskModal({
         </div>
       </DialogContent>
     </Dialog>
+
+    <ManageStatusesDialog
+      open={manageStatusesOpen}
+      onOpenChange={setManageStatusesOpen}
+      workspaceId={workspaceId}
+      spaceId={spaceId}
+      listId={listId}
+      onSaved={(updated) => {
+        setLocalStatuses(updated);
+        if (!updated.find((s) => s.id === statusId)) {
+          setStatusId(updated[0]?.id ?? "");
+        }
+      }}
+    />
+    </>
   );
 }

@@ -11,6 +11,7 @@ import {
   DotsThreeIcon,
   EyeIcon,
   EyeSlashIcon,
+  GearIcon,
   LinkIcon,
   PlusIcon,
   TagIcon,
@@ -56,11 +57,19 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -75,6 +84,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { TaskActivityFeed } from "@/components/task/task-activity-feed";
+import { ManageStatusesDialog } from "@/components/list/manage-statuses-dialog";
 import { ClickUpCalendar } from "@/components/ui/clickup-calendar";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -143,6 +153,7 @@ export function TaskDetailPanel({
   const [saving, setSaving] = React.useState(false);
   const [startCalOpen, setStartCalOpen] = React.useState(false);
   const [endCalOpen, setEndCalOpen] = React.useState(false);
+  const [manageStatusesOpen, setManageStatusesOpen] = React.useState(false);
 
   async function load() {
     setLoading(true);
@@ -413,24 +424,53 @@ export function TaskDetailPanel({
           <div className="flex-1 min-w-0 overflow-y-auto px-6 py-4 space-y-6">
             {/* Status + Priority row */}
             <div className="flex flex-wrap gap-2">
-              <Select value={t.statusId ?? undefined} onValueChange={handleStatusChange}>
-                <SelectTrigger className="h-7 w-auto text-xs px-2 gap-1.5">
-                  {currentStatus && (
-                    <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: currentStatus.color }} />
-                  )}
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {statuses.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      <span className="flex items-center gap-1.5">
-                        <span className="size-2 rounded-full" style={{ backgroundColor: s.color }} />
-                        {s.name}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-1">
+                <Select value={t.statusId ?? undefined} onValueChange={handleStatusChange}>
+                  <SelectTrigger className="h-7 w-auto text-xs px-2 gap-1.5">
+                    {currentStatus && (
+                      <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: currentStatus.color }} />
+                    )}
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(["OPEN", "ACTIVE", "CLOSED"] as const).map((type) => {
+                      const group = statuses.filter((s) => s.type === type);
+                      if (group.length === 0) return null;
+                      const label = type === "OPEN" ? "Not started" : type === "ACTIVE" ? "Active" : "Closed";
+                      return (
+                        <SelectGroup key={type}>
+                          <SelectLabel className="text-2xs font-semibold uppercase tracking-wider text-muted-foreground px-2 py-1">
+                            {label}
+                          </SelectLabel>
+                          {group.map((s) => (
+                            <SelectItem key={s.id} value={s.id}>
+                              <span className="flex items-center gap-1.5">
+                                <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
+                                {s.name}
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                {isAdmin && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
+                        <DotsThreeIcon className="size-3.5" weight="bold" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent side="right" align="start" className="w-36">
+                      <DropdownMenuItem onClick={() => setManageStatusesOpen(true)}>
+                        <GearIcon className="size-3.5" />
+                        Edit statuses
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
 
               <Select value={t.priority} onValueChange={(v) => handlePriorityChange(v as Priority)}>
                 <SelectTrigger className={cn("h-7 w-auto text-xs px-2 gap-1.5", priority.color, priority.bg)}>
@@ -912,6 +952,14 @@ export function TaskDetailPanel({
         </SheetContent>
       </Sheet>
       {deleteTagDialog}
+      <ManageStatusesDialog
+        open={manageStatusesOpen}
+        onOpenChange={setManageStatusesOpen}
+        workspaceId={workspaceId}
+        spaceId={spaceId}
+        listId={listId}
+        onSaved={() => load()}
+      />
     </>
   );
 }

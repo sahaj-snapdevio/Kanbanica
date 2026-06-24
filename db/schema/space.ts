@@ -1,6 +1,8 @@
 import { pgEnum, pgTable, text, timestamp, integer, boolean, index, unique } from "drizzle-orm/pg-core";
 import { workspace } from "./workspace";
 
+export const sprintNameFormatEnum = pgEnum("sprint_name_format", ["Sprint {n}", "Week {n}", "Iteration {n}", "{project} Sprint {n}"]);
+
 export const spacePermissionEnum = pgEnum("space_permission", ["FULL_ACCESS", "EDIT", "VIEW"]);
 
 export const space = pgTable(
@@ -17,6 +19,16 @@ export const space = pgTable(
     archivedAt: timestamp("archived_at", { withTimezone: true }),
     createdBy: text("created_by").notNull(),
     orderIndex: integer("order_index").notNull().default(0),
+    // Sprint settings (null = not configured yet → show first-time settings modal)
+    sprintStartDay: integer("sprint_start_day"), // 0=Sun, 1=Mon, …, 6=Sat; null = unconfigured
+    sprintDefaultDurationWeeks: integer("sprint_default_duration_weeks").notNull().default(2),
+    sprintNameFormat: text("sprint_name_format").notNull().default("Sprint {n}"),
+    sprintDateFormat: text("sprint_date_format").notNull().default("MM/DD"),
+    // Sprint automations
+    sprintAutoMarkDone: boolean("sprint_auto_mark_done").notNull().default(false),
+    sprintAutoCreateNext: boolean("sprint_auto_create_next").notNull().default(false),
+    sprintAutoMoveIncomplete: boolean("sprint_auto_move_incomplete").notNull().default(false),
+    sprintAutoArchiveAfterN: integer("sprint_auto_archive_after_n"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

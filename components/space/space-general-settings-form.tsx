@@ -91,7 +91,7 @@ export function SpaceGeneralSettingsForm({
   }
 
   return (
-    <div className="max-w-xl space-y-8">
+    <div className="space-y-8">
       <form onSubmit={handleSave} className="space-y-5">
         <div className="space-y-1.5">
           <Label htmlFor="space-name">Project Name</Label>
@@ -145,10 +145,12 @@ export function SpaceGeneralSettingsForm({
           </div>
         </div>
 
-        <Button type="submit" disabled={pending || !name.trim()} className="gap-2">
-          {pending && <Spinner className="size-4" />}
-          Save Changes
-        </Button>
+        <div className="flex justify-end">
+          <Button type="submit" disabled={pending || !name.trim()} className="gap-2">
+            {pending && <Spinner className="size-4" />}
+            Save Changes
+          </Button>
+        </div>
       </form>
 
       <Separator />

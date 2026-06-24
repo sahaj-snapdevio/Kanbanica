@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   CaretDownIcon,
@@ -31,6 +32,7 @@ import {
   startSprint,
   deleteSprint,
   addTaskToSprint,
+  getSprintSettings,
 } from "@/app/actions/sprint";
 import { createTask } from "@/app/actions/task";
 import { CreateSprintModal } from "./create-sprint-modal";
@@ -395,6 +397,7 @@ function PlannedSprintRow({
 // ─── Main Panel ───────────────────────────────────────────────────────────────
 
 export function SprintPanel({ workspaceId, spaceId, listId, onDataChanged }: SprintPanelProps) {
+  const router = useRouter();
   const [expanded, setExpanded] = useState(false);
   const [sprints, setSprints] = useState<SprintRow[]>([]);
   const [progressMap, setProgressMap] = useState<Record<string, SprintProgress>>({});
@@ -405,6 +408,19 @@ export function SprintPanel({ workspaceId, spaceId, listId, onDataChanged }: Spr
   const [createOpen, setCreateOpen] = useState(false);
   const [closeTarget, setCloseTarget] = useState<SprintRow | null>(null);
   const [addTasksTarget, setAddTasksTarget] = useState<SprintRow | null>(null);
+
+  function openSprintSettings() {
+    router.push(`/${workspaceId}/${spaceId}/settings/sprints`);
+  }
+
+  async function handleCreateClick() {
+    const settings = await getSprintSettings(workspaceId, spaceId);
+    if ("error" in settings || settings.sprintStartDay === null) {
+      openSprintSettings();
+    } else {
+      setCreateOpen(true);
+    }
+  }
 
   const activeSprints = sprints.filter((s) => s.status === "ACTIVE");
   const plannedSprints = sprints.filter((s) => s.status === "PLANNED");
@@ -472,6 +488,7 @@ export function SprintPanel({ workspaceId, spaceId, listId, onDataChanged }: Spr
         workspaceId={workspaceId}
         spaceId={spaceId}
         onCreated={() => { setCreateOpen(false); refresh(); }}
+        onOpenSettings={openSprintSettings}
       />
       {addTasksTarget && listId && (
         <AddTasksToSprintModal
@@ -522,7 +539,7 @@ export function SprintPanel({ workspaceId, spaceId, listId, onDataChanged }: Spr
               </Badge>
             )}
             <button
-              onClick={() => setCreateOpen(true)}
+              onClick={handleCreateClick}
               className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-1"
             >
               <PlusIcon className="size-3.5" />
