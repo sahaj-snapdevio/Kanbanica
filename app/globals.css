@@ -1,4 +1,4 @@
-@import "tailwindcss";
+﻿@import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
@@ -18,13 +18,11 @@
 
 html {
   height: 100%;
-  overflow: hidden;
   background: var(--background);
 }
 
 body {
   height: 100%;
-  overflow: hidden;
   margin: 0;
   letter-spacing: 0;
   -webkit-font-smoothing: antialiased;
@@ -98,7 +96,7 @@ body {
 }
 
 :root {
-  /* ── 3-layer surface system ─────────────────────────── */
+  /* â”€â”€ 3-layer surface system â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   --bg-app:      #F7F9FB;
   --bg-surface:  #FFFFFF;
   --bg-elevated: #FFFFFF;
@@ -106,7 +104,7 @@ body {
   --bg-sidebar-item-hover:  rgba(255,255,255,0.06);
   --bg-sidebar-item-active: rgba(255,255,255,0.10);
 
-  /* ── Text ───────────────────────────────────────────── */
+  /* â”€â”€ Text â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   --text-primary:        #0F1117;
   --text-secondary:      #5E6573;
   --text-muted:          #9AA0AD;
@@ -114,28 +112,28 @@ body {
   --text-sidebar:        #C9CDD6;
   --text-sidebar-active: #FFFFFF;
 
-  /* ── Brand (indigo) ─────────────────────────────────── */
+  /* â”€â”€ Brand (indigo) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   --brand:       #5B6BF8;
   --brand-hover: #4554E8;
   --brand-muted: #EEF0FE;
 
-  /* ── Shadows ────────────────────────────────────────── */
+  /* â”€â”€ Shadows â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.05);
   --shadow-md: 0 2px 8px 0 rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
   --shadow-lg: 0 8px 24px 0 rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06);
   --shadow-xl: 0 20px 40px 0 rgba(0,0,0,0.16), 0 0 0 1px rgba(0,0,0,0.08);
 
-  /* ── Motion ─────────────────────────────────────────── */
+  /* â”€â”€ Motion â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   --ease-default:    cubic-bezier(0.16, 1, 0.3, 1);
   --ease-out:        cubic-bezier(0.0, 0, 0.2, 1);
   --duration-fast:   120ms;
   --duration-normal: 200ms;
   --duration-slow:   300ms;
 
-  /* ── Page background ────────────────────────────────── */
+  /* â”€â”€ Page background â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   --page: #F4F5F7;
 
-  /* ── Status ──────────────────────────────────────────── */
+  /* â”€â”€ Status â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   --success:          #16A34A;
   --success-foreground: #14532D;
   --success-subtle:   #DCFCE7;
@@ -147,7 +145,7 @@ body {
   --info:             #2563EB;
   --info-muted:       #DBEAFE;
 
-  /* ── Shadcn core tokens ──────────────────────────────── */
+  /* â”€â”€ Shadcn core tokens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   --background: #FFFFFF;
   --foreground: #0F1117;
   --card:       #FFFFFF;
@@ -182,7 +180,7 @@ body {
   /* Radius */
   --radius: 0.5rem;
 
-  /* ── Sidebar tokens (for shadcn sidebar component) ───── */
+  /* â”€â”€ Sidebar tokens (for shadcn sidebar component) â”€â”€â”€â”€â”€ */
   --sidebar:                  #1A1D23;
   --sidebar-foreground:       #C9CDD6;
   --sidebar-primary:          #5B6BF8;
@@ -194,7 +192,7 @@ body {
 }
 
 .dark {
-  /* ── 3-layer surface system ─────────────────────────── */
+  /* â”€â”€ 3-layer surface system â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   --bg-app:      #0D0F12;
   --bg-surface:  #161A20;
   --bg-elevated: #1E2229;
@@ -202,26 +200,26 @@ body {
   --bg-sidebar-item-hover:  rgba(255,255,255,0.05);
   --bg-sidebar-item-active: rgba(255,255,255,0.09);
 
-  /* ── Text ───────────────────────────────────────────── */
+  /* â”€â”€ Text â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   --text-primary:        #F0F2F5;
   --text-secondary:      #8B919E;
   --text-muted:          #545B68;
   --text-sidebar:        #8B919E;
   --text-sidebar-active: #F0F2F5;
 
-  /* ── Brand ──────────────────────────────────────────── */
+  /* â”€â”€ Brand â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   --brand:       #6475FA;
   --brand-hover: #7585FB;
   --brand-muted: #1E2140;
 
-  /* ── Shadows (stronger in dark — compensate for low contrast) */
+  /* â”€â”€ Shadows (stronger in dark â€” compensate for low contrast) */
   --shadow-md: 0 2px 8px 0 rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04);
   --shadow-lg: 0 8px 24px 0 rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06);
 
-  /* ── Page ────────────────────────────────────────────── */
+  /* â”€â”€ Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   --page: #0D0F12;
 
-  /* ── Status ──────────────────────────────────────────── */
+  /* â”€â”€ Status â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   --success:          #4ADE80;
   --success-foreground: #DCFCE7;
   --success-subtle:   #14532D;
@@ -233,7 +231,7 @@ body {
   --info:             #60A5FA;
   --info-muted:       #1E3A5F;
 
-  /* ── Shadcn core tokens ──────────────────────────────── */
+  /* â”€â”€ Shadcn core tokens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   --background: #161A20;
   --foreground: #F0F2F5;
   --card:       #1E2229;
@@ -265,7 +263,7 @@ body {
   --chart-4: #F87171;
   --chart-5: #A78BFA;
 
-  /* ── Sidebar tokens ──────────────────────────────────── */
+  /* â”€â”€ Sidebar tokens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   --sidebar:                  #0D0F12;
   --sidebar-foreground:       #8B919E;
   --sidebar-primary:          #6475FA;
@@ -276,7 +274,7 @@ body {
   --sidebar-ring:             #6475FA;
 }
 
-/* ── Tiptap / ProseMirror editor styles ─────────────────────────────── */
+/* â”€â”€ Tiptap / ProseMirror editor styles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .ProseMirror {
   outline: none;
 }
@@ -381,7 +379,7 @@ body {
   cursor: default;
 }
 
-/* Tippy mention popup — reset default tippy theme */
+/* Tippy mention popup â€” reset default tippy theme */
 .tippy-box[data-theme~="mention-popup"] {
   background: transparent;
   box-shadow: none;
@@ -425,7 +423,7 @@ body {
   --accent-foreground: #174D38;
   --border:      #E4E7EC;
   --input:       #E4E7EC;
-  /* Brand green — matches landing page */
+  /* Brand green â€” matches landing page */
   --primary:           #174D38;
   --primary-foreground: #FFFFFF;
   --ring:              #174D38;

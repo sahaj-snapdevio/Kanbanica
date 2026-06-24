@@ -1,58 +1,66 @@
-﻿"use client";
+"use client";
 
-import * as React from "react";
-import Link from "next/link";
-import Image from "next/image";
 import {
-  ArrowRight,
-  CheckCircle2,
-  LayoutList,
-  Kanban,
-  CalendarDays,
-  Bell,
-  Search,
-  MessageSquare,
-  Zap,
-  Users,
-  ChevronRight,
-  Star,
-  Menu,
-  X,
-  Check,
-  ShieldCheck,
-  Clock,
-  TrendingUp,
-  Globe,
-  MoveHorizontal,
+  motion,
+  useMotionValueEvent,
+  useScroll,
+  useTransform,
+} from "framer-motion";
+import {
   AlertTriangle,
-  Sparkles,
+  ArrowRight,
   BarChart3,
+  Bell,
+  CalendarDays,
+  Check,
+  CheckCircle2,
+  ChevronRight,
+  Clock,
+  Globe,
+  Kanban,
+  LayoutList,
+  Menu,
+  MessageSquare,
   MessagesSquare,
+  MoveHorizontal,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  Star,
+  TrendingUp,
+  Users,
+  X,
+  Zap,
 } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import * as React from "react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from "@/lib/utils";
 import {
   MARKETING_DOMAIN,
   PRODUCT_NAME,
   SUPPORT_EMAIL,
 } from "@/config/platform";
+import { cn } from "@/lib/utils";
 
 function useInView(threshold = 0.12) {
   const ref = React.useRef<HTMLDivElement>(null);
   const [visible, setVisible] = React.useState(false);
   React.useEffect(() => {
     const el = ref.current;
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const obs = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -60,7 +68,7 @@ function useInView(threshold = 0.12) {
           obs.disconnect();
         }
       },
-      { threshold },
+      { threshold }
     );
     obs.observe(el);
     return () => obs.disconnect();
@@ -88,14 +96,14 @@ function Animate({
         : "translate-y-8";
   return (
     <div
-      ref={ref}
       className={cn(
         "transition-all duration-700 ease-out",
         visible
           ? "opacity-100 translate-x-0 translate-y-0"
           : cn("opacity-0", translate),
-        className,
+        className
       )}
+      ref={ref}
       style={{ transitionDelay: `${delay}ms` }}
     >
       {children}
@@ -172,21 +180,48 @@ const steps = [
 const testimonials = [
   {
     name: "Sarah Chen",
-    role: "Engineering Lead, Flowboard",
+    role: "Engineering Lead",
+    company: "Flowboard",
     initials: "SC",
+    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&h=150&q=80",
     body: "We switched from ClickUp and the onboarding took 20 minutes. The Board view is snappy, the permissions model is exactly what we needed for guest contractors.",
+    rating: 5,
   },
   {
     name: "Marcus Rivera",
-    role: "Product Manager, Stackd",
+    role: "Product Manager",
+    company: "Stackd",
     initials: "MR",
-    body: `Sprint planning used to take half a day. With ${PRODUCT_NAME}'s sprint view and story points, we're done in an hour. The burndown chart is a game-changer.`,
+    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=150&q=80",
+    body: "Sprint planning used to take half a day. With Kanbanica's sprint view and story points, we're done in an hour. The burndown chart is a game-changer.",
+    rating: 5,
   },
   {
     name: "Priya Nair",
-    role: "Founder, Loopback",
+    role: "Founder",
+    company: "Loopback",
     initials: "PN",
+    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&h=150&q=80",
     body: "My Tasks view is something I didn't know I needed. Seeing every task assigned to me across every project in one place — with a due date grouping — is brilliant.",
+    rating: 5,
+  },
+  {
+    name: "David K.",
+    role: "CTO",
+    company: "Acme Co",
+    initials: "DK",
+    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&h=150&q=80",
+    body: "We consolidated three different tools into Kanbanica. It is blazing fast and the security features with workspace-scoped permissions fit our enterprise requirements perfectly.",
+    rating: 5,
+  },
+  {
+    name: "Elena Rostova",
+    role: "Design Director",
+    company: "Nexus",
+    initials: "ER",
+    avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&h=150&q=80",
+    body: "The user interface is gorgeous, clean, and responsive. Designing workflows and managing task lists across our multiple departments is a breeze.",
+    rating: 5,
   },
 ];
 
@@ -232,7 +267,7 @@ function SectionLabel({
     <span
       className={cn(
         "inline-flex items-center rounded-full border border-[#174D38]/30 bg-[#174D38]/10 px-3 py-1 font-semibold text-[#174D38] text-xs uppercase tracking-wide",
-        className,
+        className
       )}
     >
       {children}
@@ -256,48 +291,47 @@ function Navbar() {
         "sticky top-0 z-40 transition-all duration-200",
         scrolled
           ? "border-b border-[#CBCBCB] bg-white/95 shadow-sm backdrop-blur-sm"
-          : "bg-transparent",
+          : "bg-transparent"
       )}
     >
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
         <span className="flex items-center gap-2 font-bold text-[#174D38] text-lg tracking-tight">
           <Image
-            src="/width_497.png"
             alt={`${PRODUCT_NAME} Logo`}
-            width={28}
-            height={28}
-            className="rounded"
+            className="h-8 w-auto object-contain"
+            height={32}
+            src="/Kanbanica2.png"
+            width={150}
           />
-          {PRODUCT_NAME}
         </span>
         <nav className="hidden items-center gap-6 text-sm text-[#6b7280] sm:flex">
           <a
-            href="#features"
             className="transition-colors hover:text-[#174D38]"
+            href="#features"
           >
             Features
           </a>
-          <a href="#why" className="transition-colors hover:text-[#174D38]">
+          <a className="transition-colors hover:text-[#174D38]" href="#why">
             Why us
           </a>
           <a
-            href="#how-it-works"
             className="transition-colors hover:text-[#174D38]"
+            href="#how-it-works"
           >
             How it works
           </a>
-          <a href="#faq" className="transition-colors hover:text-[#174D38]">
+          <a className="transition-colors hover:text-[#174D38]" href="#faq">
             FAQ
           </a>
         </nav>
         <div className="hidden items-center gap-2 sm:flex">
-          <Button variant="ghost" size="sm" asChild>
+          <Button asChild size="sm" variant="ghost">
             <Link href="/login">Sign in</Link>
           </Button>
           <Button
-            size="sm"
             asChild
             className="bg-[#174D38] text-white hover:bg-[#103526]"
+            size="sm"
           >
             <Link href="/login">
               Get Started Free <ArrowRight className="ml-1 size-3.5" />
@@ -305,8 +339,8 @@ function Navbar() {
           </Button>
         </div>
         <button
-          aria-label={mobileOpen ? "Close menu" : "Open menu"}
           aria-expanded={mobileOpen}
+          aria-label={mobileOpen ? "Close menu" : "Open menu"}
           className="rounded-md p-2 text-[#6b7280] hover:text-[#174D38] sm:hidden"
           onClick={() => setMobileOpen((v) => !v)}
         >
@@ -317,41 +351,41 @@ function Navbar() {
         <div className="border-t border-[#CBCBCB] bg-white px-6 pb-4 sm:hidden">
           <nav className="flex flex-col gap-3 pt-4 text-sm text-[#6b7280]">
             <a
+              className="hover:text-[#174D38]"
               href="#features"
               onClick={() => setMobileOpen(false)}
-              className="hover:text-[#174D38]"
             >
               Features
             </a>
             <a
+              className="hover:text-[#174D38]"
               href="#why"
               onClick={() => setMobileOpen(false)}
-              className="hover:text-[#174D38]"
             >
               Why us
             </a>
             <a
+              className="hover:text-[#174D38]"
               href="#how-it-works"
               onClick={() => setMobileOpen(false)}
-              className="hover:text-[#174D38]"
             >
               How it works
             </a>
             <a
+              className="hover:text-[#174D38]"
               href="#faq"
               onClick={() => setMobileOpen(false)}
-              className="hover:text-[#174D38]"
             >
               FAQ
             </a>
             <div className="flex flex-col gap-2 border-t border-[#CBCBCB] pt-2">
-              <Button variant="outline" size="sm" asChild>
+              <Button asChild size="sm" variant="outline">
                 <Link href="/login">Sign in</Link>
               </Button>
               <Button
-                size="sm"
                 asChild
                 className="bg-[#174D38] text-white hover:bg-[#103526]"
+                size="sm"
               >
                 <Link href="/login">Get Started Free</Link>
               </Button>
@@ -360,6 +394,640 @@ function Navbar() {
         </div>
       )}
     </header>
+  );
+}
+
+interface TypewriterProps {
+  colors?: string[];
+  erasingSpeed?: number;
+  pauseDuration?: number;
+  phrases: string[];
+  typingSpeed?: number;
+}
+
+function Typewriter({
+  phrases,
+  typingSpeed = 100,
+  erasingSpeed = 50,
+  pauseDuration = 2000,
+  colors = ["#174D38", "#174D38"],
+}: TypewriterProps) {
+  const [currentPhraseIndex, setCurrentPhraseIndex] = React.useState(0);
+  const [currentText, setCurrentText] = React.useState("");
+  const [isDeleting, setIsDeleting] = React.useState(false);
+  const [mounted, setMounted] = React.useState(false);
+  const [hasStarted, setHasStarted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+    const timer = setTimeout(() => {
+      setHasStarted(true);
+    }, 600); // delay to sync with page load fade-in
+    return () => clearTimeout(timer);
+  }, []);
+
+  React.useEffect(() => {
+    if (!hasStarted) {
+      return;
+    }
+
+    // Check for prefers-reduced-motion
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (mediaQuery.matches) {
+      setCurrentText(phrases[currentPhraseIndex]);
+      const timer = setTimeout(() => {
+        setCurrentPhraseIndex((prev) => (prev + 1) % phrases.length);
+      }, pauseDuration);
+      return () => clearTimeout(timer);
+    }
+
+    const currentPhrase = phrases[currentPhraseIndex];
+    let timer: NodeJS.Timeout;
+
+    if (isDeleting) {
+      timer = setTimeout(() => {
+        setCurrentText((prev) => prev.slice(0, -1));
+      }, erasingSpeed);
+    } else {
+      timer = setTimeout(() => {
+        setCurrentText((prev) => currentPhrase.slice(0, prev.length + 1));
+      }, typingSpeed);
+    }
+
+    if (!isDeleting && currentText === currentPhrase) {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        setIsDeleting(true);
+      }, pauseDuration);
+    }
+
+    if (isDeleting && currentText === "") {
+      clearTimeout(timer);
+      setIsDeleting(false);
+      setCurrentPhraseIndex((prev) => (prev + 1) % phrases.length);
+    }
+
+    return () => clearTimeout(timer);
+  }, [
+    hasStarted,
+    currentText,
+    isDeleting,
+    currentPhraseIndex,
+    phrases,
+    typingSpeed,
+    erasingSpeed,
+    pauseDuration,
+  ]);
+
+  const currentColor = colors[currentPhraseIndex % colors.length];
+
+  return (
+    <span
+      className="inline-block whitespace-nowrap"
+      style={{
+        color: currentColor,
+        transition: "color 0.3s ease, opacity 0.5s ease",
+        opacity: mounted ? 1 : 0,
+      }}
+    >
+      {currentText}
+      <span
+        className="ml-1 inline-block w-[3px] h-[0.85em] translate-y-[0.08em] animate-typewriter-blink rounded-full"
+        style={{ backgroundColor: currentColor }}
+      />
+      <style>{`
+        @keyframes typewriter-blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
+        }
+        .animate-typewriter-blink {
+          animation: typewriter-blink 1s step-end infinite;
+        }
+      `}</style>
+    </span>
+  );
+}
+
+function ListView() {
+  return (
+    <div className="flex flex-col gap-4 h-full bg-white rounded-lg p-5">
+      {/* Toolbar */}
+      <div className="flex items-center gap-2 border-b border-[#CBCBCB]/60 pb-3 shrink-0">
+        {["Filter", "Group by: Status", "Sort"].map((label) => (
+          <span
+            className="rounded border border-dashed border-[#CBCBCB] px-2.5 py-1 text-[#9ca3af] text-2xs font-semibold cursor-default"
+            key={label}
+          >
+            {label}
+          </span>
+        ))}
+      </div>
+
+      {/* Table Headers */}
+      <div className="grid grid-cols-12 gap-4 px-3 text-[10px] font-bold text-[#9ca3af] uppercase tracking-wider mb-1 shrink-0">
+        <div className="col-span-6">Task Name</div>
+        <div className="col-span-2 text-center">Status</div>
+        <div className="col-span-2 text-center">Priority</div>
+        <div className="col-span-2 text-right">Assignee</div>
+      </div>
+
+      {/* Table Rows */}
+      <div className="flex-1 flex flex-col gap-1.5 overflow-y-auto pr-1">
+        {[
+          {
+            title: "Fix login redirect bug",
+            status: "In Progress",
+            statusCls: "bg-[#174D38]/10 text-[#174D38]",
+            priority: "High",
+            pCls: "bg-orange-50 text-orange-500",
+            assignee: "SC",
+          },
+          {
+            title: "Design onboarding flow",
+            status: "Review",
+            statusCls: "bg-amber-50 text-amber-600",
+            priority: "Medium",
+            pCls: "bg-yellow-50 text-yellow-600",
+            assignee: "MR",
+          },
+          {
+            title: "Write API documentation",
+            status: "Todo",
+            statusCls: "bg-[#E8E8E8] text-[#6b7280]",
+            priority: "Low",
+            pCls: "bg-blue-50 text-blue-500",
+            assignee: "PN",
+          },
+          {
+            title: "Set up CI/CD pipeline",
+            status: "Todo",
+            statusCls: "bg-[#E8E8E8] text-[#6b7280]",
+            priority: "Urgent",
+            pCls: "bg-red-50 text-red-500",
+            assignee: "SC",
+          },
+          {
+            title: "Implement search indexing",
+            status: "In Progress",
+            statusCls: "bg-[#174D38]/10 text-[#174D38]",
+            priority: "High",
+            pCls: "bg-orange-50 text-orange-500",
+            assignee: "MR",
+          },
+        ].map((t) => (
+          <div
+            className="grid grid-cols-12 gap-4 items-center rounded-lg border border-[#CBCBCB]/60 bg-white px-3 py-2.5 text-xs transition-colors hover:border-[#174D38]/40"
+            key={t.title}
+          >
+            <div className="col-span-6 flex items-center gap-3">
+              <span className="size-4 shrink-0 rounded border-2 border-[#CBCBCB]" />
+              <span className="font-semibold text-[#174D38] truncate">
+                {t.title}
+              </span>
+            </div>
+            <div className="col-span-2 flex justify-center">
+              <span
+                className={cn(
+                  "rounded px-2.5 py-0.5 text-[10px] font-bold tracking-wide",
+                  t.statusCls
+                )}
+              >
+                {t.status}
+              </span>
+            </div>
+            <div className="col-span-2 flex justify-center">
+              <span
+                className={cn(
+                  "rounded px-2.5 py-0.5 text-[10px] font-bold tracking-wide",
+                  t.pCls
+                )}
+              >
+                {t.priority}
+              </span>
+            </div>
+            <div className="col-span-2 flex justify-end">
+              <Avatar className="size-5.5">
+                <AvatarFallback className="bg-[#4D1717]/25 text-[8px] font-bold text-[#174D38]">
+                  {t.assignee}
+                </AvatarFallback>
+              </Avatar>
+            </div>
+          </div>
+        ))}
+        <div className="flex cursor-pointer items-center gap-2 px-3 py-2 text-[#9ca3af] text-xs hover:text-[#6b7280]">
+          <span className="text-base leading-none font-bold">+</span> Add task
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BoardView() {
+  return (
+    <div className="flex gap-4 h-full bg-white rounded-lg p-5 overflow-x-auto">
+      {[
+        {
+          title: "Backlog",
+          color: "#9ca3af",
+          tasks: [
+            {
+              title: "Write API documentation",
+              priority: "Low",
+              pCls: "bg-blue-50 text-blue-500",
+              assignee: "PN",
+            },
+          ],
+        },
+        {
+          title: "Todo",
+          color: "#3b82f6",
+          tasks: [
+            {
+              title: "Set up CI/CD pipeline",
+              priority: "Urgent",
+              pCls: "bg-red-50 text-red-500",
+              assignee: "SC",
+            },
+          ],
+        },
+        {
+          title: "In Progress",
+          color: "#174D38",
+          tasks: [
+            {
+              title: "Fix login redirect bug",
+              priority: "High",
+              pCls: "bg-orange-50 text-orange-500",
+              assignee: "SC",
+            },
+            {
+              title: "Implement search indexing",
+              priority: "High",
+              pCls: "bg-orange-50 text-orange-500",
+              assignee: "MR",
+            },
+          ],
+        },
+        {
+          title: "Review",
+          color: "#f59e0b",
+          tasks: [
+            {
+              title: "Design onboarding flow",
+              priority: "Medium",
+              pCls: "bg-yellow-50 text-yellow-600",
+              assignee: "MR",
+            },
+          ],
+        },
+        {
+          title: "Done",
+          color: "#10b981",
+          tasks: [
+            {
+              title: "Database migration",
+              priority: "Low",
+              pCls: "bg-blue-50 text-blue-500",
+              assignee: "PN",
+            },
+          ],
+        },
+      ].map((col) => (
+        <div
+          className="rounded-lg border border-[#CBCBCB]/60 bg-[#F5F5F5] p-3 flex flex-col gap-2 min-w-[170px] flex-1 max-h-full"
+          key={col.title}
+        >
+          <div className="flex items-center justify-between px-1 mb-1 shrink-0">
+            <div className="flex items-center gap-2">
+              <span
+                className="size-2 rounded-full"
+                style={{ backgroundColor: col.color }}
+              />
+              <span className="font-bold text-[#174D38] text-xs">
+                {col.title}
+              </span>
+            </div>
+            <span className="rounded bg-[#E8E8E8] px-1.5 py-0.5 text-4xs font-bold text-[#6b7280]">
+              {col.tasks.length}
+            </span>
+          </div>
+          <div className="flex-1 flex flex-col gap-2 overflow-y-auto pr-0.5">
+            {col.tasks.map((task) => (
+              <div
+                className="rounded-lg border border-[#CBCBCB]/60 bg-white p-3 shadow-xs flex flex-col gap-2 hover:border-[#174D38]/40 transition-colors cursor-grab"
+                key={task.title}
+              >
+                <p className="font-medium text-[#174D38] text-2xs leading-tight line-clamp-2">
+                  {task.title}
+                </p>
+                <div className="flex items-center justify-between mt-1">
+                  <span
+                    className={cn(
+                      "rounded px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider",
+                      task.pCls
+                    )}
+                  >
+                    {task.priority}
+                  </span>
+                  <Avatar className="size-5">
+                    <AvatarFallback className="bg-[#4D1717]/25 text-[7px] font-bold text-[#174D38]">
+                      {task.assignee}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CalendarView() {
+  return (
+    <div className="flex flex-col h-full bg-white rounded-lg p-5">
+      {/* Calendar header */}
+      <div className="flex items-center justify-between mb-3 shrink-0">
+        <span className="font-bold text-[#174D38] text-sm">June 2026</span>
+        <div className="flex items-center gap-3">
+          <div className="flex rounded border border-[#CBCBCB] bg-[#F2F2F2] p-0.5 text-[9px] font-bold">
+            <span className="bg-white rounded px-2.5 py-0.5 text-[#174D38] shadow-xs">
+              Month
+            </span>
+            <span className="px-2.5 py-0.5 text-[#6b7280]">Week</span>
+            <span className="px-2.5 py-0.5 text-[#6b7280]">Day</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Weekday headers */}
+      <div className="grid grid-cols-7 gap-1 text-center font-bold text-[#9ca3af] text-[9px] uppercase tracking-wider mb-1 shrink-0">
+        {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
+          <div className="py-1" key={day}>
+            {day}
+          </div>
+        ))}
+      </div>
+
+      {/* Calendar Grid */}
+      <div className="flex-1 grid grid-cols-7 grid-rows-5 gap-1 min-h-0">
+        {Array.from({ length: 35 }).map((_, idx) => {
+          const dayNum = idx + 1; // June 1st is Monday (idx = 0)
+          const isValidDay = dayNum > 0 && dayNum <= 30;
+
+          return (
+            <div
+              className={cn(
+                "border border-[#E8E8E8] rounded-md p-1 flex flex-col gap-1 min-h-0 relative bg-white transition-colors hover:border-[#174D38]/30",
+                isValidDay ? "text-[#174D38]" : "text-[#CBCBCB] bg-[#F9F9F9]"
+              )}
+              key={idx}
+            >
+              <span className="text-[9px] font-bold leading-none mb-0.5">
+                {isValidDay ? dayNum : ""}
+              </span>
+
+              {/* Event bars */}
+              {dayNum === 2 && (
+                <div className="bg-[#174D38]/10 border-l-2 border-[#174D38] rounded px-1 py-0.5 text-[7px] text-[#174D38] font-bold truncate leading-none cursor-pointer">
+                  Fix Redirects
+                </div>
+              )}
+              {dayNum === 9 && (
+                <div className="bg-amber-100 border-l-2 border-amber-500 rounded px-1 py-0.5 text-[7px] text-amber-700 font-bold truncate leading-none cursor-pointer">
+                  Onboarding Flow
+                </div>
+              )}
+              {dayNum === 16 && (
+                <div className="bg-blue-100 border-l-2 border-blue-500 rounded px-1 py-0.5 text-[7px] text-blue-700 font-bold truncate leading-none cursor-pointer">
+                  API Docs
+                </div>
+              )}
+              {dayNum === 23 && (
+                <div className="bg-red-100 border-l-2 border-red-500 rounded px-1 py-0.5 text-[7px] text-red-700 font-bold truncate leading-none cursor-pointer">
+                  CI/CD Deploy
+                </div>
+              )}
+              {dayNum === 24 && (
+                <div className="bg-[#174D38]/10 border-l-2 border-[#174D38] rounded px-1 py-0.5 text-[7px] text-[#174D38] font-bold truncate leading-none cursor-pointer">
+                  Search Index
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ProductShowcaseSection() {
+  const sectionRef = React.useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start start", "end end"],
+  });
+
+  const [activeTabIdx, setActiveTabIdx] = React.useState(0);
+  const [prefersReducedMotion, setPrefersReducedMotion] = React.useState(false);
+
+  React.useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setPrefersReducedMotion(mediaQuery.matches);
+    const handler = (e: MediaQueryListEvent) =>
+      setPrefersReducedMotion(e.matches);
+    mediaQuery.addEventListener("change", handler);
+    return () => mediaQuery.removeEventListener("change", handler);
+  }, []);
+
+  useMotionValueEvent(scrollYProgress, "change", (latest) => {
+    if (latest < 0.35) {
+      setActiveTabIdx(0);
+    } else if (latest < 0.7) {
+      setActiveTabIdx(1);
+    } else {
+      setActiveTabIdx(2);
+    }
+  });
+
+  const activeTabName = ["List", "Board", "Calendar"][activeTabIdx];
+  const activeTabUrl = ["backlog", "board", "calendar"][activeTabIdx];
+  const activeSidebarIndex = activeTabIdx === 2 ? 0 : activeTabIdx;
+
+  // Scroll Transforms for List View
+  const listOpacityTransform = useTransform(
+    scrollYProgress,
+    [0, 0.2, 0.35],
+    [1, 0.5, 0]
+  );
+  const listScaleTransform = useTransform(
+    scrollYProgress,
+    [0, 0.35],
+    [1, 0.95]
+  );
+  const listYTransform = useTransform(scrollYProgress, [0, 0.35], [0, -50]);
+
+  // Scroll Transforms for Board View
+  const boardOpacityTransform = useTransform(
+    scrollYProgress,
+    [0, 0.15, 0.35, 0.55, 0.7],
+    [0, 0.4, 1, 0.5, 0]
+  );
+  const boardScaleTransform = useTransform(
+    scrollYProgress,
+    [0, 0.35, 0.7],
+    [0.9, 1, 0.95]
+  );
+  const boardYTransform = useTransform(
+    scrollYProgress,
+    [0, 0.35, 0.7],
+    [150, 0, -50]
+  );
+
+  // Scroll Transforms for Calendar View
+  const calendarOpacityTransform = useTransform(
+    scrollYProgress,
+    [0.35, 0.55, 0.7],
+    [0, 0.4, 1]
+  );
+  const calendarScaleTransform = useTransform(
+    scrollYProgress,
+    [0.35, 0.7],
+    [0.9, 1]
+  );
+  const calendarYTransform = useTransform(
+    scrollYProgress,
+    [0.35, 0.7],
+    [150, 0]
+  );
+
+  const listOpacity = prefersReducedMotion
+    ? activeTabIdx === 0
+      ? 1
+      : 0
+    : listOpacityTransform;
+  const listScale = prefersReducedMotion ? 1 : listScaleTransform;
+  const listY = prefersReducedMotion ? 0 : listYTransform;
+
+  const boardOpacity = prefersReducedMotion
+    ? activeTabIdx === 1
+      ? 1
+      : 0
+    : boardOpacityTransform;
+  const boardScale = prefersReducedMotion ? 1 : boardScaleTransform;
+  const boardY = prefersReducedMotion ? 0 : boardYTransform;
+
+  const calendarOpacity = prefersReducedMotion
+    ? activeTabIdx === 2
+      ? 1
+      : 0
+    : calendarOpacityTransform;
+  const calendarScale = prefersReducedMotion ? 1 : calendarScaleTransform;
+  const calendarY = prefersReducedMotion ? 0 : calendarYTransform;
+
+  return (
+    <section className="relative h-[300vh] bg-white w-full" ref={sectionRef}>
+      {/* Sticky container that centers the browser frame in the viewport */}
+      <div className="sticky top-[100px] z-10 w-full flex items-center justify-center overflow-hidden py-12">
+        <div className="relative mx-auto max-w-4xl w-full px-4 sm:px-6">
+          <div className="overflow-hidden rounded-xl border border-[#CBCBCB] bg-white shadow-2xl ring-1 ring-[#174D38]/20 h-[500px] flex flex-col">
+            {/* Header URL bar */}
+            <div className="flex items-center gap-1.5 border-b border-[#CBCBCB] bg-[#F2F2F2] px-4 py-2.5 shrink-0">
+              <span className="size-3 rounded-full bg-[#ef4444]" />
+              <span className="size-3 rounded-full bg-[#f59e0b]" />
+              <span className="size-3 rounded-full bg-[#10b981]" />
+              <div className="mx-auto ml-4 max-w-xs flex-1 rounded-md border border-[#CBCBCB] bg-white px-3 py-1 text-[#9ca3af] text-[10px] text-center font-mono">
+                {MARKETING_DOMAIN}/acme/engineering/{activeTabUrl}
+              </div>
+            </div>
+
+            <div className="flex flex-1 min-h-0 bg-[#F2F2F2]">
+              {/* Sidebar */}
+              <div className="flex w-14 flex-col items-center gap-4 border-r border-[#CBCBCB] bg-white px-3.5 py-4 shrink-0">
+                {[LayoutList, Kanban, Bell, Search, Users].map((Icon, i) => (
+                  <div
+                    className={cn(
+                      "flex size-8 items-center justify-center rounded-md transition-colors",
+                      i === activeSidebarIndex
+                        ? "bg-[#174D38] text-white"
+                        : "text-[#9ca3af] hover:bg-[#E8E8E8]"
+                    )}
+                    key={i}
+                  >
+                    <Icon className="size-4" />
+                  </div>
+                ))}
+              </div>
+
+              {/* Workspace Container */}
+              <div className="flex-1 flex flex-col min-w-0 bg-[#F2F2F2]">
+                {/* Header Navigation */}
+                <div className="flex items-center justify-between border-b border-[#CBCBCB]/60 bg-white px-5 py-3 shrink-0">
+                  <div className="flex items-center gap-1 text-[#6b7280] text-xs">
+                    <span>Engineering</span>
+                    <ChevronRight className="size-3" />
+                    <span className="font-semibold text-[#174D38]">
+                      {activeTabName}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {["List", "Board", "Calendar"].map((tab, idx) => (
+                      <span
+                        className={cn(
+                          "rounded px-2.5 py-1 font-semibold text-xs transition-all duration-200",
+                          activeTabIdx === idx
+                            ? "bg-[#174D38] text-white"
+                            : "text-[#6b7280] hover:bg-[#E8E8E8] hover:text-[#174D38]"
+                        )}
+                        key={tab}
+                      >
+                        {tab}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Workspace Views area */}
+                <div className="flex-1 relative min-h-0 overflow-hidden bg-[#F5F5F5]">
+                  {/* List View */}
+                  <motion.div
+                    className="absolute inset-0 p-4"
+                    style={{ opacity: listOpacity, scale: listScale, y: listY }}
+                  >
+                    <ListView />
+                  </motion.div>
+
+                  {/* Board View */}
+                  <motion.div
+                    className="absolute inset-0 p-4"
+                    style={{
+                      opacity: boardOpacity,
+                      scale: boardScale,
+                      y: boardY,
+                    }}
+                  >
+                    <BoardView />
+                  </motion.div>
+
+                  {/* Calendar View */}
+                  <motion.div
+                    className="absolute inset-0 p-4"
+                    style={{
+                      opacity: calendarOpacity,
+                      scale: calendarScale,
+                      y: calendarY,
+                    }}
+                  >
+                    {/* <CalendarView /> */}
+                  </motion.div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -388,14 +1056,7 @@ function HeroSection() {
           <h1 className="mb-5 mt-2 text-5xl font-bold leading-tight tracking-tight text-[#174D38] sm:text-6xl">
             Project management
             <br />
-            <span
-              className="bg-clip-text text-transparent"
-              style={{
-                backgroundImage: "linear-gradient(to right, #174D38, #4D1717)",
-              }}
-            >
-              your team will actually use
-            </span>
+            your team will <Typewriter phrases={["actually see", "trust it"]} />
           </h1>
           <p className="mx-auto mb-8 max-w-2xl text-lg leading-relaxed text-[#6b7280]">
             {PRODUCT_NAME} gives every team a shared home — Workspaces, Spaces,
@@ -404,19 +1065,19 @@ function HeroSection() {
           </p>
           <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
             <Button
-              size="lg"
               asChild
               className="h-11 bg-[#174D38] px-6 text-base text-white shadow-lg shadow-[#4D1717]/40 hover:bg-[#103526]"
+              size="lg"
             >
               <Link href="/login">
                 Get Started Free <ArrowRight className="ml-1.5 size-4" />
               </Link>
             </Button>
             <Button
-              size="lg"
-              variant="outline"
               asChild
               className="h-11 border-[#CBCBCB] px-6 text-base hover:bg-[#F2F2F2]"
+              size="lg"
+              variant="outline"
             >
               <a href="#features">See what is included</a>
             </Button>
@@ -424,153 +1085,6 @@ function HeroSection() {
           <p className="mt-4 text-[#9ca3af] text-xs">
             No credit card required · Magic link sign-in
           </p>
-        </Animate>
-
-        <Animate delay={300} className="mt-16">
-          <div className="relative mx-auto max-w-4xl">
-            <div className="overflow-hidden rounded-xl border border-[#CBCBCB] bg-white shadow-2xl ring-1 ring-[#174D38]/20">
-              <div className="flex items-center gap-1.5 border-b border-[#CBCBCB] bg-[#F2F2F2] px-4 py-2.5">
-                <span className="size-3 rounded-full bg-[#ef4444]" />
-                <span className="size-3 rounded-full bg-[#f59e0b]" />
-                <span className="size-3 rounded-full bg-[#10b981]" />
-                <div className="mx-auto ml-4 max-w-xs flex-1 rounded-md border border-[#CBCBCB] bg-white px-3 py-1 text-[#9ca3af] text-xs">
-                  {MARKETING_DOMAIN}/acme/engineering/backlog
-                </div>
-              </div>
-              <div className="flex bg-[#F2F2F2]">
-                <div className="flex w-14 flex-col items-center gap-4 border-r border-[#CBCBCB] bg-white px-3.5 py-4">
-                  {[LayoutList, Kanban, Bell, Search, Users].map((Icon, i) => (
-                    <div
-                      key={i}
-                      className={cn(
-                        "flex size-8 items-center justify-center rounded-md",
-                        i === 0
-                          ? "bg-[#174D38] text-white"
-                          : "text-[#9ca3af] hover:bg-[#E8E8E8]",
-                      )}
-                    >
-                      <Icon className="size-4" />
-                    </div>
-                  ))}
-                </div>
-                <div className="min-w-0 flex-1 p-5">
-                  <div className="mb-4 flex items-center justify-between">
-                    <div className="flex items-center gap-1 text-[#6b7280] text-xs">
-                      <span>Engineering</span>
-                      <ChevronRight className="size-3" />
-                      <span className="font-semibold text-[#174D38]">
-                        Backlog
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {["List", "Board", "Calendar"].map((v, i) => (
-                        <span
-                          key={v}
-                          className={cn(
-                            "cursor-pointer rounded px-2.5 py-1 font-medium text-xs transition-colors",
-                            i === 0
-                              ? "bg-[#174D38] text-white"
-                              : "text-[#6b7280] hover:bg-[#E8E8E8] hover:text-[#174D38]",
-                          )}
-                        >
-                          {v}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="mb-3 flex items-center gap-2 border-b border-[#CBCBCB] pb-3">
-                    {["Filter", "Group by: Status", "Sort"].map((label) => (
-                      <span
-                        key={label}
-                        className="rounded border border-dashed border-[#CBCBCB] px-2 py-1 text-[#9ca3af] text-xs"
-                      >
-                        {label}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="space-y-1.5">
-                    {[
-                      {
-                        title: "Fix login redirect bug",
-                        status: "In Progress",
-                        statusCls: "bg-[#174D38]/10 text-[#174D38]",
-                        priority: "High",
-                        pCls: "bg-orange-50 text-orange-500",
-                        assignee: "SC",
-                      },
-                      {
-                        title: "Design onboarding flow",
-                        status: "Review",
-                        statusCls: "bg-amber-50 text-amber-600",
-                        priority: "Medium",
-                        pCls: "bg-yellow-50 text-yellow-600",
-                        assignee: "MR",
-                      },
-                      {
-                        title: "Write API documentation",
-                        status: "Todo",
-                        statusCls: "bg-[#E8E8E8] text-[#6b7280]",
-                        priority: "Low",
-                        pCls: "bg-blue-50 text-blue-500",
-                        assignee: "PN",
-                      },
-                      {
-                        title: "Set up CI/CD pipeline",
-                        status: "Todo",
-                        statusCls: "bg-[#E8E8E8] text-[#6b7280]",
-                        priority: "Urgent",
-                        pCls: "bg-red-50 text-red-500",
-                        assignee: "SC",
-                      },
-                      {
-                        title: "Implement search indexing",
-                        status: "In Progress",
-                        statusCls: "bg-[#174D38]/10 text-[#174D38]",
-                        priority: "High",
-                        pCls: "bg-orange-50 text-orange-500",
-                        assignee: "MR",
-                      },
-                    ].map((t) => (
-                      <div
-                        key={t.title}
-                        className="flex items-center gap-3 rounded-md border border-[#CBCBCB] bg-white px-3 py-2 text-sm transition-colors hover:border-[#174D38]/40"
-                      >
-                        <span className="size-4 shrink-0 rounded border-2 border-[#CBCBCB]" />
-                        <span className="flex-1 truncate font-medium text-[#174D38] text-xs">
-                          {t.title}
-                        </span>
-                        <span
-                          className={cn(
-                            "shrink-0 rounded px-2 py-0.5 text-2xs font-medium",
-                            t.statusCls,
-                          )}
-                        >
-                          {t.status}
-                        </span>
-                        <span
-                          className={cn(
-                            "hidden shrink-0 rounded px-2 py-0.5 text-2xs font-medium sm:inline-block",
-                            t.pCls,
-                          )}
-                        >
-                          {t.priority}
-                        </span>
-                        <Avatar className="size-5 shrink-0">
-                          <AvatarFallback className="bg-[#4D1717]/25 text-[8px] text-[#174D38]">
-                            {t.assignee}
-                          </AvatarFallback>
-                        </Avatar>
-                      </div>
-                    ))}
-                    <div className="flex cursor-pointer items-center gap-2 px-3 py-2 text-[#9ca3af] text-xs hover:text-[#6b7280]">
-                      <span className="text-base leading-none">+</span> Add task
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="pointer-events-none absolute right-0 bottom-0 left-0 h-24 bg-gradient-to-b from-transparent to-white" />
-          </div>
         </Animate>
       </div>
     </section>
@@ -591,12 +1105,12 @@ function SocialProofBar() {
               {["Acme Co", "Flowboard", "Stackd", "Loopback", "Nexus"].map(
                 (name) => (
                   <span
+                    className="font-semibold text-[#54705C] text-xs uppercase tracking-widest"
                     key={name}
-                    className="font-semibold text-[#CBCBCB] text-xs uppercase tracking-widest"
                   >
                     {name}
                   </span>
-                ),
+                )
               )}
             </div>
           </div>
@@ -613,8 +1127,8 @@ function FeaturesSection() {
   const { ref, visible } = useInView();
   return (
     <section
-      id="features"
       className="py-16 scroll-mt-14"
+      id="features"
       style={{
         backgroundImage: LINE_GRID,
         backgroundSize: "40px 40px",
@@ -631,17 +1145,17 @@ function FeaturesSection() {
             No bolt-ons. No plugins. Everything in the box.
           </p>
         </Animate>
-        <div ref={ref} className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3" ref={ref}>
           {features.map(({ icon: Icon, title, description }, i) => (
             <div
-              key={title}
               className={cn(
                 "group cursor-default rounded-xl border border-[#CBCBCB] bg-white p-6 shadow-sm transition-all duration-300",
                 "hover:-translate-y-0.5 hover:border-[#174D38]/40 hover:shadow-md",
                 visible
                   ? "translate-y-0 opacity-100"
-                  : "translate-y-4 opacity-0",
+                  : "translate-y-4 opacity-0"
               )}
+              key={title}
               style={{
                 transitionDelay: visible ? `${i * 80}ms` : "0ms",
                 transitionProperty:
@@ -697,17 +1211,17 @@ function StatsSection() {
           backgroundSize: "20px 20px",
         }}
       />
-      <div ref={ref} className="relative mx-auto max-w-6xl px-6">
+      <div className="relative mx-auto max-w-6xl px-6" ref={ref}>
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           {stats.map(({ value, label, icon: Icon }, i) => (
             <div
-              key={label}
               className={cn(
                 "flex flex-col items-center text-center transition-all duration-500 sm:items-start sm:text-left",
                 visible
                   ? "translate-y-0 opacity-100"
-                  : "translate-y-4 opacity-0",
+                  : "translate-y-4 opacity-0"
               )}
+              key={label}
               style={{ transitionDelay: visible ? `${i * 90}ms` : "0ms" }}
             >
               <div className="mb-3 flex size-9 items-center justify-center rounded-lg bg-white/15 ring-1 ring-white/20 backdrop-blur-sm">
@@ -759,7 +1273,7 @@ const bentoCards = [
 function BentoSection() {
   const { ref, visible } = useInView();
   return (
-    <section id="why" className="bg-white pt-16 pb-8 scroll-mt-14">
+    <section className="bg-white pt-16 pb-8 scroll-mt-14" id="why">
       <div className="mx-auto max-w-6xl px-6">
         <Animate className="mb-14 text-center">
           <SectionLabel className="mb-4">Why teams switch</SectionLabel>
@@ -771,12 +1285,11 @@ function BentoSection() {
             actually enjoy.
           </p>
         </Animate>
-        <div ref={ref} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" ref={ref}>
           {bentoCards.map((card, i) => {
             const Icon = card.icon;
             return (
               <div
-                key={card.title}
                 className={cn(
                   "group relative overflow-hidden rounded-2xl border p-6 transition-all duration-500",
                   card.span,
@@ -786,8 +1299,9 @@ function BentoSection() {
                   "hover:-translate-y-0.5 hover:shadow-md hover:border-[#174D38]/40",
                   visible
                     ? "translate-y-0 opacity-100"
-                    : "translate-y-4 opacity-0",
+                    : "translate-y-4 opacity-0"
                 )}
+                key={card.title}
                 style={{ transitionDelay: visible ? `${i * 90}ms` : "0ms" }}
               >
                 {card.accent && (
@@ -821,7 +1335,17 @@ function BentoSection() {
 function HowItWorksSection() {
   const { ref, visible } = useInView();
   return (
-    <section id="how-it-works" className="bg-white pt-8 pb-16 scroll-mt-14">
+    <section className="bg-white pt-8 pb-16 scroll-mt-14" id="how-it-works">
+      <style>{`
+        @keyframes marching-ants {
+          to {
+            stroke-dashoffset: -8;
+          }
+        }
+        .animate-marching-ants {
+          animation: marching-ants 0.6s linear infinite;
+        }
+      `}</style>
       <div className="mx-auto max-w-6xl px-6">
         <Animate className="mb-14 text-center">
           <SectionLabel className="mb-4">How it works</SectionLabel>
@@ -832,7 +1356,7 @@ function HowItWorksSection() {
             No configuration required. Just sign in and start organising.
           </p>
         </Animate>
-        <Animate delay={100} className="mb-12 flex flex-col items-center gap-3">
+        <Animate className="mb-12 flex flex-col items-center gap-3" delay={100}>
           <div className="flex flex-wrap items-center justify-center gap-2 text-sm">
             {["Workspace", "Space", "List", "Task"].map((label, i, arr) => (
               <React.Fragment key={label}>
@@ -850,24 +1374,67 @@ function HowItWorksSection() {
           </p>
         </Animate>
         <div
-          ref={ref}
           className="relative grid gap-6 sm:grid-cols-2 lg:grid-cols-4"
+          ref={ref}
         >
-          <div className="pointer-events-none absolute top-10 right-[12.5%] left-[12.5%] hidden border-t-2 border-dashed border-[#174D38]/20 lg:block" />
           {steps.map((step, i) => (
             <div
-              key={step.number}
               className={cn(
                 "relative rounded-xl border border-[#CBCBCB] bg-white p-6 shadow-sm transition-all duration-500",
                 visible
                   ? "translate-y-0 opacity-100"
-                  : "translate-y-4 opacity-0",
+                  : "translate-y-4 opacity-0"
               )}
+              key={step.number}
               style={{
                 transitionDelay: visible ? `${i * 120}ms` : "0ms",
                 transitionProperty: "opacity, transform",
               }}
             >
+              {i < 3 && (
+                <div
+                  className={cn(
+                    "pointer-events-none absolute top-10 left-[100%] w-6 h-6 hidden lg:block z-10 transition-all duration-700 ease-out",
+                    visible
+                      ? "opacity-100 translate-x-0 scale-100"
+                      : "opacity-0 -translate-x-2 scale-75"
+                  )}
+                  style={{
+                    transitionDelay: `${i * 120 + 150}ms`,
+                  }}
+                >
+                  <svg
+                    className="w-full h-full overflow-visible"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M -4 12 L 24 12"
+                      opacity="0.25"
+                      stroke="#174D38"
+                      strokeDasharray="4 4"
+                      strokeLinecap="round"
+                      strokeWidth="2"
+                    />
+                    <path
+                      className="animate-marching-ants"
+                      d="M -4 12 L 24 12"
+                      stroke="#174D38"
+                      strokeDasharray="4 4"
+                      strokeLinecap="round"
+                      strokeWidth="2"
+                    />
+                    <path
+                      d="M 18 8 L 24 12 L 18 16"
+                      stroke="#174D38"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                    />
+                  </svg>
+                </div>
+              )}
               <div
                 className="mb-3 select-none bg-clip-text text-5xl font-bold text-transparent"
                 style={{
@@ -911,33 +1478,33 @@ function ViewsShowcaseSection() {
           </p>
         </Animate>
         <Animate delay={150}>
-          <Tabs defaultValue="list" className="mx-auto max-w-3xl">
+          <Tabs className="mx-auto max-w-3xl" defaultValue="list">
             <TabsList className="mb-6 grid w-full grid-cols-3 rounded-lg bg-[#E8E8E8] p-1">
               <TabsTrigger
-                value="list"
                 className="gap-1.5 rounded-md data-[state=active]:bg-[#174D38] data-[state=active]:text-white"
+                value="list"
               >
                 <LayoutList className="size-3.5" />
                 List
               </TabsTrigger>
               <TabsTrigger
-                value="board"
                 className="gap-1.5 rounded-md data-[state=active]:bg-[#174D38] data-[state=active]:text-white"
+                value="board"
               >
                 <Kanban className="size-3.5" />
                 Board
               </TabsTrigger>
               <TabsTrigger
-                value="mytasks"
                 className="gap-1.5 rounded-md data-[state=active]:bg-[#174D38] data-[state=active]:text-white"
+                value="mytasks"
               >
                 <CalendarDays className="size-3.5" />
                 My Tasks
               </TabsTrigger>
             </TabsList>
             <TabsContent
-              value="list"
               className="animate-in fade-in-0 duration-200"
+              value="list"
             >
               <Card className="rounded-xl border-[#CBCBCB] shadow-sm">
                 <CardHeader className="pb-2">
@@ -957,20 +1524,20 @@ function ViewsShowcaseSection() {
                       { t: "Deploy to staging", done: false },
                     ].map(({ t, done }) => (
                       <div
-                        key={t}
                         className={cn(
                           "flex items-center gap-3 rounded border px-3 py-2 text-sm",
                           done
                             ? "border-[#CBCBCB] bg-[#F2F2F2]"
-                            : "border-[#174D38]/20 bg-[#174D38]/5",
+                            : "border-[#174D38]/20 bg-[#174D38]/5"
                         )}
+                        key={t}
                       >
                         <div
                           className={cn(
                             "flex size-4 shrink-0 items-center justify-center rounded border-2",
                             done
                               ? "border-[#174D38] bg-[#174D38]"
-                              : "border-[#CBCBCB]",
+                              : "border-[#CBCBCB]"
                           )}
                         >
                           {done && (
@@ -985,7 +1552,7 @@ function ViewsShowcaseSection() {
                             "flex-1 text-xs",
                             done
                               ? "text-[#9ca3af] line-through"
-                              : "text-[#174D38]",
+                              : "text-[#174D38]"
                           )}
                         >
                           {t}
@@ -1005,8 +1572,8 @@ function ViewsShowcaseSection() {
               </Card>
             </TabsContent>
             <TabsContent
-              value="board"
               className="animate-in fade-in-0 duration-200"
+              value="board"
             >
               <Card className="rounded-xl border-[#CBCBCB] shadow-sm">
                 <CardHeader className="pb-2">
@@ -1042,8 +1609,8 @@ function ViewsShowcaseSection() {
                       },
                     ].map((col) => (
                       <div
-                        key={col.label}
                         className="rounded-md border border-[#CBCBCB] bg-[#F2F2F2] p-2"
+                        key={col.label}
                       >
                         <div className="mb-2 flex items-center gap-1.5 px-1">
                           <span
@@ -1056,8 +1623,8 @@ function ViewsShowcaseSection() {
                         </div>
                         {col.tasks.map((t) => (
                           <div
-                            key={t}
                             className="mb-1.5 rounded border border-[#CBCBCB] bg-white px-2.5 py-2 text-2xs text-[#174D38] shadow-sm transition-colors hover:border-[#174D38]/40"
+                            key={t}
                           >
                             {t}
                           </div>
@@ -1069,8 +1636,8 @@ function ViewsShowcaseSection() {
               </Card>
             </TabsContent>
             <TabsContent
-              value="mytasks"
               className="animate-in fade-in-0 duration-200"
+              value="mytasks"
             >
               <Card className="rounded-xl border-[#CBCBCB] shadow-sm">
                 <CardHeader className="pb-2">
@@ -1121,8 +1688,8 @@ function ViewsShowcaseSection() {
                         </p>
                         {g.tasks.map(({ t, ctx }) => (
                           <div
-                            key={t}
                             className="mb-1 flex items-center gap-2 rounded border border-[#CBCBCB] bg-[#F2F2F2] px-3 py-2 text-xs"
+                            key={t}
                           >
                             <span className="size-3.5 shrink-0 rounded border border-[#CBCBCB]" />
                             <span className="flex-1 text-[#174D38]">{t}</span>
@@ -1178,10 +1745,18 @@ const comparisonFeatures = [
 function BeforeAfterSection() {
   const [sliderPosition, setSliderPosition] = React.useState(50);
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const beforeLabelRef = React.useRef<HTMLSpanElement>(null);
+  const afterLabelRef = React.useRef<HTMLSpanElement>(null);
   const isDragging = React.useRef(false);
 
+  const [containerWidth, setContainerWidth] = React.useState(0);
+  const [beforeLabelWidth, setBeforeLabelWidth] = React.useState(80);
+  const [afterLabelWidth, setAfterLabelWidth] = React.useState(80);
+
   const handleMove = React.useCallback((clientX: number) => {
-    if (!containerRef.current) return;
+    if (!containerRef.current) {
+      return;
+    }
     const rect = containerRef.current.getBoundingClientRect();
     const x = clientX - rect.left;
     const pct = Math.max(0, Math.min(100, (x / rect.width) * 100));
@@ -1194,7 +1769,9 @@ function BeforeAfterSection() {
 
   React.useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isDragging.current) return;
+      if (!isDragging.current) {
+        return;
+      }
       handleMove(e.clientX);
     };
     const handleMouseUp = () => {
@@ -1212,8 +1789,60 @@ function BeforeAfterSection() {
     (e: React.TouchEvent) => {
       handleMove(e.touches[0].clientX);
     },
-    [handleMove],
+    [handleMove]
   );
+
+  React.useEffect(() => {
+    if (!containerRef.current) {
+      return;
+    }
+    const updateWidths = () => {
+      if (containerRef.current) {
+        setContainerWidth(containerRef.current.offsetWidth);
+      }
+      if (beforeLabelRef.current) {
+        setBeforeLabelWidth(beforeLabelRef.current.offsetWidth);
+      }
+      if (afterLabelRef.current) {
+        setAfterLabelWidth(afterLabelRef.current.offsetWidth);
+      }
+    };
+
+    updateWidths();
+
+    const observer = new ResizeObserver(() => {
+      updateWidths();
+    });
+    observer.observe(containerRef.current);
+
+    return () => observer.disconnect();
+  }, []);
+
+  // Calculate opacities to prevent overlap
+  let beforeOpacity = 1;
+  let afterOpacity = 1;
+  let dividerOpacity = 1;
+
+  if (containerWidth > 0) {
+    const dividerX = (sliderPosition / 100) * containerWidth;
+    const leftThreshold = 12 + beforeLabelWidth;
+    const rightThreshold = containerWidth - 12 - afterLabelWidth;
+    const fadeDistance = 30;
+
+    if (dividerX <= leftThreshold) {
+      beforeOpacity = 0;
+    } else if (dividerX < leftThreshold + fadeDistance) {
+      beforeOpacity = (dividerX - leftThreshold) / fadeDistance;
+    }
+
+    if (dividerX >= rightThreshold) {
+      afterOpacity = 0;
+    } else if (dividerX > rightThreshold - fadeDistance) {
+      afterOpacity = (rightThreshold - dividerX) / fadeDistance;
+    }
+
+    dividerOpacity = Math.min(beforeOpacity, afterOpacity);
+  }
 
   return (
     <section className="bg-white py-16">
@@ -1244,11 +1873,11 @@ function BeforeAfterSection() {
                 {comparisonFeatures.map((f) => {
                   const Icon = f.icon;
                   return (
-                    <div key={f.title} className="flex gap-3">
+                    <div className="flex gap-3" key={f.title}>
                       <div
                         className={cn(
                           "flex size-9 shrink-0 items-center justify-center rounded-lg",
-                          f.color,
+                          f.color
                         )}
                       >
                         <Icon className="size-4" />
@@ -1269,26 +1898,26 @@ function BeforeAfterSection() {
           </div>
 
           {/* Right — Before/After Slider */}
-          <Animate from="right" className="lg:col-span-3">
+          <Animate className="lg:col-span-3" from="right">
             <div
-              ref={containerRef}
               className="relative cursor-ew-resize select-none overflow-hidden rounded-2xl border border-[#CBCBCB] shadow-xl"
               onMouseDown={handleMouseDown}
               onTouchMove={handleTouchMove}
               onTouchStart={(e) => handleMove(e.touches[0].clientX)}
+              ref={containerRef}
             >
-              {/* After image (bottom layer, full) */}
+              {/* Before image (bottom layer, full) */}
               <Image
-                src="/after-image.png"
-                alt="After — organized with Kanbanica"
-                width={1456}
-                height={816}
+                alt="Before — chaotic workflow"
                 className="block w-full"
                 draggable={false}
+                height={816}
                 priority
+                src="/before-image.png"
+                width={1456}
               />
 
-              {/* Before image (top layer, clipped) */}
+              {/* After image (top layer, clipped) */}
               <div
                 className="absolute inset-0"
                 style={{
@@ -1296,22 +1925,30 @@ function BeforeAfterSection() {
                 }}
               >
                 <Image
-                  src="/before-image.png"
-                  alt="Before — chaotic workflow"
-                  width={1456}
-                  height={816}
+                  alt="After — organized with Kanbanica"
                   className="block w-full"
                   draggable={false}
+                  height={816}
                   priority
+                  src="/after-image.png"
+                  width={1456}
                 />
               </div>
 
               {/* Floating labels */}
-              <span className="absolute top-3 left-3 z-10 rounded-full bg-emerald-500 px-3 py-1 font-bold text-2xs text-white uppercase tracking-wider shadow-md">
-                After
-              </span>
-              <span className="absolute top-3 right-3 z-10 rounded-full bg-red-500 px-3 py-1 font-bold text-2xs text-white uppercase tracking-wider shadow-md">
+              <span
+                className="absolute top-3 left-3 z-10 rounded-full bg-red-500 px-3 py-1 font-bold text-2xs text-white uppercase tracking-wider shadow-md pointer-events-none"
+                ref={beforeLabelRef}
+                style={{ opacity: beforeOpacity }}
+              >
                 Before
+              </span>
+              <span
+                className="absolute top-3 right-3 z-10 rounded-full bg-emerald-500 px-3 py-1 font-bold text-2xs text-white uppercase tracking-wider shadow-md pointer-events-none"
+                ref={afterLabelRef}
+                style={{ opacity: afterOpacity }}
+              >
+                After
               </span>
 
               {/* Divider line */}
@@ -1320,26 +1957,30 @@ function BeforeAfterSection() {
                 style={{
                   left: `${sliderPosition}%`,
                   transform: "translateX(-50%)",
+                  opacity: dividerOpacity,
                 }}
               />
 
               {/* Drag handle */}
               <div
                 className="pointer-events-none absolute top-1/2 z-30 flex size-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white shadow-lg"
-                style={{ left: `${sliderPosition}%` }}
+                style={{
+                  left: `${sliderPosition}%`,
+                  opacity: dividerOpacity,
+                }}
               >
                 <MoveHorizontal className="size-4 text-[#6b7280]" />
               </div>
 
               {/* Invisible range input for accessibility */}
               <input
-                type="range"
-                min={0}
-                max={100}
-                value={sliderPosition}
-                onChange={(e) => setSliderPosition(Number(e.target.value))}
-                className="absolute inset-0 z-40 h-full w-full cursor-ew-resize appearance-none opacity-0"
                 aria-label="Before and after comparison slider"
+                className="absolute inset-0 z-40 h-full w-full cursor-ew-resize appearance-none opacity-0"
+                max={100}
+                min={0}
+                onChange={(e) => setSliderPosition(Number(e.target.value))}
+                type="range"
+                value={sliderPosition}
               />
             </div>
           </Animate>
@@ -1350,59 +1991,315 @@ function BeforeAfterSection() {
 }
 
 function TestimonialsSection() {
+  const [activeIndex, setActiveIndex] = React.useState(2);
+  const [hoveredIndex, setHoveredIndex] = React.useState<number | null>(null);
+  const [screenSize, setScreenSize] = React.useState({
+    isMobile: false,
+    isTablet: false,
+  });
+  const [isEntered, setIsEntered] = React.useState(false);
   const { ref, visible } = useInView();
+
+  React.useEffect(() => {
+    const handleResize = () => {
+      const w = window.innerWidth;
+      setScreenSize({
+        isMobile: w < 640,
+        isTablet: w >= 640 && w < 1024,
+      });
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  React.useEffect(() => {
+    if (visible) {
+      const timer = setTimeout(() => setIsEntered(true), 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [visible]);
+
+  const prev = () => {
+    setActiveIndex(
+      (prev) => (prev - 1 + testimonials.length) % testimonials.length
+    );
+  };
+
+  const next = () => {
+    setActiveIndex((prev) => (prev + 1) % testimonials.length);
+  };
+
+  const { isMobile, isTablet } = screenSize;
+
   return (
-    <section className="relative overflow-hidden bg-white py-16">
-      <div className="pointer-events-none absolute left-1/2 top-1/2 size-[480px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#174D38]/10 opacity-60 blur-3xl" />
+    <section
+      className="relative overflow-hidden py-24 border-t border-b border-white/[0.04]"
+      style={{
+        background:
+          "linear-gradient(135deg, #174D38 0%, #174D38 55%, #4D1717 100%)",
+      }}
+    >
+      {/* Dark Vignette Overlay for Stark-lab contrast */}
+      <div className="pointer-events-none absolute inset-0 bg-radial-[circle_at_center,transparent_30%,rgba(7,9,14,0.65)_100%]" />
+
+      {/* Cyber Grid Overlay */}
+      <div className="pointer-events-none absolute inset-0 opacity-[0.035] bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:30px_30px]" />
+
+      {/* Ambient Stark-lab backlights */}
+      <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-[600px] rounded-full bg-emerald-500/10 opacity-70 blur-3xl" />
+
       <div className="relative mx-auto max-w-6xl px-6">
         <Animate className="mb-12 text-center">
-          <SectionLabel className="mb-4">Testimonials</SectionLabel>
-          <h2 className="mt-4 text-3xl font-bold tracking-tight text-[#174D38]">
-            Teams love it
+          <SectionLabel className="mb-4 border-emerald-400/20 bg-emerald-400/10 text-emerald-300">
+            Showroom
+          </SectionLabel>
+          <h2 className="mt-4 text-3xl font-bold tracking-tight text-white">
+            Hall of Armor Feedback
           </h2>
+          <p className="mt-2 text-white/60 text-sm">
+            Experience our users' feedback displayed in a futuristic circular
+            showcase.
+          </p>
         </Animate>
-        <div ref={ref} className="grid gap-5 sm:grid-cols-3">
-          {testimonials.map((t, i) => (
-            <div
-              key={t.name}
-              className={cn(
-                "flex flex-col gap-4 rounded-xl border border-[#CBCBCB] bg-white p-6 shadow-sm transition-all duration-500",
-                visible
-                  ? "translate-y-0 opacity-100"
-                  : "translate-y-4 opacity-0",
-              )}
-              style={{
-                transitionDelay: visible ? `${i * 100}ms` : "0ms",
-                transitionProperty: "opacity, transform",
-              }}
-            >
-              <div className="flex gap-0.5">
-                {Array.from({ length: 5 }).map((_, j) => (
-                  <Star
-                    key={j}
-                    className="size-4 fill-amber-400 text-amber-400"
-                  />
-                ))}
-              </div>
-              <p className="flex-1 text-[#174D38]/80 text-sm leading-relaxed">
-                &ldquo;{t.body}&rdquo;
-              </p>
-              <div className="flex items-center gap-3 border-t border-[#CBCBCB] pt-4">
-                <Avatar className="size-8">
-                  <AvatarFallback className="bg-[#4D1717]/25 text-[#174D38] text-xs">
-                    {t.initials}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="font-semibold text-[#174D38] text-sm">
-                    {t.name}
-                  </p>
-                  <p className="text-[#6b7280] text-xs">{t.role}</p>
-                </div>
-              </div>
+
+        {/* Showroom Display Pad & Arc Container */}
+        <div
+          className="relative flex items-center justify-center h-[460px] sm:h-[500px] w-full mt-10 overflow-visible"
+          ref={ref}
+          style={{ perspective: 1200 }}
+        >
+          {/* Holographic Glowing Neon Display Pad */}
+          <div className="pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 w-[350px] sm:w-[680px] h-[50px] sm:h-[80px] rounded-full bg-emerald-500/10 border border-emerald-500/20 blur-md shadow-[0_0_50px_rgba(16,185,129,0.2)]" />
+          <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 w-[280px] sm:w-[500px] h-[30px] sm:h-[40px] rounded-full bg-cyan-500/10 border border-cyan-500/25 blur-xs shadow-[0_0_30px_rgba(6,182,212,0.15)]" />
+
+          {/* Testimonial Cards Container */}
+          {visible && (
+            <div className="relative w-full h-full flex items-center justify-center overflow-visible">
+              {testimonials.map((t, idx) => {
+                // On desktop/tablet cards are statically arranged.
+                // On mobile they are stacked based on activeIndex.
+                const currentCenter = isMobile ? activeIndex : 2;
+                const diff = idx - currentCenter;
+                const isActive = idx === currentCenter;
+                const isHovered = hoveredIndex === idx;
+                const isAnyHovered = hoveredIndex !== null;
+
+                // Calculate responsive coordinates
+                let cardWidth = 290;
+                let radius = 580;
+
+                if (isMobile) {
+                  cardWidth = 270;
+                } else if (isTablet) {
+                  cardWidth = 240;
+                  radius = 350;
+                }
+
+                let x = 0;
+                let z = 0;
+                let rotateY = 0;
+                let y = 0;
+                let scale = 1;
+                let opacity = 1;
+                let blurVal = 0;
+                let brightness = 100;
+
+                if (isMobile) {
+                  // Stacked system on mobile
+                  if (idx === activeIndex) {
+                    x = 0;
+                    z = 0;
+                    scale = 1;
+                    opacity = 1;
+                  } else if (idx < activeIndex) {
+                    x = -320;
+                    z = -50;
+                    rotateY = -30;
+                    scale = 0.85;
+                    opacity = 0;
+                  } else {
+                    const stackPos = idx - activeIndex;
+                    x = 0;
+                    z = stackPos * -30;
+                    y = stackPos * 12;
+                    scale = 1 - stackPos * 0.05;
+                    opacity = 1 - stackPos * 0.3;
+                  }
+                } else {
+                  // 3D circular arc on desktop / tablet
+                  const angleMap = [-36, -18, 0, 18, 36];
+                  const angleRad = (angleMap[idx] * Math.PI) / 180;
+
+                  x = radius * Math.sin(angleRad);
+                  z = -radius * (1 - Math.cos(angleRad));
+                  rotateY = angleMap[idx] * -1;
+
+                  scale = 1 - Math.abs(idx - 2) * 0.06;
+                  opacity = 1 - Math.abs(idx - 2) * 0.15;
+                  blurVal = Math.abs(idx - 2) * 0.5;
+                }
+
+                // Apply hover overrides
+                if (isHovered) {
+                  z += 120; // moves card forward
+                  scale = 1.18;
+                  opacity = 1;
+                  blurVal = 0;
+                  brightness = 110;
+                } else if (isAnyHovered) {
+                  // Non-hovered cards remain in place, but blur and dim
+                  opacity = opacity * 0.45;
+                  blurVal = Math.max(blurVal, 2.5);
+                  brightness = 75;
+                }
+
+                return (
+                  <motion.div
+                    className={cn(
+                      "absolute top-12 rounded-2xl p-6 border backdrop-blur-md cursor-pointer select-none",
+                      isActive
+                        ? "border-emerald-500/30 bg-white/[0.04]"
+                        : "border-white/[0.05] bg-white/[0.015]",
+                      isHovered
+                        ? "border-emerald-400/50 bg-white/[0.07] shadow-[0_0_30px_rgba(16,185,129,0.25)]"
+                        : "shadow-2xl"
+                    )}
+                    key={t.name}
+                    style={{
+                      width: cardWidth,
+                      left: `calc(50% - ${cardWidth / 2}px)`,
+                      zIndex: isHovered ? 50 : 10 - Math.abs(diff),
+                      perspective: 1000,
+                    }}
+                    initial={{
+                      opacity: 0,
+                      scale: 0.3,
+                      y: 120,
+                      x: 0,
+                      z: -200,
+                      rotateY: 0,
+                    }}
+                    animate={{
+                      x,
+                      z,
+                      rotateY,
+                      scale,
+                      opacity,
+                      filter: `blur(${blurVal}px) brightness(${brightness}%)`,
+                      y: isEntered && !isHovered && !isMobile ? [0, -8, 0] : y,
+                    }}
+                    transition={{
+                      y: isEntered && !isHovered && !isMobile
+                        ? {
+                            repeat: Number.POSITIVE_INFINITY,
+                            repeatType: "reverse" as const,
+                            duration: 3 + idx * 0.3,
+                            ease: "easeInOut",
+                          }
+                        : {
+                            type: "spring",
+                            stiffness: 140,
+                            damping: 20,
+                            delay: isEntered ? 0 : idx * 0.15,
+                          },
+                      default: {
+                        type: "spring",
+                        stiffness: 140,
+                        damping: 20,
+                        delay: isEntered ? 0 : idx * 0.15,
+                      },
+                    }}
+                    onClick={() => {
+                      if (isMobile && !isActive) {
+                        setActiveIndex(idx);
+                      }
+                    }}
+                    onMouseEnter={() => setHoveredIndex(idx)}
+                    onMouseLeave={() => setHoveredIndex(null)}
+                    drag={isMobile ? "x" : false}
+                    dragConstraints={{ left: 0, right: 0 }}
+                    dragElastic={0.4}
+                    onDragEnd={(event, info) => {
+                      if (!isMobile) return;
+                      if (info.offset.x < -60) {
+                        next();
+                      } else if (info.offset.x > 60) {
+                        prev();
+                      }
+                    }}
+                  >
+                    {/* Futuristic HUD corner accents */}
+                    <div className="absolute top-2.5 left-2.5 size-2.5 border-t border-l border-emerald-500/40 rounded-tl-xs pointer-events-none" />
+                    <div className="absolute bottom-2.5 right-2.5 size-2.5 border-b border-r border-emerald-500/40 rounded-br-xs pointer-events-none" />
+                    <div className="absolute top-2.5 right-3.5 font-mono text-[7px] text-emerald-400/40 tracking-widest uppercase pointer-events-none">
+                      SUIT_ID.0{idx + 1}
+                    </div>
+
+                    {/* Star Rating */}
+                    <div className="flex gap-0.5 text-emerald-400 mb-4">
+                      {Array.from({ length: t.rating }).map((_, j) => (
+                        <Star
+                          className="size-3.5 fill-emerald-400 text-emerald-400 drop-shadow-[0_0_3px_rgba(52,211,153,0.5)]"
+                          key={j}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Review Text */}
+                    <p className="text-white/80 text-xs sm:text-sm leading-relaxed mb-6 font-medium italic min-h-[72px]">
+                      &ldquo;{t.body}&rdquo;
+                    </p>
+
+                    {/* User Info Section */}
+                    <div className="flex items-center gap-3 border-t border-white/[0.06] pt-4 mt-auto">
+                      <Avatar className="size-8.5 border border-white/[0.08] shadow-sm">
+                        {t.avatar && (
+                          <AvatarImage
+                            src={t.avatar}
+                            alt={t.name}
+                            className="object-cover"
+                          />
+                        )}
+                        <AvatarFallback className="bg-emerald-500/10 text-emerald-400 font-mono text-xs">
+                          {t.initials}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-semibold text-white text-xs sm:text-sm">
+                          {t.name}
+                        </p>
+                        <p className="text-white/50 text-[10px] sm:text-xs">
+                          {t.role} &middot; {t.company}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
             </div>
-          ))}
+          )}
         </div>
+
+        {/* Mobile Swipe Indicators */}
+        {isMobile && (
+          <div className="flex items-center justify-center gap-2 mt-6 relative z-20">
+            {testimonials.map((_, idx) => (
+              <button
+                aria-label={`Go to suit ${idx + 1}`}
+                className={cn(
+                  "h-1 rounded-full transition-all duration-300",
+                  idx === activeIndex
+                    ? "w-6 bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]"
+                    : "w-1.5 bg-white/20"
+                )}
+                key={idx}
+                onClick={() => setActiveIndex(idx)}
+                type="button"
+              />
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );
@@ -1422,15 +2319,15 @@ function FaqItem({
   return (
     <div className="border-b border-[#CBCBCB] last:border-b-0">
       <button
-        type="button"
-        onClick={onToggle}
-        className="flex w-full items-center justify-between gap-4 py-5 text-left transition-colors"
         aria-expanded={isOpen}
+        className="flex w-full items-center justify-between gap-4 py-5 text-left transition-colors"
+        onClick={onToggle}
+        type="button"
       >
         <span
           className={cn(
             "font-semibold text-sm transition-colors duration-200",
-            isOpen ? "text-[#174D38]" : "text-[#174D38]",
+            isOpen ? "text-[#174D38]" : "text-[#174D38]"
           )}
         >
           {question}
@@ -1438,19 +2335,19 @@ function FaqItem({
         <div
           className={cn(
             "relative ml-6 h-5 w-5 shrink-0 transition-transform duration-300 ease-out",
-            isOpen ? "rotate-45" : "rotate-0",
+            isOpen ? "rotate-45" : "rotate-0"
           )}
         >
           <span
             className={cn(
               "absolute top-1/2 left-0 h-0.5 w-full -translate-y-1/2 rounded-full transition-colors duration-300",
-              isOpen ? "bg-[#174D38]" : "bg-[#6b7280]",
+              isOpen ? "bg-[#174D38]" : "bg-[#6b7280]"
             )}
           />
           <span
             className={cn(
               "absolute top-0 left-1/2 h-full w-0.5 -translate-x-1/2 rounded-full transition-all duration-300",
-              isOpen ? "bg-[#174D38]" : "bg-[#6b7280]",
+              isOpen ? "bg-[#174D38]" : "bg-[#6b7280]"
             )}
           />
         </div>
@@ -1476,7 +2373,7 @@ function FaqSection() {
   const [openIndex, setOpenIndex] = React.useState<number | null>(null);
 
   return (
-    <section id="faq" className="bg-[#F2F2F2] py-16 scroll-mt-14">
+    <section className="bg-[#F2F2F2] py-16 scroll-mt-14" id="faq">
       <div className="mx-auto max-w-2xl px-6">
         <Animate className="mb-12 text-center">
           <SectionLabel className="mb-4">FAQ</SectionLabel>
@@ -1486,8 +2383,8 @@ function FaqSection() {
           <p className="mt-2 text-[#6b7280]">
             {"Can't find an answer? "}
             <a
-              href={`mailto:${SUPPORT_EMAIL}`}
               className="text-[#174D38] underline-offset-2 hover:underline"
+              href={`mailto:${SUPPORT_EMAIL}`}
             >
               Reach out to support
             </a>
@@ -1497,11 +2394,11 @@ function FaqSection() {
           <div className="rounded-xl border border-[#CBCBCB] bg-white px-6 shadow-sm">
             {faqs.map((faq, i) => (
               <FaqItem
-                key={i}
-                question={faq.q}
                 answer={faq.a}
                 isOpen={openIndex === i}
+                key={i}
                 onToggle={() => setOpenIndex(openIndex === i ? null : i)}
+                question={faq.q}
               />
             ))}
           </div>
@@ -1542,9 +2439,9 @@ function CtaBanner() {
                 no setup fees.
               </p>
               <Button
-                size="lg"
                 asChild
                 className="h-11 bg-white px-8 font-semibold text-base text-[#174D38] shadow-lg hover:bg-[#F2F2F2]"
+                size="lg"
               >
                 <Link href="/login">
                   Start for free <ArrowRight className="ml-1.5 size-4" />
@@ -1569,13 +2466,12 @@ function Footer() {
           <div className="sm:col-span-1">
             <span className="flex items-center gap-2 font-bold text-base text-[#174D38]">
               <Image
-                src="/width_497.png"
                 alt={`${PRODUCT_NAME} Logo`}
-                width={24}
-                height={24}
-                className="rounded"
+                className="h-7 w-auto object-contain"
+                height={28}
+                src="/Kanbanica2.png"
+                width={130}
               />
-              {PRODUCT_NAME}
             </span>
             <p className="mt-2 text-[#6b7280] text-xs leading-relaxed">
               Free project management for modern teams. Workspaces, Spaces,
@@ -1589,32 +2485,32 @@ function Footer() {
             <ul className="space-y-2 text-[#6b7280] text-sm">
               <li>
                 <a
-                  href="#features"
                   className="transition-colors hover:text-[#174D38]"
+                  href="#features"
                 >
                   Features
                 </a>
               </li>
               <li>
                 <a
-                  href="#why"
                   className="transition-colors hover:text-[#174D38]"
+                  href="#why"
                 >
                   Why us
                 </a>
               </li>
               <li>
                 <a
-                  href="#how-it-works"
                   className="transition-colors hover:text-[#174D38]"
+                  href="#how-it-works"
                 >
                   How it works
                 </a>
               </li>
               <li>
                 <a
-                  href="#faq"
                   className="transition-colors hover:text-[#174D38]"
+                  href="#faq"
                 >
                   FAQ
                 </a>
@@ -1628,16 +2524,16 @@ function Footer() {
             <ul className="space-y-2 text-[#6b7280] text-sm">
               <li>
                 <Link
-                  href="/login"
                   className="transition-colors hover:text-[#174D38]"
+                  href="/login"
                 >
                   Sign in
                 </Link>
               </li>
               <li>
                 <Link
-                  href="/login"
                   className="transition-colors hover:text-[#174D38]"
+                  href="/login"
                 >
                   Create an account
                 </Link>
@@ -1651,16 +2547,16 @@ function Footer() {
             <ul className="space-y-2 text-[#6b7280] text-sm">
               <li>
                 <a
-                  href="#faq"
                   className="transition-colors hover:text-[#174D38]"
+                  href="#faq"
                 >
                   FAQ
                 </a>
               </li>
               <li>
                 <a
-                  href={`mailto:${SUPPORT_EMAIL}`}
                   className="transition-colors hover:text-[#174D38]"
+                  href={`mailto:${SUPPORT_EMAIL}`}
                 >
                   Contact support
                 </a>
@@ -1686,6 +2582,7 @@ export default function LandingPage() {
     <div className="min-h-screen bg-white text-[#174D38]">
       <Navbar />
       <HeroSection />
+      <ProductShowcaseSection />
       <SocialProofBar />
       <FeaturesSection />
       <BentoSection />
