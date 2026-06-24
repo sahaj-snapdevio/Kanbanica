@@ -54,21 +54,23 @@ export function ManageStatusesDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
+      <DialogContent className="max-w-lg flex flex-col max-h-[80vh]">
+        <DialogHeader className="shrink-0">
           <DialogTitle>Manage Statuses</DialogTitle>
         </DialogHeader>
-        {loading ? (
-          <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>
-        ) : (
-          <ListStatusesSettings
-            workspaceId={workspaceId}
-            spaceId={spaceId}
-            listId={listId}
-            initialStatuses={statuses}
-            onStatusesChange={setStatuses}
-          />
-        )}
+        <div className="overflow-y-auto flex-1 pr-1" onWheel={(e) => e.stopPropagation()}>
+          {loading ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>
+          ) : (
+            <ListStatusesSettings
+              workspaceId={workspaceId}
+              spaceId={spaceId}
+              listId={listId}
+              initialStatuses={statuses}
+              onStatusesChange={setStatuses}
+            />
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );
