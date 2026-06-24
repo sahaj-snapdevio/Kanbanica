@@ -2579,7 +2579,7 @@ function Footer() {
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-white text-[#174D38]">
+    <div className="force-light min-h-screen bg-white text-[#174D38]">
       <Navbar />
       <HeroSection />
       <ProductShowcaseSection />

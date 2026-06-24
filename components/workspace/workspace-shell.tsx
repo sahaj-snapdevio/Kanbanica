@@ -218,7 +218,7 @@ export function WorkspaceShell({
   }
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
+    <div className="workspace-shell flex h-screen bg-background overflow-hidden">
       <SearchPalette
         workspaceId={workspace.id}
         open={searchOpen}

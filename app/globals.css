@@ -30,6 +30,11 @@ body {
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
+/* Lock body scroll only inside the authenticated app shell */
+body:has(.workspace-shell) {
+  overflow: hidden;
+}
+
 @theme inline {
   --font-heading: var(--font-sans);
   --font-sans: var(--font-sans);
