@@ -899,11 +899,36 @@ export async function getActiveSprintView(
     assignees: assigneesByTask.get(t.id) ?? [],
   }));
 
-  // Fetch all statuses from every list that has tasks in this sprint
-  // so the board view shows empty columns too (not just columns with tasks)
+  // Fetch statuses from every list that has tasks in this sprint.
+  // Fall back to the first non-archived list in the space so the Create Task
+  // modal always has a status set even when the sprint has no list-backed tasks.
   const listIds = [...new Set(sprintTasks.filter((t) => t.listId).map((t) => t.listId!))];
-  const allStatuses = listIds.length > 0
-    ? await db
+
+  let allStatuses: { id: string; name: string; color: string; type: "OPEN" | "ACTIVE" | "CLOSED"; orderIndex: number }[] = [];
+
+  if (listIds.length > 0) {
+    allStatuses = await db
+      .select({
+        id: listStatus.id,
+        name: listStatus.name,
+        color: listStatus.color,
+        type: listStatus.type,
+        orderIndex: listStatus.orderIndex,
+      })
+      .from(listStatus)
+      .where(inArray(listStatus.listId, listIds))
+      .orderBy(asc(listStatus.orderIndex));
+  } else {
+    // No list-backed tasks — use the first list in this space as a fallback
+    const [firstList] = await db
+      .select({ id: list.id })
+      .from(list)
+      .where(and(eq(list.spaceId, spaceId), eq(list.isArchived, false)))
+      .orderBy(asc(list.createdAt))
+      .limit(1);
+
+    if (firstList) {
+      allStatuses = await db
         .select({
           id: listStatus.id,
           name: listStatus.name,
@@ -912,9 +937,10 @@ export async function getActiveSprintView(
           orderIndex: listStatus.orderIndex,
         })
         .from(listStatus)
-        .where(inArray(listStatus.listId, listIds))
-        .orderBy(asc(listStatus.orderIndex))
-    : [];
+        .where(eq(listStatus.listId, firstList.id))
+        .orderBy(asc(listStatus.orderIndex));
+    }
+  }
 
   return { sprint: activeSprint, tasks, statuses: allStatuses };
 }

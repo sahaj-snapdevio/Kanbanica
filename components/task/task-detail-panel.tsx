@@ -85,7 +85,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { TaskActivityFeed } from "@/components/task/task-activity-feed";
 import { ManageStatusesDialog } from "@/components/list/manage-statuses-dialog";
-import { ClickUpCalendar } from "@/components/ui/clickup-calendar";
+import { Calendar } from "@/components/ui/calendar";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -745,10 +745,11 @@ export function TaskDetailPanel({
                       </button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
-                      <ClickUpCalendar
-                        selectedDate={dueDateStart}
-                        onSelect={(date) => handleDueDateChange("start", date)}
-                        onClose={() => setStartCalOpen(false)}
+                      <Calendar
+                        mode="single"
+                        selected={dueDateStart ?? undefined}
+                        onSelect={(date) => { handleDueDateChange("start", date ?? null); setStartCalOpen(false); }}
+
                       />
                     </PopoverContent>
                   </Popover>
@@ -762,10 +763,11 @@ export function TaskDetailPanel({
                       </button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
-                      <ClickUpCalendar
-                        selectedDate={dueDateEnd}
-                        onSelect={(date) => handleDueDateChange("end", date)}
-                        onClose={() => setEndCalOpen(false)}
+                      <Calendar
+                        mode="single"
+                        selected={dueDateEnd ?? undefined}
+                        onSelect={(date) => { handleDueDateChange("end", date ?? null); setEndCalOpen(false); }}
+
                       />
                     </PopoverContent>
                   </Popover>

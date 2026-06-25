@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { MagnifyingGlassIcon, PlusIcon } from "@phosphor-icons/react";
+import { PlusIcon } from "@phosphor-icons/react";
+import { SearchInput } from "@/components/ui/search-input";
 import {
   Dialog,
   DialogContent,
@@ -141,17 +142,14 @@ export function AddTasksToSprintModal({
 
         <div className="min-w-0 w-full space-y-3 py-1">
           {/* Search */}
-          <div className="relative">
-            <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search backlog tasks…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-9 w-full rounded-md border bg-background pl-8 pr-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
-              autoFocus
-            />
-          </div>
+          <SearchInput
+            placeholder="Search backlog tasks…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onClear={() => setSearch("")}
+            className="h-9 w-full rounded-md text-sm"
+            autoFocus
+          />
 
           {/* Task list */}
           <div className="rounded-md border overflow-hidden">

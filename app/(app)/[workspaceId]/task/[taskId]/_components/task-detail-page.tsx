@@ -94,7 +94,7 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { TaskDescriptionEditor } from "@/components/task/task-description-editor";
-import { ClickUpCalendar } from "@/components/ui/clickup-calendar";
+import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { TaskDetailSkeleton } from "./task-detail-skeleton";
 import { useSetTopbar } from "@/lib/topbar-context";
@@ -895,10 +895,11 @@ export function TaskDetailPage({
                     </button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <ClickUpCalendar
-                      selectedDate={dueDateStart}
-                      onSelect={(date) => { handleDueDateChange("start", date); setStartCalOpen(false); }}
-                      onClose={() => setStartCalOpen(false)}
+                    <Calendar
+                      mode="single"
+                      selected={dueDateStart ?? undefined}
+                      onSelect={(date) => { handleDueDateChange("start", date ?? null); setStartCalOpen(false); }}
+
                     />
                   </PopoverContent>
                 </Popover>
@@ -913,10 +914,11 @@ export function TaskDetailPage({
                     </button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <ClickUpCalendar
-                      selectedDate={dueDateEnd}
-                      onSelect={(date) => { handleDueDateChange("end", date); setEndCalOpen(false); }}
-                      onClose={() => setEndCalOpen(false)}
+                    <Calendar
+                      mode="single"
+                      selected={dueDateEnd ?? undefined}
+                      onSelect={(date) => { handleDueDateChange("end", date ?? null); setEndCalOpen(false); }}
+
                     />
                   </PopoverContent>
                 </Popover>

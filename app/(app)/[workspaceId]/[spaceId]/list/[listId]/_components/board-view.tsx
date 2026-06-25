@@ -21,11 +21,11 @@ import {
 import { useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import {
-  MagnifyingGlassIcon,
   ArrowsDownUpIcon,
   FunnelIcon,
   PlusIcon,
 } from "@phosphor-icons/react";
+import { SearchInput } from "@/components/ui/search-input";
 import { updateTaskStatus } from "@/app/actions/task";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -396,16 +396,13 @@ export function BoardView({ workspaceId, space, list, statuses, tasks, members =
       <div className="flex items-center justify-between gap-4 flex-wrap mb-3">
         <div className="flex items-center gap-2 flex-wrap">
           {/* Search */}
-          <div className="relative">
-            <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search tasks…"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-8 w-44 rounded-lg border border-border bg-background text-foreground pl-8 pr-3 text-xs focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all focus:w-56 placeholder:text-muted-foreground"
-            />
-          </div>
+          <SearchInput
+            placeholder="Search tasks…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onClear={() => setSearchQuery("")}
+            className="w-44 focus:w-56"
+          />
 
           {/* Filter Popover */}
           <Popover>

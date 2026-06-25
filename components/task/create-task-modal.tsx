@@ -32,7 +32,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
-import { ClickUpCalendar } from "@/components/ui/clickup-calendar";
+import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ManageStatusesDialog } from "@/components/list/manage-statuses-dialog";
@@ -54,7 +54,7 @@ interface CreateTaskModalProps {
   listId: string;
   statuses: Status[];
   defaultStatusId?: string;
-  onCreated?: (taskId: string) => void;
+  onCreated?: (taskId: string) => void | Promise<void>;
   canManage?: boolean;
 }
 
@@ -137,9 +137,9 @@ export function CreateTaskModal({
     setLoading(true);
     setError("");
     const res = await createTask(workspaceId, spaceId, listId, { title: title.trim(), statusId });
+    if ("error" in res) { setLoading(false); setError(res.error); return; }
+    await onCreated?.(res.taskId);
     setLoading(false);
-    if ("error" in res) { setError(res.error); return; }
-    onCreated?.(res.taskId);
     onOpenChange(false);
   }
 
@@ -313,10 +313,11 @@ export function CreateTaskModal({
                 </button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <ClickUpCalendar
-                  selectedDate={dueDate}
-                  onSelect={(date) => { setDueDate(date); setDueDatePopoverOpen(false); }}
-                  onClose={() => setDueDatePopoverOpen(false)}
+                <Calendar
+                  mode="single"
+                  selected={dueDate ?? undefined}
+                  onSelect={(date) => { setDueDate(date ?? null); setDueDatePopoverOpen(false); }}
+
                 />
               </PopoverContent>
             </Popover>

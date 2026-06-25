@@ -95,13 +95,14 @@ export async function createTask(
   const title = data.title.trim();
   if (!title) return { error: "Task title is required" };
 
-  let statusId: string | undefined = data.statusId;
+  let statusId: string | undefined = data.statusId || undefined;
+  const effectiveListId = listId || null;
 
-  if (listId) {
+  if (effectiveListId) {
     const [currentList] = await db
       .select({ id: list.id })
       .from(list)
-      .where(and(eq(list.id, listId), eq(list.spaceId, spaceId), eq(list.isArchived, false)))
+      .where(and(eq(list.id, effectiveListId), eq(list.spaceId, spaceId), eq(list.isArchived, false)))
       .limit(1);
     if (!currentList) return { error: "List not found or archived" };
 
@@ -109,7 +110,7 @@ export async function createTask(
       const [firstStatus] = await db
         .select({ id: listStatus.id })
         .from(listStatus)
-        .where(and(eq(listStatus.listId, listId), eq(listStatus.type, "OPEN")))
+        .where(and(eq(listStatus.listId, effectiveListId), eq(listStatus.type, "OPEN")))
         .orderBy(asc(listStatus.orderIndex))
         .limit(1);
 
@@ -117,7 +118,7 @@ export async function createTask(
         const [anyStatus] = await db
           .select({ id: listStatus.id })
           .from(listStatus)
-          .where(eq(listStatus.listId, listId))
+          .where(eq(listStatus.listId, effectiveListId))
           .orderBy(asc(listStatus.orderIndex))
           .limit(1);
         if (!anyStatus) return { error: "List has no statuses" };
@@ -142,7 +143,7 @@ export async function createTask(
       seqNumber: taskSeq,
       workspaceId,
       spaceId,
-      listId: listId || null,
+      listId: effectiveListId,
       statusId: statusId ?? null,
       title,
       priority: "NONE",

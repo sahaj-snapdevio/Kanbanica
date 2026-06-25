@@ -25,6 +25,7 @@ import {
   FlagIcon,
   FunnelIcon,
 } from "@phosphor-icons/react";
+import { SearchInput } from "@/components/ui/search-input";
 import { toast } from "sonner";
 import { useSWRConfig } from "swr";
 import {
@@ -94,7 +95,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ClickUpCalendar } from "@/components/ui/clickup-calendar";
+import { Calendar } from "@/components/ui/calendar";
 
 interface Status {
   id: string;
@@ -592,11 +593,12 @@ function TaskRow({
                   )}
                 </button>
               </PopoverTrigger>
-              <PopoverContent align="end" side="bottom" className="p-0 border-0 shadow-none bg-transparent">
-                <ClickUpCalendar
-                  selectedDate={localDueDate}
-                  onSelect={handleSetDueDate}
-                  onClose={() => setDateOpen(false)}
+              <PopoverContent align="end" side="bottom" className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={localDueDate ?? undefined}
+                  onSelect={(date) => { handleSetDueDate(date ?? null); setDateOpen(false); }}
+
                 />
               </PopoverContent>
             </Popover>
@@ -892,11 +894,12 @@ function TaskRow({
                   <span>{dueDate ? dueDate.label : "Set date"}</span>
                 </button>
               </PopoverTrigger>
-              <PopoverContent align="start" className="p-0 border-0 bg-transparent shadow-none">
-                <ClickUpCalendar
-                  selectedDate={localDueDate}
-                  onSelect={handleSetDueDate}
-                  onClose={() => {}}
+              <PopoverContent align="start" className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={localDueDate ?? undefined}
+                  onSelect={(date) => handleSetDueDate(date ?? null)}
+
                 />
               </PopoverContent>
             </Popover>
@@ -1815,16 +1818,13 @@ export function ListView({
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <div className="flex items-center gap-2 flex-wrap">
                 {/* Search */}
-                <div className="relative">
-                  <PlusIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-gray-400 pointer-events-none" />
-                  <input
-                    type="text"
-                    placeholder="Search tasks…"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="h-8 w-44 rounded-lg border border-border bg-background pl-8 pr-3 text-xs focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all focus:w-56"
-                  />
-                </div>
+                <SearchInput
+                  placeholder="Search tasks…"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onClear={() => setSearchQuery("")}
+                  className="w-44 focus:w-56"
+                />
 
                 {/* Filter Popover */}
                 <Popover>

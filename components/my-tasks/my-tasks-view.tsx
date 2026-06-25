@@ -9,10 +9,10 @@ import {
   CheckCircleIcon,
   ClockIcon,
   FlagIcon,
-  MagnifyingGlassIcon,
   SquaresFourIcon,
   WarningIcon,
 } from "@phosphor-icons/react";
+import { SearchInput } from "@/components/ui/search-input";
 import { format, isToday, isPast, isThisWeek, isFuture, startOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import { getMyTasks, type MyTask, type MyTasksGroupBy } from "@/app/actions/my-tasks";
@@ -292,15 +292,13 @@ export function MyTasksView({ workspaceId }: MyTasksViewProps) {
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
         {/* Search */}
-        <div className="relative">
-          <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Search tasks…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-8 w-48 rounded-md border bg-background pl-8 pr-3 text-xs focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all focus:w-64"
-          />
+        <SearchInput
+          placeholder="Search tasks…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onClear={() => setSearch("")}
+          className="w-48 focus:w-64"
+        />
         </div>
 
         {/* Group by */}

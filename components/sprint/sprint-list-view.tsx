@@ -43,7 +43,8 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ClickUpCalendar } from "@/components/ui/clickup-calendar";
+import { Calendar } from "@/components/ui/calendar";
+import { SearchInput } from "@/components/ui/search-input";
 import { format, isToday, isPast } from "date-fns";
 import { toast } from "sonner";
 import { useSWRConfig } from "swr";
@@ -145,8 +146,8 @@ interface SprintListViewProps {
 type WorkspaceMember = { userId: string | null; name: string | null; email: string | null; image: string | null };
 
 const PRIORITY_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
-  NONE:   { label: "—",      color: "text-gray-400",    icon: "😴" },
-  LOW:    { label: "Low",    color: "text-gray-500",    icon: "🐢" },
+  NONE:   { label: "—",      color: "text-muted-foreground",    icon: "😴" },
+  LOW:    { label: "Low",    color: "text-muted-foreground/80",    icon: "🐢" },
   MEDIUM: { label: "Medium", color: "text-yellow-600",  icon: "🚶" },
   HIGH:   { label: "High",   color: "text-orange-500",  icon: "🏃" },
   URGENT: { label: "Urgent", color: "text-red-500",     icon: "⚡" },
@@ -340,8 +341,8 @@ function TaskRow({
     <>
       <div
         className={cn(
-          "group/row hidden md:flex items-center border-b border-gray-100 transition-colors cursor-pointer",
-          selected ? "bg-primary/5" : "hover:bg-gray-50/70",
+          "group/row hidden md:flex items-center border-b border-border transition-colors cursor-pointer",
+          selected ? "bg-primary/5" : "hover:bg-accent/50",
         )}
         onClick={() => router.push(`/${workspaceId}/task/${task.id}?from=sprint&sid=${sprintId}`)}
       >
@@ -357,7 +358,7 @@ function TaskRow({
             className={cn("flex size-4 items-center justify-center rounded border transition-opacity duration-200 cursor-pointer", selected ? "opacity-100" : "opacity-0 group-hover/row:opacity-100")}
             onClick={(e) => { e.stopPropagation(); onSelect(task.id, !selected); }}
           >
-            <div className={cn("flex size-4 items-center justify-center rounded border transition-colors", selected ? "border-primary bg-primary text-primary-foreground" : "border-gray-300 hover:border-gray-400 bg-white")}>
+            <div className={cn("flex size-4 items-center justify-center rounded border transition-colors", selected ? "border-primary bg-primary text-primary-foreground" : "border-input hover:border-primary/50 bg-background")}>
               {selected && <CheckIcon className="size-2.5" weight="bold" />}
             </div>
           </div>
@@ -365,11 +366,11 @@ function TaskRow({
 
         {/* Name */}
         <div className="flex flex-1 items-center gap-2.5 min-w-0 py-1.5 pr-4 pl-1">
-          <span className="text-2xs text-gray-400 font-mono shrink-0 select-none flex items-center gap-1.5">
+          <span className="text-2xs text-muted-foreground font-mono shrink-0 select-none flex items-center gap-1.5">
             <PushPinIcon className={cn("size-2.5 shrink-0", localPersonalPin ? "text-primary" : "invisible")} weight="fill" />
             #{task.seqNumber}
           </span>
-          <span className="text-[13px] font-medium text-gray-800 truncate group-hover/row:text-primary transition-colors">{task.title}</span>
+          <span className="text-[13px] font-medium text-foreground truncate group-hover/row:text-primary transition-colors">{task.title}</span>
           {task.tags.slice(0, 2).map((tag) => (
             <span
               key={tag.id}
@@ -386,7 +387,7 @@ function TaskRow({
           {canEdit ? (
             <Popover open={assigneeOpen} onOpenChange={(o) => { setAssigneeOpen(o); if (o) void loadMembers(); }}>
               <PopoverTrigger asChild>
-                <button className="flex items-center gap-2 w-full h-full px-2 rounded-md border border-transparent hover:border-gray-200 hover:bg-gray-50 transition-all text-left cursor-pointer select-none">
+                <button className="flex items-center gap-2 w-full h-full px-2 rounded-md border border-transparent hover:border-border hover:bg-accent/50 transition-all text-left cursor-pointer select-none">
                   {task.assignees.length > 0 ? (
                     <div className="flex -space-x-1.5">
                       {task.assignees.slice(0, 3).map((a) => (
@@ -396,11 +397,11 @@ function TaskRow({
                         </Avatar>
                       ))}
                       {task.assignees.length > 3 && (
-                        <div className="flex size-6 items-center justify-center rounded-full border border-white bg-gray-100 text-2xs text-gray-500 font-bold shadow-sm">+{task.assignees.length - 3}</div>
+                        <div className="flex size-6 items-center justify-center rounded-full border border-background bg-muted text-2xs text-muted-foreground font-bold shadow-sm">+{task.assignees.length - 3}</div>
                       )}
                     </div>
                   ) : (
-                    <UserIcon className="size-4 text-gray-400 group-hover/row:text-gray-600" weight="bold" />
+                    <UserIcon className="size-4 text-muted-foreground group-hover/row:text-foreground/70" weight="bold" />
                   )}
                 </button>
               </PopoverTrigger>
@@ -440,10 +441,10 @@ function TaskRow({
                       <AvatarFallback className="text-2xs bg-primary text-primary-foreground font-semibold">{userInitials(a.name)}</AvatarFallback>
                     </Avatar>
                   ))}
-                  {task.assignees.length > 3 && <div className="flex size-6 items-center justify-center rounded-full border border-white bg-gray-100 text-2xs text-gray-500 font-bold shadow-sm">+{task.assignees.length - 3}</div>}
+                  {task.assignees.length > 3 && <div className="flex size-6 items-center justify-center rounded-full border border-background bg-muted text-2xs text-muted-foreground font-bold shadow-sm">+{task.assignees.length - 3}</div>}
                 </div>
               ) : (
-                <UserIcon className="size-4 text-gray-300" weight="bold" />
+                <UserIcon className="size-4 text-muted-foreground/50" weight="bold" />
               )}
             </div>
           )}
@@ -454,21 +455,26 @@ function TaskRow({
           {canEdit ? (
             <Popover open={dateOpen} onOpenChange={setDateOpen}>
               <PopoverTrigger asChild>
-                <button className={cn("flex items-center gap-1.5 w-full h-full px-2 rounded-md border border-transparent hover:border-border hover:bg-accent/30 transition-all text-xs font-semibold text-left cursor-pointer select-none", dueDate?.overdue ? "text-red-500" : "text-gray-600")}>
+                <button className={cn("flex items-center gap-1.5 w-full h-full px-2 rounded-md border border-transparent hover:border-border hover:bg-accent/30 transition-all text-xs font-semibold text-left cursor-pointer select-none", dueDate?.overdue ? "text-red-500" : "text-foreground/70")}>
                   <CalendarBlankIcon className="size-3.5 shrink-0" />
                   {dueDate ? (
                     <span>{dueDate.label}</span>
                   ) : (
-                    <span className="text-gray-400">Set date</span>
+                    <span className="text-muted-foreground">Set date</span>
                   )}
                 </button>
               </PopoverTrigger>
-              <PopoverContent align="end" side="bottom" className="p-0 border-0 shadow-none bg-transparent">
-                <ClickUpCalendar selectedDate={localDueDate} onSelect={handleSetDueDate} onClose={() => setDateOpen(false)} />
+              <PopoverContent align="end" side="bottom" className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={localDueDate ?? undefined}
+                  onSelect={(date) => { handleSetDueDate(date ?? null); setDateOpen(false); }}
+
+                />
               </PopoverContent>
             </Popover>
           ) : (
-            <div className={cn("flex items-center gap-1.5 px-2 text-xs font-semibold", dueDate?.overdue ? "text-red-500" : "text-gray-400")}>
+            <div className={cn("flex items-center gap-1.5 px-2 text-xs font-semibold", dueDate?.overdue ? "text-red-500" : "text-muted-foreground")}>
               {dueDate ? <><CalendarBlankIcon className="size-3.5" /><span>{dueDate.label}</span></> : null}
             </div>
           )}
@@ -486,7 +492,7 @@ function TaskRow({
                       {priority.label}
                     </span>
                   ) : (
-                    <span className="flex items-center gap-1.5 text-xs font-bold text-gray-400">
+                    <span className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground">
                       <FlagIcon className="size-3.5 shrink-0" />
                       No priority
                     </span>
@@ -514,7 +520,7 @@ function TaskRow({
                   <span>{priority.icon}</span>{priority.label}
                 </span>
               ) : (
-                <span className="flex items-center gap-1.5 text-xs font-bold text-gray-400">
+                <span className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground">
                   <FlagIcon className="size-3.5 shrink-0" />
                   No priority
                 </span>
@@ -530,22 +536,22 @@ function TaskRow({
             <button
               onClick={handleTogglePersonalPin}
               title={localPersonalPin ? "Unpin from sidebar" : "Pin to sidebar"}
-              className="flex size-7 items-center justify-center rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors cursor-pointer"
+              className="flex size-7 items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
             >
               <PushPinIcon className="size-4" weight={localPersonalPin ? "fill" : "regular"} />
             </button>
-            <button onClick={() => router.push(`/${workspaceId}/task/${task.id}?from=sprint&sid=${sprintId}`)} title="Edit Task" className="flex size-7 items-center justify-center rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors cursor-pointer">
+            <button onClick={() => router.push(`/${workspaceId}/task/${task.id}?from=sprint&sid=${sprintId}`)} title="Edit Task" className="flex size-7 items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
               <PencilSimpleIcon className="size-4" />
             </button>
             {canEdit && (
-              <button onClick={async (e) => { e.stopPropagation(); await duplicateTask(workspaceId, spaceId, task.listId, task.id); router.refresh(); }} title="Duplicate Task" className="flex size-7 items-center justify-center rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors cursor-pointer">
+              <button onClick={async (e) => { e.stopPropagation(); await duplicateTask(workspaceId, spaceId, task.listId, task.id); router.refresh(); }} title="Duplicate Task" className="flex size-7 items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
                 <CopyIcon className="size-4" />
               </button>
             )}
             {/* Move status */}
             <Popover>
               <PopoverTrigger asChild>
-                <button title="Move Task Status" className="flex size-7 items-center justify-center rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors cursor-pointer">
+                <button title="Move Task Status" className="flex size-7 items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
                   <ArrowsOutCardinalIcon className="size-4" />
                 </button>
               </PopoverTrigger>
@@ -567,7 +573,7 @@ function TaskRow({
             {canEdit && (
               <Popover onOpenChange={(open) => { if (open) void loadMoveData(); }}>
                 <PopoverTrigger asChild>
-                  <button className="flex size-7 items-center justify-center rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors cursor-pointer">
+                  <button className="flex size-7 items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
                     <DotsThreeIcon className="size-4.5" weight="bold" />
                   </button>
                 </PopoverTrigger>
@@ -818,9 +824,9 @@ function StatusGroup({
       {/* Group header */}
       <div
         onClick={() => setCollapsed((v) => !v)}
-        className="group/header flex items-center gap-2.5 py-1.5 px-3 hover:bg-slate-50/80 transition-colors cursor-pointer select-none border-b border-gray-100"
+        className="group/header flex items-center gap-2.5 py-1.5 px-3 hover:bg-accent/40 transition-colors cursor-pointer select-none border-b border-border"
       >
-        <div className="flex size-5 items-center justify-center rounded hover:bg-gray-100 transition-colors shrink-0 text-gray-400 group-hover/header:text-gray-600">
+        <div className="flex size-5 items-center justify-center rounded hover:bg-accent transition-colors shrink-0 text-muted-foreground group-hover/header:text-foreground/70">
           {collapsed
             ? <CaretRightIcon weight="fill" className="size-3" />
             : <CaretDownIcon weight="fill" className="size-3" />}
@@ -834,7 +840,7 @@ function StatusGroup({
           {status.name}
         </span>
 
-        <span className="text-xs text-gray-400 font-semibold tabular-nums">
+        <span className="text-xs text-muted-foreground font-semibold tabular-nums">
           {tasks.length} {tasks.length === 1 ? "task" : "tasks"}
         </span>
 
@@ -904,10 +910,10 @@ function StatusGroup({
                 {someSelected && !allSelected && <div className="size-1.5 rounded-sm bg-primary" />}
               </div>
             </div>
-            <div className="flex-1 py-2 pr-4 text-2xs font-bold text-gray-400 uppercase tracking-wider">Name</div>
-            <div className="w-36 shrink-0 py-2 px-4 text-2xs font-bold text-gray-400 uppercase tracking-wider">Assignee</div>
-            <div className="w-28 shrink-0 py-2 px-4 text-2xs font-bold text-gray-400 uppercase tracking-wider">Due date</div>
-            <div className="w-28 shrink-0 py-2 px-4 text-2xs font-bold text-gray-400 uppercase tracking-wider">Priority</div>
+            <div className="flex-1 py-2 pr-4 text-2xs font-bold text-muted-foreground uppercase tracking-wider">Name</div>
+            <div className="w-36 shrink-0 py-2 px-4 text-2xs font-bold text-muted-foreground uppercase tracking-wider">Assignee</div>
+            <div className="w-28 shrink-0 py-2 px-4 text-2xs font-bold text-muted-foreground uppercase tracking-wider">Due date</div>
+            <div className="w-28 shrink-0 py-2 px-4 text-2xs font-bold text-muted-foreground uppercase tracking-wider">Priority</div>
             <div className="w-48 shrink-0" />
           </div>
 
@@ -1280,7 +1286,7 @@ function SprintBoardCardContent({
       onClick={() => !isDragging && !overlay && router.push(`/${workspaceId}/task/${task.id}?from=sprint&sid=${sprintId}`)}
     >
       <div {...dragListeners} className={cn(!overlay && "cursor-grab active:cursor-grabbing")}>
-        <p className="text-[13px] font-medium text-gray-800 leading-snug select-none line-clamp-2">{task.title}</p>
+        <p className="text-[13px] font-medium text-foreground leading-snug select-none line-clamp-2">{task.title}</p>
         {task.tags.length > 0 && (
           <div className="mt-1.5 flex flex-wrap gap-1">
             {task.tags.map((tag) => (
@@ -1295,7 +1301,7 @@ function SprintBoardCardContent({
           </div>
         )}
         <div className="mt-2 flex items-center justify-between gap-2">
-          <span className="font-mono text-2xs text-gray-400 shrink-0">#{task.seqNumber}</span>
+          <span className="font-mono text-2xs text-muted-foreground shrink-0">#{task.seqNumber}</span>
           <div className="flex items-center gap-2 min-w-0">
             {(task.priority && task.priority !== "NONE") && (
               <span className={cn("flex items-center gap-1 text-xs font-bold shrink-0", priority.color)}>
@@ -1379,9 +1385,6 @@ function SprintBoardColumn({
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status.id });
 
-  const draggableTasks = tasks.filter((t) => t.listId);
-  const staticTasks = tasks.filter((t) => !t.listId);
-
   return (
     <div
       className="flex w-72 shrink-0 flex-col rounded-xl p-2 gap-2 max-h-[calc(100vh-16rem)]"
@@ -1400,20 +1403,17 @@ function SprintBoardColumn({
       </div>
 
       {/* Droppable task list */}
-      <SortableContext items={draggableTasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+      <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
         <div
           ref={setNodeRef}
           className={cn(
             "flex flex-col gap-2 rounded-lg p-1 transition-all flex-1 overflow-y-auto min-h-0 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border",
-            (draggableTasks.length + staticTasks.length) === 0 && "min-h-8",
+            tasks.length === 0 && "min-h-8",
           )}
           style={isOver ? { boxShadow: `inset 0 0 0 2px ${status.color}` } : undefined}
         >
-          {draggableTasks.map((t) => (
+          {tasks.map((t) => (
             <SprintBoardCard key={t.id} task={t} workspaceId={workspaceId} sprintId={sprintId} />
-          ))}
-          {staticTasks.map((t) => (
-            <SprintBoardStaticCard key={t.id} task={t} workspaceId={workspaceId} sprintId={sprintId} />
           ))}
         </div>
       </SortableContext>
@@ -1428,9 +1428,9 @@ function NoStatusColumn({ tasks, workspaceId, sprintId }: { tasks: SprintTask[];
       style={{ backgroundColor: "#94a3b814" }}
     >
       <div className="flex items-center gap-2 px-1 py-1">
-        <span className="inline-block h-2.5 w-2.5 rounded-full bg-gray-400 shrink-0" />
+        <span className="inline-block h-2.5 w-2.5 rounded-full bg-muted-foreground/40 shrink-0" />
         <span className="flex-1 font-semibold text-sm uppercase tracking-wide text-foreground/80">No Status</span>
-        <span className="rounded-full px-2 py-0.5 text-xs font-semibold bg-gray-100 text-gray-500">
+        <span className="rounded-full px-2 py-0.5 text-xs font-semibold bg-muted text-muted-foreground">
           {tasks.length}
         </span>
       </div>
@@ -1450,6 +1450,7 @@ export function SprintListView({ workspaceId, spaceId, listId = "", statuses = [
   const [tasks, setTasks] = React.useState<SprintTask[]>([]);
   const [fetchedStatuses, setFetchedStatuses] = React.useState<Status[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const initialLoadedRef = React.useRef(false);
   const [sprintCollapsed, setSprintCollapsed] = React.useState(false);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
 
@@ -1476,7 +1477,7 @@ export function SprintListView({ workspaceId, spaceId, listId = "", statuses = [
   }
 
   const fetchData = React.useCallback(async () => {
-    setLoading(true);
+    if (!initialLoadedRef.current) setLoading(true);
     try {
       const res = await getActiveSprintView(workspaceId, spaceId);
       if ("error" in res) return;
@@ -1484,7 +1485,10 @@ export function SprintListView({ workspaceId, spaceId, listId = "", statuses = [
       setTasks(res.tasks as SprintTask[]);
       setFetchedStatuses((res.statuses ?? []) as Status[]);
     } finally {
-      setLoading(false);
+      if (!initialLoadedRef.current) {
+        initialLoadedRef.current = true;
+        setLoading(false);
+      }
     }
   }, [workspaceId, spaceId, listId, refreshKey]);
 
@@ -1505,7 +1509,7 @@ export function SprintListView({ workspaceId, spaceId, listId = "", statuses = [
     const activeId = active.id as string;
     const overId = over.id as string;
     const activeTask = boardTasks.find((t) => t.id === activeId);
-    if (!activeTask?.listId) return; // sprint-only tasks can't move
+    if (!activeTask) return;
     const overStatus = effectiveStatuses.find((s) => s.id === overId)?.id
       ?? boardTasks.find((t) => t.id === overId)?.statusId;
     if (!overStatus || overStatus === activeTask.statusId) return;
@@ -1518,7 +1522,7 @@ export function SprintListView({ workspaceId, spaceId, listId = "", statuses = [
     const activeId = active.id as string;
     const overId = over.id as string;
     const activeTask = boardTasks.find((t) => t.id === activeId);
-    if (!activeTask?.listId) return;
+    if (!activeTask) return;
     const newStatus = effectiveStatuses.find((s) => s.id === overId)?.id
       ?? boardTasks.find((t) => t.id === overId)?.statusId;
     const originalStatus = tasks.find((t) => t.id === activeId)?.statusId;
@@ -1567,14 +1571,21 @@ export function SprintListView({ workspaceId, spaceId, listId = "", statuses = [
   }, [statuses, fetchedStatuses, tasks]);
 
   const tasksByStatus = React.useMemo(() => {
+    const knownIds = new Set(effectiveStatuses.map((s) => s.id));
     const map = new Map<string, SprintTask[]>();
     for (const s of effectiveStatuses) map.set(s.id, []);
     for (const t of filteredTasks) {
-      const group = t.statusId ? map.get(t.statusId) : undefined;
-      if (group) group.push(t);
-      else map.get(effectiveStatuses[0]?.id ?? "")?.push(t);
+      if (t.statusId && knownIds.has(t.statusId)) {
+        map.get(t.statusId)!.push(t);
+      }
+      // tasks with null/unknown status go to noStatusListTasks below
     }
     return map;
+  }, [effectiveStatuses, filteredTasks]);
+
+  const noStatusListTasks = React.useMemo(() => {
+    const knownIds = new Set(effectiveStatuses.map((s) => s.id));
+    return filteredTasks.filter((t) => !t.statusId || !knownIds.has(t.statusId));
   }, [effectiveStatuses, filteredTasks]);
 
   // ── Board grouping ────────────────────────────────────────────────────────
@@ -1662,14 +1673,14 @@ export function SprintListView({ workspaceId, spaceId, listId = "", statuses = [
       <div className="flex items-center justify-between gap-4 flex-wrap mb-3">
         <div className="flex items-center gap-2 flex-wrap">
           {/* View toggle */}
-          <div className="flex items-center rounded-lg border border-gray-200 overflow-hidden">
+          <div className="flex items-center rounded-lg border border-border overflow-hidden">
             {(["list", "board"] as const).map((v) => (
               <button
                 key={v}
                 onClick={() => setView(v)}
                 className={cn(
                   "flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer select-none",
-                  view === v ? "bg-primary text-primary-foreground" : "text-gray-600 hover:bg-gray-50",
+                  view === v ? "bg-primary text-primary-foreground" : "text-foreground/70 hover:bg-accent/50",
                 )}
               >
                 {v === "list" ? <RowsIcon className="size-3.5" /> : <SquaresFourIcon className="size-3.5" />}
@@ -1679,22 +1690,19 @@ export function SprintListView({ workspaceId, spaceId, listId = "", statuses = [
           </div>
 
           {/* Search */}
-          <div className="relative">
-            <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-gray-400 pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search tasks…"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-8 w-44 rounded-lg border border-gray-200 bg-white pl-8 pr-3 text-xs focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all focus:w-56"
-            />
-          </div>
+          <SearchInput
+            placeholder="Search tasks…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onClear={() => setSearchQuery("")}
+            className="w-44 focus:w-56"
+          />
 
           {/* Filter Popover */}
           <Popover>
             <PopoverTrigger asChild>
-              <button className="flex items-center gap-1.5 h-8 rounded-lg border border-gray-200 px-3 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer select-none">
-                <FunnelIcon className="size-3.5 text-gray-500" />
+              <button className="flex items-center gap-1.5 h-8 rounded-lg border border-border px-3 text-xs font-semibold text-foreground/70 hover:bg-accent/50 transition-colors cursor-pointer select-none">
+                <FunnelIcon className="size-3.5 text-muted-foreground" />
                 Filters
                 {hasActiveFilters && (
                   <span className="ml-1 size-2 rounded-full bg-primary" />
@@ -1704,17 +1712,17 @@ export function SprintListView({ workspaceId, spaceId, listId = "", statuses = [
             <PopoverContent align="start" className="w-64 p-3 space-y-4">
               {/* Status filter */}
               <div>
-                <p className="mb-1.5 text-2xs font-bold text-gray-400 uppercase tracking-wide">Status</p>
+                <p className="mb-1.5 text-2xs font-bold text-muted-foreground uppercase tracking-wide">Status</p>
                 <div className="flex flex-col gap-1 max-h-32 overflow-y-auto">
                   {effectiveStatuses.map((s) => (
-                    <label key={s.id} className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer py-0.5 hover:bg-gray-50 rounded">
+                    <label key={s.id} className="flex items-center gap-2 text-xs text-foreground/80 cursor-pointer py-0.5 hover:bg-accent/50 rounded">
                       <input
                         type="checkbox"
                         checked={statusFilter.includes(s.id)}
                         onChange={(e) => {
                           setStatusFilter((prev) => e.target.checked ? [...prev, s.id] : prev.filter((id) => id !== s.id));
                         }}
-                        className="rounded border-gray-300 text-primary focus:ring-primary size-3.5"
+                        className="rounded border-input text-primary focus:ring-primary size-3.5"
                       />
                       <span className="truncate">{s.name}</span>
                     </label>
@@ -1724,17 +1732,17 @@ export function SprintListView({ workspaceId, spaceId, listId = "", statuses = [
 
               {/* Priority filter */}
               <div>
-                <p className="mb-1.5 text-2xs font-bold text-gray-400 uppercase tracking-wide">Priority</p>
+                <p className="mb-1.5 text-2xs font-bold text-muted-foreground uppercase tracking-wide">Priority</p>
                 <div className="flex flex-col gap-1">
                   {["URGENT", "HIGH", "MEDIUM", "LOW", "NONE"].map((p) => (
-                    <label key={p} className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer py-0.5 hover:bg-gray-50 rounded">
+                    <label key={p} className="flex items-center gap-2 text-xs text-foreground/80 cursor-pointer py-0.5 hover:bg-accent/50 rounded">
                       <input
                         type="checkbox"
                         checked={priorityFilter.includes(p)}
                         onChange={(e) => {
                           setPriorityFilter((prev) => e.target.checked ? [...prev, p] : prev.filter((v) => v !== p));
                         }}
-                        className="rounded border-gray-300 text-primary focus:ring-primary size-3.5"
+                        className="rounded border-input text-primary focus:ring-primary size-3.5"
                       />
                       <span>{p === "NONE" ? "No Priority" : p.charAt(0) + p.slice(1).toLowerCase()}</span>
                     </label>
@@ -1745,28 +1753,28 @@ export function SprintListView({ workspaceId, spaceId, listId = "", statuses = [
               {/* Assignee filter */}
               {members.length > 0 && (
                 <div>
-                  <p className="mb-1.5 text-2xs font-bold text-gray-400 uppercase tracking-wide">Assignee</p>
+                  <p className="mb-1.5 text-2xs font-bold text-muted-foreground uppercase tracking-wide">Assignee</p>
                   <div className="flex flex-col gap-1 max-h-36 overflow-y-auto">
-                    <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer py-0.5 hover:bg-gray-50 rounded">
+                    <label className="flex items-center gap-2 text-xs text-foreground/80 cursor-pointer py-0.5 hover:bg-accent/50 rounded">
                       <input
                         type="checkbox"
                         checked={assigneeFilter.includes("unassigned")}
                         onChange={(e) => {
                           setAssigneeFilter((prev) => e.target.checked ? [...prev, "unassigned"] : prev.filter((v) => v !== "unassigned"));
                         }}
-                        className="rounded border-gray-300 text-primary focus:ring-primary size-3.5"
+                        className="rounded border-input text-primary focus:ring-primary size-3.5"
                       />
                       <span>Unassigned</span>
                     </label>
                     {members.map((m) => (
-                      <label key={m.userId} className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer py-0.5 hover:bg-gray-50 rounded">
+                      <label key={m.userId} className="flex items-center gap-2 text-xs text-foreground/80 cursor-pointer py-0.5 hover:bg-accent/50 rounded">
                         <input
                           type="checkbox"
                           checked={assigneeFilter.includes(m.userId)}
                           onChange={(e) => {
                             setAssigneeFilter((prev) => e.target.checked ? [...prev, m.userId] : prev.filter((id) => id !== m.userId));
                           }}
-                          className="rounded border-gray-300 text-primary focus:ring-primary size-3.5"
+                          className="rounded border-input text-primary focus:ring-primary size-3.5"
                         />
                         <span className="truncate">{m.name || m.email}</span>
                       </label>
@@ -1848,11 +1856,42 @@ export function SprintListView({ workspaceId, spaceId, listId = "", statuses = [
                   />
                 </React.Fragment>
               ))}
+              {noStatusListTasks.length > 0 && (
+                <div>
+                  {effectiveStatuses.length > 0 && <div className="h-2" />}
+                  <div className="border-b border-border px-3 py-1.5 flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider border bg-muted text-muted-foreground border-border">
+                      <span className="size-1.5 rounded-full bg-muted-foreground/40 shrink-0" />
+                      No Status
+                    </span>
+                    <span className="text-xs text-muted-foreground font-semibold tabular-nums">
+                      {noStatusListTasks.length} {noStatusListTasks.length === 1 ? "task" : "tasks"}
+                    </span>
+                  </div>
+                  {noStatusListTasks.map((t) => (
+                    <TaskRow
+                      key={t.id}
+                      task={t}
+                      statusColor="#94a3b8"
+                      workspaceId={workspaceId}
+                      spaceId={spaceId}
+                      sprintId={sprintInfo.id}
+                      statuses={effectiveStatuses}
+                      isAdmin={isAdmin}
+                      canEdit={canEdit}
+                      selected={selectedIds.has(t.id)}
+                      onSelect={handleSelect}
+                      onRefresh={fetchData}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
       ) : (
         <DndContext
+          id="sprint-board-dnd"
           sensors={sensors}
           collisionDetection={closestCorners}
           onDragStart={onDragStart}

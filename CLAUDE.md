@@ -56,6 +56,11 @@ server/                    ← server actions
 
 ## Key Decisions & Conventions
 
+### UI Components
+- **Always use shadcn/ui components** — never build custom UI primitives (calendars, dialogs, dropdowns, inputs, etc.).
+- If a shadcn component isn't installed yet, add it with `npx shadcn@latest add <component>`.
+- Custom components are only acceptable for app-specific composite UI that has no shadcn equivalent.
+
 ### Routing
 - All workspace routes use `[workspaceId]` (uuid) — NOT slug. Slug is a vanity alias only.
 - Route shape: `/[workspaceId]/[spaceId]/list/[listId]` or `/[workspaceId]/[spaceId]/sprint/[sprintId]`
