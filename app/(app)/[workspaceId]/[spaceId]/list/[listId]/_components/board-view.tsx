@@ -39,6 +39,10 @@ function userInitials(name: string) {
   return clean.split(/[\s._-]+/).map((n) => n[0]).filter(Boolean).join("").toUpperCase().slice(0, 2) || "?";
 }
 
+function avatarSrc(key: string | null | undefined): string | undefined {
+  return key ? `/api/files/${key}` : undefined;
+}
+
 interface Status {
   id: string;
   name: string;
@@ -140,7 +144,7 @@ function CardContent({
               <div className="flex -space-x-1.5 ml-auto">
                 {task.assignees.slice(0, 3).map((a) => (
                   <Avatar key={a.userId} className="size-7 border-2 border-background" title={a.name}>
-                    {a.image && <AvatarImage src={a.image} alt={a.name} />}
+                    {a.image && <AvatarImage src={avatarSrc(a.image)} alt={a.name} />}
                     <AvatarFallback className="text-xs font-semibold bg-primary text-primary-foreground">
                       {userInitials(a.name)}
                     </AvatarFallback>

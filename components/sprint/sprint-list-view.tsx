@@ -159,6 +159,10 @@ function userInitials(name: string) {
   return clean.split(/[\s._-]+/).map((n) => n[0]).filter(Boolean).join("").toUpperCase().slice(0, 2) || "?";
 }
 
+function avatarSrc(key: string | null | undefined): string | undefined {
+  return key ? `/api/files/${key}` : undefined;
+}
+
 function formatDueDate(date: Date | null) {
   if (!date) return null;
   const d = new Date(date);
@@ -392,7 +396,7 @@ function TaskRow({
                     <div className="flex -space-x-1.5">
                       {task.assignees.slice(0, 3).map((a) => (
                         <Avatar key={a.userId} className="size-6 shrink-0 border border-white shadow-sm">
-                          {a.image && <AvatarImage src={a.image} alt={a.name} />}
+                          {a.image && <AvatarImage src={avatarSrc(a.image)} alt={a.name} />}
                           <AvatarFallback className="text-2xs bg-primary text-primary-foreground font-semibold">{userInitials(a.name)}</AvatarFallback>
                         </Avatar>
                       ))}
@@ -419,7 +423,7 @@ function TaskRow({
                       return (
                         <button key={m.userId} onClick={() => void handleToggleAssignee(m.userId)} className={cn("flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors cursor-pointer", assigned ? "bg-primary/10" : "hover:bg-accent")}>
                           <Avatar className="size-6 shrink-0">
-                            {m.image && <AvatarImage src={m.image} />}
+                            {m.image && <AvatarImage src={avatarSrc(m.image)} />}
                             <AvatarFallback className="text-2xs bg-primary/10 text-primary font-semibold">{userInitials(m.name ?? m.email ?? "?")}</AvatarFallback>
                           </Avatar>
                           <span className="flex-1 min-w-0 text-left truncate">{m.name ?? m.email}</span>
@@ -437,7 +441,7 @@ function TaskRow({
                 <div className="flex -space-x-1.5">
                   {task.assignees.slice(0, 3).map((a) => (
                     <Avatar key={a.userId} className="size-6 shrink-0 border border-white shadow-sm">
-                      {a.image && <AvatarImage src={a.image} alt={a.name} />}
+                      {a.image && <AvatarImage src={avatarSrc(a.image)} alt={a.name} />}
                       <AvatarFallback className="text-2xs bg-primary text-primary-foreground font-semibold">{userInitials(a.name)}</AvatarFallback>
                     </Avatar>
                   ))}
@@ -1313,7 +1317,7 @@ function SprintBoardCardContent({
               <div className="flex -space-x-1.5 ml-auto">
                 {task.assignees.slice(0, 3).map((a) => (
                   <Avatar key={a.userId} className="size-7 border-2 border-background" title={a.name}>
-                    {a.image && <AvatarImage src={a.image} alt={a.name} />}
+                    {a.image && <AvatarImage src={avatarSrc(a.image)} alt={a.name} />}
                     <AvatarFallback className="text-xs font-semibold bg-primary text-primary-foreground">
                       {userInitials(a.name)}
                     </AvatarFallback>

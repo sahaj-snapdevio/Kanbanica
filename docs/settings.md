@@ -46,15 +46,51 @@ Personal settings are scoped to the logged-in user and are workspace-independent
 | Field | Editable | Notes |
 |---|---|---|
 | Full name | Yes | Plain text, max 100 chars |
-| Avatar | Yes | JPEG / PNG / WebP, max 2 MB, min 100Ã—100 px. Stored in R2. |
-| Email address | No (read-only in MVP) | Shown for reference only |
+| Avatar | Yes | JPEG / PNG / WebP / GIF, max 2 MB raw upload. Processed server-side: resized to 256×256, stored as WebP. Storage key in `user.image`. |
+| Email address | Yes (two-step verified) | Sends verification link to new address; old email stays active until confirmed. |
 
 **Behaviour:**
-- Saving name updates `user.name` immediately (optimistic update).
-- Uploading a new avatar replaces the existing R2 file; old file is deleted first.
-- Avatar fallback: initials on a deterministic color background — see [avatar-system.md](./avatar-system.md).
+- Saving name updates `user.name` immediately.
+- Uploading a new avatar: sharp resizes to 256×256 (cover crop) and converts to WebP (quality 85) before storing. Old file is deleted first. Initials fallback (first letters of name, or first 2 of email) shown when no avatar is set.
+- Avatar is shown everywhere users appear: task assignees (list, board, sprint views), activity feed, comments, mention picker, workspace members table, space members table, and notification panel. The `UserAvatar` component (`components/common/user-avatar.tsx`) is the shared primitive — it accepts `name`, `email`, `image` (storage key) and size variants `xs/sm/md/lg`. URL construction (`/api/files/${key}`) happens inside the component.
+- **Email change flow:**
+  1. User enters a new email and clicks "Send verification email".
+  2. Better Auth sends a verification link to the **new** address via `user.changeEmail` config.
+  3. The old email remains active until the user clicks the link.
+  4. On click, Better Auth updates `user.email` in DB and redirects to `/dashboard/profile`.
+  5. If the link is ignored, nothing changes — old email keeps working.
 
-**Data written:** `User.name`, `User.image`
+**Data written:** `User.name`, `User.image`, `User.email` (only after verification click)
+
+---
+
+### 1.1a Account Deletion — Danger Zone on profile page
+
+**Access:** All authenticated users
+
+**Trigger:** User types their email address exactly and confirms.
+
+**Pre-flight checks (block deletion if any fail):**
+1. **Sole workspace owner** — if the user is the only ACTIVE OWNER in any workspace, deletion is blocked with an error: "Transfer ownership before deleting your account." The user must promote another member to Owner first.
+
+**Deletion sequence:**
+1. Delete avatar from storage (`storage.delete(user.image)`) — best-effort, non-fatal.
+2. Write audit log entry (`profile.account_deleted`).
+3. Run DB transaction in this order:
+   - `notification` (recipientId)
+   - `userNotificationPreference`, `userEmailPreference`, `mutedEntity`, `pushSubscription`
+   - `userSearchHistory`, `savedFilter`, `userOnboardingProgress`
+   - `taskAssignee`, `taskWatcher`, `timeLog`, `commentReaction`
+   - `spaceMember`, `workspaceMember`, `channelMember`
+   - `session`, `account`, `user` (auth records last)
+4. Redirect to `/login`.
+
+**Content anonymization (no migration needed):**
+- `comment.authorId` and `activityLog.userId` are plain `text` columns with no FK constraint — orphaned values are safe after deletion.
+- All queries that join on these columns use `.leftJoin(user, ...)` — when the user row is gone the join returns `null`.
+- `app/actions/comment.ts` maps `authorName: row.authorName ?? "Deleted User"`.
+- `app/actions/task.ts` maps `name: l.name ?? "Deleted User"` in the activity log response.
+- Comments and activity history are preserved; only the author identity is anonymized.
 
 ---
 

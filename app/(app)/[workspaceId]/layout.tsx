@@ -233,7 +233,7 @@ export default async function WorkspaceLayout({
           sprintDateFormat: s.sprintDateFormat ?? "MM/DD",
         }))}
         channels={channels}
-        user={{ name: session.user.name ?? null, email: session.user.email }}
+        user={{ name: session.user.name ?? null, email: session.user.email, image: session.user.image ?? null }}
         workspace={ws}
         workspaces={allMemberships.map((m) => ({
           id: m.workspaceId,

@@ -23,6 +23,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -200,16 +207,16 @@ function EditRow({
           className="h-7 text-sm flex-1"
           disabled={loading}
         />
-        <select
-          value={type}
-          onChange={(e) => setType(e.target.value as StatusType)}
-          className="h-7 rounded-md border bg-background px-2 text-xs shrink-0"
-          disabled={loading}
-        >
-          <option value="OPEN">Not started</option>
-          <option value="ACTIVE">Active</option>
-          <option value="CLOSED">Closed</option>
-        </select>
+        <Select value={type} onValueChange={(v) => setType(v as StatusType)} disabled={loading}>
+          <SelectTrigger className="h-7 w-32 text-xs shrink-0">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="OPEN" className="text-xs">Not started</SelectItem>
+            <SelectItem value="ACTIVE" className="text-xs">Active</SelectItem>
+            <SelectItem value="CLOSED" className="text-xs">Closed</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
       {error && <p className="text-xs text-destructive">{error}</p>}
       <div className="flex gap-2">

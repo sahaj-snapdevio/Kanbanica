@@ -889,6 +889,80 @@ Added `getListStatuses(workspaceId, spaceId, listId)` — fetches `listStatus` r
 
 ---
 
+## Change 8 — Sprint History: Closed Sprint View
+
+**Why:** Closed sprints were stored in the DB but had no dedicated UI. After closing a sprint, users had no way to review what was completed, what story points were delivered, or browse the final task list.
+
+**Spec:** `docs/sprint.md` section 8
+
+---
+
+### Step 8.1 — `getClosedSprintView` Server Action
+
+**File:** `app/actions/sprint.ts`
+
+Added `getClosedSprintView(workspaceId, spaceId, sprintId)` — fetches any sprint by ID (regardless of status) with full task data: assignees, tags, story points, status info. Also computes `stats: { totalTasks, closedTasks, totalPoints, closedPoints }`.
+
+Exported `ClosedSprintTask` type for use in the UI component.
+
+**Status:** `[x]`
+
+---
+
+### Step 8.2 — `ClosedSprintView` Component
+
+**File:** `components/sprint/closed-sprint-view.tsx`
+
+Read-only sprint detail component. Fetches data from `getClosedSprintView` on mount. Renders:
+- Header card: name, goal, start → end dates, "Closed" badge
+- Stats bar: progress bar + `closedTasks / totalTasks` + story point totals (hidden if no points set)
+- Task table grouped by status (each group collapsible), columns: title, status, assignees, priority, story points, due date
+- Clicking any task row navigates to `/{workspaceId}/task/{taskId}`
+
+**Status:** `[x]`
+
+---
+
+### Step 8.3 — Past Sprints Section in Sprint Panel
+
+**File:** `components/sprint/sprint-panel.tsx`
+
+Added a "Past Sprints" collapsible section at the bottom of the expanded Sprint Panel, below the Backlog count row. Visible only when `closedSprints.length > 0`.
+
+- Toggle button: `ClockCounterClockwiseIcon` + "Past Sprints" + count badge
+- Each closed sprint row: green `CheckCircleIcon` + sprint name + date range
+- Clicking a row navigates to `/{workspaceId}/{spaceId}/sprint/{sprint.id}`
+- State: `closedExpanded` (collapsed by default)
+
+Added `format` from `date-fns` and `CheckCircleIcon`, `ClockCounterClockwiseIcon` from `@phosphor-icons/react`.
+
+**Status:** `[x]`
+
+---
+
+### Step 8.4 — Sprint `page.tsx` Fetches Sprint Status
+
+**File:** `app/(app)/[workspaceId]/[spaceId]/sprint/[sprintId]/page.tsx`
+
+Added `sprint` table to DB imports. Added a fourth query in the parallel `Promise.all` to fetch `sprint.status` for the current `sprintId`. Returns 404 if the sprint does not exist. Passes `sprintStatus` as a new prop to `SprintPageClient`.
+
+**Status:** `[x]`
+
+---
+
+### Step 8.5 — `SprintPageClient` Branches on Sprint Status
+
+**File:** `app/(app)/[workspaceId]/[spaceId]/sprint/[sprintId]/_components/sprint-page-client.tsx`
+
+Added `sprintStatus: "PLANNED" | "ACTIVE" | "CLOSED"` prop.
+
+- If `sprintStatus === "CLOSED"`: renders `<ClosedSprintView>` below the Sprint Panel (no backlog toggle, no active sprint list view)
+- Otherwise: renders existing `<SprintListView>` + backlog toggle + `<BacklogView>` as before
+
+**Status:** `[x]`
+
+---
+
 ## Dependency Order
 
 ```

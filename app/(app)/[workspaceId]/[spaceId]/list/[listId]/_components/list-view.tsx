@@ -154,6 +154,10 @@ function userInitials(name: string) {
   return clean.split(/[\s._-]+/).map((n) => n[0]).filter(Boolean).join("").toUpperCase().slice(0, 2) || "?";
 }
 
+function avatarSrc(key: string | null | undefined): string | undefined {
+  return key ? `/api/files/${key}` : undefined;
+}
+
 function formatDueDate(date: Date | null) {
   if (!date) return null;
   const d = new Date(date);
@@ -488,7 +492,7 @@ function TaskRow({
                           <Tooltip key={a.userId}>
                             <TooltipTrigger asChild>
                               <Avatar className="size-6 shrink-0 border border-background shadow-sm">
-                                {a.image && <AvatarImage src={a.image} alt={a.name} />}
+                                {a.image && <AvatarImage src={avatarSrc(a.image)} alt={a.name} />}
                                 <AvatarFallback className="text-2xs bg-primary text-primary-foreground font-semibold">
                                   {userInitials(a.name)}
                                 </AvatarFallback>
@@ -537,7 +541,7 @@ function TaskRow({
                           )}
                         >
                           <Avatar className="size-6 shrink-0">
-                            {m.image && <AvatarImage src={m.image} />}
+                            {m.image && <AvatarImage src={avatarSrc(m.image)} />}
                             <AvatarFallback className="text-2xs bg-primary/10 text-primary font-semibold">
                               {userInitials(m.name ?? m.email ?? "?")}
                             </AvatarFallback>
@@ -557,7 +561,7 @@ function TaskRow({
                 <div className="flex -space-x-1.5">
                   {task.assignees.slice(0, 3).map((a) => (
                     <Avatar key={a.userId} className="size-6 shrink-0 border border-background shadow-sm">
-                      {a.image && <AvatarImage src={a.image} alt={a.name} />}
+                      {a.image && <AvatarImage src={avatarSrc(a.image)} alt={a.name} />}
                       <AvatarFallback className="text-2xs bg-primary text-primary-foreground font-semibold">
                         {userInitials(a.name)}
                       </AvatarFallback>
@@ -911,7 +915,7 @@ function TaskRow({
               <div className="flex -space-x-1.5">
                 {task.assignees.slice(0, 3).map((a) => (
                   <Avatar key={a.userId} className="size-5.5 border border-background">
-                    {a.image && <AvatarImage src={a.image} />}
+                    {a.image && <AvatarImage src={avatarSrc(a.image)} />}
                     <AvatarFallback className="text-[8px] bg-primary text-primary-foreground font-semibold">
                       {userInitials(a.name)}
                     </AvatarFallback>

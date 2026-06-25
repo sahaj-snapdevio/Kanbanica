@@ -61,6 +61,17 @@ server/                    ← server actions
 - If a shadcn component isn't installed yet, add it with `npx shadcn@latest add <component>`.
 - Custom components are only acceptable for app-specific composite UI that has no shadcn equivalent.
 
+### User Avatars
+- **Shared component:** `components/common/user-avatar.tsx` (`UserAvatar`) — use this everywhere a user avatar is shown. Props: `name`, `email`, `image` (storage key or null), `size` (`xs/sm/md/lg`), `className`.
+- **Storage key → URL:** `user.image` in the DB is a storage key (e.g. `avatars/{userId}/{uuid}.webp`). Never use it directly as an `<img src>`. `UserAvatar` converts it internally. For files that use raw `AvatarImage` (e.g. task views with custom stacking styles), use the local helper `avatarSrc(key)` → `/api/files/${key}`.
+- **Upload pipeline:** Sharp resizes to 256×256 WebP (quality 85) server-side before storing. Max raw upload: 2 MB.
+
+### UI Consistency
+- **Border radius:** All cards, modals, dialogs, popovers, and section containers must use `rounded-xl`. Buttons use `rounded-md`. Inputs use `rounded-md`. Never leave border radius missing on any surface.
+- **Shadcn components only** — do not use native HTML `<select>`, `<input type="checkbox">`, `<input type="date">`, etc. Always use the shadcn equivalent (Select, Checkbox, Calendar/DatePicker).
+- **Spacing:** Use consistent padding inside cards (`p-6` via `--card-spacing`). Section gaps use `space-y-6`.
+- Before shipping any UI, verify every interactive element and container has correct border radius, hover states, and focus rings matching the design system.
+
 ### Routing
 - All workspace routes use `[workspaceId]` (uuid) — NOT slug. Slug is a vanity alias only.
 - Route shape: `/[workspaceId]/[spaceId]/list/[listId]` or `/[workspaceId]/[spaceId]/sprint/[sprintId]`
@@ -96,6 +107,13 @@ server/                    ← server actions
 - Always delete the storage file before deleting the DB record (orphaned files are unrecoverable).
 - Generate serving URLs on demand by calling `storage.url(key)` — never persist URLs.
 - File size limit: 10 MB per file.
+
+### Account Deletion
+- **Block if sole owner**: before deleting, check `workspaceMember` for any workspace where this user is the only ACTIVE OWNER. If found, return an error telling them to transfer ownership first.
+- **Storage cleanup**: delete the avatar file from storage (`storage.delete(user.image)`) before the DB transaction. Non-fatal — proceed even if it fails.
+- **Full transaction order**: `notification` → `userNotificationPreference` / `userEmailPreference` / `mutedEntity` / `pushSubscription` → `userSearchHistory` / `savedFilter` / `userOnboardingProgress` → `taskAssignee` / `taskWatcher` / `timeLog` / `commentReaction` → `spaceMember` / `workspaceMember` / `channelMember` → `session` / `account` / `user`.
+- **Comments & activity logs are NOT deleted** — `comment.authorId` and `activityLog.userId` are plain `text` columns with no FK constraint, so orphaned values are safe. Queries use `.leftJoin(user, ...)` which returns `null` for deleted users. Fallback: `authorName ?? "Deleted User"` and `name ?? "Deleted User"` in the mapping layer.
+- See full spec in `docs/settings.md` § 1.1a.
 
 ### Task Descriptions
 - Stored as Tiptap JSON in a `jsonb` column (`description`).

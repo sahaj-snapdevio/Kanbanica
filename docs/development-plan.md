@@ -756,7 +756,7 @@ Phase 20 ->  QA & Launch Prep
 - [ ] Add task to sprint (drag from backlog or click `+`)
 - [ ] Story points input per task in sprint view
 - [ ] Close Sprint modal: list of incomplete tasks with decision per task (or apply to all)
-- [ ] Sprint History page: list of closed sprints with stats
+- [x] Sprint History page: list of closed sprints with stats
 - [ ] Board View in sprint mode: shows only active sprint tasks (toggle to show backlog)
 
 **Done when:** Full sprint lifecycle works — create, start, add tasks, track progress, and close with incomplete task handling. Auto-create and auto-close toggles function correctly.

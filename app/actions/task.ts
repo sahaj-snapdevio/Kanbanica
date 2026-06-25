@@ -754,7 +754,14 @@ export async function getTaskActivity(
     .orderBy(desc(activityLog.createdAt))
     .limit(50);
 
-  return { logs };
+  return {
+    logs: logs.map((l) => ({
+      ...l,
+      name: l.name ?? "Deleted User",
+      email: l.email ?? null,
+      image: l.image ?? null,
+    })),
+  };
 }
 
 // ─── Create subtask ──────────────────────────────────────────────────────────
@@ -892,7 +899,7 @@ export async function logTime(
     note: note ?? null,
   });
 
-  await writeActivityLog(taskId, session.user.id, "time_logged", { minutes: durationMinutes });
+  await writeActivityLog(taskId, session.user.id, "time_logged", { minutes: durationMinutes, note: note ?? null });
   revalidateList(workspaceId, spaceId, listId);
   return { ok: true };
 }

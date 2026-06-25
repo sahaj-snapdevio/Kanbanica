@@ -83,7 +83,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { TaskActivityFeed } from "@/components/task/task-activity-feed";
+import { TaskActivityFeed, type TaskActivityFeedHandle } from "@/components/task/task-activity-feed";
 import { ManageStatusesDialog } from "@/components/list/manage-statuses-dialog";
 import { Calendar } from "@/components/ui/calendar";
 
@@ -150,6 +150,7 @@ export function TaskDetailPanel({
   const [depResults, setDepResults] = React.useState<{ id: string; title: string; seqNumber: number }[]>([]);
   const [timeInput, setTimeInput] = React.useState("");
   const [timeNote, setTimeNote] = React.useState("");
+  const feedRef = React.useRef<TaskActivityFeedHandle>(null);
   const [saving, setSaving] = React.useState(false);
   const [startCalOpen, setStartCalOpen] = React.useState(false);
   const [endCalOpen, setEndCalOpen] = React.useState(false);
@@ -320,6 +321,7 @@ export function TaskDetailPanel({
     await logTime(workspaceId, spaceId, listId, taskId, mins, timeNote || undefined);
     setTimeInput("");
     setTimeNote("");
+    feedRef.current?.refresh();
     load();
   }
 
@@ -667,6 +669,7 @@ export function TaskDetailPanel({
 
             {/* Comments + Activity feed */}
             <TaskActivityFeed
+              ref={feedRef}
               workspaceId={workspaceId}
               spaceId={spaceId}
               listId={listId}

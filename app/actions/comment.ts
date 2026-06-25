@@ -180,7 +180,7 @@ export async function getTaskComments(
   for (const row of rows) {
     byId.set(row.id, {
       ...row,
-      authorName: row.authorName ?? null,
+      authorName: row.authorName ?? "Deleted User",
       authorEmail: row.authorEmail ?? null,
       authorImage: row.authorImage ?? null,
       body: row.body,

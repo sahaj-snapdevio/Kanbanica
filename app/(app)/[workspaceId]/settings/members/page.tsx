@@ -40,7 +40,7 @@ export default async function MembersPage({ params }: MembersPageProps) {
 
   const users = userIds.length
     ? await db
-        .select({ id: user.id, name: user.name, email: user.email })
+        .select({ id: user.id, name: user.name, email: user.email, image: user.image })
         .from(user)
         .where(inArray(user.id, userIds))
     : [];
@@ -58,6 +58,7 @@ export default async function MembersPage({ params }: MembersPageProps) {
         userId: m.userId!,
         name: u?.name ?? "Deleted User",
         email: u?.email ?? "—",
+        image: u?.image ?? null,
         role: m.role,
         joinedAt: (m.joinedAt ?? m.createdAt).toISOString(),
       };

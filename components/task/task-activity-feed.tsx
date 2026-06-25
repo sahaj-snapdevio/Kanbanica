@@ -69,6 +69,10 @@ interface FeedItem {
   activity?: ActivityEntry;
 }
 
+export interface TaskActivityFeedHandle {
+  refresh: () => void;
+}
+
 interface TaskActivityFeedProps {
   workspaceId: string;
   spaceId: string;
@@ -84,6 +88,10 @@ function initials(name: string | null, email: string | null) {
   const n = name?.trim();
   if (n) return n.split(" ").map((s) => s[0]).join("").toUpperCase().slice(0, 2);
   return (email ?? "?").slice(0, 2).toUpperCase();
+}
+
+function avatarSrc(key: string | null | undefined): string | undefined {
+  return key ? `/api/files/${key}` : undefined;
 }
 
 function describeEvent(eventType: string, meta: Record<string, unknown>): string {
@@ -113,7 +121,13 @@ function describeEvent(eventType: string, meta: Record<string, unknown>): string
     case "task_archived": return "archived this task";
     case "task_unarchived": return "unarchived this task";
     case "task_moved": return "moved this task";
-    case "time_logged": return `logged ${meta.minutes} minutes`;
+    case "time_logged": {
+      const mins = Number(meta.minutes);
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
+      const duration = h > 0 && m > 0 ? `${h}h ${m}m` : h > 0 ? `${h}h` : `${m}m`;
+      return `logged ${duration}`;
+    }
     case "comment_added": return "left a comment";
     case "subtask_created": return `created subtask "${meta.subtask_title}"`;
     case "subtask_completed": return `completed subtask "${meta.subtask_title}"`;
@@ -624,7 +638,7 @@ function CommentItem({
         {/* Header */}
         <div className="flex items-center gap-2 px-3 pt-3 pb-2">
           <Avatar className="size-7 shrink-0">
-            {comment.authorImage && <AvatarImage src={comment.authorImage} />}
+            {comment.authorImage && <AvatarImage src={avatarSrc(comment.authorImage)} />}
             <AvatarFallback className="text-2xs bg-primary/10 text-primary font-semibold">
               {initials(comment.authorName, comment.authorEmail)}
             </AvatarFallback>
@@ -851,24 +865,34 @@ function CommentItem({
 // ─── Activity row ─────────────────────────────────────────────────────────────
 
 function ActivityRow({ entry }: { entry: ActivityEntry }) {
+  const meta = entry.meta as Record<string, unknown>;
+  const timeNote = entry.eventType === "time_logged" ? (meta.note as string | null | undefined) : null;
+
   return (
     <div className="flex items-start gap-2 py-1 px-1">
       <Avatar className="size-5 shrink-0 mt-0.5">
-        {entry.image && <AvatarImage src={entry.image} />}
+        {entry.image && <AvatarImage src={avatarSrc(entry.image)} />}
         <AvatarFallback className="text-[9px] bg-muted">
           {initials(entry.name, entry.email)}
         </AvatarFallback>
       </Avatar>
       <div className="flex-1 min-w-0 text-xs text-muted-foreground">
-        <span className="font-medium text-foreground">{entry.name ?? entry.email ?? "System"}</span>
-        {" "}
-        {describeEvent(entry.eventType, entry.meta as Record<string, unknown>)}
-        <span
-          className="ml-2 text-2xs opacity-70"
-          title={format(new Date(entry.createdAt), "PPpp")}
-        >
-          {formatDistanceToNow(new Date(entry.createdAt), { addSuffix: true })}
-        </span>
+        <div>
+          <span className="font-medium text-foreground">{entry.name ?? entry.email ?? "System"}</span>
+          {" "}
+          {describeEvent(entry.eventType, meta)}
+          <span
+            className="ml-2 text-2xs opacity-70"
+            title={format(new Date(entry.createdAt), "PPpp")}
+          >
+            {formatDistanceToNow(new Date(entry.createdAt), { addSuffix: true })}
+          </span>
+        </div>
+        {timeNote && (
+          <p className="mt-0.5 text-2xs text-muted-foreground/80 italic truncate">
+            &ldquo;{timeNote}&rdquo;
+          </p>
+        )}
       </div>
     </div>
   );
@@ -876,14 +900,15 @@ function ActivityRow({ entry }: { entry: ActivityEntry }) {
 
 // ─── Main feed ────────────────────────────────────────────────────────────────
 
-export function TaskActivityFeed({
+export const TaskActivityFeed = React.forwardRef<TaskActivityFeedHandle, TaskActivityFeedProps>(
+function TaskActivityFeed({
   workspaceId,
   spaceId,
   listId,
   taskId,
   currentUserId,
   isAdmin,
-}: TaskActivityFeedProps) {
+}, ref) {
   const [comments, setComments] = React.useState<CommentWithReplies[]>([]);
   const [activityLogs, setActivityLogs] = React.useState<ActivityEntry[]>([]);
   const [members, setMembers] = React.useState<MentionMember[]>([]);
@@ -900,6 +925,8 @@ export function TaskActivityFeed({
     if (Array.isArray(membersRes)) setMembers(membersRes);
     setLoading(false);
   }, [workspaceId, spaceId, taskId]);
+
+  React.useImperativeHandle(ref, () => ({ refresh: () => { void load(); } }), [load]);
 
   React.useEffect(() => { void load(); }, [load]);
 
@@ -990,4 +1017,6 @@ export function TaskActivityFeed({
       </div>
     </div>
   );
-}
+});
+
+TaskActivityFeed.displayName = "TaskActivityFeed";

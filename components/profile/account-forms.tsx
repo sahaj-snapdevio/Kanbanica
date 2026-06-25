@@ -1,12 +1,13 @@
 "use client";
 
+import * as React from "react";
 import { useActionState } from "react";
 import {
   type ActionState,
-  changeEmailAction,
   deleteAccountAction,
   updateNameAction,
 } from "@/app/actions/profile";
+import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -37,19 +38,73 @@ function ActionMessage({ state }: { state: ActionState }) {
   return null;
 }
 
+function EmailChangeForm({ email, callbackURL }: { email: string; callbackURL: string }) {
+  const [pending, setPending] = React.useState(false);
+  const [message, setMessage] = React.useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const newEmail = (new FormData(e.currentTarget).get("email") as string ?? "").trim().toLowerCase();
+
+    if (newEmail === email.toLowerCase()) {
+      setMessage({ type: "error", text: "That's already your current email." });
+      return;
+    }
+
+    setPending(true);
+    setMessage(null);
+
+    const { error } = await authClient.changeEmail({
+      newEmail,
+      callbackURL,
+    });
+
+    setPending(false);
+
+    if (error) {
+      setMessage({ type: "error", text: error.message ?? "Failed to send verification email." });
+    } else {
+      setMessage({ type: "success", text: `Verification email sent to ${newEmail}. Click the link to confirm your new address.` });
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <label className="block" htmlFor="email">
+        <span className="mb-2 block font-semibold text-foreground text-sm">
+          New email
+        </span>
+        <Input
+          defaultValue={email}
+          id="email"
+          name="email"
+          required
+          type="email"
+        />
+      </label>
+      {message && (
+        <p className={`rounded-md p-3 text-sm ${message.type === "error" ? "bg-destructive/10 text-destructive" : "bg-success-subtle text-success-foreground"}`}>
+          {message.text}
+        </p>
+      )}
+      <Button disabled={pending} type="submit">
+        {pending ? "Sending…" : "Send verification email"}
+      </Button>
+    </form>
+  );
+}
+
 export function AccountIdentityForms({
   email,
   name,
+  callbackURL = "/dashboard/profile",
 }: {
   email: string;
   name: string;
+  callbackURL?: string;
 }) {
   const [nameState, nameAction, namePending] = useActionState(
     updateNameAction,
-    initialState
-  );
-  const [emailState, emailAction, emailPending] = useActionState(
-    changeEmailAction,
     initialState
   );
 
@@ -87,28 +142,12 @@ export function AccountIdentityForms({
         <CardHeader>
           <CardTitle>Email Address</CardTitle>
           <CardDescription>
-            Magic-link authentication uses this email as the account identity.
+            A verification link is sent to the new address. Your old email
+            stays active until you confirm.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form action={emailAction} className="space-y-4">
-            <label className="block" htmlFor="email">
-              <span className="mb-2 block font-semibold text-foreground text-sm">
-                Email
-              </span>
-              <Input
-                defaultValue={email}
-                id="email"
-                name="email"
-                required
-                type="email"
-              />
-            </label>
-            <ActionMessage state={emailState} />
-            <Button disabled={emailPending} type="submit">
-              {emailPending ? "Saving..." : "Update email"}
-            </Button>
-          </form>
+          <EmailChangeForm email={email} callbackURL={callbackURL} />
         </CardContent>
       </Card>
     </div>
