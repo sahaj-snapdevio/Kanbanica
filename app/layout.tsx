@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import Script from "next/script";
 import type { ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { PRODUCT_DESCRIPTION, PRODUCT_NAME } from "@/config/platform";
@@ -29,14 +30,14 @@ export default function RootLayout({
 }: Readonly<{ children: ReactNode }>) {
   return (
     <html className={cn("scroll-smooth font-sans", inter.variable)} lang="en" suppressHydrationWarning>
-      <head>
-        <script
+      <body suppressHydrationWarning>
+        <Script
+          id="theme-init"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var p=window.location.pathname.split('/');var wid=p[1];var a=wid?localStorage.getItem('kanbanica_appearance_'+wid):null;var dark=a==='dark'||(a!=='light'&&(a==='auto'||!a)&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark)document.documentElement.classList.add('dark');}catch(e){}})();`,
           }}
         />
-      </head>
-      <body suppressHydrationWarning>
         {children}
         <Toaster richColors position="top-right" />
       </body>

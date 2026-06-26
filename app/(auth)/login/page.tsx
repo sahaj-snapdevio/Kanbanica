@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import { getCurrentSession } from "@/lib/authz";
 import { PRODUCT_NAME } from "@/config/platform";
@@ -15,7 +16,15 @@ export default async function LoginPage() {
       <WatermarkBackground />
       <div className="relative z-10 w-full max-w-sm">
         <div className="mb-8 text-center">
-          <span className="font-bold text-2xl text-[#174D38] tracking-tight">{PRODUCT_NAME}</span>
+          <span className="flex items-center justify-center gap-2 font-bold text-base text-[#174D38]">
+                        <Image
+                          alt={`${PRODUCT_NAME} Logo`}
+                          className="h-7 w-auto object-contain"
+                          height={38}
+                          src="/Kanbanica2.png"
+                          width={140}
+                        />
+                      </span>
           <p className="mt-1 text-[#6b7280] text-sm">Project management for modern teams</p>
         </div>
         <LoginForm />

@@ -2232,9 +2232,7 @@ function TestimonialsSection() {
                     {/* Futuristic HUD corner accents */}
                     <div className="absolute top-2.5 left-2.5 size-2.5 border-t border-l border-emerald-500/40 rounded-tl-xs pointer-events-none" />
                     <div className="absolute bottom-2.5 right-2.5 size-2.5 border-b border-r border-emerald-500/40 rounded-br-xs pointer-events-none" />
-                    <div className="absolute top-2.5 right-3.5 font-mono text-[7px] text-emerald-400/40 tracking-widest uppercase pointer-events-none">
-                      SUIT_ID.0{idx + 1}
-                    </div>
+                    
 
                     {/* Star Rating */}
                     <div className="flex gap-0.5 text-emerald-400 mb-4">
