@@ -56,7 +56,6 @@ export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
   } = useSWR<NotificationsResponse>(
     open ? `/api/me/notifications?filter=${activeTab}` : null,
     fetcher,
-    { refreshInterval: open ? 15000 : 0 },
   );
 
   const notifications = data?.notifications ?? [];

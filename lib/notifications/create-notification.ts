@@ -5,6 +5,7 @@ import { notification, mutedEntity, userNotificationPreference } from "@/db/sche
 import { and, eq, inArray, or, isNull } from "drizzle-orm";
 import type { NotificationTriggerType } from "./types";
 import { sendPushToUser } from "./push";
+import { pushToUser } from "@/lib/sse-clients";
 
 export interface CreateNotificationParams {
   workspaceId: string;
@@ -116,6 +117,10 @@ async function _create(params: CreateNotificationParams) {
         expiresAt,
       })),
     );
+    // Push SSE event to all connected browsers for each recipient
+    for (const recipientId of notifRecipients) {
+      pushToUser(recipientId, { type: "new_notification" });
+    }
   }
 
   // Send push notifications — fire-and-forget per recipient

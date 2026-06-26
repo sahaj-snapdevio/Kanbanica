@@ -904,6 +904,43 @@ export async function logTime(
   return { ok: true };
 }
 
+export async function deleteTimeLog(
+  workspaceId: string,
+  spaceId: string,
+  listId: string,
+  taskId: string,
+  timeLogId: string,
+): Promise<{ ok: true } | { error: string }> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return { error: "Unauthorized" };
+
+  const err = await requireEditAccess(session.user.id, workspaceId, spaceId);
+  if (err) return err;
+
+  const [entry] = await db
+    .select({ userId: timeLog.userId })
+    .from(timeLog)
+    .where(and(eq(timeLog.id, timeLogId), eq(timeLog.taskId, taskId)))
+    .limit(1);
+
+  if (!entry) return { error: "Time log not found" };
+
+  if (entry.userId !== session.user.id) {
+    const [member] = await db
+      .select({ role: workspaceMember.role })
+      .from(workspaceMember)
+      .where(and(eq(workspaceMember.workspaceId, workspaceId), eq(workspaceMember.userId, session.user.id)))
+      .limit(1);
+    if (!member || (member.role !== "OWNER" && member.role !== "ADMIN")) {
+      return { error: "You can only delete your own time entries" };
+    }
+  }
+
+  await db.delete(timeLog).where(and(eq(timeLog.id, timeLogId), eq(timeLog.taskId, taskId)));
+  revalidateList(workspaceId, spaceId, listId);
+  return { ok: true };
+}
+
 // ─── Bulk actions ─────────────────────────────────────────────────────────────
 
 export async function bulkUpdateStatus(
@@ -1073,6 +1110,53 @@ export async function getTaskLocation(
 }
 
 // ─── Get archived tasks for list ──────────────────────────────────────────────
+
+export async function reorderTasksById(
+  workspaceId: string,
+  spaceId: string,
+  taskIds: string[],
+): Promise<{ ok: true } | { error: string }> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return { error: "Unauthorized" };
+
+  const permErr = await requireEditAccess(session.user.id, workspaceId, spaceId);
+  if (permErr) return permErr;
+
+  await db.transaction(async (tx) => {
+    for (let i = 0; i < taskIds.length; i++) {
+      await tx
+        .update(task)
+        .set({ orderIndex: (i + 1) * 1000, updatedAt: new Date() })
+        .where(eq(task.id, taskIds[i]));
+    }
+  });
+
+  return { ok: true };
+}
+
+export async function reorderTasksInStatus(
+  workspaceId: string,
+  spaceId: string,
+  listId: string,
+  taskIds: string[], // full ordered list of task IDs in the group
+): Promise<{ ok: true } | { error: string }> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return { error: "Unauthorized" };
+
+  const permErr = await requireEditAccess(session.user.id, workspaceId, spaceId);
+  if (permErr) return permErr;
+
+  await db.transaction(async (tx) => {
+    for (let i = 0; i < taskIds.length; i++) {
+      await tx
+        .update(task)
+        .set({ orderIndex: (i + 1) * 1000, updatedAt: new Date() })
+        .where(and(eq(task.id, taskIds[i]), eq(task.listId, listId)));
+    }
+  });
+
+  return { ok: true };
+}
 
 export async function getArchivedTasksForList(
   workspaceId: string,

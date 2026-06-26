@@ -50,6 +50,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -106,10 +107,10 @@ interface TaskDetailPanelProps {
 
 const PRIORITY_CONFIG: Record<Priority, { label: string; color: string; icon: string; bg: string }> = {
   NONE: { label: "No Priority", color: "text-muted-foreground", icon: "😴", bg: "bg-muted/60" },
-  LOW: { label: "Low", color: "text-blue-500", icon: "🐢", bg: "bg-blue-50 dark:bg-blue-950/40" },
+  LOW: { label: "Low", color: "text-blue-500", icon: "🦥", bg: "bg-blue-50 dark:bg-blue-950/40" },
   MEDIUM: { label: "Medium", color: "text-yellow-500", icon: "🚶", bg: "bg-yellow-50 dark:bg-yellow-950/40" },
   HIGH: { label: "High", color: "text-orange-500", icon: "🏃", bg: "bg-orange-50 dark:bg-orange-950/40" },
-  URGENT: { label: "Urgent", color: "text-red-500", icon: "⚡", bg: "bg-red-50 dark:bg-red-950/40" },
+  URGENT: { label: "Urgent", color: "text-red-500", icon: "🚨", bg: "bg-red-50 dark:bg-red-950/40" },
 };
 
 // ─── Avatar helper ────────────────────────────────────────────────────────────
@@ -155,6 +156,8 @@ export function TaskDetailPanel({
   const [startCalOpen, setStartCalOpen] = React.useState(false);
   const [endCalOpen, setEndCalOpen] = React.useState(false);
   const [manageStatusesOpen, setManageStatusesOpen] = React.useState(false);
+  const [deleteOpen, setDeleteOpen] = React.useState(false);
+  const [deleting, setDeleting] = React.useState(false);
 
   async function load() {
     setLoading(true);
@@ -340,9 +343,15 @@ export function TaskDetailPanel({
     onOpenChange(false);
   }
 
-  async function handleDelete() {
-    if (!confirm(`Permanently delete this task? This cannot be undone.`)) return;
+  function handleDelete() {
+    setDeleteOpen(true);
+  }
+
+  async function confirmDelete() {
+    setDeleting(true);
     await deleteTask(workspaceId, spaceId, listId, taskId);
+    setDeleting(false);
+    setDeleteOpen(false);
     onOpenChange(false);
   }
 
@@ -913,6 +922,28 @@ export function TaskDetailPanel({
     </>
   );
 
+  const deleteTaskDialog = (
+    <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+      <DialogContent className="sm:max-w-xs text-center">
+        <div className="flex flex-col items-center gap-3 pt-2">
+          <div className="flex size-12 items-center justify-center rounded-full bg-destructive/10">
+            <TrashIcon className="size-6 text-destructive" weight="fill" />
+          </div>
+          <div>
+            <DialogTitle className="text-base font-bold">Delete Task</DialogTitle>
+            <p className="text-sm text-muted-foreground mt-1">This action cannot be undone.</p>
+          </div>
+        </div>
+        <div className="flex gap-2 mt-2">
+          <Button variant="outline" className="flex-1" onClick={() => setDeleteOpen(false)} disabled={deleting}>Cancel</Button>
+          <Button variant="destructive" className="flex-1" onClick={confirmDelete} disabled={deleting}>
+            {deleting ? "Deleting…" : "Delete"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
   const deleteTagDialog = (
     <AlertDialog open={!!deleteTagTarget} onOpenChange={(open) => { if (!open) setDeleteTagTarget(null); }}>
       <AlertDialogContent>
@@ -942,6 +973,7 @@ export function TaskDetailPanel({
           {panelContent}
         </div>
         {deleteTagDialog}
+        {deleteTaskDialog}
       </>
     );
   }
@@ -957,6 +989,7 @@ export function TaskDetailPanel({
         </SheetContent>
       </Sheet>
       {deleteTagDialog}
+      {deleteTaskDialog}
       <ManageStatusesDialog
         open={manageStatusesOpen}
         onOpenChange={setManageStatusesOpen}

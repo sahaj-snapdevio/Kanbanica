@@ -353,6 +353,7 @@ L-- created_at          (timestamp)
 | Method | Endpoint | Description | Access |
 |--------|----------|-------------|--------|
 | GET | `/api/me/notifications` | Get notifications (paginated, filterable by read/unread/mentions) | Authenticated user |
+| **GET** | **`/api/me/notifications/stream`** | **SSE stream — server pushes `new_notification` events in real time** | **Authenticated user** |
 | PATCH | `/api/me/notifications/:id/read` | Mark notification as read | Notification recipient |
 | PATCH | `/api/me/notifications/read-all` | Mark all notifications as read | Authenticated user |
 | DELETE | `/api/me/notifications/:id` | Dismiss a single notification | Notification recipient |
@@ -432,6 +433,41 @@ L-- created_at          (timestamp)
 - In-app notification sounds
 - Scheduled / snooze notifications ("remind me about this in 2 hours")
 - Read receipts on comments
+
+---
+
+## Real-Time Delivery (SSE)
+
+In-app notifications are delivered instantly via **Server-Sent Events (SSE)** — no polling.
+
+### How it works
+
+1. `NotificationBell` opens a persistent HTTP connection to `GET /api/me/notifications/stream` on mount.
+2. The server holds the connection open and streams `data: {...}\n\n` events whenever `createNotifications` inserts a new row for that user.
+3. On each event, the client calls SWR's global `mutate` to revalidate all `/api/me/notifications*` keys — the bell badge and the open panel update instantly.
+4. A `: ping\n\n` comment is sent every 25 seconds to prevent proxy/load-balancer timeouts.
+5. `EventSource` auto-reconnects if the connection drops (built-in browser behaviour).
+
+### Server-side registry
+
+`lib/sse-clients.ts` maintains an **in-memory Map** of open controllers:
+
+```typescript
+const clients = new Map<string, Set<ReadableStreamDefaultController>>();
+
+registerClient(userId, ctrl)   // called on SSE connect
+unregisterClient(userId, ctrl) // called on disconnect / abort
+pushToUser(userId, data)       // called by createNotifications after DB insert
+```
+
+**Single-server limitation:** The in-memory Map is per-process. If the app runs behind multiple Node processes (e.g. clustered or on multiple servers), events pushed in process A won't reach clients connected to process B. Fix when needed: replace the Map with a Redis pub/sub channel — `pushToUser` publishes, each process subscribes and fans out to its local clients.
+
+### Folder
+
+```
+lib/sse-clients.ts                            ← in-memory registry
+app/api/me/notifications/stream/route.ts      ← SSE endpoint
+```
 
 ---
 

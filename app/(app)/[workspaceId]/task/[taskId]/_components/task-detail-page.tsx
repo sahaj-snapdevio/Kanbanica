@@ -38,6 +38,7 @@ import {
   duplicateTask,
   getWorkspaceMembers,
   logTime,
+  deleteTimeLog,
   createSubtask,
 } from "@/app/actions/task";
 import { TaskActivityFeed, type TaskActivityFeedHandle } from "@/components/task/task-activity-feed";
@@ -75,7 +76,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -115,7 +121,7 @@ const PRIORITY_CONFIG: Record<
   LOW: {
     label: "Low",
     color: "text-blue-500",
-    icon: "🐢",
+    icon: "🦥",
     bg: "bg-blue-50 dark:bg-blue-950/40",
   },
   MEDIUM: {
@@ -133,7 +139,7 @@ const PRIORITY_CONFIG: Record<
   URGENT: {
     label: "Urgent",
     color: "text-red-500",
-    icon: "⚡",
+    icon: "🚨",
     bg: "bg-red-50 dark:bg-red-950/40",
   },
 };
@@ -170,6 +176,103 @@ function FieldRow({
     </div>
   );
 }
+
+// ─── Time Entries Panel ───────────────────────────────────────────────────────
+
+type TimeLogRow = {
+  id: string;
+  userId: string;
+  durationMinutes: number;
+  note: string | null;
+  loggedAt: Date;
+};
+
+function formatDuration(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h > 0 && m > 0) return `${h}h ${m}m`;
+  if (h > 0) return `${h}h`;
+  return `${m}m`;
+}
+
+function TimeEntriesPanel({
+  timeLogs,
+  members,
+  currentUserId,
+  onDelete,
+}: {
+  timeLogs: TimeLogRow[];
+  members: { userId: string; name: string; email: string; image: string | null }[];
+  currentUserId: string;
+  onDelete: (id: string) => void;
+}) {
+  const totalMinutes = timeLogs.reduce((s, l) => s + l.durationMinutes, 0);
+
+  if (timeLogs.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
+        <TimerIcon className="size-8 opacity-20 mb-2" />
+        <p className="text-xs">No time logged yet</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3 pb-2 border-b">
+        <span className="text-xs text-muted-foreground">Total logged</span>
+        <span className="text-sm font-semibold">{formatDuration(totalMinutes)}</span>
+      </div>
+      <div className="space-y-1">
+        {timeLogs.map((entry) => {
+          const member = members.find((m) => m.userId === entry.userId);
+          const name = member?.name ?? member?.email ?? "Unknown";
+          const initials = name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2);
+          const canDelete = entry.userId === currentUserId;
+
+          return (
+            <div
+              key={entry.id}
+              className="group flex items-start gap-2.5 py-2.5 px-2 rounded-lg hover:bg-accent/40 transition-colors"
+            >
+              <Avatar className="size-6 shrink-0 mt-0.5">
+                {member?.image && <AvatarImage src={`/api/files/${member.image}`} />}
+                <AvatarFallback className="text-[9px] bg-muted">{initials}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-xs font-medium text-foreground">{name}</span>
+                  <span className="text-2xs text-muted-foreground">·</span>
+                  <span className="text-2xs text-muted-foreground">
+                    {format(new Date(entry.loggedAt), "MMM d, h:mm a")}
+                  </span>
+                  <span className="ml-auto text-xs font-semibold shrink-0">
+                    {formatDuration(entry.durationMinutes)}
+                  </span>
+                  {canDelete && (
+                    <button
+                      onClick={() => onDelete(entry.id)}
+                      className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all shrink-0"
+                    >
+                      <TrashIcon className="size-3.5" />
+                    </button>
+                  )}
+                </div>
+                {entry.note && (
+                  <p className="text-2xs text-muted-foreground mt-0.5 italic truncate">
+                    &ldquo;{entry.note}&rdquo;
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
 
 interface TaskDetailPageProps {
   workspaceId: string;
@@ -226,6 +329,7 @@ export function TaskDetailPage({
   >([]);
   const [timeInput, setTimeInput] = React.useState("");
   const [timeNote, setTimeNote] = React.useState("");
+  const [rightTab, setRightTab] = React.useState<"activity" | "time">("activity");
   const feedRef = React.useRef<TaskActivityFeedHandle>(null);
   const [saving, setSaving] = React.useState(false);
   const [showDepsSection, setShowDepsSection] = React.useState(false);
@@ -253,6 +357,8 @@ export function TaskDetailPage({
   const [tagPopoverOpen, setTagPopoverOpen] = React.useState(false);
   const [startCalOpen, setStartCalOpen] = React.useState(false);
   const [endCalOpen, setEndCalOpen] = React.useState(false);
+  const [deleteOpen, setDeleteOpen] = React.useState(false);
+  const [deleting, setDeleting] = React.useState(false);
 
   async function fetchAll(showSpinner: boolean) {
     if (showSpinner) setLoading(true);
@@ -518,6 +624,13 @@ export function TaskDetailPage({
     );
     setTimeInput("");
     setTimeNote("");
+    setRightTab("time");
+    feedRef.current?.refresh();
+    load();
+  }
+
+  async function handleDeleteTimeLog(timeLogId: string) {
+    await deleteTimeLog(workspaceId, spaceId, listId, taskId, timeLogId);
     feedRef.current?.refresh();
     load();
   }
@@ -534,10 +647,14 @@ export function TaskDetailPage({
     router.push(backUrl);
   }
 
-  async function handleDelete() {
-    if (!confirm("Permanently delete this task? This cannot be undone."))
-      return;
+  function handleDelete() {
+    setDeleteOpen(true);
+  }
+
+  async function confirmDelete() {
+    setDeleting(true);
     await deleteTask(workspaceId, spaceId, listId, taskId);
+    setDeleting(false);
     router.push(backUrl);
   }
 
@@ -1578,17 +1695,55 @@ export function TaskDetailPage({
           </div>
         </div>
 
-        {/* ── Right: comments + activity ── */}
+        {/* ── Right: activity + time entries ── */}
         <div className="w-80 xl:w-96 shrink-0 border-l flex flex-col overflow-hidden">
+          {/* Tab bar */}
+          <div className="flex shrink-0 border-b">
+            <button
+              onClick={() => setRightTab("activity")}
+              className={cn(
+                "flex-1 py-2.5 text-xs font-medium transition-colors border-b-2",
+                rightTab === "activity"
+                  ? "text-foreground border-primary"
+                  : "text-muted-foreground border-transparent hover:text-foreground",
+              )}
+            >
+              Activity
+            </button>
+            <button
+              onClick={() => setRightTab("time")}
+              className={cn(
+                "flex-1 py-2.5 text-xs font-medium transition-colors border-b-2",
+                rightTab === "time"
+                  ? "text-foreground border-primary"
+                  : "text-muted-foreground border-transparent hover:text-foreground",
+              )}
+            >
+              Time Entries
+              {timeLogs.length > 0 && (
+                <span className="ml-1 text-2xs opacity-60">({timeLogs.length})</span>
+              )}
+            </button>
+          </div>
+
           <div className="flex-1 overflow-y-auto px-5 py-4">
-            <TaskActivityFeed
-              ref={feedRef}
-              workspaceId={workspaceId}
-              spaceId={spaceId}
-              listId={listId}
-              taskId={taskId}
-              currentUserId={currentUserId}
-            />
+            {rightTab === "activity" ? (
+              <TaskActivityFeed
+                ref={feedRef}
+                workspaceId={workspaceId}
+                spaceId={spaceId}
+                listId={listId}
+                taskId={taskId}
+                currentUserId={currentUserId}
+              />
+            ) : (
+              <TimeEntriesPanel
+                timeLogs={timeLogs}
+                members={members}
+                currentUserId={currentUserId}
+                onDelete={handleDeleteTimeLog}
+              />
+            )}
           </div>
 
           {/* Task seq footer */}
@@ -1629,6 +1784,25 @@ export function TaskDetailPage({
       listId={listId}
       onSaved={() => fetchAll(false)}
     />
+    <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+      <DialogContent className="sm:max-w-xs text-center">
+        <div className="flex flex-col items-center gap-3 pt-2">
+          <div className="flex size-12 items-center justify-center rounded-full bg-destructive/10">
+            <TrashIcon className="size-6 text-destructive" weight="fill" />
+          </div>
+          <div>
+            <DialogTitle className="text-base font-bold">Delete Task</DialogTitle>
+            <p className="text-sm text-muted-foreground mt-1">This action cannot be undone.</p>
+          </div>
+        </div>
+        <div className="flex gap-2 mt-2">
+          <Button variant="outline" className="flex-1" onClick={() => setDeleteOpen(false)} disabled={deleting}>Cancel</Button>
+          <Button variant="destructive" className="flex-1" onClick={confirmDelete} disabled={deleting}>
+            {deleting ? "Deleting…" : "Delete"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
     </>
   );
 }

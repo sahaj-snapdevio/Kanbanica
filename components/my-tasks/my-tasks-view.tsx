@@ -34,10 +34,10 @@ interface Group {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const PRIORITY_CONFIG = {
-  URGENT: { label: "Urgent", color: "text-red-500",    icon: "⚡" },
+  URGENT: { label: "Urgent", color: "text-red-500",    icon: "🚨" },
   HIGH:   { label: "High",   color: "text-orange-500", icon: "🏃" },
   MEDIUM: { label: "Medium", color: "text-yellow-500", icon: "🚶" },
-  LOW:    { label: "Low",    color: "text-blue-500",   icon: "🐢" },
+  LOW:    { label: "Low",    color: "text-blue-500",   icon: "🦥" },
   NONE:   { label: "—",      color: "text-muted-foreground/40", icon: "😴" },
 } as const;
 
@@ -299,7 +299,6 @@ export function MyTasksView({ workspaceId }: MyTasksViewProps) {
           onClear={() => setSearch("")}
           className="w-48 focus:w-64"
         />
-        </div>
 
         {/* Group by */}
         <div className="flex items-center gap-1.5 rounded-md border bg-background px-2 h-8">

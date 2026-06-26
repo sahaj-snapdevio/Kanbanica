@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { and, eq } from "drizzle-orm";
+import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { task, list, workspace } from "@/db/schema";
@@ -9,6 +10,13 @@ import { TaskDetailPage } from "./_components/task-detail-page";
 
 interface TaskPageProps {
   params: Promise<{ workspaceId: string; taskId: string }>;
+}
+
+export async function generateMetadata({ params }: TaskPageProps): Promise<Metadata> {
+  const { taskId } = await params;
+  const row = await db.select({ title: task.title }).from(task).where(eq(task.id, taskId)).limit(1).then((r) => r[0]);
+  if (!row) return { title: "Task" };
+  return { title: row.title };
 }
 
 export default async function TaskPage({ params }: TaskPageProps) {

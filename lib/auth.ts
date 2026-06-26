@@ -37,18 +37,23 @@ export const auth = betterAuth({
     enabled: true,
     disableSignUp: true,
   },
+  emailVerification: {
+    sendVerificationEmail: async ({ user, url }) => {
+      const { html, text } = await emailChangeTemplate({
+        newEmail: user.email,
+        verifyUrl: url,
+      });
+      await enqueueEmail({
+        to: user.email,
+        subject: `Confirm your new email address for ${PRODUCT_NAME}`,
+        html,
+        text,
+      });
+    },
+  },
   user: {
     changeEmail: {
       enabled: true,
-      sendChangeEmailVerification: async ({ newEmail, url }) => {
-        const { html, text } = await emailChangeTemplate({ newEmail, verifyUrl: url });
-        await enqueueEmail({
-          to: newEmail,
-          subject: `Confirm your new email address for ${PRODUCT_NAME}`,
-          html,
-          text,
-        });
-      },
     },
   },
   plugins: [

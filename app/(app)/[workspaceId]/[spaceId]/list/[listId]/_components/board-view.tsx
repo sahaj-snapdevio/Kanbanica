@@ -85,10 +85,10 @@ const PRIORITY_ORDER: Record<Task["priority"], number> = {
 
 const PRIORITY_CONFIG: Record<Task["priority"], { label: string; color: string; icon: string }> = {
   NONE:   { label: "No Priority", color: "text-muted-foreground", icon: "😴" },
-  LOW:    { label: "Low",         color: "text-muted-foreground", icon: "🐢" },
+  LOW:    { label: "Low",         color: "text-muted-foreground", icon: "🦥" },
   MEDIUM: { label: "Medium",      color: "text-yellow-600",       icon: "🚶" },
   HIGH:   { label: "High",        color: "text-orange-500",       icon: "🏃" },
-  URGENT: { label: "Urgent",      color: "text-red-500",          icon: "⚡" },
+  URGENT: { label: "Urgent",      color: "text-red-500",          icon: "🚨" },
 };
 
 // ─── Card visual (no dnd hooks) ──────────────────────────────────────────────

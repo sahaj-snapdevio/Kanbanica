@@ -1,28 +1,22 @@
-﻿"use client";
+"use client";
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import {
   ArchiveIcon,
-  ArrowsOutCardinalIcon,
-  CalendarBlankIcon,
   CaretDownIcon,
   CaretRightIcon,
   CheckIcon,
-  CopyIcon,
   DotsThreeIcon,
-  FlagIcon,
   FunnelIcon,
   LightningIcon,
   MagnifyingGlassIcon,
   PencilSimpleIcon,
   PlusIcon,
-  PushPinIcon,
   RowsIcon,
   SquaresFourIcon,
   TrayIcon,
   TrashIcon,
-  UserIcon,
   XIcon,
 } from "@phosphor-icons/react";
 import {
@@ -31,7 +25,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  closestCorners,
+  closestCenter,
   useDroppable,
   type DragStartEvent,
   type DragOverEvent,
@@ -39,13 +33,15 @@ import {
 } from "@dnd-kit/core";
 import {
   SortableContext,
+  arrayMove,
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Calendar } from "@/components/ui/calendar";
 import { SearchInput } from "@/components/ui/search-input";
-import { format, isToday, isPast } from "date-fns";
+import { TaskListRow, type TaskListRowProps } from "@/components/task/task-list-row";
+import { PRIORITY_CONFIG, userInitials, avatarSrc } from "@/lib/priority-config";
+import { format } from "date-fns";
 import { toast } from "sonner";
 import { useSWRConfig } from "swr";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -69,20 +65,14 @@ import {
   bulkRemoveTasksFromSprint,
 } from "@/app/actions/sprint";
 import {
-  archiveTask,
   bulkArchiveTasks,
   bulkDeleteTasks,
   bulkMoveTasks,
   bulkUpdateStatus,
   createTask,
-  deleteTask,
-  duplicateTask,
-  getWorkspaceMembers,
-  moveTask,
-  updateTask,
+  reorderTasksById,
   updateTaskStatus,
 } from "@/app/actions/task";
-import { addAssignee, removeAssignee } from "@/app/actions/task-assignee";
 import { createListStatus, getWorkspaceLists, updateListStatus } from "@/app/actions/list";
 import { CreateTaskModal } from "@/components/task/create-task-modal";
 import { cn } from "@/lib/utils";
@@ -141,517 +131,12 @@ interface SprintListViewProps {
   refreshKey?: number;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-type WorkspaceMember = { userId: string | null; name: string | null; email: string | null; image: string | null };
-
-const PRIORITY_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
-  NONE:   { label: "—",      color: "text-muted-foreground",    icon: "😴" },
-  LOW:    { label: "Low",    color: "text-muted-foreground/80",    icon: "🐢" },
-  MEDIUM: { label: "Medium", color: "text-yellow-600",  icon: "🚶" },
-  HIGH:   { label: "High",   color: "text-orange-500",  icon: "🏃" },
-  URGENT: { label: "Urgent", color: "text-red-500",     icon: "⚡" },
-};
-
-function userInitials(name: string) {
-  if (!name) return "?";
-  const clean = name.includes("@") ? name.split("@")[0] : name;
-  return clean.split(/[\s._-]+/).map((n) => n[0]).filter(Boolean).join("").toUpperCase().slice(0, 2) || "?";
-}
-
-function avatarSrc(key: string | null | undefined): string | undefined {
-  return key ? `/api/files/${key}` : undefined;
-}
-
-function formatDueDate(date: Date | null) {
-  if (!date) return null;
-  const d = new Date(date);
-  const overdue = isPast(d) && !isToday(d);
-  return { label: isToday(d) ? "Today" : format(d, "MMM d"), overdue };
-}
+type SprintOption = { id: string; name: string; status: "PLANNED" | "ACTIVE" | "CLOSED" };
+type ListSpaceOption = { id: string; name: string; color: string | null; lists: { id: string; name: string; color: string | null }[] };
 
 function formatDateRange(start: Date | null, end: Date | null): string {
   const fmt = (d: Date | null) => (d ? format(new Date(d), "M/d") : "—");
   return `${fmt(start)} - ${fmt(end)}`;
-}
-
-// ─── Task row ─────────────────────────────────────────────────────────────────
-
-type SprintOption = { id: string; name: string; status: "PLANNED" | "ACTIVE" | "CLOSED" };
-type ListSpaceOption = { id: string; name: string; color: string | null; lists: { id: string; name: string; color: string | null }[] };
-
-function TaskRow({
-  task,
-  statusColor,
-  workspaceId,
-  spaceId,
-  sprintId,
-  statuses,
-  isAdmin,
-  canEdit,
-  selected,
-  onSelect,
-  onRefresh,
-}: {
-  task: SprintTask;
-  statusColor: string;
-  workspaceId: string;
-  spaceId: string;
-  sprintId: string;
-  statuses: Status[];
-  isAdmin?: boolean;
-  canEdit?: boolean;
-  selected: boolean;
-  onSelect: (id: string, checked: boolean) => void;
-  onRefresh: () => void;
-}) {
-  const router = useRouter();
-  const { mutate } = useSWRConfig();
-
-  // Optimistic local state
-  const [localPriority, setLocalPriority] = React.useState<string>(task.priority ?? "NONE");
-  const [localDueDate, setLocalDueDate] = React.useState<Date | null>(task.dueDateStart ?? null);
-  const [localPersonalPin, setLocalPersonalPin] = React.useState(false);
-  React.useEffect(() => { setLocalPriority(task.priority ?? "NONE"); }, [task.priority]);
-  React.useEffect(() => { setLocalDueDate(task.dueDateStart ?? null); }, [task.dueDateStart]);
-
-  // Check if task is pinned on mount
-  React.useEffect(() => {
-    fetch(`/api/tasks/${task.id}/pin`)
-      .then((r) => r.json())
-      .then((d) => { if (typeof d?.pinned === "boolean") setLocalPersonalPin(d.pinned); })
-      .catch(() => {});
-  }, [task.id]);
-  React.useEffect(() => {
-    function onUnpin(e: Event) {
-      if ((e as CustomEvent<{ taskId: string }>).detail.taskId === task.id) setLocalPersonalPin(false);
-    }
-    window.addEventListener("task-personal-unpin", onUnpin);
-    return () => window.removeEventListener("task-personal-unpin", onUnpin);
-  }, [task.id]);
-
-  async function handleTogglePersonalPin(e: React.MouseEvent) {
-    e.stopPropagation();
-    const next = !localPersonalPin;
-    setLocalPersonalPin(next);
-    try {
-      const res = await fetch(`/api/tasks/${task.id}/pin`, { method: next ? "POST" : "DELETE" });
-      if (!res.ok) {
-        setLocalPersonalPin(!next);
-        const data = await res.json().catch(() => ({}));
-        toast.error(data.error ?? "Failed to update pin");
-      } else {
-        mutate(`/api/workspaces/${workspaceId}/pinned-tasks`);
-      }
-    } catch {
-      setLocalPersonalPin(!next);
-      toast.error("Failed to update pin");
-    }
-  }
-
-  const priority = PRIORITY_CONFIG[localPriority] ?? PRIORITY_CONFIG.NONE;
-  const dueDate = formatDueDate(localDueDate);
-
-  // Inline editing state
-  const [assigneeOpen, setAssigneeOpen] = React.useState(false);
-  const [members, setMembers] = React.useState<WorkspaceMember[] | null>(null);
-  const [memberSearch, setMemberSearch] = React.useState("");
-  const [dateOpen, setDateOpen] = React.useState(false);
-  const [priorityOpen, setPriorityOpen] = React.useState(false);
-  const [deleteOpen, setDeleteOpen] = React.useState(false);
-  const [deleting, setDeleting] = React.useState(false);
-  const [moveSprints, setMoveSprints] = React.useState<SprintOption[] | null>(null);
-  const [moveListSpaces, setMoveListSpaces] = React.useState<ListSpaceOption[] | null>(null);
-
-  async function loadMoveData() {
-    if (moveSprints !== null) return;
-    const [sprintsRes, listsRes] = await Promise.all([
-      getSprints(workspaceId, spaceId),
-      getWorkspaceLists(workspaceId, task.listId ?? ""),
-    ]);
-    setMoveSprints("error" in sprintsRes ? [] : sprintsRes.sprints.filter((s) => s.status !== "CLOSED" && s.id !== sprintId));
-    setMoveListSpaces("error" in listsRes ? [] : listsRes.spaces);
-  }
-
-  async function handleMoveToSprint(targetSprintId: string, sprintName: string) {
-    const res = await bulkMoveTasksToSprint(workspaceId, spaceId, task.listId ?? null, [task.id], targetSprintId);
-    if ("error" in res) { toast.error(res.error); return; }
-    toast.success(`Moved to ${sprintName}`);
-    onRefresh();
-  }
-
-  async function handleMoveToList(targetListId: string, listName: string) {
-    const res = await moveTask(workspaceId, spaceId, task.id, targetListId);
-    if ("error" in res) { toast.error(res.error); return; }
-    toast.success(`Moved to ${listName}`);
-    onRefresh();
-  }
-
-  async function handleMoveToBacklog() {
-    const res = await bulkRemoveTasksFromSprint(workspaceId, spaceId, sprintId, [task.id]);
-    if ("error" in res) { toast.error(res.error); return; }
-    toast.success("Moved to backlog");
-    onRefresh();
-  }
-
-  async function loadMembers() {
-    if (members !== null) return;
-    const res = await getWorkspaceMembers(workspaceId);
-    if ("error" in res) return;
-    setMembers(res.members);
-  }
-
-  async function handleToggleAssignee(userId: string | null) {
-    if (!userId) return;
-    const isAssigned = task.assignees.some((a) => a.userId === userId);
-    if (isAssigned) await removeAssignee(workspaceId, spaceId, task.listId, task.id, userId);
-    else await addAssignee(workspaceId, spaceId, task.listId, task.id, userId);
-    router.refresh();
-  }
-
-  async function handleSetDueDate(date: Date | null) {
-    const prev = localDueDate;
-    setLocalDueDate(date);
-    setDateOpen(false);
-    const res = await updateTask(workspaceId, spaceId, task.listId, task.id, { dueDateStart: date, dueDateEnd: date });
-    if ("error" in res) { setLocalDueDate(prev); toast.error("Failed to update due date"); }
-    else router.refresh();
-  }
-
-  async function handleSetPriority(p: string) {
-    const prev = localPriority;
-    setLocalPriority(p);
-    setPriorityOpen(false);
-    const res = await updateTask(workspaceId, spaceId, task.listId, task.id, { priority: p as "NONE" | "LOW" | "MEDIUM" | "HIGH" | "URGENT" });
-    if ("error" in res) { setLocalPriority(prev); toast.error("Failed to update priority"); }
-    else router.refresh();
-  }
-
-  async function confirmDelete() {
-    setDeleting(true);
-    await deleteTask(workspaceId, spaceId, task.listId, task.id);
-    setDeleting(false);
-    setDeleteOpen(false);
-    onRefresh();
-  }
-
-  const filteredMembers = (members ?? []).filter(
-    (m) =>
-      m.name?.toLowerCase().includes(memberSearch.toLowerCase()) ||
-      m.email?.toLowerCase().includes(memberSearch.toLowerCase()),
-  );
-
-  return (
-    <>
-      <div
-        className={cn(
-          "group/row hidden md:flex items-center border-b border-border transition-colors cursor-pointer",
-          selected ? "bg-primary/5" : "hover:bg-accent/50",
-        )}
-        onClick={() => router.push(`/${workspaceId}/task/${task.id}?from=sprint&sid=${sprintId}`)}
-      >
-        {/* Left status indicator */}
-        <div
-          className={cn("w-0.75 self-stretch shrink-0 transition-opacity duration-200", selected ? "opacity-100" : "opacity-0 group-hover/row:opacity-100")}
-          style={{ backgroundColor: statusColor }}
-        />
-
-        {/* Checkbox */}
-        <div className="flex items-center pl-3 py-1.5 shrink-0 w-10">
-          <div
-            className={cn("flex size-4 items-center justify-center rounded border transition-opacity duration-200 cursor-pointer", selected ? "opacity-100" : "opacity-0 group-hover/row:opacity-100")}
-            onClick={(e) => { e.stopPropagation(); onSelect(task.id, !selected); }}
-          >
-            <div className={cn("flex size-4 items-center justify-center rounded border transition-colors", selected ? "border-primary bg-primary text-primary-foreground" : "border-input hover:border-primary/50 bg-background")}>
-              {selected && <CheckIcon className="size-2.5" weight="bold" />}
-            </div>
-          </div>
-        </div>
-
-        {/* Name */}
-        <div className="flex flex-1 items-center gap-2.5 min-w-0 py-1.5 pr-4 pl-1">
-          <span className="text-2xs text-muted-foreground font-mono shrink-0 select-none flex items-center gap-1.5">
-            <PushPinIcon className={cn("size-2.5 shrink-0", localPersonalPin ? "text-primary" : "invisible")} weight="fill" />
-            #{task.seqNumber}
-          </span>
-          <span className="text-[13px] font-medium text-foreground truncate group-hover/row:text-primary transition-colors">{task.title}</span>
-          {task.tags.slice(0, 2).map((tag) => (
-            <span
-              key={tag.id}
-              className="hidden lg:inline-flex shrink-0 rounded-full px-2 py-0.5 text-2xs font-semibold tracking-wide border"
-              style={{ backgroundColor: `${tag.color}10`, color: tag.color, borderColor: `${tag.color}30` }}
-            >
-              {tag.name}
-            </span>
-          ))}
-        </div>
-
-        {/* Assignee */}
-        <div className="w-36 shrink-0 self-stretch flex items-center px-2" onClick={(e) => e.stopPropagation()}>
-          {canEdit ? (
-            <Popover open={assigneeOpen} onOpenChange={(o) => { setAssigneeOpen(o); if (o) void loadMembers(); }}>
-              <PopoverTrigger asChild>
-                <button className="flex items-center gap-2 w-full h-full px-2 rounded-md border border-transparent hover:border-border hover:bg-accent/50 transition-all text-left cursor-pointer select-none">
-                  {task.assignees.length > 0 ? (
-                    <div className="flex -space-x-1.5">
-                      {task.assignees.slice(0, 3).map((a) => (
-                        <Avatar key={a.userId} className="size-6 shrink-0 border border-white shadow-sm">
-                          {a.image && <AvatarImage src={avatarSrc(a.image)} alt={a.name} />}
-                          <AvatarFallback className="text-2xs bg-primary text-primary-foreground font-semibold">{userInitials(a.name)}</AvatarFallback>
-                        </Avatar>
-                      ))}
-                      {task.assignees.length > 3 && (
-                        <div className="flex size-6 items-center justify-center rounded-full border border-background bg-muted text-2xs text-muted-foreground font-bold shadow-sm">+{task.assignees.length - 3}</div>
-                      )}
-                    </div>
-                  ) : (
-                    <UserIcon className="size-4 text-muted-foreground group-hover/row:text-foreground/70" weight="bold" />
-                  )}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent align="start" side="bottom" className="w-72 p-2">
-                <Input placeholder="Search members…" value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)} className="h-8 text-xs mb-2" />
-                {members === null ? (
-                  <p className="py-2 px-1 text-xs text-muted-foreground">Loading…</p>
-                ) : filteredMembers.length === 0 ? (
-                  <p className="py-2 px-1 text-xs text-muted-foreground">No members found</p>
-                ) : (
-                  <div className="max-h-52 overflow-y-auto">
-                    <p className="px-1 pb-1 text-2xs font-semibold text-muted-foreground uppercase tracking-wide">People</p>
-                    {filteredMembers.map((m) => {
-                      const assigned = task.assignees.some((a) => a.userId === m.userId);
-                      return (
-                        <button key={m.userId} onClick={() => void handleToggleAssignee(m.userId)} className={cn("flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors cursor-pointer", assigned ? "bg-primary/10" : "hover:bg-accent")}>
-                          <Avatar className="size-6 shrink-0">
-                            {m.image && <AvatarImage src={avatarSrc(m.image)} />}
-                            <AvatarFallback className="text-2xs bg-primary/10 text-primary font-semibold">{userInitials(m.name ?? m.email ?? "?")}</AvatarFallback>
-                          </Avatar>
-                          <span className="flex-1 min-w-0 text-left truncate">{m.name ?? m.email}</span>
-                          {assigned && <CheckIcon className="size-3.5 text-primary shrink-0" weight="bold" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </PopoverContent>
-            </Popover>
-          ) : (
-            <div className="flex items-center gap-2 px-2">
-              {task.assignees.length > 0 ? (
-                <div className="flex -space-x-1.5">
-                  {task.assignees.slice(0, 3).map((a) => (
-                    <Avatar key={a.userId} className="size-6 shrink-0 border border-white shadow-sm">
-                      {a.image && <AvatarImage src={avatarSrc(a.image)} alt={a.name} />}
-                      <AvatarFallback className="text-2xs bg-primary text-primary-foreground font-semibold">{userInitials(a.name)}</AvatarFallback>
-                    </Avatar>
-                  ))}
-                  {task.assignees.length > 3 && <div className="flex size-6 items-center justify-center rounded-full border border-background bg-muted text-2xs text-muted-foreground font-bold shadow-sm">+{task.assignees.length - 3}</div>}
-                </div>
-              ) : (
-                <UserIcon className="size-4 text-muted-foreground/50" weight="bold" />
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Due date */}
-        <div className="w-28 shrink-0 self-stretch flex items-center px-2" onClick={(e) => e.stopPropagation()}>
-          {canEdit ? (
-            <Popover open={dateOpen} onOpenChange={setDateOpen}>
-              <PopoverTrigger asChild>
-                <button className={cn("flex items-center gap-1.5 w-full h-full px-2 rounded-md border border-transparent hover:border-border hover:bg-accent/30 transition-all text-xs font-semibold text-left cursor-pointer select-none", dueDate?.overdue ? "text-red-500" : "text-foreground/70")}>
-                  <CalendarBlankIcon className="size-3.5 shrink-0" />
-                  {dueDate ? (
-                    <span>{dueDate.label}</span>
-                  ) : (
-                    <span className="text-muted-foreground">Set date</span>
-                  )}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent align="end" side="bottom" className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={localDueDate ?? undefined}
-                  onSelect={(date) => { handleSetDueDate(date ?? null); setDateOpen(false); }}
-
-                />
-              </PopoverContent>
-            </Popover>
-          ) : (
-            <div className={cn("flex items-center gap-1.5 px-2 text-xs font-semibold", dueDate?.overdue ? "text-red-500" : "text-muted-foreground")}>
-              {dueDate ? <><CalendarBlankIcon className="size-3.5" /><span>{dueDate.label}</span></> : null}
-            </div>
-          )}
-        </div>
-
-        {/* Priority */}
-        <div className="w-28 shrink-0 self-stretch flex items-center px-2" onClick={(e) => e.stopPropagation()}>
-          {canEdit ? (
-            <Popover open={priorityOpen} onOpenChange={setPriorityOpen}>
-              <PopoverTrigger asChild>
-                <button className="flex items-center gap-1.5 w-full h-full px-2 rounded-md border border-transparent hover:border-border hover:bg-accent/30 transition-all text-left cursor-pointer select-none">
-                  {localPriority !== "NONE" ? (
-                    <span className={cn("flex items-center gap-1.5 text-xs font-bold", priority.color)}>
-                      <span>{priority.icon}</span>
-                      {priority.label}
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground">
-                      <FlagIcon className="size-3.5 shrink-0" />
-                      No priority
-                    </span>
-                  )}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent align="start" side="bottom" className="w-44 p-1">
-                <p className="px-2 py-1 text-2xs font-bold text-muted-foreground uppercase tracking-wide">Priority</p>
-                {(["URGENT", "HIGH", "MEDIUM", "LOW"] as const).map((value) => (
-                  <button key={value} onClick={() => void handleSetPriority(value)} className={cn("flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs font-semibold hover:bg-accent cursor-pointer", localPriority === value && "bg-accent")}>
-                    <span>{PRIORITY_CONFIG[value].icon}</span>
-                    <span className={PRIORITY_CONFIG[value].color}>{PRIORITY_CONFIG[value].label}</span>
-                  </button>
-                ))}
-                <div className="h-px bg-border my-1" />
-                <button onClick={() => void handleSetPriority("NONE")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent cursor-pointer">
-                  <XIcon className="size-3.5 shrink-0" /> Clear
-                </button>
-              </PopoverContent>
-            </Popover>
-          ) : (
-            <div className="flex items-center gap-1.5 px-2">
-              {localPriority !== "NONE" ? (
-                <span className={cn("flex items-center gap-1.5 text-xs font-bold", priority.color)}>
-                  <span>{priority.icon}</span>{priority.label}
-                </span>
-              ) : (
-                <span className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground">
-                  <FlagIcon className="size-3.5 shrink-0" />
-                  No priority
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Row actions */}
-        <div className="w-48 shrink-0 py-1.5 pr-4 flex items-center justify-end gap-0.5" onClick={(e) => e.stopPropagation()}>
-          <div className="opacity-0 group-hover/row:opacity-100 transition-all duration-200 flex items-center gap-0.5">
-            {/* Personal pin */}
-            <button
-              onClick={handleTogglePersonalPin}
-              title={localPersonalPin ? "Unpin from sidebar" : "Pin to sidebar"}
-              className="flex size-7 items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-            >
-              <PushPinIcon className="size-4" weight={localPersonalPin ? "fill" : "regular"} />
-            </button>
-            <button onClick={() => router.push(`/${workspaceId}/task/${task.id}?from=sprint&sid=${sprintId}`)} title="Edit Task" className="flex size-7 items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
-              <PencilSimpleIcon className="size-4" />
-            </button>
-            {canEdit && (
-              <button onClick={async (e) => { e.stopPropagation(); await duplicateTask(workspaceId, spaceId, task.listId, task.id); router.refresh(); }} title="Duplicate Task" className="flex size-7 items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
-                <CopyIcon className="size-4" />
-              </button>
-            )}
-            {/* Move status */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <button title="Move Task Status" className="flex size-7 items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
-                  <ArrowsOutCardinalIcon className="size-4" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-48 p-1">
-                <p className="px-2 py-1 text-2xs font-bold text-muted-foreground uppercase tracking-wide">Move Status</p>
-                {statuses.map((s) => (
-                  <button key={s.id} onClick={async () => { await updateTaskStatus(workspaceId, spaceId, task.listId, task.id, s.id); router.refresh(); }} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs font-semibold hover:bg-accent text-left cursor-pointer">
-                    <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
-                    <span className="truncate">{s.name}</span>
-                  </button>
-                ))}
-              </PopoverContent>
-            </Popover>
-            {isAdmin && (
-              <button onClick={(e) => { e.stopPropagation(); setDeleteOpen(true); }} title="Delete Task" className="flex size-7 items-center justify-center rounded-md hover:bg-red-50 text-red-500 hover:text-red-700 transition-colors cursor-pointer">
-                <TrashIcon className="size-4" />
-              </button>
-            )}
-            {canEdit && (
-              <Popover onOpenChange={(open) => { if (open) void loadMoveData(); }}>
-                <PopoverTrigger asChild>
-                  <button className="flex size-7 items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
-                    <DotsThreeIcon className="size-4.5" weight="bold" />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent align="end" className="w-56 p-1 max-h-80 overflow-y-auto">
-                  {/* Sprint targets */}
-                  <p className="px-2 py-1 text-2xs font-bold text-muted-foreground uppercase tracking-wide">Move to Sprint</p>
-                  {moveSprints === null ? (
-                    <p className="px-2 py-1.5 text-xs text-muted-foreground">Loading…</p>
-                  ) : moveSprints.length === 0 ? (
-                    <p className="px-2 py-1.5 text-xs text-muted-foreground">No other sprints</p>
-                  ) : moveSprints.map((s) => (
-                    <button key={s.id} onClick={() => void handleMoveToSprint(s.id, s.name)} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs hover:bg-accent cursor-pointer">
-                      <LightningIcon className={cn("size-3.5 shrink-0", s.status === "ACTIVE" ? "text-primary" : "text-muted-foreground")} weight="fill" />
-                      <span className="flex-1 text-left truncate">{s.name}</span>
-                      <span className={cn("text-2xs px-1.5 py-0.5 rounded-full shrink-0", s.status === "ACTIVE" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>{s.status === "ACTIVE" ? "Active" : "Planned"}</span>
-                    </button>
-                  ))}
-                  <button onClick={() => void handleMoveToBacklog()} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs hover:bg-accent cursor-pointer">
-                    <TrayIcon className="size-3.5 shrink-0 text-muted-foreground" /> Backlog
-                  </button>
-                  <div className="h-px bg-border my-1" />
-                  {/* List targets */}
-                  <p className="px-2 py-1 text-2xs font-bold text-muted-foreground uppercase tracking-wide">Move to List</p>
-                  {moveListSpaces === null ? (
-                    <p className="px-2 py-1.5 text-xs text-muted-foreground">Loading…</p>
-                  ) : moveListSpaces.length === 0 ? (
-                    <p className="px-2 py-1.5 text-xs text-muted-foreground">No other lists</p>
-                  ) : moveListSpaces.map((sp) => (
-                    <div key={sp.id}>
-                      <p className="flex items-center gap-1.5 px-2 py-0.5 text-2xs font-bold text-muted-foreground uppercase">
-                        <span className="size-1.5 rounded-full shrink-0" style={{ backgroundColor: sp.color ?? "#6B7280" }} />
-                        {sp.name}
-                      </p>
-                      {sp.lists.map((l) => (
-                        <button key={l.id} onClick={() => void handleMoveToList(l.id, l.name)} className="flex w-full items-center gap-2 rounded pl-5 pr-2 py-1.5 text-xs hover:bg-accent cursor-pointer">
-                          <span className="size-1.5 rounded-full shrink-0" style={{ backgroundColor: l.color ?? "#6B7280" }} />
-                          <span className="flex-1 text-left truncate">{l.name}</span>
-                        </button>
-                      ))}
-                    </div>
-                  ))}
-                  <div className="h-px bg-border my-1" />
-                  <button onClick={async (e) => { e.stopPropagation(); await archiveTask(workspaceId, spaceId, task.listId, task.id); router.refresh(); }} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs font-semibold hover:bg-accent cursor-pointer">
-                    <ArchiveIcon className="size-3.5 text-muted-foreground" /> Archive
-                  </button>
-                </PopoverContent>
-              </Popover>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Delete confirmation dialog */}
-      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent className="sm:max-w-sm" aria-describedby={undefined}>
-          <DialogHeader>
-            <div className="flex flex-col items-center gap-3 pt-2">
-              <div className="flex size-12 items-center justify-center rounded-full bg-red-100">
-                <TrashIcon className="size-6 text-red-600" weight="bold" />
-              </div>
-              <DialogTitle className="text-center text-base font-semibold">Delete Task</DialogTitle>
-              <p className="text-center text-sm text-muted-foreground">
-                Are you sure you want to delete <span className="font-semibold text-foreground">&ldquo;{task.title}&rdquo;</span>? This action cannot be undone.
-              </p>
-            </div>
-          </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-2 pt-2">
-            <Button variant="outline" onClick={() => setDeleteOpen(false)} disabled={deleting} className="flex-1">Cancel</Button>
-            <Button variant="destructive" onClick={confirmDelete} disabled={deleting} className="flex-1">{deleting ? "Deleting…" : "Delete"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
-  );
 }
 
 // ─── Quick create row ─────────────────────────────────────────────────────────
@@ -745,6 +230,24 @@ function QuickCreateRow({
   );
 }
 
+// ─── Sortable row wrapper (list view) ─────────────────────────────────────────
+
+function SortableSprintListRow(props: Omit<TaskListRowProps, "dragRef" | "dragStyle" | "dragProps" | "isDragging">) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: props.task.id,
+    data: { type: "sprint-task", statusId: props.task.statusId },
+  });
+  return (
+    <TaskListRow
+      {...props}
+      dragRef={setNodeRef}
+      dragStyle={{ transform: CSS.Transform.toString(transform), transition }}
+      dragProps={{ ...attributes, ...listeners }}
+      isDragging={isDragging}
+    />
+  );
+}
+
 // ─── Status group ─────────────────────────────────────────────────────────────
 
 function StatusGroup({
@@ -774,6 +277,8 @@ function StatusGroup({
   onSelect: (id: string, checked: boolean) => void;
   onRefresh: () => void;
 }) {
+  const router = useRouter();
+  const [localTasks, setLocalTasks] = React.useState<SprintTask[]>(tasks);
   const [collapsed, setCollapsed] = React.useState(false);
   const [quickCreateOpen, setQuickCreateOpen] = React.useState(false);
   const [menuOpen, setMenuOpen] = React.useState(false);
@@ -783,6 +288,23 @@ function StatusGroup({
   const [newStatusName, setNewStatusName] = React.useState("");
   const [newStatusColor, setNewStatusColor] = React.useState("#6B7280");
   const [saving, setSaving] = React.useState(false);
+
+  React.useEffect(() => { setLocalTasks(tasks); }, [tasks]);
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+
+  async function handleListDragEnd({ active, over }: DragEndEvent) {
+    if (!over || active.id === over.id) return;
+    const activeId = active.id as string;
+    const overId = over.id as string;
+    const oldIndex = localTasks.findIndex((t) => t.id === activeId);
+    const newIndex = localTasks.findIndex((t) => t.id === overId);
+    if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
+    const reordered = arrayMove(localTasks, oldIndex, newIndex);
+    setLocalTasks(reordered);
+    const res = await reorderTasksById(workspaceId, spaceId, reordered.map((t) => t.id));
+    if ("error" in res) { setLocalTasks(tasks); toast.error(res.error); }
+  }
 
   async function handleRename() {
     const trimmed = renameName.trim();
@@ -898,8 +420,9 @@ function StatusGroup({
         <div>
           {/* Column headers with select-all */}
           <div className="flex items-center">
+            <div className="w-0.75 self-stretch shrink-0" />
             <div
-              className="flex w-10 shrink-0 items-center justify-center py-2 pl-3 cursor-pointer"
+              className="flex w-14 shrink-0 items-center justify-center py-2 pl-2 cursor-pointer"
               onClick={toggleAll}
             >
               <div className={cn(
@@ -914,29 +437,42 @@ function StatusGroup({
                 {someSelected && !allSelected && <div className="size-1.5 rounded-sm bg-primary" />}
               </div>
             </div>
-            <div className="flex-1 py-2 pr-4 text-2xs font-bold text-muted-foreground uppercase tracking-wider">Name</div>
-            <div className="w-36 shrink-0 py-2 px-4 text-2xs font-bold text-muted-foreground uppercase tracking-wider">Assignee</div>
-            <div className="w-28 shrink-0 py-2 px-4 text-2xs font-bold text-muted-foreground uppercase tracking-wider">Due date</div>
-            <div className="w-28 shrink-0 py-2 px-4 text-2xs font-bold text-muted-foreground uppercase tracking-wider">Priority</div>
+            <div className="flex-1 py-2 pr-4 pl-1 text-2xs font-bold text-gray-400 uppercase tracking-wider">Name</div>
+            <div className="w-36 shrink-0 py-2 px-4 text-2xs font-bold text-gray-400 uppercase tracking-wider">Assignee</div>
+            <div className="w-28 shrink-0 py-2 px-4 text-2xs font-bold text-gray-400 uppercase tracking-wider">Due date</div>
+            <div className="w-32 shrink-0 py-2 px-4 text-2xs font-bold text-gray-400 uppercase tracking-wider">Priority</div>
             <div className="w-48 shrink-0" />
           </div>
 
-          {tasks.map((task) => (
-            <TaskRow
-              key={task.id}
-              task={task}
-              statusColor={status.color}
-              workspaceId={workspaceId}
-              spaceId={spaceId}
-              sprintId={sprintId}
-              statuses={statuses}
-              isAdmin={isAdmin}
-              canEdit={canEdit}
-              selected={selectedIds.has(task.id)}
-              onSelect={onSelect}
-              onRefresh={onRefresh}
-            />
-          ))}
+          <DndContext id={`sprint-list-dnd-${status.id}`} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleListDragEnd}>
+            <SortableContext items={localTasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+              {localTasks.map((task) => (
+                <SortableSprintListRow
+                  key={task.id}
+                  task={task}
+                  statusColor={status.color}
+                  workspaceId={workspaceId}
+                  spaceId={spaceId}
+                  excludeSprintId={sprintId}
+                  statuses={statuses}
+                  isAdmin={isAdmin}
+                  canEdit={canEdit}
+                  selected={selectedIds.has(task.id)}
+                  onSelect={onSelect}
+                  onOpen={() => router.push(`/${workspaceId}/task/${task.id}`)}
+                  onRefresh={onRefresh}
+                  onAfterDuplicate={async (newTaskId) => {
+                    await addTaskToSprint(workspaceId, spaceId, sprintId, newTaskId);
+                  }}
+                  onMoveToBacklog={async () => {
+                    const res = await bulkRemoveTasksFromSprint(workspaceId, spaceId, sprintId, [task.id]);
+                    if ("error" in res) { toast.error(res.error); return; }
+                    onRefresh();
+                  }}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
 
           <QuickCreateRow
             open={quickCreateOpen}
@@ -1037,6 +573,7 @@ function BulkActionBar({
   onRefresh: () => void;
 }) {
   const [busy, setBusy] = React.useState(false);
+  const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [sprints, setSprints] = React.useState<SprintOption[] | null>(null);
   const [loadingSprints, setLoadingSprints] = React.useState(false);
   const [listSpaces, setListSpaces] = React.useState<{ id: string; name: string; color: string | null; lists: { id: string; name: string; color: string | null }[] }[] | null>(null);
@@ -1108,8 +645,8 @@ function BulkActionBar({
     onClear();
   }
 
-  async function handleBulkDelete() {
-    if (!confirm(`Delete ${count} task${count > 1 ? "s" : ""}? This cannot be undone.`)) return;
+  async function confirmBulkDelete() {
+    setDeleteOpen(false);
     setBusy(true);
     const res = await bulkDeleteTasks(workspaceId, spaceId, listId ?? "", [...selectedIds]);
     setBusy(false);
@@ -1119,6 +656,24 @@ function BulkActionBar({
   }
 
   return (
+    <>
+    <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+      <DialogContent className="sm:max-w-xs text-center">
+        <div className="flex flex-col items-center gap-3 pt-2">
+          <div className="flex size-12 items-center justify-center rounded-full bg-destructive/10">
+            <TrashIcon className="size-6 text-destructive" weight="fill" />
+          </div>
+          <div>
+            <DialogTitle className="text-base font-bold">Delete {count} Task{count > 1 ? "s" : ""}</DialogTitle>
+            <p className="text-sm text-muted-foreground mt-1">This action cannot be undone.</p>
+          </div>
+        </div>
+        <div className="flex gap-2 mt-2">
+          <Button variant="outline" className="flex-1" onClick={() => setDeleteOpen(false)} disabled={busy}>Cancel</Button>
+          <Button variant="destructive" className="flex-1" onClick={confirmBulkDelete} disabled={busy}>Delete</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 rounded-xl border border-white/10 bg-neutral-900 px-3 py-2 shadow-2xl text-white text-sm">
       <span className="font-semibold text-white pr-2 border-r border-white/20 mr-2">
         {count} task{count > 1 ? "s" : ""} selected
@@ -1248,7 +803,7 @@ function BulkActionBar({
       {isAdmin && (
         <button
           disabled={busy}
-          onClick={handleBulkDelete}
+          onClick={() => setDeleteOpen(true)}
           className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors disabled:opacity-50"
         >
           <TrashIcon className="size-3.5" />
@@ -1256,6 +811,7 @@ function BulkActionBar({
         </button>
       )}
     </div>
+    </>
   );
 }
 
@@ -1277,7 +833,7 @@ function SprintBoardCardContent({
   dragListeners?: React.HTMLAttributes<HTMLDivElement>;
 }) {
   const router = useRouter();
-  const priority = PRIORITY_CONFIG[task.priority ?? "NONE"] ?? PRIORITY_CONFIG.NONE;
+  const priority = PRIORITY_CONFIG[(task.priority ?? "NONE") as keyof typeof PRIORITY_CONFIG] ?? PRIORITY_CONFIG.NONE;
 
   return (
     <div
@@ -1450,6 +1006,7 @@ function NoStatusColumn({ tasks, workspaceId, sprintId }: { tasks: SprintTask[];
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export function SprintListView({ workspaceId, spaceId, listId = "", statuses = [], isAdmin, canEdit, members = [], refreshKey }: SprintListViewProps) {
+  const router = useRouter();
   const [sprintInfo, setSprintInfo] = React.useState<SprintInfo | null>(null);
   const [tasks, setTasks] = React.useState<SprintTask[]>([]);
   const [fetchedStatuses, setFetchedStatuses] = React.useState<Status[]>([]);
@@ -1873,19 +1430,28 @@ export function SprintListView({ workspaceId, spaceId, listId = "", statuses = [
                     </span>
                   </div>
                   {noStatusListTasks.map((t) => (
-                    <TaskRow
+                    <TaskListRow
                       key={t.id}
                       task={t}
                       statusColor="#94a3b8"
                       workspaceId={workspaceId}
                       spaceId={spaceId}
-                      sprintId={sprintInfo.id}
+                      excludeSprintId={sprintInfo.id}
                       statuses={effectiveStatuses}
                       isAdmin={isAdmin}
                       canEdit={canEdit}
                       selected={selectedIds.has(t.id)}
                       onSelect={handleSelect}
+                      onOpen={() => router.push(`/${workspaceId}/task/${t.id}`)}
                       onRefresh={fetchData}
+                      onAfterDuplicate={async (newTaskId) => {
+                        await addTaskToSprint(workspaceId, spaceId, sprintInfo.id, newTaskId);
+                      }}
+                      onMoveToBacklog={async () => {
+                        const res = await bulkRemoveTasksFromSprint(workspaceId, spaceId, sprintInfo.id, [t.id]);
+                        if ("error" in res) { toast.error(res.error); return; }
+                        fetchData();
+                      }}
                     />
                   ))}
                 </div>
@@ -1897,7 +1463,7 @@ export function SprintListView({ workspaceId, spaceId, listId = "", statuses = [
         <DndContext
           id="sprint-board-dnd"
           sensors={sensors}
-          collisionDetection={closestCorners}
+          collisionDetection={closestCenter}
           onDragStart={onDragStart}
           onDragOver={onDragOver}
           onDragEnd={onDragEnd}

@@ -33,10 +33,10 @@ function formatDate(date: Date | null): string {
 
 const PRIORITY_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
   NONE: { label: "No Priority", color: "text-muted-foreground/40", icon: "😴" },
-  LOW: { label: "Low", color: "text-blue-500", icon: "🐢" },
+  LOW: { label: "Low", color: "text-blue-500", icon: "🦥" },
   MEDIUM: { label: "Medium", color: "text-yellow-500", icon: "🚶" },
   HIGH: { label: "High", color: "text-orange-500", icon: "🏃" },
-  URGENT: { label: "Urgent", color: "text-red-500", icon: "⚡" },
+  URGENT: { label: "Urgent", color: "text-red-500", icon: "🚨" },
 };
 
 // ─── Assignee avatars ─────────────────────────────────────────────────────────

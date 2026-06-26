@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { TrashIcon } from "@phosphor-icons/react";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -41,6 +42,8 @@ export default function AdminHelpCenterPage() {
   const [isPublished, setIsPublished] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   function openNew() {
     setTitle(""); setSlug(""); setCategory(""); setBodyText(""); setIsPublished(false);
@@ -89,9 +92,16 @@ export default function AdminHelpCenterPage() {
     }
   }
 
-  async function handleDelete(id: string, articleTitle: string) {
-    if (!confirm(`Delete article "${articleTitle}"? This cannot be undone.`)) return;
-    await fetch(`/api/admin/support/help/${id}`, { method: "DELETE" });
+  function handleDelete(id: string, articleTitle: string) {
+    setDeleteTarget({ id, title: articleTitle });
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    await fetch(`/api/admin/support/help/${deleteTarget.id}`, { method: "DELETE" });
+    setDeleting(false);
+    setDeleteTarget(null);
     await mutate();
   }
 
@@ -174,6 +184,29 @@ export default function AdminHelpCenterPage() {
           ))}
         </div>
       )}
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <DialogContent className="sm:max-w-xs text-center">
+          <div className="flex flex-col items-center gap-3 pt-2">
+            <div className="flex size-12 items-center justify-center rounded-full bg-destructive/10">
+              <TrashIcon className="size-6 text-destructive" weight="fill" />
+            </div>
+            <div>
+              <DialogTitle className="text-base font-bold">Delete Article</DialogTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Delete &ldquo;{deleteTarget?.title}&rdquo;? This cannot be undone.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2 mt-2">
+            <Button variant="outline" className="flex-1" onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancel</Button>
+            <Button variant="destructive" className="flex-1" onClick={confirmDelete} disabled={deleting}>
+              {deleting ? "Deleting…" : "Delete"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Create / Edit dialog */}
       <Dialog open={showNew} onOpenChange={setShowNew}>

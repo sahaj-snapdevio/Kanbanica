@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { and, eq } from "drizzle-orm";
+import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { space } from "@/db/schema";
@@ -9,6 +10,13 @@ import { SpaceGeneralSettingsForm } from "@/components/space/space-general-setti
 
 interface PageProps {
   params: Promise<{ workspaceId: string; spaceId: string }>;
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { spaceId, workspaceId } = await params;
+  const row = await db.select({ name: space.name }).from(space).where(and(eq(space.id, spaceId), eq(space.workspaceId, workspaceId))).limit(1).then((r) => r[0]);
+  if (!row) return { title: "Project Settings" };
+  return { title: `${row.name} · Settings` };
 }
 
 export default async function SpaceGeneralSettingsPage({ params }: PageProps) {

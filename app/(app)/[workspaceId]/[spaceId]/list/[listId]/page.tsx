@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
+import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { list, listStatus, task, taskTag, tag, space, spaceMember, taskAssignee, user, workspaceMember, pinnedTask } from "@/db/schema";
@@ -9,6 +10,16 @@ import { ListContainer } from "./_components/list-container";
 
 interface ListPageProps {
   params: Promise<{ workspaceId: string; spaceId: string; listId: string }>;
+}
+
+export async function generateMetadata({ params }: ListPageProps): Promise<Metadata> {
+  const { spaceId, listId } = await params;
+  const [listRow, spaceRow] = await Promise.all([
+    db.select({ name: list.name }).from(list).where(eq(list.id, listId)).limit(1).then((r) => r[0]),
+    db.select({ name: space.name }).from(space).where(eq(space.id, spaceId)).limit(1).then((r) => r[0]),
+  ]);
+  if (!listRow || !spaceRow) return { title: "List" };
+  return { title: `${listRow.name} · ${spaceRow.name}` };
 }
 
 export default async function ListPage({ params }: ListPageProps) {

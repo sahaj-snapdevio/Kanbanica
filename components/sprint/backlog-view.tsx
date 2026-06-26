@@ -25,7 +25,7 @@ type SprintOption = { id: string; name: string; status: string };
 
 const PRIORITY_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
   NONE:   { label: "—",      color: "text-gray-400",  icon: "😴" },
-  LOW:    { label: "Low",    color: "text-gray-500",  icon: "🐢" },
+  LOW:    { label: "Low",    color: "text-gray-500",  icon: "🦥" },
   MEDIUM: { label: "Medium", color: "text-blue-500",  icon: "🔵" },
   HIGH:   { label: "High",   color: "text-orange-500", icon: "🔶" },
   URGENT: { label: "Urgent", color: "text-red-500",   icon: "🔴" },

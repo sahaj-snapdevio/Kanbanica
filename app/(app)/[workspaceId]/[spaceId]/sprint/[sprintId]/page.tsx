@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { and, eq } from "drizzle-orm";
+import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { space, sprint, workspaceMember, user } from "@/db/schema";
@@ -9,6 +10,16 @@ import { SprintPageClient } from "./_components/sprint-page-client";
 
 interface SprintPageProps {
   params: Promise<{ workspaceId: string; spaceId: string; sprintId: string }>;
+}
+
+export async function generateMetadata({ params }: SprintPageProps): Promise<Metadata> {
+  const { spaceId, sprintId } = await params;
+  const [spaceRow, sprintRow] = await Promise.all([
+    db.select({ name: space.name }).from(space).where(eq(space.id, spaceId)).limit(1).then((r) => r[0]),
+    db.select({ name: sprint.name }).from(sprint).where(eq(sprint.id, sprintId)).limit(1).then((r) => r[0]),
+  ]);
+  if (!sprintRow || !spaceRow) return { title: "Sprint" };
+  return { title: `${sprintRow.name} · ${spaceRow.name}` };
 }
 
 export default async function SprintPage({ params }: SprintPageProps) {

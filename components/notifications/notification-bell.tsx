@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { BellIcon } from "@phosphor-icons/react";
-import useSWR from "swr";
+import useSWR, { mutate } from "swr";
 import { Button } from "@/components/ui/button";
 import { NotificationPanel } from "./notification-panel";
 
@@ -18,8 +18,17 @@ export function NotificationBell() {
   const { data } = useSWR<NotificationsResponse>(
     "/api/me/notifications?filter=unread",
     fetcher,
-    { refreshInterval: 30000 },
   );
+
+  // SSE — open one persistent connection; revalidate all notification SWR
+  // keys instantly when the server pushes a new_notification event.
+  React.useEffect(() => {
+    const es = new EventSource("/api/me/notifications/stream");
+    es.addEventListener("message", () => {
+      void mutate((key) => typeof key === "string" && key.startsWith("/api/me/notifications"));
+    });
+    return () => es.close();
+  }, []);
 
   const unreadCount = data?.unreadCount ?? 0;
 

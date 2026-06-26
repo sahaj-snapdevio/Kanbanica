@@ -21,6 +21,7 @@ Full product specs live in `docs/`. Read the relevant doc before implementing an
 | UI Components | shadcn/ui |
 | Rich Text | Tiptap |
 | State | Zustand (client) + SWR (server) |
+| Real-time | SSE via `lib/sse-clients.ts` (notifications) |
 | File Storage | files-sdk (local `fs` adapter in dev → S3/R2/GCS in prod) |
 | Background Jobs | pg-boss |
 | Email | Nodemailer (SMTP) |
@@ -65,6 +66,12 @@ server/                    ← server actions
 - **Shared component:** `components/common/user-avatar.tsx` (`UserAvatar`) — use this everywhere a user avatar is shown. Props: `name`, `email`, `image` (storage key or null), `size` (`xs/sm/md/lg`), `className`.
 - **Storage key → URL:** `user.image` in the DB is a storage key (e.g. `avatars/{userId}/{uuid}.webp`). Never use it directly as an `<img src>`. `UserAvatar` converts it internally. For files that use raw `AvatarImage` (e.g. task views with custom stacking styles), use the local helper `avatarSrc(key)` → `/api/files/${key}`.
 - **Upload pipeline:** Sharp resizes to 256×256 WebP (quality 85) server-side before storing. Max raw upload: 2 MB.
+
+### Confirmation Dialogs
+- **Never use `window.confirm()` or `confirm()`** — always use a shadcn `Dialog` with Cancel + destructive Delete buttons.
+- Pattern: add `deleteOpen` / `deleting` state, a `confirmDelete` async function, and render the Dialog alongside the triggering component.
+- The delete button sets `deleteOpen(true)`; `confirmDelete` does the actual deletion with a loading state.
+- Standard layout: centered `TrashIcon` in a red circle, bold title, muted description, full-width Cancel + Delete buttons side by side.
 
 ### UI Consistency
 - **Border radius:** All cards, modals, dialogs, popovers, and section containers must use `rounded-xl`. Buttons use `rounded-md`. Inputs use `rounded-md`. Never leave border radius missing on any surface.

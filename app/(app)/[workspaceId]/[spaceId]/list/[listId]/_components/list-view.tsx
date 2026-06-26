@@ -1,43 +1,33 @@
-﻿"use client";
+"use client";
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import {
   ArchiveIcon,
-  CalendarBlankIcon,
-  CalendarPlusIcon,
   CaretDownIcon,
   CaretRightIcon,
-  CaretLeftIcon,
   CheckIcon,
-  CopyIcon,
   DotsThreeIcon,
   LightningIcon,
   PencilSimpleIcon,
   PlusIcon,
   PushPinIcon,
   TrashIcon,
-  UserIcon,
   XIcon,
-  ArrowsOutCardinalIcon,
   ArrowsDownUpIcon,
   GearIcon,
-  FlagIcon,
   FunnelIcon,
 } from "@phosphor-icons/react";
 import { SearchInput } from "@/components/ui/search-input";
 import { toast } from "sonner";
 import { useSWRConfig } from "swr";
 import {
-  archiveTask,
   bulkArchiveTasks,
   bulkDeleteTasks,
   bulkMoveTasks,
   bulkUpdateStatus,
-  deleteTask,
-  duplicateTask,
-  getWorkspaceMembers,
-  moveTask,
+  createTask,
+  reorderTasksInStatus,
   unarchiveTask,
   updateTask,
   updateTaskStatus,
@@ -45,8 +35,6 @@ import {
 import { addAssignee, removeAssignee } from "@/app/actions/task-assignee";
 import { getSprints, bulkMoveTasksToSprint } from "@/app/actions/sprint";
 import { createListStatus, getWorkspaceLists, updateListStatus } from "@/app/actions/list";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -58,44 +46,27 @@ import {
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CreateTaskModal } from "@/components/task/create-task-modal";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import {
-  addDays,
-  format,
-  isToday,
-  isPast,
-  startOfMonth,
-  endOfMonth,
-  startOfWeek,
-  endOfWeek,
-  eachDayOfInterval,
-  isSameMonth,
-  isSameDay,
-  addMonths,
-  subMonths,
-} from "date-fns";
 
 // drag and drop
 import {
   DndContext,
-  DragOverlay,
   PointerSensor,
   useSensor,
   useSensors,
-  closestCorners,
-  type DragStartEvent,
+  closestCenter,
   type DragOverEvent,
   type DragEndEvent,
   useDroppable,
 } from "@dnd-kit/core";
 import {
   SortableContext,
+  arrayMove,
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Calendar } from "@/components/ui/calendar";
+import { TaskListRow, type TaskListRowProps } from "@/components/task/task-list-row";
 
 interface Status {
   id: string;
@@ -138,800 +109,23 @@ interface ListViewProps {
   onArchivedChanged?: () => Promise<void>;
 }
 
-type WorkspaceMember = { userId: string | null; name: string | null; email: string | null; image: string | null };
-
-const PRIORITY_CONFIG = {
-  NONE:   { label: "No Priority", color: "text-gray-400",   icon: "😴" },
-  LOW:    { label: "Low",         color: "text-gray-500",   icon: "🐢" },
-  MEDIUM: { label: "Medium",      color: "text-yellow-600", icon: "🚶" },
-  HIGH:   { label: "High",        color: "text-orange-500", icon: "🏃" },
-  URGENT: { label: "Urgent",      color: "text-red-500",    icon: "⚡" },
-} as const;
-
-function userInitials(name: string) {
-  if (!name) return "?";
-  const clean = name.includes("@") ? name.split("@")[0] : name;
-  return clean.split(/[\s._-]+/).map((n) => n[0]).filter(Boolean).join("").toUpperCase().slice(0, 2) || "?";
-}
-
-function avatarSrc(key: string | null | undefined): string | undefined {
-  return key ? `/api/files/${key}` : undefined;
-}
-
-function formatDueDate(date: Date | null) {
-  if (!date) return null;
-  const d = new Date(date);
-  const overdue = isPast(d) && !isToday(d);
-  return { label: isToday(d) ? "Today" : format(d, "MMM d"), overdue };
-}
-
-// ─── ClickUp Calendar component ───────────────────────────────────────────────
-
-
-// ─── Task row ─────────────────────────────────────────────────────────────────
-
 type SprintOption = { id: string; name: string; status: "PLANNED" | "ACTIVE" | "CLOSED" };
-type ListSpaceOption = { id: string; name: string; color: string | null; lists: { id: string; name: string; color: string | null }[] };
 
-function TaskRow({
-  task,
-  statusColor,
-  workspaceId,
-  spaceId,
-  listId,
-  isAdmin,
-  canEdit,
-  canPinToList,
-  isPersonallyPinned,
-  selected,
-  onSelect,
-  onOpen,
-  statuses,
-}: {
-  task: Task;
-  statusColor: string;
-  workspaceId: string;
-  spaceId: string;
-  listId: string;
-  isAdmin?: boolean;
-  canEdit?: boolean;
-  canPinToList?: boolean;
-  isPersonallyPinned?: boolean;
-  selected: boolean;
-  onSelect: (id: string, checked: boolean) => void;
-  onOpen: () => void;
-  statuses: Status[];
-}) {
-  const router = useRouter();
-  const { mutate } = useSWRConfig();
+// --- Sortable wrapper (DnD) -------------------------------------------------
 
-  // Optimistic local state — updates instantly on user action, syncs when server refreshes
-  const [localPriority, setLocalPriority] = React.useState<Task["priority"]>(task.priority);
-  const [localDueDate, setLocalDueDate] = React.useState<Date | null>(task.dueDateStart ?? null);
-  const [localPersonalPin, setLocalPersonalPin] = React.useState(isPersonallyPinned ?? false);
-
-  // Keep in sync if parent prop changes (e.g. after refresh)
-  React.useEffect(() => { setLocalPriority(task.priority); }, [task.priority]);
-  React.useEffect(() => { setLocalDueDate(task.dueDateStart ?? null); }, [task.dueDateStart]);
-  React.useEffect(() => { setLocalPersonalPin(isPersonallyPinned ?? false); }, [isPersonallyPinned]);
-  React.useEffect(() => {
-    function onUnpin(e: Event) {
-      if ((e as CustomEvent<{ taskId: string }>).detail.taskId === task.id) setLocalPersonalPin(false);
-    }
-    window.addEventListener("task-personal-unpin", onUnpin);
-    return () => window.removeEventListener("task-personal-unpin", onUnpin);
-  }, [task.id]);
-
-  async function handleTogglePersonalPin(e: React.MouseEvent) {
-    e.stopPropagation();
-    const next = !localPersonalPin;
-    setLocalPersonalPin(next);
-    try {
-      const res = await fetch(`/api/tasks/${task.id}/pin`, { method: next ? "POST" : "DELETE" });
-      if (!res.ok) {
-        setLocalPersonalPin(!next);
-        const data = await res.json().catch(() => ({}));
-        toast.error(data.error ?? "Failed to update pin");
-      } else {
-        mutate(`/api/workspaces/${workspaceId}/pinned-tasks`);
-      }
-    } catch {
-      setLocalPersonalPin(!next);
-      toast.error("Failed to update pin");
-    }
-  }
-
-  async function handlePinToList(e: React.MouseEvent) {
-    e.stopPropagation();
-    const res = await fetch(`/api/tasks/${task.id}/pin-to-list`, { method: "POST" });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      toast.error(data.error ?? "Failed to pin task");
-    } else {
-      router.refresh();
-    }
-  }
-
-  async function handleUnpinFromList(e: React.MouseEvent) {
-    e.stopPropagation();
-    const res = await fetch(`/api/tasks/${task.id}/pin-to-list`, { method: "DELETE" });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      toast.error(data.error ?? "Failed to unpin task");
-    } else {
-      router.refresh();
-    }
-  }
-
-  const priority = PRIORITY_CONFIG[localPriority];
-  const dueDate = formatDueDate(localDueDate);
-
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
-    id: task.id,
-    data: { type: "task", statusId: task.statusId },
+function SortableTaskRow(props: Omit<TaskListRowProps, "dragRef" | "dragStyle" | "dragProps" | "isDragging">) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: props.task.id,
+    data: { type: "task", statusId: props.task.statusId },
   });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
-  async function handleDuplicate(e: React.MouseEvent) {
-    e.stopPropagation();
-    await duplicateTask(workspaceId, spaceId, listId, task.id);
-  }
-  async function handleArchive(e: React.MouseEvent) {
-    e.stopPropagation();
-    await archiveTask(workspaceId, spaceId, listId, task.id);
-  }
-  const [deleteOpen, setDeleteOpen] = React.useState(false);
-  const [deleting, setDeleting] = React.useState(false);
-  const [moveSprints, setMoveSprints] = React.useState<SprintOption[] | null>(null);
-  const [moveListSpaces, setMoveListSpaces] = React.useState<ListSpaceOption[] | null>(null);
-
-  async function loadMoveData() {
-    if (moveSprints !== null) return;
-    const [sprintsRes, listsRes] = await Promise.all([
-      getSprints(workspaceId, spaceId),
-      getWorkspaceLists(workspaceId, listId),
-    ]);
-    setMoveSprints("error" in sprintsRes ? [] : sprintsRes.sprints.filter((s) => s.status !== "CLOSED"));
-    setMoveListSpaces("error" in listsRes ? [] : listsRes.spaces);
-  }
-
-  async function handleMoveToSprint(targetSprintId: string, sprintName: string) {
-    const res = await bulkMoveTasksToSprint(workspaceId, spaceId, listId, [task.id], targetSprintId);
-    if ("error" in res) { toast.error(res.error); return; }
-    toast.success(`Moved to ${sprintName}`);
-    router.refresh();
-  }
-
-  async function handleMoveToList(targetListId: string, listName: string) {
-    const res = await moveTask(workspaceId, spaceId, task.id, targetListId);
-    if ("error" in res) { toast.error(res.error); return; }
-    toast.success(`Moved to ${listName}`);
-    router.refresh();
-  }
-
-  function handleDeleteClick(e: React.MouseEvent) {
-    e.stopPropagation();
-    setDeleteOpen(true);
-  }
-
-  async function confirmDelete() {
-    setDeleting(true);
-    await deleteTask(workspaceId, spaceId, listId, task.id);
-    setDeleting(false);
-    setDeleteOpen(false);
-  }
-
-  // ── Inline editing ────────────────────────────────────────────────────────
-  const [assigneeOpen, setAssigneeOpen] = React.useState(false);
-  const [members, setMembers] = React.useState<WorkspaceMember[] | null>(null);
-  const [memberSearch, setMemberSearch] = React.useState("");
-  const [dateOpen, setDateOpen] = React.useState(false);
-  const [priorityOpen, setPriorityOpen] = React.useState(false);
-
-  async function loadMembers() {
-    if (members !== null) return;
-    const res = await getWorkspaceMembers(workspaceId);
-    if ("error" in res) return;
-    setMembers(res.members);
-  }
-
-  async function handleToggleAssignee(userId: string | null) {
-    if (!userId) return;
-    const isAssigned = task.assignees.some((a) => a.userId === userId);
-    if (isAssigned) {
-      await removeAssignee(workspaceId, spaceId, listId, task.id, userId);
-    } else {
-      await addAssignee(workspaceId, spaceId, listId, task.id, userId);
-    }
-    router.refresh();
-  }
-
-  async function handleSetDueDate(date: Date | null) {
-    const prev = localDueDate;
-    setLocalDueDate(date);
-    setDateOpen(false);
-    const res = await updateTask(workspaceId, spaceId, listId, task.id, { dueDateStart: date, dueDateEnd: date });
-    if ("error" in res) {
-      setLocalDueDate(prev);
-      toast.error(`Failed to update due date: ${res.error}`);
-    } else {
-      router.refresh();
-    }
-  }
-
-  async function handleSetPriority(p: Task["priority"]) {
-    const prev = localPriority;
-    setLocalPriority(p);
-    setPriorityOpen(false);
-    const res = await updateTask(workspaceId, spaceId, listId, task.id, { priority: p });
-    if ("error" in res) {
-      setLocalPriority(prev);
-      toast.error(`Failed to update priority: ${res.error}`);
-    } else {
-      router.refresh();
-    }
-  }
-
-  const filteredMembers = (members ?? []).filter(
-    (m) =>
-      m.name?.toLowerCase().includes(memberSearch.toLowerCase()) ||
-      m.email?.toLowerCase().includes(memberSearch.toLowerCase()),
-  );
-
   return (
-    <>
-      {/* Delete confirmation dialog */}
-      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent showCloseButton={false} className="sm:max-w-sm text-center" onClick={(e) => e.stopPropagation()}>
-          {/* Icon */}
-          <div className="flex justify-center">
-            <div className="flex size-12 items-center justify-center rounded-full bg-red-100">
-              <TrashIcon className="size-6 text-red-500" />
-            </div>
-          </div>
-          {/* Title & body */}
-          <div className="space-y-1.5">
-            <DialogTitle className="text-center text-base">Delete task?</DialogTitle>
-            <p className="text-sm text-muted-foreground text-center leading-relaxed">
-              <span className="font-medium text-foreground">&ldquo;{task.title}&rdquo;</span> will be permanently deleted and cannot be recovered.
-            </p>
-          </div>
-          {/* Buttons */}
-          <div className="flex gap-3 mt-1">
-            <Button variant="outline" className="flex-1" onClick={() => setDeleteOpen(false)} disabled={deleting}>
-              Cancel
-            </Button>
-            <Button variant="destructive" className="flex-1" onClick={confirmDelete} disabled={deleting}>
-              {deleting ? "Deleting…" : "Delete"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Desktop/Tablet Row layout */}
-      <div
-        ref={setNodeRef}
-        style={style}
-        {...attributes}
-        {...listeners}
-        className={cn(
-          "group/row hidden md:flex items-center border-b border-border transition-all duration-200 cursor-pointer text-foreground bg-card min-h-10 text-sm",
-          isDragging && "opacity-40 shadow-none border-dashed",
-          selected ? "bg-primary/5" : "hover:bg-accent/30",
-        )}
-        onClick={onOpen}
-      >
-        {/* Left ClickUp Status Indicator Line */}
-        <div
-          className={cn(
-            "w-0.75 self-stretch shrink-0 transition-opacity duration-200",
-            selected ? "opacity-100" : "opacity-0 group-hover/row:opacity-100"
-          )}
-          style={{ backgroundColor: statusColor }}
-        />
-
-        {/* Checkbox */}
-        <div className="flex items-center pl-3 py-1.5 shrink-0 w-10">
-          <div
-            className={cn(
-              "flex size-4 items-center justify-center rounded border transition-opacity duration-200 cursor-pointer",
-              selected ? "opacity-100" : "opacity-0 group-hover/row:opacity-100"
-            )}
-            onClick={(e) => { e.stopPropagation(); onSelect(task.id, !selected); }}
-          >
-            <div className={cn(
-              "flex size-4 items-center justify-center rounded border transition-colors",
-              selected
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border hover:border-primary/40 bg-background",
-            )}>
-              {selected && <CheckIcon className="size-2.5" weight="bold" />}
-            </div>
-          </div>
-        </div>
-
-        {/* Task Name & ID */}
-        <div className="flex flex-1 items-center gap-2.5 min-w-0 py-1.5 pr-4 pl-1">
-          <span className="text-2xs text-gray-400 font-mono shrink-0 select-none flex items-center gap-1.5">
-            <PushPinIcon className={cn("size-2.5 shrink-0", localPersonalPin ? "text-primary" : "invisible")} weight="fill" />
-            #{task.seqNumber}
-          </span>
-          <span className="text-[13px] font-medium text-foreground truncate group-hover/row:text-primary transition-colors">{task.title}</span>
-          {task.tags.slice(0, 2).map((tag) => (
-            <span
-              key={tag.id}
-              className="hidden lg:inline-flex shrink-0 rounded-full px-2 py-0.5 text-2xs font-semibold tracking-wide border"
-              style={{ backgroundColor: `${tag.color}10`, color: tag.color, borderColor: `${tag.color}30` }}
-            >
-              {tag.name}
-            </span>
-          ))}
-        </div>
-
-        {/* Assignee */}
-        <div className="w-36 shrink-0 self-stretch flex items-center px-2" onClick={(e) => e.stopPropagation()}>
-          {canEdit ? (
-            <Popover open={assigneeOpen} onOpenChange={(o) => { setAssigneeOpen(o); if (o) void loadMembers(); }}>
-              <PopoverTrigger asChild>
-                <button className="flex items-center gap-2 w-full h-full px-2 rounded-md border border-transparent hover:border-border hover:bg-accent/30 transition-all text-left cursor-pointer select-none">
-                  {task.assignees.length > 0 ? (
-                    <TooltipProvider>
-                      <div className="flex -space-x-1.5">
-                        {task.assignees.slice(0, 3).map((a) => (
-                          <Tooltip key={a.userId}>
-                            <TooltipTrigger asChild>
-                              <Avatar className="size-6 shrink-0 border border-background shadow-sm">
-                                {a.image && <AvatarImage src={avatarSrc(a.image)} alt={a.name} />}
-                                <AvatarFallback className="text-2xs bg-primary text-primary-foreground font-semibold">
-                                  {userInitials(a.name)}
-                                </AvatarFallback>
-                              </Avatar>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="px-2 py-1 text-2xs">
-                              <p>{a.name}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        ))}
-                        {task.assignees.length > 3 && (
-                          <div className="flex size-6 items-center justify-center rounded-full border border-background bg-muted text-2xs text-muted-foreground font-bold shadow-sm">
-                            +{task.assignees.length - 3}
-                          </div>
-                        )}
-                      </div>
-                    </TooltipProvider>
-                  ) : (
-                    <UserIcon className="size-4 text-gray-400 group-hover/row:text-gray-600" weight="bold" />
-                  )}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent align="start" side="bottom" className="w-72 p-2">
-                <Input
-                  placeholder="Search members…"
-                  value={memberSearch}
-                  onChange={(e) => setMemberSearch(e.target.value)}
-                  className="h-8 text-xs mb-2"
-                />
-                {members === null ? (
-                  <p className="py-2 px-1 text-xs text-muted-foreground">Loading…</p>
-                ) : filteredMembers.length === 0 ? (
-                  <p className="py-2 px-1 text-xs text-muted-foreground">No members found</p>
-                ) : (
-                  <div className="max-h-52 overflow-y-auto">
-                    <p className="px-1 pb-1 text-2xs font-semibold text-muted-foreground uppercase tracking-wide">People</p>
-                    {filteredMembers.map((m) => {
-                      const assigned = task.assignees.some((a) => a.userId === m.userId);
-                      return (
-                        <button
-                          key={m.userId}
-                          onClick={() => void handleToggleAssignee(m.userId)}
-                          className={cn(
-                            "flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors cursor-pointer",
-                            assigned ? "bg-primary/10" : "hover:bg-accent",
-                          )}
-                        >
-                          <Avatar className="size-6 shrink-0">
-                            {m.image && <AvatarImage src={avatarSrc(m.image)} />}
-                            <AvatarFallback className="text-2xs bg-primary/10 text-primary font-semibold">
-                              {userInitials(m.name ?? m.email ?? "?")}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="flex-1 min-w-0 text-left truncate">{m.name ?? m.email}</span>
-                          {assigned && <CheckIcon className="size-3.5 text-primary shrink-0" weight="bold" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </PopoverContent>
-            </Popover>
-          ) : (
-            <div className="flex items-center gap-2 px-2">
-              {task.assignees.length > 0 ? (
-                <div className="flex -space-x-1.5">
-                  {task.assignees.slice(0, 3).map((a) => (
-                    <Avatar key={a.userId} className="size-6 shrink-0 border border-background shadow-sm">
-                      {a.image && <AvatarImage src={avatarSrc(a.image)} alt={a.name} />}
-                      <AvatarFallback className="text-2xs bg-primary text-primary-foreground font-semibold">
-                        {userInitials(a.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                  ))}
-                  {task.assignees.length > 3 && (
-                    <div className="flex size-6 items-center justify-center rounded-full border border-background bg-muted text-2xs text-muted-foreground font-bold shadow-sm">
-                      +{task.assignees.length - 3}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <UserIcon className="size-4 text-gray-300" weight="bold" />
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Due date */}
-        <div className="w-28 shrink-0 self-stretch flex items-center px-2" onClick={(e) => e.stopPropagation()}>
-          {canEdit ? (
-            <Popover open={dateOpen} onOpenChange={setDateOpen}>
-              <PopoverTrigger asChild>
-                <button className={cn(
-                  "flex items-center gap-1.5 w-full h-full px-2 rounded-md border border-transparent hover:border-border hover:bg-accent/30 transition-all text-xs font-semibold text-left cursor-pointer select-none",
-                  dueDate?.overdue ? "text-red-500" : "text-gray-600",
-                )}>
-                  <CalendarBlankIcon className="size-3.5 shrink-0" />
-                  {dueDate ? (
-                    <span>{dueDate.label}</span>
-                  ) : (
-                    <span className="text-gray-400">Set date</span>
-                  )}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent align="end" side="bottom" className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={localDueDate ?? undefined}
-                  onSelect={(date) => { handleSetDueDate(date ?? null); setDateOpen(false); }}
-
-                />
-              </PopoverContent>
-            </Popover>
-          ) : (
-            <div className={cn("flex items-center gap-1.5 px-2 text-xs font-semibold", dueDate?.overdue ? "text-red-500" : "text-gray-400")}>
-              <CalendarBlankIcon className="size-3.5 shrink-0" />
-              {dueDate ? <span>{dueDate.label}</span> : null}
-            </div>
-          )}
-        </div>
-
-        {/* Priority */}
-        <div className="w-32 shrink-0 self-stretch flex items-center px-2" onClick={(e) => e.stopPropagation()}>
-          {canEdit ? (
-            <Popover open={priorityOpen} onOpenChange={setPriorityOpen}>
-              <PopoverTrigger asChild>
-                <button className="flex items-center gap-1.5 w-full h-full px-2 rounded-md border border-transparent hover:border-border hover:bg-accent/30 transition-all text-left cursor-pointer select-none">
-                  {localPriority !== "NONE" ? (
-                    <span className={cn("flex items-center gap-1.5 text-xs font-bold", PRIORITY_CONFIG[localPriority].color)}>
-                      <span>{PRIORITY_CONFIG[localPriority].icon}</span>
-                      {PRIORITY_CONFIG[localPriority].label}
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1.5 text-xs font-bold text-gray-400">
-                      <FlagIcon className="size-3.5 shrink-0" />
-                      No priority
-                    </span>
-                  )}
-                </button>
-              </PopoverTrigger>
-            <PopoverContent align="start" side="bottom" className="w-44 p-1">
-              <p className="px-2 py-1 text-2xs font-bold text-muted-foreground uppercase tracking-wide">Priority</p>
-              {(["URGENT", "HIGH", "MEDIUM", "LOW"] as const).map((value) => (
-                <button
-                  key={value}
-                  onClick={() => void handleSetPriority(value)}
-                  className={cn(
-                    "flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs font-semibold hover:bg-accent cursor-pointer",
-                    localPriority === value && "bg-accent",
-                  )}
-                >
-                  <span>{PRIORITY_CONFIG[value].icon}</span>
-                  <span className={PRIORITY_CONFIG[value].color}>{PRIORITY_CONFIG[value].label}</span>
-                </button>
-              ))}
-              <div className="h-px bg-border my-1" />
-              <button
-                onClick={() => void handleSetPriority("NONE")}
-                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent cursor-pointer"
-              >
-                <XIcon className="size-3.5 shrink-0" />
-                Clear
-              </button>
-            </PopoverContent>
-            </Popover>
-          ) : (
-            <div className="flex items-center gap-1.5 px-2">
-              {localPriority !== "NONE" ? (
-                <span className={cn("flex items-center gap-1.5 text-xs font-bold", PRIORITY_CONFIG[localPriority].color)}>
-                  <span>{PRIORITY_CONFIG[localPriority].icon}</span>
-                  {PRIORITY_CONFIG[localPriority].label}
-                </span>
-              ) : (
-                <span className="flex items-center gap-1.5 text-xs font-bold text-gray-400">
-                  <FlagIcon className="size-3.5 shrink-0" />
-                  No priority
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Row hover actions */}
-        <div className="w-48 shrink-0 py-1.5 pr-4 flex items-center justify-end gap-0.5" onClick={(e) => e.stopPropagation()}>
-          <div className="opacity-0 group-hover/row:opacity-100 transition-all duration-200 flex items-center gap-0.5">
-            {/* Personal pin */}
-            <button
-              onClick={handleTogglePersonalPin}
-              title={localPersonalPin ? "Unpin from sidebar" : "Pin to sidebar"}
-              className="flex size-7 items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-            >
-              <PushPinIcon className="size-4" weight={localPersonalPin ? "fill" : "regular"} />
-            </button>
-
-            {/* Edit */}
-            <button
-              onClick={onOpen}
-              title="Edit Task"
-              className="flex size-7 items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-            >
-              <PencilSimpleIcon className="size-4" />
-            </button>
-
-            {/* Duplicate */}
-            {canEdit && (
-              <button
-                onClick={handleDuplicate}
-                title="Duplicate Task"
-                className="flex size-7 items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-              >
-                <CopyIcon className="size-4" />
-              </button>
-            )}
-
-            {/* Move status menu — available to all members */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <button
-                  title="Move Task Status"
-                  className="flex size-7 items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                >
-                  <ArrowsOutCardinalIcon className="size-4" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-48 p-1">
-                <p className="px-2 py-1 text-2xs font-bold text-muted-foreground uppercase tracking-wide">Move Status</p>
-                {statuses.map((s) => (
-                  <button
-                    key={s.id}
-                    onClick={async () => {
-                      await updateTaskStatus(workspaceId, spaceId, listId, task.id, s.id);
-                      router.refresh();
-                    }}
-                    className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs font-semibold hover:bg-accent text-left cursor-pointer"
-                  >
-                    <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
-                    <span className="truncate">{s.name}</span>
-                  </button>
-                ))}
-              </PopoverContent>
-            </Popover>
-
-            {/* Delete (admin only) */}
-            {isAdmin && (
-              <button
-                onClick={handleDeleteClick}
-                title="Delete Task"
-                className="flex size-7 items-center justify-center rounded-md hover:bg-red-50 text-red-500 hover:text-red-700 transition-colors cursor-pointer"
-              >
-                <TrashIcon className="size-4" />
-              </button>
-            )}
-
-            {/* More menu — move + archive */}
-            {canEdit && (
-              <Popover onOpenChange={(open) => { if (open) void loadMoveData(); }}>
-                <PopoverTrigger asChild>
-                  <button className="flex size-7 items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
-                    <DotsThreeIcon className="size-4.5" weight="bold" />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent align="end" className="w-56 p-1 max-h-80 overflow-y-auto">
-                  {/* Sprint targets */}
-                  <p className="px-2 py-1 text-2xs font-bold text-muted-foreground uppercase tracking-wide">Move to Sprint</p>
-                  {moveSprints === null ? (
-                    <p className="px-2 py-1.5 text-xs text-muted-foreground">Loading…</p>
-                  ) : moveSprints.length === 0 ? (
-                    <p className="px-2 py-1.5 text-xs text-muted-foreground">No active sprints</p>
-                  ) : moveSprints.map((s) => (
-                    <button key={s.id} onClick={() => void handleMoveToSprint(s.id, s.name)} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs hover:bg-accent cursor-pointer">
-                      <LightningIcon className={cn("size-3.5 shrink-0", s.status === "ACTIVE" ? "text-primary" : "text-muted-foreground")} weight="fill" />
-                      <span className="flex-1 text-left truncate">{s.name}</span>
-                      <span className={cn("text-2xs px-1.5 py-0.5 rounded-full shrink-0", s.status === "ACTIVE" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>{s.status === "ACTIVE" ? "Active" : "Planned"}</span>
-                    </button>
-                  ))}
-                  <div className="h-px bg-border my-1" />
-                  {/* List targets */}
-                  <p className="px-2 py-1 text-2xs font-bold text-muted-foreground uppercase tracking-wide">Move to List</p>
-                  {moveListSpaces === null ? (
-                    <p className="px-2 py-1.5 text-xs text-muted-foreground">Loading…</p>
-                  ) : moveListSpaces.length === 0 ? (
-                    <p className="px-2 py-1.5 text-xs text-muted-foreground">No other lists</p>
-                  ) : moveListSpaces.map((sp) => (
-                    <div key={sp.id}>
-                      <p className="flex items-center gap-1.5 px-2 py-0.5 text-2xs font-bold text-muted-foreground uppercase">
-                        <span className="size-1.5 rounded-full shrink-0" style={{ backgroundColor: sp.color ?? "#6B7280" }} />
-                        {sp.name}
-                      </p>
-                      {sp.lists.map((l) => (
-                        <button key={l.id} onClick={() => void handleMoveToList(l.id, l.name)} className="flex w-full items-center gap-2 rounded pl-5 pr-2 py-1.5 text-xs hover:bg-accent cursor-pointer">
-                          <span className="size-1.5 rounded-full shrink-0" style={{ backgroundColor: l.color ?? "#6B7280" }} />
-                          <span className="flex-1 text-left truncate">{l.name}</span>
-                        </button>
-                      ))}
-                    </div>
-                  ))}
-                  <div className="h-px bg-border my-1" />
-                  {canPinToList && (
-                    task.isPinnedToList ? (
-                      <button onClick={handleUnpinFromList} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs font-semibold hover:bg-accent text-left cursor-pointer">
-                        <PushPinIcon className="size-3.5 text-primary shrink-0" weight="fill" /> Unpin from top
-                      </button>
-                    ) : (
-                      <button onClick={handlePinToList} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs font-semibold hover:bg-accent text-left cursor-pointer">
-                        <PushPinIcon className="size-3.5 text-muted-foreground shrink-0" /> Pin to top
-                      </button>
-                    )
-                  )}
-                  <div className="h-px bg-border my-1" />
-                  <button onClick={handleArchive} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs font-semibold hover:bg-accent text-left cursor-pointer">
-                    <ArchiveIcon className="size-3.5 text-muted-foreground shrink-0" /> Archive
-                  </button>
-                </PopoverContent>
-              </Popover>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile Card Layout */}
-      <div
-        ref={setNodeRef}
-        style={style}
-        {...attributes}
-        className={cn(
-          "md:hidden flex flex-col p-4 border-b border-border gap-3 hover:bg-accent/30 bg-card transition-all cursor-pointer relative",
-          isDragging && "opacity-40 shadow-none border-dashed",
-        )}
-        onClick={onOpen}
-      >
-        {/* Status Line */}
-        <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: statusColor }} />
-
-        {/* Row 1: Checkbox, Seq ID, Title */}
-        <div className="flex items-start gap-2.5 pl-2">
-          <div
-            className="flex size-4.5 items-center justify-center rounded border transition-colors cursor-pointer shrink-0 mt-0.5"
-            onClick={(e) => { e.stopPropagation(); onSelect(task.id, !selected); }}
-          >
-            <div className={cn(
-              "flex size-4 items-center justify-center rounded border transition-colors",
-              selected
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border hover:border-primary/40 bg-background",
-            )}>
-              {selected && <CheckIcon className="size-2.5" weight="bold" />}
-            </div>
-          </div>
-
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-              <span className="text-2xs text-gray-400 font-mono font-bold">#{task.seqNumber}</span>
-              {localPriority !== "NONE" && (
-                <span className={cn("inline-flex items-center gap-1 text-2xs font-bold px-1.5 py-0.5 rounded border border-current/10 bg-current/5", PRIORITY_CONFIG[localPriority].color)}>
-                  <span>{PRIORITY_CONFIG[localPriority].icon}</span>
-                  {PRIORITY_CONFIG[localPriority].label}
-                </span>
-              )}
-            </div>
-            <p className="text-[13px] font-medium text-foreground line-clamp-2">{task.title}</p>
-          </div>
-
-          {/* Quick options */}
-          <div onClick={(e) => e.stopPropagation()} className="shrink-0">
-            <Popover>
-              <PopoverTrigger asChild>
-                <button className="flex size-7 items-center justify-center rounded hover:bg-accent text-muted-foreground cursor-pointer">
-                  <DotsThreeIcon className="size-4.5" weight="bold" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-44 p-1">
-                <button onClick={onOpen} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs font-semibold hover:bg-accent text-left cursor-pointer">
-                  <PencilSimpleIcon className="size-3.5 text-muted-foreground" /> Edit
-                </button>
-                <button onClick={handleDuplicate} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs font-semibold hover:bg-accent text-left cursor-pointer">
-                  <CopyIcon className="size-3.5 text-muted-foreground" /> Duplicate
-                </button>
-                {isAdmin ? (
-                  <button onClick={handleDeleteClick} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-50 text-left cursor-pointer">
-                    <TrashIcon className="size-3.5" /> Delete
-                  </button>
-                ) : (
-                  <button onClick={handleArchive} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs font-semibold hover:bg-accent text-left cursor-pointer">
-                    <ArchiveIcon className="size-3.5 text-muted-foreground" /> Archive
-                  </button>
-                )}
-              </PopoverContent>
-            </Popover>
-          </div>
-        </div>
-
-        {/* Row 2: Assignees & Due Date */}
-        <div className="flex items-center justify-between pl-2 mt-1">
-          {/* Due date */}
-          <div onClick={(e) => e.stopPropagation()}>
-            <Popover>
-              <PopoverTrigger asChild>
-                <button className={cn(
-                  "flex items-center gap-1.5 px-2 py-1 rounded bg-muted/50 text-2xs font-semibold transition-all cursor-pointer",
-                  dueDate?.overdue ? "text-red-500 bg-red-50" : "text-foreground/70",
-                )}>
-                  <CalendarBlankIcon className="size-3.5" />
-                  <span>{dueDate ? dueDate.label : "Set date"}</span>
-                </button>
-              </PopoverTrigger>
-              <PopoverContent align="start" className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={localDueDate ?? undefined}
-                  onSelect={(date) => handleSetDueDate(date ?? null)}
-
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          {/* Assignees */}
-          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-            {task.assignees.length > 0 && (
-              <div className="flex -space-x-1.5">
-                {task.assignees.slice(0, 3).map((a) => (
-                  <Avatar key={a.userId} className="size-5.5 border border-background">
-                    {a.image && <AvatarImage src={avatarSrc(a.image)} />}
-                    <AvatarFallback className="text-[8px] bg-primary text-primary-foreground font-semibold">
-                      {userInitials(a.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                ))}
-                {task.assignees.length > 3 && (
-                  <div className="flex size-5.5 items-center justify-center rounded-full border border-background bg-muted text-[8px] font-bold text-muted-foreground">
-                    +{task.assignees.length - 3}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </>
+    <TaskListRow
+      {...props}
+      dragRef={setNodeRef}
+      dragStyle={{ transform: CSS.Transform.toString(transform), transition }}
+      dragProps={{ ...attributes, ...listeners }}
+      isDragging={isDragging}
+    />
   );
 }
 
@@ -991,7 +185,7 @@ function PinnedSection({
           {tasks.map((t) => {
             const statusColor = statuses.find((s) => s.id === t.statusId)?.color ?? "#6B7280";
             return (
-              <TaskRow
+              <TaskListRow
                 key={t.id}
                 task={t}
                 statusColor={statusColor}
@@ -1005,6 +199,7 @@ function PinnedSection({
                 selected={false}
                 onSelect={() => {}}
                 onOpen={() => router.push(`/${workspaceId}/task/${t.id}`)}
+                onRefresh={() => router.refresh()}
                 statuses={statuses}
               />
             );
@@ -1023,6 +218,88 @@ const STATUS_PRESET_COLORS = [
   "#F97316", "#84CC16",
 ];
 
+function QuickCreateRow({
+  open,
+  onOpenChange,
+  workspaceId,
+  spaceId,
+  listId,
+  statusId,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  workspaceId: string;
+  spaceId: string;
+  listId: string;
+  statusId: string;
+}) {
+  const router = useRouter();
+  const [title, setTitle] = React.useState("");
+  const [saving, setSaving] = React.useState(false);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    if (open) setTimeout(() => inputRef.current?.focus(), 0);
+  }, [open]);
+
+  async function submit() {
+    const trimmed = title.trim();
+    if (!trimmed) { onOpenChange(false); return; }
+    setSaving(true);
+    try {
+      const res = await createTask(workspaceId, spaceId, listId, { title: trimmed, statusId });
+      if ("error" in res) return;
+      setTitle("");
+      router.refresh();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => onOpenChange(true)}
+        className="flex w-full items-center gap-1.5 pl-16 pr-4 py-2 text-xs font-semibold text-muted-foreground hover:text-primary hover:bg-accent/30 transition-colors border-b border-border bg-card cursor-pointer select-none text-left"
+      >
+        <PlusIcon className="size-3.5 shrink-0" />
+        Add Task
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 pl-16 pr-4 py-2 border-b border-border bg-card">
+      <input
+        ref={inputRef}
+        type="text"
+        placeholder="Task name"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") { e.preventDefault(); void submit(); }
+          if (e.key === "Escape") { onOpenChange(false); setTitle(""); }
+        }}
+        disabled={saving}
+        className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
+      />
+      <button
+        onClick={() => void submit()}
+        disabled={saving || !title.trim()}
+        className="text-xs font-semibold text-primary hover:text-primary/80 disabled:opacity-40 shrink-0"
+      >
+        {saving ? "…" : "Add"}
+      </button>
+      <button
+        onClick={() => { onOpenChange(false); setTitle(""); }}
+        className="text-xs text-muted-foreground hover:text-foreground shrink-0"
+      >
+        Esc
+      </button>
+    </div>
+  );
+}
+
 function StatusGroup({
   status,
   tasks,
@@ -1035,7 +312,6 @@ function StatusGroup({
   personallyPinnedIds,
   selectedIds,
   onSelect,
-  onCreateTask,
   statuses,
 }: {
   status: Status;
@@ -1049,11 +325,11 @@ function StatusGroup({
   personallyPinnedIds?: Set<string>;
   selectedIds: Set<string>;
   onSelect: (id: string, checked: boolean) => void;
-  onCreateTask: (statusId: string) => void;
   statuses: Status[];
 }) {
   const router = useRouter();
   const [collapsed, setCollapsed] = React.useState(false);
+  const [quickCreateOpen, setQuickCreateOpen] = React.useState(false);
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [renameOpen, setRenameOpen] = React.useState(false);
   const [newStatusOpen, setNewStatusOpen] = React.useState(false);
@@ -1167,7 +443,7 @@ function StatusGroup({
 
             <button
               className="flex size-6 items-center justify-center rounded hover:bg-accent transition-colors cursor-pointer"
-              onClick={() => onCreateTask(status.id)}
+              onClick={() => setQuickCreateOpen(true)}
             >
               <PlusIcon className="size-3.5 text-muted-foreground" />
             </button>
@@ -1180,7 +456,7 @@ function StatusGroup({
             {/* Column Header (Desktop Only) */}
             <div className="hidden md:flex items-center border-b border-border text-2xs font-bold text-gray-400 select-none uppercase tracking-wider bg-card">
               <div className="w-0.75 self-stretch shrink-0 bg-transparent" />
-              <div className="flex items-center pl-3 shrink-0 w-16" />
+              <div className="flex items-center pl-2 shrink-0 w-14" />
               <div className="flex-1 py-2 pr-4 pl-1">Name</div>
               <div className="w-36 shrink-0 py-2 px-4">Assignee</div>
               <div className="w-28 shrink-0 py-2 px-4">Due Date</div>
@@ -1200,7 +476,7 @@ function StatusGroup({
                 </div>
               ) : (
                 tasks.map((task) => (
-                  <TaskRow
+                  <SortableTaskRow
                     key={task.id}
                     task={task}
                     statusColor={status.color}
@@ -1214,19 +490,20 @@ function StatusGroup({
                     selected={selectedIds.has(task.id)}
                     onSelect={onSelect}
                     onOpen={() => router.push(`/${workspaceId}/task/${task.id}`)}
+                    onRefresh={() => router.refresh()}
                     statuses={statuses}
                   />
                 ))
               )}
 
-              {/* Add Task Button */}
-              <button
-                onClick={() => onCreateTask(status.id)}
-                className="flex items-center gap-1.5 pl-16 pr-4 py-2 text-xs font-semibold text-muted-foreground hover:text-primary hover:bg-accent/30 transition-colors border-b border-border bg-card cursor-pointer select-none text-left"
-              >
-                <PlusIcon className="size-3.5 shrink-0" />
-                Add Task
-              </button>
+              <QuickCreateRow
+                open={quickCreateOpen}
+                onOpenChange={setQuickCreateOpen}
+                workspaceId={workspaceId}
+                spaceId={spaceId}
+                listId={listId}
+                statusId={status.id}
+              />
             </div>
           </SortableContext>
         )}
@@ -1317,6 +594,7 @@ function BulkActionBar({
   onClear: () => void;
 }) {
   const [busy, setBusy] = React.useState(false);
+  const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [sprints, setSprints] = React.useState<SprintOption[] | null>(null);
   const [loadingSprints, setLoadingSprints] = React.useState(false);
   const [listSpaces, setListSpaces] = React.useState<{ id: string; name: string; color: string | null; lists: { id: string; name: string; color: string | null }[] }[] | null>(null);
@@ -1376,8 +654,8 @@ function BulkActionBar({
     onClear();
   }
 
-  async function handleBulkDelete() {
-    if (!confirm(`Delete ${count} task${count > 1 ? "s" : ""}? This cannot be undone.`)) return;
+  async function confirmBulkDelete() {
+    setDeleteOpen(false);
     setBusy(true);
     const res = await bulkDeleteTasks(workspaceId, spaceId, listId, [...selectedIds]);
     setBusy(false);
@@ -1387,6 +665,24 @@ function BulkActionBar({
   }
 
   return (
+    <>
+    <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+      <DialogContent className="sm:max-w-xs text-center">
+        <div className="flex flex-col items-center gap-3 pt-2">
+          <div className="flex size-12 items-center justify-center rounded-full bg-destructive/10">
+            <TrashIcon className="size-6 text-destructive" weight="fill" />
+          </div>
+          <div>
+            <DialogTitle className="text-base font-bold">Delete {count} Task{count > 1 ? "s" : ""}</DialogTitle>
+            <p className="text-sm text-muted-foreground mt-1">This action cannot be undone.</p>
+          </div>
+        </div>
+        <div className="flex gap-2 mt-2">
+          <Button variant="outline" className="flex-1" onClick={() => setDeleteOpen(false)} disabled={busy}>Cancel</Button>
+          <Button variant="destructive" className="flex-1" onClick={confirmBulkDelete} disabled={busy}>Delete</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 rounded-xl border border-white/10 bg-neutral-900 px-3 py-2 shadow-2xl text-white text-sm">
       {/* Count + clear */}
       <span className="font-semibold text-white pr-2 border-r border-white/20 mr-2 select-none">
@@ -1510,7 +806,7 @@ function BulkActionBar({
       {isAdmin && (
         <button
           disabled={busy}
-          onClick={handleBulkDelete}
+          onClick={() => setDeleteOpen(true)}
           className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors disabled:opacity-50 cursor-pointer"
         >
           <TrashIcon className="size-3.5" />
@@ -1518,6 +814,7 @@ function BulkActionBar({
         </button>
       )}
     </div>
+    </>
   );
 }
 
@@ -1556,7 +853,6 @@ export function ListView({
 
   // Optimistic DND tasks
   const [localTasks, setLocalTasks] = React.useState<Task[]>(tasks);
-  const [activeTask, setActiveTask] = React.useState<Task | null>(null);
 
   React.useEffect(() => {
     setLocalTasks(tasks);
@@ -1696,9 +992,6 @@ export function ListView({
     return null;
   }
 
-  function onDragStart({ active }: DragStartEvent) {
-    setActiveTask(localTasks.find((t) => t.id === active.id) ?? null);
-  }
 
   function onDragOver({ active, over }: DragOverEvent) {
     if (!over) return;
@@ -1748,7 +1041,6 @@ export function ListView({
   }
 
   async function onDragEnd({ active, over }: DragEndEvent) {
-    setActiveTask(null);
     if (!over) return;
 
     const activeId = active.id as string;
@@ -1768,7 +1060,21 @@ export function ListView({
     if (!origTask) return;
 
     if (groupBy === "status") {
-      if (newGroup === origTask.statusId) return;
+      if (newGroup === origTask.statusId) {
+        // Within-group reorder
+        const groupTasks = localTasks.filter((t) => t.statusId === origTask.statusId);
+        const oldIndex = groupTasks.findIndex((t) => t.id === activeId);
+        const newIndex = groupTasks.findIndex((t) => t.id === overId);
+        if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
+        const reordered = arrayMove(groupTasks, oldIndex, newIndex);
+        setLocalTasks((prev) => [
+          ...prev.filter((t) => t.statusId !== origTask.statusId),
+          ...reordered,
+        ]);
+        const res = await reorderTasksInStatus(workspaceId, spaceId, listId, reordered.map((t) => t.id));
+        if ("error" in res) { setLocalTasks(tasks); toast.error(res.error); }
+        return;
+      }
       const res = await updateTaskStatus(workspaceId, spaceId, listId, activeId, newGroup);
       if ("error" in res) setLocalTasks(tasks);
     } else if (groupBy === "priority") {
@@ -1808,8 +1114,7 @@ export function ListView({
       <DndContext
         id="list-dnd"
         sensors={sensors}
-        collisionDetection={closestCorners}
-        onDragStart={onDragStart}
+        collisionDetection={closestCenter}
         onDragOver={onDragOver}
         onDragEnd={onDragEnd}
       >
@@ -2006,7 +1311,6 @@ export function ListView({
                 personallyPinnedIds={personallyPinnedIds}
                 selectedIds={selectedIds}
                 onSelect={handleSelect}
-                onCreateTask={setCreateForStatusId}
                 statuses={statuses}
               />
             ))}
@@ -2044,18 +1348,6 @@ export function ListView({
           )}
         </div>
 
-        {/* Drag Overlay visual preview */}
-        <DragOverlay>
-          {activeTask && (
-            <div className="flex items-center bg-card border border-border rounded-xl shadow-lg px-4 py-2 w-full max-w-lg cursor-grabbing text-sm border-l-[3px]" style={{ borderLeftColor: statuses.find(s => s.id === activeTask.statusId)?.color || "#6B7280" }}>
-              <div className="flex size-4 items-center justify-center rounded border border-border mr-3">
-                {selectedIds.has(activeTask.id) && <CheckIcon className="size-2.5 text-primary" weight="bold" />}
-              </div>
-              <span className="text-2xs text-muted-foreground font-mono mr-2">#{activeTask.seqNumber}</span>
-              <span className="font-semibold text-foreground truncate">{activeTask.title}</span>
-            </div>
-          )}
-        </DragOverlay>
       </DndContext>
 
       {/* Floating Action Button (FAB) for mobile task creation */}

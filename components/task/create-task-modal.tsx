@@ -60,10 +60,10 @@ interface CreateTaskModalProps {
 
 const PRIORITY_OPTIONS: { value: Priority; label: string; color: string; icon: string }[] = [
   { value: "NONE", label: "No Priority", color: "text-muted-foreground", icon: "😴" },
-  { value: "LOW", label: "Low", color: "text-blue-500", icon: "🐢" },
+  { value: "LOW", label: "Low", color: "text-blue-500", icon: "🦥" },
   { value: "MEDIUM", label: "Medium", color: "text-yellow-500", icon: "🚶" },
   { value: "HIGH", label: "High", color: "text-orange-500", icon: "🏃" },
-  { value: "URGENT", label: "Urgent", color: "text-red-500", icon: "⚡" },
+  { value: "URGENT", label: "Urgent", color: "text-red-500", icon: "🚨" },
 ];
 
 function userInitials(name: string) {
@@ -316,6 +316,7 @@ export function CreateTaskModal({
                 <Calendar
                   mode="single"
                   selected={dueDate ?? undefined}
+                  disabled={{ before: new Date() }}
                   onSelect={(date) => { setDueDate(date ?? null); setDueDatePopoverOpen(false); }}
 
                 />
