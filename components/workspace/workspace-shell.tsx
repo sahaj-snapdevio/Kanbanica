@@ -31,6 +31,7 @@ import {
   PushPinSlashIcon,
   SignOutIcon,
   TrashIcon,
+  UserCircleIcon,
   UserPlusIcon,
   XIcon,
 } from "@phosphor-icons/react";
@@ -40,7 +41,7 @@ import { archiveSpace, deleteSpace, unarchiveSpace } from "@/app/actions/space";
 import { archiveList, duplicateList, unarchiveList } from "@/app/actions/list";
 import { SpaceActionDialog } from "@/components/workspace/space-action-dialog";
 import { authClient } from "@/lib/auth-client";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
@@ -119,7 +120,7 @@ interface WorkspaceShellProps {
   archivedSpaces: SpaceSummary[];
   channels: ChannelSummary[];
   role: string;
-  user: { name: string | null; email: string };
+  user: { name: string | null; email: string; image: string | null };
 }
 
 function workspaceBadge(ws: WorkspaceSummary) {
@@ -179,6 +180,7 @@ export function WorkspaceShell({
         .slice(0, 2)
     : user.email.slice(0, 2).toUpperCase();
   const displayName = user.name || user.email;
+  const avatarUrl = user.image ? `/api/files/${user.image}` : null;
   const isAdmin = role === "OWNER" || role === "ADMIN";
   const [expandedArchivedLists, setExpandedArchivedLists] = React.useState<Set<string>>(new Set());
   const [expandedSprintGroups, setExpandedSprintGroups] = React.useState<Set<string>>(new Set());
@@ -815,6 +817,7 @@ export function WorkspaceShell({
             <PopoverTrigger asChild>
               <button className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-[13px] text-(--text-sidebar) transition-colors hover:bg-(--bg-sidebar-item-hover) hover:text-(--text-sidebar-active)">
                 <Avatar className="size-7 shrink-0">
+                  {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
                   <AvatarFallback className="text-xs">{initials}</AvatarFallback>
                 </Avatar>
                 <span className="flex-1 truncate text-left">{displayName}</span>
@@ -854,6 +857,15 @@ export function WorkspaceShell({
                 </>
               ) : (
                 <>
+                  <Link
+                    href={`/${workspace.id}/profile`}
+                    onClick={() => setProfileOpen(false)}
+                    className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent"
+                  >
+                    <UserCircleIcon className="size-4" />
+                    Edit profile
+                  </Link>
+                  <Separator className="my-1" />
                   {isAdmin && (
                     <Link
                       href={`/${workspace.id}/settings/general`}
@@ -949,6 +961,7 @@ function PinnedTasksBar({ workspaceId }: { workspaceId: string }) {
     mutate(swrKey, (prev: { pinnedTasks: PinnedItem[] } | undefined) => ({
       pinnedTasks: (prev?.pinnedTasks ?? []).filter((t) => t.taskId !== taskId),
     }), { revalidate: false });
+    window.dispatchEvent(new CustomEvent("task-personal-unpin", { detail: { taskId } }));
     await fetch(`/api/tasks/${taskId}/pin`, { method: 'DELETE' });
     mutate(swrKey);
   }

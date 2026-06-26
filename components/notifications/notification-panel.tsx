@@ -11,7 +11,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/common/user-avatar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
@@ -96,16 +96,6 @@ export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
     }
   }
 
-  function getActorInitials(name: string | null): string {
-    if (!name) return "?";
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-  }
-
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
       <SheetContent
@@ -184,11 +174,7 @@ export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
               {n.isRead && <span className="mt-2 h-2 w-2 shrink-0" />}
 
               {/* Actor avatar */}
-              <Avatar className="mt-0.5 size-7 shrink-0">
-                <AvatarFallback className="text-xs">
-                  {getActorInitials(n.actorName)}
-                </AvatarFallback>
-              </Avatar>
+              <UserAvatar name={n.actorName} image={n.actorImage} size="sm" className="mt-0.5 shrink-0" />
 
               <div className="flex-1 min-w-0">
                 <p className="text-sm leading-snug">{n.title}</p>

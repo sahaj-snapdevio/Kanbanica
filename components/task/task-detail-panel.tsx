@@ -83,9 +83,9 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { TaskActivityFeed } from "@/components/task/task-activity-feed";
+import { TaskActivityFeed, type TaskActivityFeedHandle } from "@/components/task/task-activity-feed";
 import { ManageStatusesDialog } from "@/components/list/manage-statuses-dialog";
-import { ClickUpCalendar } from "@/components/ui/clickup-calendar";
+import { Calendar } from "@/components/ui/calendar";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -150,6 +150,7 @@ export function TaskDetailPanel({
   const [depResults, setDepResults] = React.useState<{ id: string; title: string; seqNumber: number }[]>([]);
   const [timeInput, setTimeInput] = React.useState("");
   const [timeNote, setTimeNote] = React.useState("");
+  const feedRef = React.useRef<TaskActivityFeedHandle>(null);
   const [saving, setSaving] = React.useState(false);
   const [startCalOpen, setStartCalOpen] = React.useState(false);
   const [endCalOpen, setEndCalOpen] = React.useState(false);
@@ -320,6 +321,7 @@ export function TaskDetailPanel({
     await logTime(workspaceId, spaceId, listId, taskId, mins, timeNote || undefined);
     setTimeInput("");
     setTimeNote("");
+    feedRef.current?.refresh();
     load();
   }
 
@@ -667,6 +669,7 @@ export function TaskDetailPanel({
 
             {/* Comments + Activity feed */}
             <TaskActivityFeed
+              ref={feedRef}
               workspaceId={workspaceId}
               spaceId={spaceId}
               listId={listId}
@@ -745,10 +748,11 @@ export function TaskDetailPanel({
                       </button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
-                      <ClickUpCalendar
-                        selectedDate={dueDateStart}
-                        onSelect={(date) => handleDueDateChange("start", date)}
-                        onClose={() => setStartCalOpen(false)}
+                      <Calendar
+                        mode="single"
+                        selected={dueDateStart ?? undefined}
+                        onSelect={(date) => { handleDueDateChange("start", date ?? null); setStartCalOpen(false); }}
+
                       />
                     </PopoverContent>
                   </Popover>
@@ -762,10 +766,11 @@ export function TaskDetailPanel({
                       </button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
-                      <ClickUpCalendar
-                        selectedDate={dueDateEnd}
-                        onSelect={(date) => handleDueDateChange("end", date)}
-                        onClose={() => setEndCalOpen(false)}
+                      <Calendar
+                        mode="single"
+                        selected={dueDateEnd ?? undefined}
+                        onSelect={(date) => { handleDueDateChange("end", date ?? null); setEndCalOpen(false); }}
+
                       />
                     </PopoverContent>
                   </Popover>

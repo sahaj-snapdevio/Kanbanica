@@ -33,7 +33,7 @@ export default async function SpaceMembersPage({ params }: PageProps) {
   const spaceMemberUserIds = spaceMembers.map((m) => m.userId);
   const spaceUsers = spaceMemberUserIds.length
     ? await db
-        .select({ id: user.id, name: user.name, email: user.email })
+        .select({ id: user.id, name: user.name, email: user.email, image: user.image })
         .from(user)
         .where(inArray(user.id, spaceMemberUserIds))
     : [];
@@ -41,7 +41,7 @@ export default async function SpaceMembersPage({ params }: PageProps) {
 
   const members = spaceMembers.map((m) => ({
     ...m,
-    user: userById.get(m.userId) ?? { id: m.userId, name: null, email: "" },
+    user: userById.get(m.userId) ?? { id: m.userId, name: null, email: "", image: null },
   }));
 
   // All active workspace members for the Add dropdown

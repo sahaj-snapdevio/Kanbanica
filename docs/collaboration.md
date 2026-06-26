@@ -163,7 +163,7 @@ Every event that creates an `ActivityLog` record is listed below. Each entry sto
 
 | Event | `event_type` key | `meta` payload | Example display |
 |-------|-----------------|----------------|-----------------|
-| Time logged | `time_logged` | `{ duration_minutes, logged_by }` | *John logged 2h 30m* |
+| Time logged | `time_logged` | `{ minutes, note }` | *John logged 2h 30m* (note shown on second line if present) |
 
 ---
 

@@ -2,11 +2,14 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { format } from "date-fns";
 import { toast } from "sonner";
 import {
   CaretDownIcon,
   CaretRightIcon,
   CalendarBlankIcon,
+  CheckCircleIcon,
+  ClockCounterClockwiseIcon,
   LightningIcon,
   PlusIcon,
   TargetIcon,
@@ -408,6 +411,7 @@ export function SprintPanel({ workspaceId, spaceId, listId, onDataChanged }: Spr
   const [createOpen, setCreateOpen] = useState(false);
   const [closeTarget, setCloseTarget] = useState<SprintRow | null>(null);
   const [addTasksTarget, setAddTasksTarget] = useState<SprintRow | null>(null);
+  const [closedExpanded, setClosedExpanded] = useState(false);
 
   function openSprintSettings() {
     router.push(`/${workspaceId}/${spaceId}/settings/sprints`);
@@ -424,6 +428,7 @@ export function SprintPanel({ workspaceId, spaceId, listId, onDataChanged }: Spr
 
   const activeSprints = sprints.filter((s) => s.status === "ACTIVE");
   const plannedSprints = sprints.filter((s) => s.status === "PLANNED");
+  const closedSprints = sprints.filter((s) => s.status === "CLOSED");
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -618,6 +623,46 @@ export function SprintPanel({ workspaceId, spaceId, listId, onDataChanged }: Spr
                   <span className="font-medium">Backlog</span>
                   <Badge variant="secondary" className="text-xs h-5 px-1.5">{backlogCount}</Badge>
                 </div>
+
+                {closedSprints.length > 0 && (
+                  <div className="space-y-1">
+                    <button
+                      onClick={() => setClosedExpanded((v) => !v)}
+                      className="flex w-full items-center gap-2 rounded-md px-1 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-colors"
+                    >
+                      {closedExpanded
+                        ? <CaretDownIcon className="size-3 shrink-0" />
+                        : <CaretRightIcon className="size-3 shrink-0" />}
+                      <ClockCounterClockwiseIcon className="size-3.5 shrink-0" />
+                      <span className="font-medium">Past Sprints</span>
+                      <Badge variant="secondary" className="text-xs h-4 px-1 ml-auto">{closedSprints.length}</Badge>
+                    </button>
+
+                    {closedExpanded && (
+                      <div className="space-y-0.5 pl-1">
+                        {closedSprints.map((s) => (
+                          <button
+                            key={s.id}
+                            onClick={() => router.push(`/${workspaceId}/${spaceId}/sprint/${s.id}`)}
+                            className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left hover:bg-accent/50 transition-colors group/closed"
+                          >
+                            <CheckCircleIcon className="size-3.5 shrink-0 text-green-500" weight="fill" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium truncate">{s.name}</p>
+                              {(s.startDate || s.endDate) && (
+                                <p className="text-[11px] text-muted-foreground/70 truncate">
+                                  {s.startDate ? format(new Date(s.startDate), "MMM d") : "—"}
+                                  {" → "}
+                                  {s.endDate ? format(new Date(s.endDate), "MMM d") : "—"}
+                                </p>
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </>
             )}
           </div>

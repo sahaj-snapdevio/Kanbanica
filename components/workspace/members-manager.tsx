@@ -14,7 +14,7 @@ import {
   transferOwnership,
 } from "@/app/actions/workspace";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/common/user-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,6 +53,7 @@ interface Member {
   userId: string;
   name: string;
   email: string;
+  image: string | null;
   role: WorkspaceRole;
   joinedAt: string;
 }
@@ -82,14 +83,6 @@ const ROLE_LABELS: Record<WorkspaceRole, string> = {
   GUEST: "Guest",
 };
 
-function initialsOf(name: string) {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
 
 export function MembersManager({
   workspaceId,
@@ -323,9 +316,7 @@ export function MembersManager({
                 <TableRow key={member.id}>
                   <TableCell>
                     <div className="flex items-center gap-2.5">
-                      <Avatar className="size-8 shrink-0">
-                        <AvatarFallback className="text-xs">{initialsOf(member.name)}</AvatarFallback>
-                      </Avatar>
+                      <UserAvatar name={member.name} email={member.email} image={member.image} size="md" />
                       <div className="min-w-0">
                         <div className="font-medium truncate">
                           {member.name}

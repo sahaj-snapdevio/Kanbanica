@@ -8,7 +8,6 @@ import {
   type SessionRow,
   SessionsCard,
 } from "@/components/profile/sessions-card";
-import { AppShell } from "@/components/scaffold/app-shell";
 import { PageHeader } from "@/components/scaffold/page-header";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,7 +17,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ADMIN_ROLE } from "@/config/platform";
 import { session as sessionTable, user } from "@/db/schema";
 import { requireSession } from "@/lib/authz";
 import { db } from "@/lib/db";
@@ -27,7 +25,12 @@ export const metadata = {
   title: "Profile",
 };
 
-export default async function ProfilePage() {
+export default async function ProfilePage({
+  params,
+}: {
+  params: Promise<{ workspaceId: string }>;
+}) {
+  const { workspaceId } = await params;
   const current = await requireSession();
   const [freshUser, sessions] = await Promise.all([
     db.query.user.findFirst({ where: eq(user.id, current.user.id) }),
@@ -49,19 +52,19 @@ export default async function ProfilePage() {
     return null;
   }
 
-  const sessionRows: SessionRow[] = sessions.map((session) => ({
-    createdAt: session.createdAt.toISOString(),
-    expiresAt: session.expiresAt.toISOString(),
-    id: session.id,
-    ipAddress: session.ipAddress,
-    isCurrent: session.token === current.session.token,
-    userAgent: session.userAgent,
+  const sessionRows: SessionRow[] = sessions.map((s) => ({
+    createdAt: s.createdAt.toISOString(),
+    expiresAt: s.expiresAt.toISOString(),
+    id: s.id,
+    ipAddress: s.ipAddress,
+    isCurrent: s.token === current.session.token,
+    userAgent: s.userAgent,
   }));
 
   return (
-    <AppShell email={freshUser.email} isAdmin={freshUser.role === ADMIN_ROLE}>
+    <div className="mx-auto max-w-3xl px-6 py-8">
       <PageHeader
-        description="Manage identity, sessions, account exports, and account deletion."
+        description="Manage your photo, name, email, sessions, and account."
         eyebrow="Account"
         title="Profile Settings"
       />
@@ -80,7 +83,11 @@ export default async function ProfilePage() {
           </CardContent>
         </Card>
 
-        <AccountIdentityForms email={freshUser.email} name={freshUser.name} />
+        <AccountIdentityForms
+          email={freshUser.email}
+          name={freshUser.name}
+          callbackURL={`/${workspaceId}/profile`}
+        />
 
         <SessionsCard sessions={sessionRows} />
 
@@ -103,6 +110,6 @@ export default async function ProfilePage() {
 
         <DeleteAccountForm email={freshUser.email} />
       </div>
-    </AppShell>
+    </div>
   );
 }

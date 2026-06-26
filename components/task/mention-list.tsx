@@ -18,6 +18,10 @@ function initials(name: string) {
   return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 }
 
+function avatarSrc(key: string | null | undefined): string | undefined {
+  return key ? `/api/files/${key}` : undefined;
+}
+
 export const MentionList = React.forwardRef<MentionListRef, MentionListProps>(
   ({ items, command }, ref) => {
     const [selectedIndex, setSelectedIndex] = React.useState(0);
@@ -83,7 +87,7 @@ export const MentionList = React.forwardRef<MentionListRef, MentionListProps>(
             >
               <div className="relative shrink-0">
                 <Avatar className="size-7">
-                  {item.image && <AvatarImage src={item.image} />}
+                  {item.image && <AvatarImage src={avatarSrc(item.image)} />}
                   <AvatarFallback className="text-2xs bg-primary/10 text-primary font-semibold">
                     {initials(item.name)}
                   </AvatarFallback>

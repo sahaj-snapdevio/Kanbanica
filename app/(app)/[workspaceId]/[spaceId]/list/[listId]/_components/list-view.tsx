@@ -25,6 +25,7 @@ import {
   FlagIcon,
   FunnelIcon,
 } from "@phosphor-icons/react";
+import { SearchInput } from "@/components/ui/search-input";
 import { toast } from "sonner";
 import { useSWRConfig } from "swr";
 import {
@@ -94,7 +95,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ClickUpCalendar } from "@/components/ui/clickup-calendar";
+import { Calendar } from "@/components/ui/calendar";
 
 interface Status {
   id: string;
@@ -153,6 +154,10 @@ function userInitials(name: string) {
   return clean.split(/[\s._-]+/).map((n) => n[0]).filter(Boolean).join("").toUpperCase().slice(0, 2) || "?";
 }
 
+function avatarSrc(key: string | null | undefined): string | undefined {
+  return key ? `/api/files/${key}` : undefined;
+}
+
 function formatDueDate(date: Date | null) {
   if (!date) return null;
   const d = new Date(date);
@@ -209,6 +214,13 @@ function TaskRow({
   React.useEffect(() => { setLocalPriority(task.priority); }, [task.priority]);
   React.useEffect(() => { setLocalDueDate(task.dueDateStart ?? null); }, [task.dueDateStart]);
   React.useEffect(() => { setLocalPersonalPin(isPersonallyPinned ?? false); }, [isPersonallyPinned]);
+  React.useEffect(() => {
+    function onUnpin(e: Event) {
+      if ((e as CustomEvent<{ taskId: string }>).detail.taskId === task.id) setLocalPersonalPin(false);
+    }
+    window.addEventListener("task-personal-unpin", onUnpin);
+    return () => window.removeEventListener("task-personal-unpin", onUnpin);
+  }, [task.id]);
 
   async function handleTogglePersonalPin(e: React.MouseEvent) {
     e.stopPropagation();
@@ -480,7 +492,7 @@ function TaskRow({
                           <Tooltip key={a.userId}>
                             <TooltipTrigger asChild>
                               <Avatar className="size-6 shrink-0 border border-background shadow-sm">
-                                {a.image && <AvatarImage src={a.image} alt={a.name} />}
+                                {a.image && <AvatarImage src={avatarSrc(a.image)} alt={a.name} />}
                                 <AvatarFallback className="text-2xs bg-primary text-primary-foreground font-semibold">
                                   {userInitials(a.name)}
                                 </AvatarFallback>
@@ -529,7 +541,7 @@ function TaskRow({
                           )}
                         >
                           <Avatar className="size-6 shrink-0">
-                            {m.image && <AvatarImage src={m.image} />}
+                            {m.image && <AvatarImage src={avatarSrc(m.image)} />}
                             <AvatarFallback className="text-2xs bg-primary/10 text-primary font-semibold">
                               {userInitials(m.name ?? m.email ?? "?")}
                             </AvatarFallback>
@@ -549,7 +561,7 @@ function TaskRow({
                 <div className="flex -space-x-1.5">
                   {task.assignees.slice(0, 3).map((a) => (
                     <Avatar key={a.userId} className="size-6 shrink-0 border border-background shadow-sm">
-                      {a.image && <AvatarImage src={a.image} alt={a.name} />}
+                      {a.image && <AvatarImage src={avatarSrc(a.image)} alt={a.name} />}
                       <AvatarFallback className="text-2xs bg-primary text-primary-foreground font-semibold">
                         {userInitials(a.name)}
                       </AvatarFallback>
@@ -585,11 +597,12 @@ function TaskRow({
                   )}
                 </button>
               </PopoverTrigger>
-              <PopoverContent align="end" side="bottom" className="p-0 border-0 shadow-none bg-transparent">
-                <ClickUpCalendar
-                  selectedDate={localDueDate}
-                  onSelect={handleSetDueDate}
-                  onClose={() => setDateOpen(false)}
+              <PopoverContent align="end" side="bottom" className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={localDueDate ?? undefined}
+                  onSelect={(date) => { handleSetDueDate(date ?? null); setDateOpen(false); }}
+
                 />
               </PopoverContent>
             </Popover>
@@ -885,11 +898,12 @@ function TaskRow({
                   <span>{dueDate ? dueDate.label : "Set date"}</span>
                 </button>
               </PopoverTrigger>
-              <PopoverContent align="start" className="p-0 border-0 bg-transparent shadow-none">
-                <ClickUpCalendar
-                  selectedDate={localDueDate}
-                  onSelect={handleSetDueDate}
-                  onClose={() => {}}
+              <PopoverContent align="start" className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={localDueDate ?? undefined}
+                  onSelect={(date) => handleSetDueDate(date ?? null)}
+
                 />
               </PopoverContent>
             </Popover>
@@ -901,7 +915,7 @@ function TaskRow({
               <div className="flex -space-x-1.5">
                 {task.assignees.slice(0, 3).map((a) => (
                   <Avatar key={a.userId} className="size-5.5 border border-background">
-                    {a.image && <AvatarImage src={a.image} />}
+                    {a.image && <AvatarImage src={avatarSrc(a.image)} />}
                     <AvatarFallback className="text-[8px] bg-primary text-primary-foreground font-semibold">
                       {userInitials(a.name)}
                     </AvatarFallback>
@@ -1808,16 +1822,13 @@ export function ListView({
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <div className="flex items-center gap-2 flex-wrap">
                 {/* Search */}
-                <div className="relative">
-                  <PlusIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-gray-400 pointer-events-none" />
-                  <input
-                    type="text"
-                    placeholder="Search tasks…"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="h-8 w-44 rounded-lg border border-border bg-background pl-8 pr-3 text-xs focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all focus:w-56"
-                  />
-                </div>
+                <SearchInput
+                  placeholder="Search tasks…"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onClear={() => setSearchQuery("")}
+                  className="w-44 focus:w-56"
+                />
 
                 {/* Filter Popover */}
                 <Popover>

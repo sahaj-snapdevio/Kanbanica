@@ -198,12 +198,20 @@ If any incomplete tasks remain (user skipped step 1 or only some were closed), u
 
 ### 8. Sprint History
 
-- All Closed sprints are listed under Sprint History for the List
-- Each closed sprint shows:
-  - Sprint name, goal, start date, end date
-  - Total tasks, completed tasks, completion rate
-  - Total story points, completed story points
-  - List of all tasks that were in the sprint (with their final status)
+Closed sprints are accessible from two places:
+
+**1. Past Sprints section in the Sprint Panel**
+- A "Past Sprints" collapsible row appears at the bottom of the Sprint Panel (below the Backlog count) whenever any CLOSED sprints exist
+- Shows all closed sprints as a list with a green checkmark icon, sprint name, and date range
+- Clicking any closed sprint navigates to `/{workspaceId}/{spaceId}/sprint/{sprintId}`
+
+**2. Closed Sprint View (accessed via sprint URL)**
+- When navigating to a sprint that has status = CLOSED, the page renders `ClosedSprintView` instead of the active sprint view
+- `ClosedSprintView` is read-only and shows:
+  - **Header card:** Sprint name, goal, start date → end date, "Closed" badge
+  - **Stats bar:** Completion % with progress bar, tasks done / total, story points done / total (if any tasks have story points)
+  - **Task table:** All tasks grouped by status, each row showing title, status pill, assignee avatars, priority, story points, due date
+  - Clicking any task row navigates to the task detail page
 - Sprint History is read-only — closed sprints cannot be reopened or edited
 
 ---

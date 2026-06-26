@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { addSpaceMember, changeSpaceMemberPermission, removeSpaceMember } from "@/app/actions/space";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/common/user-avatar";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -46,7 +46,7 @@ interface SpaceMemberRow {
   id: string;
   userId: string;
   permission: SpacePermission;
-  user: { id: string; name: string | null; email: string };
+  user: { id: string; name: string | null; email: string; image?: string | null };
 }
 
 interface SpaceMembersManagerProps {
@@ -62,10 +62,6 @@ const PERMISSION_LABELS: Record<SpacePermission, string> = {
   VIEW: "View",
 };
 
-function initials(name: string | null, email: string) {
-  if (name) return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
-  return email.slice(0, 2).toUpperCase();
-}
 
 export function SpaceMembersManager({
   workspaceId,
@@ -199,11 +195,7 @@ export function SpaceMembersManager({
         <div className="divide-y rounded-md border">
           {members.map((member) => (
             <div key={member.id} className="flex items-center gap-3 px-4 py-3">
-              <Avatar className="h-8 w-8 shrink-0">
-                <AvatarFallback className="text-xs">
-                  {initials(member.user.name, member.user.email)}
-                </AvatarFallback>
-              </Avatar>
+              <UserAvatar name={member.user.name} email={member.user.email} image={member.user.image} size="md" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">
                   {member.user.name ?? member.user.email}

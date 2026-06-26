@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ClickUpCalendar } from "@/components/ui/clickup-calendar";
+import { Calendar } from "@/components/ui/calendar";
 import { createSprint, getCreateSprintDefaults } from "@/app/actions/sprint";
 import { format } from "date-fns";
 
@@ -170,11 +170,12 @@ export function CreateSprintModal({
                   </button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <ClickUpCalendar
-                    selectedDate={startDate}
-                    onSelect={(date) => { setStartDate(date); setStartDateOpen(false); }}
-                    onClose={() => setStartDateOpen(false)}
-                    allowedDayOfWeek={sprintStartDay ?? undefined}
+                  <Calendar
+                    mode="single"
+                    selected={startDate ?? undefined}
+                    onSelect={(date) => { setStartDate(date ?? null); setStartDateOpen(false); }}
+                    disabled={sprintStartDay !== null ? (d) => d.getDay() !== sprintStartDay : undefined}
+
                   />
                 </PopoverContent>
               </Popover>

@@ -7,6 +7,7 @@ import * as schema from "@/db/schema";
 import { audit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { enqueueEmail } from "@/lib/email";
+import { emailChangeTemplate } from "@/lib/email/templates/email-change";
 import { magicLinkTemplate } from "@/lib/email/templates/magic-link";
 import { env } from "@/lib/env";
 
@@ -35,6 +36,20 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     disableSignUp: true,
+  },
+  user: {
+    changeEmail: {
+      enabled: true,
+      sendChangeEmailVerification: async ({ newEmail, url }) => {
+        const { html, text } = await emailChangeTemplate({ newEmail, verifyUrl: url });
+        await enqueueEmail({
+          to: newEmail,
+          subject: `Confirm your new email address for ${PRODUCT_NAME}`,
+          html,
+          text,
+        });
+      },
+    },
   },
   plugins: [
     admin({

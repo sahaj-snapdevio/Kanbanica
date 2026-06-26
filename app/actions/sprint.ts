@@ -899,11 +899,36 @@ export async function getActiveSprintView(
     assignees: assigneesByTask.get(t.id) ?? [],
   }));
 
-  // Fetch all statuses from every list that has tasks in this sprint
-  // so the board view shows empty columns too (not just columns with tasks)
+  // Fetch statuses from every list that has tasks in this sprint.
+  // Fall back to the first non-archived list in the space so the Create Task
+  // modal always has a status set even when the sprint has no list-backed tasks.
   const listIds = [...new Set(sprintTasks.filter((t) => t.listId).map((t) => t.listId!))];
-  const allStatuses = listIds.length > 0
-    ? await db
+
+  let allStatuses: { id: string; name: string; color: string; type: "OPEN" | "ACTIVE" | "CLOSED"; orderIndex: number }[] = [];
+
+  if (listIds.length > 0) {
+    allStatuses = await db
+      .select({
+        id: listStatus.id,
+        name: listStatus.name,
+        color: listStatus.color,
+        type: listStatus.type,
+        orderIndex: listStatus.orderIndex,
+      })
+      .from(listStatus)
+      .where(inArray(listStatus.listId, listIds))
+      .orderBy(asc(listStatus.orderIndex));
+  } else {
+    // No list-backed tasks — use the first list in this space as a fallback
+    const [firstList] = await db
+      .select({ id: list.id })
+      .from(list)
+      .where(and(eq(list.spaceId, spaceId), eq(list.isArchived, false)))
+      .orderBy(asc(list.createdAt))
+      .limit(1);
+
+    if (firstList) {
+      allStatuses = await db
         .select({
           id: listStatus.id,
           name: listStatus.name,
@@ -912,9 +937,10 @@ export async function getActiveSprintView(
           orderIndex: listStatus.orderIndex,
         })
         .from(listStatus)
-        .where(inArray(listStatus.listId, listIds))
-        .orderBy(asc(listStatus.orderIndex))
-    : [];
+        .where(eq(listStatus.listId, firstList.id))
+        .orderBy(asc(listStatus.orderIndex));
+    }
+  }
 
   return { sprint: activeSprint, tasks, statuses: allStatuses };
 }
@@ -1002,6 +1028,157 @@ export async function bulkRemoveTasksFromSprint(
 
   revalidateSpace(workspaceId, spaceId);
   return { ok: true, removed: taskIds.length };
+}
+
+// ─── getClosedSprintView ──────────────────────────────────────────────────────
+// Full data for rendering a closed (or any) sprint — assignees, tags, points.
+
+export type ClosedSprintTask = {
+  id: string;
+  title: string;
+  seqNumber: number;
+  priority: string | null;
+  statusId: string | null;
+  listId: string | null;
+  orderIndex: number;
+  dueDateStart: Date | null;
+  dueDateEnd: Date | null;
+  statusName: string | null;
+  statusColor: string | null;
+  statusType: string | null;
+  storyPoints: number | null;
+  tags: { id: string; name: string; color: string }[];
+  assignees: { userId: string; name: string; image: string | null }[];
+};
+
+export async function getClosedSprintView(
+  workspaceId: string,
+  spaceId: string,
+  sprintId: string,
+): Promise<
+  | {
+      sprint: {
+        id: string;
+        name: string;
+        goal: string | null;
+        status: "PLANNED" | "ACTIVE" | "CLOSED";
+        startDate: Date | null;
+        endDate: Date | null;
+      };
+      tasks: ClosedSprintTask[];
+      stats: {
+        totalTasks: number;
+        closedTasks: number;
+        totalPoints: number;
+        closedPoints: number;
+      };
+    }
+  | { error: string }
+> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return { error: "Unauthorized" };
+
+  const err = await requireAccess(session.user.id, workspaceId, spaceId);
+  if (err) return err;
+
+  const [targetSprint] = await db
+    .select({
+      id: sprint.id,
+      name: sprint.name,
+      goal: sprint.goal,
+      status: sprint.status,
+      startDate: sprint.startDate,
+      endDate: sprint.endDate,
+    })
+    .from(sprint)
+    .where(and(eq(sprint.id, sprintId), eq(sprint.spaceId, spaceId)))
+    .limit(1);
+
+  if (!targetSprint) return { error: "Sprint not found" };
+
+  const sprintTasks = await db
+    .select({
+      id: task.id,
+      title: task.title,
+      seqNumber: task.seqNumber,
+      priority: task.priority,
+      statusId: task.statusId,
+      listId: task.listId,
+      orderIndex: task.orderIndex,
+      dueDateStart: task.dueDateStart,
+      dueDateEnd: task.dueDateEnd,
+      statusName: listStatus.name,
+      statusColor: listStatus.color,
+      statusType: listStatus.type,
+      storyPoints: taskSprint.points,
+    })
+    .from(taskSprint)
+    .innerJoin(task, eq(task.id, taskSprint.taskId))
+    .leftJoin(listStatus, eq(task.statusId, listStatus.id))
+    .where(and(eq(taskSprint.sprintId, sprintId), eq(task.isArchived, false)))
+    .orderBy(asc(task.orderIndex));
+
+  if (sprintTasks.length === 0) {
+    return {
+      sprint: targetSprint,
+      tasks: [],
+      stats: { totalTasks: 0, closedTasks: 0, totalPoints: 0, closedPoints: 0 },
+    };
+  }
+
+  const taskIds = sprintTasks.map((t) => t.id);
+
+  const [tagRows, assigneeRows] = await Promise.all([
+    db
+      .select({ taskId: taskTag.taskId, id: tag.id, name: tag.name, color: tag.color })
+      .from(taskTag)
+      .innerJoin(tag, eq(taskTag.tagId, tag.id))
+      .where(inArray(taskTag.taskId, taskIds)),
+    db
+      .select({
+        taskId: taskAssignee.taskId,
+        userId: taskAssignee.userId,
+        name: user.name,
+        email: user.email,
+        image: user.image,
+      })
+      .from(taskAssignee)
+      .innerJoin(user, eq(user.id, taskAssignee.userId))
+      .where(inArray(taskAssignee.taskId, taskIds)),
+  ]);
+
+  const tagsByTask = new Map<string, { id: string; name: string; color: string }[]>();
+  for (const r of tagRows) {
+    const arr = tagsByTask.get(r.taskId) ?? [];
+    arr.push({ id: r.id, name: r.name, color: r.color ?? "#9CA3AF" });
+    tagsByTask.set(r.taskId, arr);
+  }
+
+  const assigneesByTask = new Map<string, { userId: string; name: string; image: string | null }[]>();
+  for (const r of assigneeRows) {
+    const arr = assigneesByTask.get(r.taskId) ?? [];
+    arr.push({ userId: r.userId, name: r.name || r.email, image: r.image });
+    assigneesByTask.set(r.taskId, arr);
+  }
+
+  const tasks: ClosedSprintTask[] = sprintTasks.map((t) => ({
+    ...t,
+    tags: tagsByTask.get(t.id) ?? [],
+    assignees: assigneesByTask.get(t.id) ?? [],
+  }));
+
+  const totalTasks = tasks.length;
+  const closedTasks = tasks.filter((t) => t.statusType === "CLOSED").length;
+  const totalPoints = tasks.reduce((sum, t) => sum + (t.storyPoints ?? 0), 0);
+  const closedPoints = tasks
+    .filter((t) => t.statusType === "CLOSED")
+    .reduce((sum, t) => sum + (t.storyPoints ?? 0), 0);
+
+  return {
+    sprint: targetSprint,
+    tasks,
+    stats: { totalTasks, closedTasks, totalPoints, closedPoints },
+  };
 }
 
 // ─── getCreateSprintDefaults ──────────────────────────────────────────────────
