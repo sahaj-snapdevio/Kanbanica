@@ -97,16 +97,22 @@ export async function getWorkspaceMembership(userId: string, workspaceId: string
   return membership ?? null;
 }
 
-export async function getAccessibleSpaceIds(userId: string, workspaceId: string): Promise<string[]> {
+export async function getAccessibleSpaceIds(
+  userId: string,
+  workspaceId: string,
+  archivedOnly = false,
+): Promise<string[]> {
   const membership = await getWorkspaceMembership(userId, workspaceId);
   if (!membership) return [];
+
+  const archivedFilter = eq(space.isArchived, archivedOnly);
 
   // Owner/Admin see all spaces
   if (membership.role === "OWNER" || membership.role === "ADMIN") {
     const spaces = await db
       .select({ id: space.id })
       .from(space)
-      .where(and(eq(space.workspaceId, workspaceId), eq(space.isArchived, false)));
+      .where(and(eq(space.workspaceId, workspaceId), archivedFilter));
     return spaces.map((s) => s.id);
   }
 
@@ -120,7 +126,7 @@ export async function getAccessibleSpaceIds(userId: string, workspaceId: string)
         and(
           eq(spaceMember.userId, userId),
           eq(space.workspaceId, workspaceId),
-          eq(space.isArchived, false),
+          archivedFilter,
         ),
       );
     return memberships.map((m) => m.spaceId);
@@ -134,7 +140,7 @@ export async function getAccessibleSpaceIds(userId: string, workspaceId: string)
       .where(
         and(
           eq(space.workspaceId, workspaceId),
-          eq(space.isArchived, false),
+          archivedFilter,
           eq(space.isPrivate, false),
         ),
       ),
@@ -146,7 +152,7 @@ export async function getAccessibleSpaceIds(userId: string, workspaceId: string)
         and(
           eq(spaceMember.userId, userId),
           eq(space.workspaceId, workspaceId),
-          eq(space.isArchived, false),
+          archivedFilter,
           eq(space.isPrivate, true),
         ),
       ),

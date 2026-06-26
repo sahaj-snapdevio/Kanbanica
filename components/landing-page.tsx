@@ -280,22 +280,37 @@ function Navbar() {
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
   React.useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
+    const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  const pillStyle: React.CSSProperties = {
+    width: scrolled ? "93%" : "calc(100% - 32px)",
+    maxWidth: "1152px",
+    height: "64px",
+    transition: "all 0.35s ease",
+    boxShadow: scrolled
+      ? "0 10px 35px rgba(0,0,0,0.08)"
+      : "0 4px 20px rgba(0,0,0,0.05)",
+    backdropFilter: scrolled ? "blur(14px)" : "none",
+    WebkitBackdropFilter: scrolled ? "blur(14px)" : "none",
+    background: scrolled ? "rgba(255,255,255,0.92)" : "#ffffff",
+  };
+
+  const mobileMenuStyle: React.CSSProperties = {
+    width: scrolled ? "93%" : "calc(100% - 32px)",
+    maxWidth: "1152px",
+    transition: "width 0.35s ease",
+  };
+
   return (
-    <header
-      className={cn(
-        "sticky top-0 z-40 transition-all duration-200",
-        scrolled
-          ? "border-b border-[#CBCBCB] bg-white/95 shadow-sm backdrop-blur-sm"
-          : "bg-transparent"
-      )}
-    >
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
-        <span className="flex items-center gap-2 font-bold text-[#174D38] text-lg tracking-tight">
+    <div className="fixed top-0 left-0 right-0 z-50 flex flex-col items-center pt-4 pointer-events-none">
+      <header
+        className="pointer-events-auto relative flex items-center justify-between px-5 rounded-full border border-black/6"
+        style={pillStyle}
+      >
+        <span className="flex items-center shrink-0">
           <Image
             alt={`${PRODUCT_NAME} Logo`}
             className="h-8 w-auto object-contain"
@@ -304,33 +319,29 @@ function Navbar() {
             width={150}
           />
         </span>
-        <nav className="hidden items-center gap-6 text-sm text-[#6b7280] sm:flex">
-          <a
-            className="transition-colors hover:text-[#174D38]"
-            href="#features"
-          >
+
+        <nav className="hidden sm:flex absolute left-1/2 -translate-x-1/2 items-center gap-6 text-sm text-[#6b7280]">
+          <a className="transition-colors hover:text-[#174D38]" href="#features">
             Features
           </a>
           <a className="transition-colors hover:text-[#174D38]" href="#why">
             Why us
           </a>
-          <a
-            className="transition-colors hover:text-[#174D38]"
-            href="#how-it-works"
-          >
+          <a className="transition-colors hover:text-[#174D38]" href="#how-it-works">
             How it works
           </a>
           <a className="transition-colors hover:text-[#174D38]" href="#faq">
             FAQ
           </a>
         </nav>
-        <div className="hidden items-center gap-2 sm:flex">
+
+        <div className="hidden items-center gap-2 sm:flex shrink-0">
           <Button asChild size="sm" variant="ghost">
             <Link href="/login">Sign in</Link>
           </Button>
           <Button
             asChild
-            className="bg-[#174D38] text-white hover:bg-[#103526]"
+            className="rounded-full bg-[#174D38] text-white hover:bg-[#103526]"
             size="sm"
           >
             <Link href="/login">
@@ -338,6 +349,7 @@ function Navbar() {
             </Link>
           </Button>
         </div>
+
         <button
           aria-expanded={mobileOpen}
           aria-label={mobileOpen ? "Close menu" : "Open menu"}
@@ -346,10 +358,14 @@ function Navbar() {
         >
           {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
         </button>
-      </div>
+      </header>
+
       {mobileOpen && (
-        <div className="border-t border-[#CBCBCB] bg-white px-6 pb-4 sm:hidden">
-          <nav className="flex flex-col gap-3 pt-4 text-sm text-[#6b7280]">
+        <div
+          className="pointer-events-auto mt-2 rounded-2xl border border-black/6 bg-white px-5 py-4 shadow-lg sm:hidden"
+          style={mobileMenuStyle}
+        >
+          <nav className="flex flex-col gap-3 text-sm text-[#6b7280]">
             <a
               className="hover:text-[#174D38]"
               href="#features"
@@ -378,13 +394,13 @@ function Navbar() {
             >
               FAQ
             </a>
-            <div className="flex flex-col gap-2 border-t border-[#CBCBCB] pt-2">
+            <div className="flex flex-col gap-2 border-t border-[#CBCBCB] pt-3">
               <Button asChild size="sm" variant="outline">
                 <Link href="/login">Sign in</Link>
               </Button>
               <Button
                 asChild
-                className="bg-[#174D38] text-white hover:bg-[#103526]"
+                className="rounded-full bg-[#174D38] text-white hover:bg-[#103526]"
                 size="sm"
               >
                 <Link href="/login">Get Started Free</Link>
@@ -393,7 +409,7 @@ function Navbar() {
           </nav>
         </div>
       )}
-    </header>
+    </div>
   );
 }
 
@@ -1049,7 +1065,7 @@ function HeroSection() {
       />
       <div className="relative mx-auto max-w-6xl px-6 pb-0 pt-20 text-center">
         <Animate>
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#174D38]/30 bg-[#174D38]/10 px-3 py-1.5 font-semibold text-[#174D38] text-xs">
+          <div className="mb-6 mt-[50px] inline-flex items-center gap-2 rounded-full border border-[#174D38]/30 bg-[#174D38]/10 px-3 py-1.5 font-semibold text-[#174D38] text-xs">
             <span className="size-1.5 animate-pulse rounded-full bg-emerald-500" />
             Free for every team — no credit card
           </div>
@@ -2232,9 +2248,7 @@ function TestimonialsSection() {
                     {/* Futuristic HUD corner accents */}
                     <div className="absolute top-2.5 left-2.5 size-2.5 border-t border-l border-emerald-500/40 rounded-tl-xs pointer-events-none" />
                     <div className="absolute bottom-2.5 right-2.5 size-2.5 border-b border-r border-emerald-500/40 rounded-br-xs pointer-events-none" />
-                    <div className="absolute top-2.5 right-3.5 font-mono text-[7px] text-emerald-400/40 tracking-widest uppercase pointer-events-none">
-                      SUIT_ID.0{idx + 1}
-                    </div>
+                    
 
                     {/* Star Rating */}
                     <div className="flex gap-0.5 text-emerald-400 mb-4">
@@ -2469,7 +2483,7 @@ function Footer() {
                 alt={`${PRODUCT_NAME} Logo`}
                 className="h-7 w-auto object-contain"
                 height={28}
-                src="/Kanbanica2.png"
+                src="/Kanbanica2.png" 
                 width={130}
               />
             </span>

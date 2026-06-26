@@ -41,7 +41,7 @@ export default async function WorkspaceLayout({
     notFound();
   }
 
-  const [ws, allMemberships, spaceIds, channels] = await Promise.all([
+  const [ws, allMemberships, spaceIds, archivedSpaceIds, channels] = await Promise.all([
     db
       .select({
         id: workspace.id,
@@ -71,6 +71,7 @@ export default async function WorkspaceLayout({
       )
       .orderBy(asc(workspaceMember.createdAt)),
     getAccessibleSpaceIds(userId, workspaceId),
+    getAccessibleSpaceIds(userId, workspaceId, true),
     db
       .select({
         id: channel.id,
@@ -100,11 +101,11 @@ export default async function WorkspaceLayout({
           .where(and(inArray(space.id, spaceIds), eq(space.isArchived, false)))
           .orderBy(asc(space.orderIndex), asc(space.createdAt))
       : Promise.resolve([] as { id: string; name: string; color: string | null; isPrivate: boolean; sprintDateFormat: string }[]),
-    spaceIds.length > 0
+    archivedSpaceIds.length > 0
       ? db
           .select({ id: space.id, name: space.name, color: space.color, isPrivate: space.isPrivate, sprintDateFormat: space.sprintDateFormat })
           .from(space)
-          .where(and(inArray(space.id, spaceIds), eq(space.isArchived, true)))
+          .where(inArray(space.id, archivedSpaceIds))
           .orderBy(asc(space.orderIndex), asc(space.createdAt))
       : Promise.resolve([] as { id: string; name: string; color: string | null; isPrivate: boolean; sprintDateFormat: string }[]),
   ]);
