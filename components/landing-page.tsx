@@ -36,7 +36,6 @@ import Image from "next/image";
 import Link from "next/link";
 import * as React from "react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -280,6 +279,48 @@ function SectionLabel({
   );
 }
 
+function MaskButton({
+  href,
+  children,
+  variant = "primary",
+  size = "sm",
+  pill = false,
+  wrapperClassName,
+}: {
+  href: string;
+  children: React.ReactNode;
+  variant?: "primary" | "outline" | "ghost" | "white";
+  size?: "sm" | "md" | "lg" | "xl";
+  pill?: boolean;
+  wrapperClassName?: string;
+}) {
+  const isHash = href.startsWith("#");
+  const wrapperCls = cn(
+    "mask-btn",
+    `mask-btn--${variant}`,
+    `mask-btn--${size}`,
+    pill && "mask-btn--pill",
+    wrapperClassName,
+  );
+
+  return (
+    <div className={wrapperCls}>
+      <span className="mask-btn__label" aria-hidden="true">
+        {children}
+      </span>
+      {isHash ? (
+        <a href={href} className="mask-btn__inner">
+          {children}
+        </a>
+      ) : (
+        <Link href={href} className="mask-btn__inner">
+          {children}
+        </Link>
+      )}
+    </div>
+  );
+}
+
 function Navbar() {
   const [scrolled, setScrolled] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
@@ -347,18 +388,15 @@ function Navbar() {
         </nav>
 
         <div className="hidden items-center gap-2 sm:flex shrink-0">
-          <Button asChild size="sm" variant="ghost">
-            <Link href="/login">Sign in</Link>
-          </Button>
-          <Button
-            asChild
-            className="rounded-full bg-[#174D38] text-white hover:bg-[#103526]"
-            size="sm"
+          <Link
+            href="/login"
+            className="inline-flex h-8 items-center px-3 text-xs font-medium text-[#6b7280] transition-colors hover:text-[#174D38]"
           >
-            <Link href="/login">
-              Get Started Free <ArrowRight className="ml-1 size-3.5" />
-            </Link>
-          </Button>
+            Sign in
+          </Link>
+          <MaskButton href="/login" variant="primary" size="sm" pill>
+            Get Started Free <ArrowRight className="ml-1 size-3.5" />
+          </MaskButton>
         </div>
 
         <button
@@ -406,16 +444,15 @@ function Navbar() {
               FAQ
             </a>
             <div className="flex flex-col gap-2 border-t border-[#CBCBCB] pt-3">
-              <Button asChild size="sm" variant="outline">
-                <Link href="/login">Sign in</Link>
-              </Button>
-              <Button
-                asChild
-                className="rounded-full bg-[#174D38] text-white hover:bg-[#103526]"
-                size="sm"
+              <Link
+                href="/login"
+                className="inline-flex h-8 w-full items-center justify-center rounded-md border border-[#CBCBCB] px-3 text-xs font-medium text-[#174D38] transition-colors hover:bg-[#F2F2F2]"
               >
-                <Link href="/login">Get Started Free</Link>
-              </Button>
+                Sign in
+              </Link>
+              <MaskButton href="/login" variant="primary" size="sm" pill wrapperClassName="w-full">
+                Get Started Free
+              </MaskButton>
             </div>
           </nav>
         </div>
@@ -1091,23 +1128,20 @@ function HeroSection() {
             notifications built in. Free for your whole team.
           </p>
           <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-            <Button
-              asChild
-              className="h-11 bg-[#174D38] px-6 text-base text-white shadow-lg shadow-[#4D1717]/40 hover:bg-[#103526]"
+            <MaskButton
+              href="/login"
+              variant="primary"
               size="lg"
+              wrapperClassName="shadow-lg shadow-[#4D1717]/40"
             >
-              <Link href="/login">
-                Get Started Free <ArrowRight className="ml-1.5 size-4" />
-              </Link>
-            </Button>
-            <Button
-              asChild
-              className="h-11 border-[#CBCBCB] px-6 text-base hover:bg-[#F2F2F2]"
-              size="lg"
-              variant="outline"
+              Get Started Free <ArrowRight className="ml-1.5 size-4" />
+            </MaskButton>
+            <a
+              href="#features"
+              className="inline-flex h-11 items-center rounded-md border border-[#CBCBCB] px-6 text-base font-medium text-[#174D38] transition-colors hover:bg-[#F2F2F2]"
             >
-              <a href="#features">See what is included</a>
-            </Button>
+              See what is included
+            </a>
           </div>
           <p className="mt-4 text-[#9ca3af] text-xs">
             No credit card required · Magic link sign-in
@@ -2463,15 +2497,12 @@ function CtaBanner() {
                 Free for your whole team. Sign up in seconds — no credit card,
                 no setup fees.
               </p>
-              <Button
-                asChild
-                className="h-11 bg-white px-8 font-semibold text-base text-[#174D38] shadow-lg hover:bg-[#F2F2F2]"
-                size="lg"
+              <Link
+                href="/login"
+                className="inline-flex h-11 items-center gap-1.5 rounded-md bg-white px-8 text-base font-semibold text-[#174D38] shadow-lg transition-colors hover:bg-[#F2F2F2]"
               >
-                <Link href="/login">
-                  Start for free <ArrowRight className="ml-1.5 size-4" />
-                </Link>
-              </Button>
+                Start for free <ArrowRight className="size-4" />
+              </Link>
               <p className="mt-4 text-sm text-white/50">
                 Magic link sign-in · No passwords
               </p>
