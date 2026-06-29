@@ -421,7 +421,8 @@ body:has(.workspace-shell) {
   --popover:     #FFFFFF;
   --popover-foreground: #0F1117;
   --muted:       #F4F5F7;
-  --muted-foreground: #9AA0AD;
+  /* AA-compliant on white (#9AA0AD was ~2.3:1 and failed AA for small text) */
+  --muted-foreground: #5E6573;
   --secondary:   #F4F5F7;
   --secondary-foreground: #5E6573;
   --accent:      rgba(23, 77, 56, 0.08);

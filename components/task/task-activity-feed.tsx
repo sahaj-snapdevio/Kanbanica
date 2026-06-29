@@ -508,6 +508,18 @@ function CommentBody({ body }: { body: unknown }) {
       },
     },
   });
+
+  // Tiptap only applies `content` at init. When the comment is edited and the
+  // feed refetches, the `body` prop changes but the editor keeps the old text
+  // until it remounts — so push new content into the editor on every change.
+  React.useEffect(() => {
+    if (!editor) return;
+    const next = (body as object) ?? "";
+    if (JSON.stringify(editor.getJSON()) !== JSON.stringify(next)) {
+      editor.commands.setContent(next);
+    }
+  }, [body, editor]);
+
   return <EditorContent editor={editor} />;
 }
 
@@ -885,8 +897,8 @@ function ActivityRow({ entry }: { entry: ActivityEntry }) {
   const timeNote = entry.eventType === "time_logged" ? (meta.note as string | null | undefined) : null;
 
   return (
-    <div className="flex items-start gap-2 py-1 px-1">
-      <Avatar className="size-5 shrink-0 mt-0.5">
+    <div className="flex items-center gap-2 py-1 px-1">
+      <Avatar className="size-5 shrink-0">
         {entry.image && <AvatarImage src={avatarSrc(entry.image)} />}
         <AvatarFallback className="text-[9px] bg-muted">
           {initials(entry.name, entry.email)}

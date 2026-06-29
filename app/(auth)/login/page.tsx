@@ -34,9 +34,9 @@ export default async function LoginPage() {
 
           {/* Heading */}
           <div className="mb-7">
-            <h1 className="text-2xl font-bold text-foreground tracking-tight">Sign in.</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Enter your email and we'll send you a magic link — no password needed.
+            <h1 className="text-[28px] font-bold text-foreground tracking-tight leading-tight">Sign in</h1>
+            <p className="mt-1 text-sm leading-relaxed text-foreground/70">
+              Enter your work email and we&apos;ll send a secure sign-in link — no password to remember.
             </p>
           </div>
 
@@ -50,11 +50,11 @@ export default async function LoginPage() {
           <div className="absolute -bottom-12 -left-12 size-40 rounded-full bg-white/15" />
 
           <div className="relative z-10 flex flex-col items-center text-center gap-3">
-            <p className="text-sm font-medium text-[#3d6b52] tracking-wide uppercase">
-              Nice to see you again
+            <p className="text-xs font-semibold text-[#3d6b52] tracking-eyebrow uppercase">
+              Project management, simplified
             </p>
-            <h2 className="text-3xl font-bold text-[#1a4d32] leading-tight">
-              Welcome back
+            <h2 className="text-[32px] font-bold text-[#1a4d32] leading-[1.15] tracking-tight">
+              Everything your team needs to ship
             </h2>
           </div>
 
@@ -70,8 +70,8 @@ export default async function LoginPage() {
             />
           </div>
 
-          <p className="relative z-10 text-xs text-[#4d7a62] text-center max-w-xs">
-            Manage projects, track progress, and ship faster — all in one place.
+          <p className="relative z-10 text-sm leading-relaxed text-[#3d6b52] text-center max-w-xs">
+            Plan sprints, track tasks, and keep every project moving — all in one workspace.
           </p>
         </div>
       </div>

@@ -141,6 +141,9 @@ export function WorkspaceShell({
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
+  // Key of the currently-open sidebar three-dot menu (space / list), so it can
+  // be closed when an item is selected. Only one menu is open at a time.
+  const [openMenu, setOpenMenu] = React.useState<string | null>(null);
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [createSpaceOpen, setCreateSpaceOpen] = React.useState(false);
   const [spaceAction, setSpaceAction] = React.useState<{ id: string; name: string; variant: "archive" | "delete" } | null>(null);
@@ -428,7 +431,10 @@ export function WorkspaceShell({
                         <PlusIcon className="size-3.5" />
                       </button>
                     )}
-                    <Popover>
+                    <Popover
+                      open={openMenu === `space-${s.id}`}
+                      onOpenChange={(o) => setOpenMenu(o ? `space-${s.id}` : null)}
+                    >
                       <PopoverTrigger asChild>
                         <button
                           className="opacity-0 transition-opacity group-hover:opacity-100 flex size-5 items-center justify-center rounded hover:bg-(--bg-sidebar-item-hover) text-(--text-muted)"
@@ -438,7 +444,7 @@ export function WorkspaceShell({
                           <DotsThreeIcon className="size-4.5" weight="bold" />
                         </button>
                       </PopoverTrigger>
-                      <PopoverContent side="right" align="start" className="w-48 p-1">
+                      <PopoverContent side="right" align="start" className="w-48 p-1" onClick={() => setOpenMenu(null)}>
                         <Link
                           href={`/${workspace.id}/${s.id}/settings/general`}
                           onClick={() => setSidebarOpen(false)}
@@ -505,7 +511,10 @@ export function WorkspaceShell({
                             <span className="truncate">{l.name}</span>
                           </Link>
                           {s.canManageList && (
-                            <Popover>
+                            <Popover
+                              open={openMenu === `list-${l.id}`}
+                              onOpenChange={(o) => setOpenMenu(o ? `list-${l.id}` : null)}
+                            >
                               <PopoverTrigger asChild>
                                 <button
                                   className="absolute right-1 opacity-0 transition-opacity group-hover/list:opacity-100 flex size-5 items-center justify-center rounded hover:bg-(--bg-sidebar-item-hover)"
@@ -515,7 +524,7 @@ export function WorkspaceShell({
                                   <DotsThreeIcon className="size-4.5 text-(--text-muted)" weight="bold" />
                                 </button>
                               </PopoverTrigger>
-                              <PopoverContent side="right" align="start" className="w-44 p-1">
+                              <PopoverContent side="right" align="start" className="w-44 p-1" onClick={() => setOpenMenu(null)}>
                                 <Link
                                   href={`/${workspace.id}/${s.id}/list/${l.id}/settings/general`}
                                   onClick={() => setSidebarOpen(false)}
@@ -825,14 +834,47 @@ export function WorkspaceShell({
                 <CaretUpIcon className={`size-3.5 shrink-0 opacity-50 transition-transform duration-200 ${profileOpen ? "rotate-180" : ""}`} />
               </button>
             </PopoverTrigger>
-            <PopoverContent align="start" side="top" className="p-0 overflow-hidden w-auto min-w-56">
-              <div className="flex divide-x divide-border">
-                {/* Main menu — always visible */}
-                <div className="w-56 shrink-0 p-1.5">
+            <PopoverContent align="start" side="top" className="w-56 p-1.5">
+              {showProjectPicker && spaces.length > 1 ? (
+                /* Project picker — replaces the menu in-place (single popup, no side panel) */
+                <div>
+                  <button
+                    onClick={() => setShowProjectPicker(false)}
+                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors hover:bg-accent"
+                  >
+                    <ArrowLeftIcon className="size-4 shrink-0 text-muted-foreground" />
+                    <span className="flex-1 text-left">Project settings</span>
+                  </button>
+                  <Separator className="my-1.5" />
+                  <div className="max-h-64 overflow-y-auto">
+                    {spaces.map((s) => {
+                      // The currently-viewed project is the second path segment:
+                      // /{workspaceId}/{spaceId}/...
+                      const isCurrent = pathname.split("/")[2] === s.id;
+                      return (
+                        <Link
+                          key={s.id}
+                          href={`/${workspace.id}/${s.id}/settings/general`}
+                          onClick={() => { setProfileOpen(false); setShowProjectPicker(false); }}
+                          className={`flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors hover:bg-accent ${isCurrent ? "bg-accent font-medium" : ""}`}
+                        >
+                          <span
+                            className="size-2.5 shrink-0 rounded-full"
+                            style={{ backgroundColor: s.color ?? "#6B7280" }}
+                          />
+                          <span className="flex-1 truncate">{s.name}</span>
+                          {isCurrent && <CheckIcon className="size-4 shrink-0 text-primary" />}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                /* Account menu */
+                <div>
                   <Link
                     href={`/${workspace.id}/profile`}
                     onClick={() => setProfileOpen(false)}
-                    onMouseEnter={() => setShowProjectPicker(false)}
                     className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors hover:bg-accent"
                   >
                     <UserCircleIcon className="size-4 shrink-0 text-muted-foreground" />
@@ -843,25 +885,35 @@ export function WorkspaceShell({
                     <Link
                       href={`/${workspace.id}/settings/general`}
                       onClick={() => setProfileOpen(false)}
-                      onMouseEnter={() => setShowProjectPicker(false)}
                       className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors hover:bg-accent"
                     >
                       <GearIcon className="size-4 shrink-0 text-muted-foreground" />
                       Workspace settings
                     </Link>
                   )}
-                  <button
-                    onMouseEnter={() => setShowProjectPicker(true)}
-                    className={`flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors hover:bg-accent ${showProjectPicker ? "bg-accent" : ""}`}
-                  >
-                    <FolderIcon className="size-4 shrink-0 text-muted-foreground" />
-                    <span className="flex-1 text-left">Project settings</span>
-                    <CaretRightIcon className={`size-3.5 transition-colors ${showProjectPicker ? "text-foreground" : "text-muted-foreground"}`} />
-                  </button>
+                  {spaces.length === 1 ? (
+                    // Single project — go straight to its settings, no picker needed.
+                    <Link
+                      href={`/${workspace.id}/${spaces[0].id}/settings/general`}
+                      onClick={() => setProfileOpen(false)}
+                      className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors hover:bg-accent"
+                    >
+                      <FolderIcon className="size-4 shrink-0 text-muted-foreground" />
+                      Project settings
+                    </Link>
+                  ) : (
+                    <button
+                      onClick={() => setShowProjectPicker(true)}
+                      className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors hover:bg-accent"
+                    >
+                      <FolderIcon className="size-4 shrink-0 text-muted-foreground" />
+                      <span className="flex-1 text-left">Project settings</span>
+                      <CaretRightIcon className="size-3.5 text-muted-foreground" />
+                    </button>
+                  )}
                   <Link
                     href={`/${workspace.id}/notifications/settings`}
                     onClick={() => setProfileOpen(false)}
-                    onMouseEnter={() => setShowProjectPicker(false)}
                     className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors hover:bg-accent"
                   >
                     <BellIcon className="size-4 shrink-0 text-muted-foreground" />
@@ -870,7 +922,6 @@ export function WorkspaceShell({
                   <Link
                     href={`/${workspace.id}/support`}
                     onClick={() => setProfileOpen(false)}
-                    onMouseEnter={() => setShowProjectPicker(false)}
                     className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors hover:bg-accent"
                   >
                     <HeadsetIcon className="size-4 shrink-0 text-muted-foreground" />
@@ -879,43 +930,13 @@ export function WorkspaceShell({
                   <Separator className="my-1.5" />
                   <button
                     onClick={() => { setProfileOpen(false); handleSignOut(); }}
-                    onMouseEnter={() => setShowProjectPicker(false)}
                     className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-destructive transition-colors hover:bg-destructive/10"
                   >
                     <SignOutIcon className="size-4 shrink-0" />
                     Sign out
                   </button>
                 </div>
-
-                {/* Project submenu flyout — appears to the right on hover */}
-                {showProjectPicker && (
-                  <div className="w-52 shrink-0 flex flex-col">
-                    <div className="px-3 py-2.5 border-b">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Projects</p>
-                    </div>
-                    <div className="max-h-52 overflow-y-auto p-1.5">
-                      {spaces.length === 0 ? (
-                        <p className="px-2 py-4 text-xs text-center text-muted-foreground">No projects available</p>
-                      ) : (
-                        spaces.map((s) => (
-                          <Link
-                            key={s.id}
-                            href={`/${workspace.id}/${s.id}/settings/general`}
-                            onClick={() => { setProfileOpen(false); setShowProjectPicker(false); }}
-                            className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors hover:bg-accent"
-                          >
-                            <span
-                              className="size-2.5 shrink-0 rounded-full"
-                              style={{ backgroundColor: s.color ?? "#6B7280" }}
-                            />
-                            <span className="flex-1 truncate">{s.name}</span>
-                          </Link>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
+              )}
             </PopoverContent>
           </Popover>
         </div>

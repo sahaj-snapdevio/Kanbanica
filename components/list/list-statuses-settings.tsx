@@ -30,6 +30,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
+  restrictToVerticalAxis,
+  restrictToWindowEdges,
+} from "@dnd-kit/modifiers";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -257,19 +276,60 @@ export function ListStatusesSettings({
     await refresh();
   }
 
-  async function handleMove(statusId: string, direction: -1 | 1) {
-    const idx = statuses.findIndex((s) => s.id === statusId);
-    if (idx === -1) return;
-    const next = [...statuses];
-    const target = idx + direction;
-    if (target < 0 || target >= next.length) return;
-    [next[idx], next[target]] = [next[target], next[idx]];
+  // Persist a within-group reorder. `next` is the full list in grouped order.
+  async function persistOrder(next: Status[]) {
     setStatuses(next);
-    await reorderListStatuses(workspaceId, spaceId, listId, next.map((s) => s.id));
+    const res = await reorderListStatuses(workspaceId, spaceId, listId, next.map((s) => s.id));
+    if (res && "error" in res) { toast.error(res.error); await refresh(); return; }
     onStatusesChange?.(next);
   }
 
+  // Reorder a single status within its own type group, then rebuild the full
+  // list (grouped order) so reorderListStatuses receives a clean sequence.
+  function reorderWithinGroup(type: StatusType, group: Status[]) {
+    return GROUPS.flatMap((g) =>
+      g.type === type ? group : statuses.filter((s) => s.type === g.type),
+    );
+  }
+
+  async function handleMove(statusId: string, direction: -1 | 1) {
+    const status = statuses.find((s) => s.id === statusId);
+    if (!status) return;
+    const group = statuses.filter((s) => s.type === status.type);
+    const idx = group.findIndex((s) => s.id === statusId);
+    const target = idx + direction;
+    if (target < 0 || target >= group.length) return;
+    const newGroup = [...group];
+    [newGroup[idx], newGroup[target]] = [newGroup[target], newGroup[idx]];
+    await persistOrder(reorderWithinGroup(status.type, newGroup));
+  }
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+  );
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const activeStatus = statuses.find((s) => s.id === active.id);
+    const overStatus = statuses.find((s) => s.id === over.id);
+    // Only allow reordering within the same type group (cross-group would
+    // change the status type, which isn't supported here).
+    if (!activeStatus || !overStatus || activeStatus.type !== overStatus.type) return;
+    const group = statuses.filter((s) => s.type === activeStatus.type);
+    const oldIndex = group.findIndex((s) => s.id === active.id);
+    const newIndex = group.findIndex((s) => s.id === over.id);
+    void persistOrder(reorderWithinGroup(activeStatus.type, arrayMove(group, oldIndex, newIndex)));
+  }
+
   return (
+    <DndContext
+      id="list-statuses-dnd"
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={handleDragEnd}
+      modifiers={[restrictToVerticalAxis, restrictToWindowEdges]}
+    >
     <div className="space-y-8 max-w-lg">
       {GROUPS.map(({ type, label, accent }) => {
         const group = statuses.filter((s) => s.type === type);
@@ -291,6 +351,7 @@ export function ListStatusesSettings({
             </div>
 
             <div className="space-y-1.5">
+              <SortableContext items={group.map((s) => s.id)} strategy={verticalListSortingStrategy}>
               {group.map((status) =>
                 editingId === status.id ? (
                   <EditRow
@@ -302,52 +363,17 @@ export function ListStatusesSettings({
                     onDone={() => { setEditingId(null); refresh(); }}
                   />
                 ) : (
-                  <div
+                  <SortableStatusRow
                     key={status.id}
-                    className="group flex items-center gap-2 rounded-md border bg-background px-2 py-2 hover:bg-muted/30 transition-colors"
-                  >
-                    <DotsSixVerticalIcon className="size-4 shrink-0 text-muted-foreground/40 group-hover:text-muted-foreground cursor-grab transition-colors" />
-                    <span className="size-3.5 shrink-0 rounded-full" style={{ backgroundColor: status.color }} />
-                    <span className="flex-1 text-sm font-medium truncate">{status.name}</span>
-                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <button className="flex size-6 items-center justify-center rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
-                            <DotsThreeIcon className="size-4" weight="bold" />
-                          </button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-36 p-1" align="end">
-                          <button
-                            onClick={() => { setAddingType(null); setEditingId(status.id); }}
-                            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
-                          >
-                            <PencilSimpleIcon className="size-3.5" /> Edit
-                          </button>
-                          <button
-                            onClick={() => handleMove(status.id, -1)}
-                            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent text-muted-foreground"
-                          >
-                            Move up
-                          </button>
-                          <button
-                            onClick={() => handleMove(status.id, 1)}
-                            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent text-muted-foreground"
-                          >
-                            Move down
-                          </button>
-                          <div className="h-px bg-border my-1" />
-                          <button
-                            onClick={() => handleDelete(status.id)}
-                            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-destructive hover:bg-destructive/10"
-                          >
-                            <TrashIcon className="size-3.5" /> Delete
-                          </button>
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                  </div>
+                    status={status}
+                    onEdit={() => { setAddingType(null); setEditingId(status.id); }}
+                    onMoveUp={() => handleMove(status.id, -1)}
+                    onMoveDown={() => handleMove(status.id, 1)}
+                    onDelete={() => handleDelete(status.id)}
+                  />
                 )
               )}
+              </SortableContext>
 
               {isAddingHere ? (
                 <AddRow
@@ -370,6 +396,86 @@ export function ListStatusesSettings({
         );
       })}
 
+    </div>
+    </DndContext>
+  );
+}
+
+// ─── Sortable status row ──────────────────────────────────────────────────────
+
+function SortableStatusRow({
+  status,
+  onEdit,
+  onMoveUp,
+  onMoveDown,
+  onDelete,
+}: {
+  status: Status;
+  onEdit: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  onDelete: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: status.id });
+  const style = { transform: CSS.Transform.toString(transform), transition };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "group flex items-center gap-2 rounded-md border bg-background px-2 py-2 hover:bg-muted/30 transition-colors",
+        isDragging && "opacity-50",
+      )}
+    >
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        aria-label="Drag to reorder"
+        className="flex shrink-0 cursor-grab touch-none items-center text-muted-foreground/40 group-hover:text-muted-foreground transition-colors active:cursor-grabbing"
+      >
+        <DotsSixVerticalIcon className="size-4" />
+      </button>
+      <span className="size-3.5 shrink-0 rounded-full" style={{ backgroundColor: status.color }} />
+      <span className="flex-1 text-sm font-medium truncate">{status.name}</span>
+      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        <Popover>
+          <PopoverTrigger asChild>
+            <button className="flex size-6 items-center justify-center rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
+              <DotsThreeIcon className="size-4" weight="bold" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-36 p-1" align="end">
+            <button
+              onClick={onEdit}
+              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
+            >
+              <PencilSimpleIcon className="size-3.5" /> Edit
+            </button>
+            <button
+              onClick={onMoveUp}
+              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent text-muted-foreground"
+            >
+              Move up
+            </button>
+            <button
+              onClick={onMoveDown}
+              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent text-muted-foreground"
+            >
+              Move down
+            </button>
+            <div className="h-px bg-border my-1" />
+            <button
+              onClick={onDelete}
+              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-destructive hover:bg-destructive/10"
+            >
+              <TrashIcon className="size-3.5" /> Delete
+            </button>
+          </PopoverContent>
+        </Popover>
+      </div>
     </div>
   );
 }

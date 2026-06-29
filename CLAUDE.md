@@ -20,6 +20,7 @@ Full product specs live in `docs/`. Read the relevant doc before implementing an
 | Styling | Tailwind CSS v4 |
 | UI Components | shadcn/ui |
 | Rich Text | Tiptap |
+| Emoji Picker | emoji-mart (`@emoji-mart/react` + `@emoji-mart/data`) |
 | State | Zustand (client) + SWR (server) |
 | Real-time | SSE via `lib/sse-clients.ts` (notifications) |
 | File Storage | files-sdk (local `fs` adapter in dev → S3/R2/GCS in prod) |
@@ -61,6 +62,11 @@ server/                    ← server actions
 - **Always use shadcn/ui components** — never build custom UI primitives (calendars, dialogs, dropdowns, inputs, etc.).
 - If a shadcn component isn't installed yet, add it with `npx shadcn@latest add <component>`.
 - Custom components are only acceptable for app-specific composite UI that has no shadcn equivalent.
+
+### Emoji Picker
+- **Library:** emoji-mart (`@emoji-mart/react` + `@emoji-mart/data`) — used because shadcn has no emoji-picker primitive.
+- **Where it's used:** `components/task/task-activity-feed.tsx` — inserting emoji into the Tiptap comment composer and choosing comment reaction emoji.
+- **Pattern:** dynamically import the picker (`dynamic(() => import("@emoji-mart/react"), { ssr: false })`), lazy-load `@emoji-mart/data`, render it inside a shadcn `Popover`, and pass `theme` based on the `.dark` class. Reuse this pattern for any new emoji picker — do not add a second emoji library.
 
 ### User Avatars
 - **Shared component:** `components/common/user-avatar.tsx` (`UserAvatar`) — use this everywhere a user avatar is shown. Props: `name`, `email`, `image` (storage key or null), `size` (`xs/sm/md/lg`), `className`.

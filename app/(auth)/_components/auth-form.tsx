@@ -68,10 +68,10 @@ export function LoginFormFlat() {
           <CheckCircleIcon className="size-6 text-primary" weight="duotone" />
         </div>
         <div className="space-y-1">
-          <h2 className="font-semibold text-lg">Check your inbox</h2>
-          <p className="text-muted-foreground text-sm">
+          <h2 className="text-xl font-bold tracking-tight text-foreground">Check your inbox</h2>
+          <p className="text-sm leading-relaxed text-foreground/70">
             We sent a sign-in link to{" "}
-            <span className="font-medium text-foreground">{form.getValues("email")}</span>.
+            <span className="font-semibold text-foreground">{form.getValues("email")}</span>.
           </p>
         </div>
         <p className="text-muted-foreground text-xs">
@@ -90,12 +90,12 @@ export function LoginFormFlat() {
       <Button
         type="button"
         variant="outline"
-        className="w-full gap-2 rounded-lg h-11"
+        className="w-full gap-2 rounded-lg h-11 text-foreground border-input disabled:opacity-60"
         disabled={isSubmitting || googleLoading}
         onClick={handleGoogleSignIn}
       >
         {googleLoading ? <Spinner className="size-4" /> : <GoogleLogoIcon className="size-4" />}
-        Continue with Google
+        {googleLoading ? "Connecting…" : "Continue with Google"}
       </Button>
 
       <div className="flex items-center gap-3">
@@ -111,9 +111,9 @@ export function LoginFormFlat() {
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email address</FormLabel>
+                <FormLabel className="text-sm font-semibold text-foreground">Email address</FormLabel>
                 <FormControl>
-                  <Input type="email" autoComplete="email" placeholder="you@example.com" className="h-11 rounded-lg" {...field} />
+                  <Input type="email" autoComplete="email" placeholder="you@example.com" className="h-11 rounded-lg text-foreground font-medium" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -126,7 +126,11 @@ export function LoginFormFlat() {
             </Alert>
           )}
 
-          <Button type="submit" disabled={!isValid || isSubmitting} className="w-full gap-2 h-11 rounded-lg">
+          <Button
+            type="submit"
+            disabled={!isValid || isSubmitting}
+            className="w-full gap-2 h-11 rounded-lg text-sm font-semibold shadow-sm disabled:opacity-100 disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none"
+          >
             {isSubmitting ? (
               <><Spinner className="size-4" />Sending…</>
             ) : (

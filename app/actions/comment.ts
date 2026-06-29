@@ -398,6 +398,28 @@ export async function deleteComment(
     return { error: "You don't have permission to delete this comment" };
   }
 
+  // Remove any attachments belonging to this comment first. The
+  // task_attachment.commentId FK has no ON DELETE rule, so leaving these rows
+  // would block the hard delete below. Delete the storage files before the DB
+  // rows (orphaned files are unrecoverable — see CLAUDE.md).
+  const attachments = await db
+    .select({ id: taskAttachment.id, fileUrl: taskAttachment.fileUrl })
+    .from(taskAttachment)
+    .where(eq(taskAttachment.commentId, commentId));
+
+  if (attachments.length > 0) {
+    await Promise.all(
+      attachments.map(async (a) => {
+        try {
+          await storage.delete(a.fileUrl);
+        } catch {
+          // Best-effort: a missing storage file must not block comment deletion.
+        }
+      }),
+    );
+    await db.delete(taskAttachment).where(eq(taskAttachment.commentId, commentId));
+  }
+
   // Check if has replies
   const [replyRow] = await db
     .select({ id: comment.id })

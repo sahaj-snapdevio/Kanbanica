@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import {
@@ -401,6 +401,7 @@ function PlannedSprintRow({
 
 export function SprintPanel({ workspaceId, spaceId, listId, onDataChanged }: SprintPanelProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [expanded, setExpanded] = useState(false);
   const [sprints, setSprints] = useState<SprintRow[]>([]);
   const [progressMap, setProgressMap] = useState<Record<string, SprintProgress>>({});
@@ -482,6 +483,12 @@ export function SprintPanel({ workspaceId, spaceId, listId, onDataChanged }: Spr
   async function handleDeleteSprint(sprintId: string) {
     const result = await deleteSprint(workspaceId, spaceId, sprintId);
     if ("error" in result) { setError(result.error); return; }
+    // If we're currently viewing the sprint we just deleted, its page loader
+    // would notFound() on refresh — navigate to the workspace home instead.
+    if (pathname === `/${workspaceId}/${spaceId}/sprint/${sprintId}`) {
+      router.push(`/${workspaceId}`);
+      return;
+    }
     refresh();
   }
 
