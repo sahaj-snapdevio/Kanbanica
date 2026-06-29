@@ -10,6 +10,7 @@ import {
   CaretDownIcon,
   CaretRightIcon,
   CaretUpDownIcon,
+  CaretUpIcon,
   ChatCircleIcon,
   CheckCircleIcon,
   CheckIcon,
@@ -815,101 +816,106 @@ export function WorkspaceShell({
             }}
           >
             <PopoverTrigger asChild>
-              <button className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-[13px] text-(--text-sidebar) transition-colors hover:bg-(--bg-sidebar-item-hover) hover:text-(--text-sidebar-active)">
+              <button className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-[13px] text-(--text-sidebar) transition-colors hover:bg-(--bg-sidebar-item-hover) hover:text-(--text-sidebar-active) cursor-pointer">
                 <Avatar className="size-7 shrink-0">
                   {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
                   <AvatarFallback className="text-xs">{initials}</AvatarFallback>
                 </Avatar>
                 <span className="flex-1 truncate text-left">{displayName}</span>
+                <CaretUpIcon className={`size-3.5 shrink-0 opacity-50 transition-transform duration-200 ${profileOpen ? "rotate-180" : ""}`} />
               </button>
             </PopoverTrigger>
-            <PopoverContent align="start" side="top" className="w-56 p-1">
-              {showProjectPicker ? (
-                <>
-                  <button
-                    onClick={() => setShowProjectPicker(false)}
-                    className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                  >
-                    <ArrowLeftIcon className="size-4 shrink-0" />
-                    <span>Back</span>
-                  </button>
-                  <Separator className="my-1" />
-                  <div className="max-h-52 overflow-y-auto">
-                    {spaces.length === 0 ? (
-                      <p className="px-2 py-3 text-xs text-center text-muted-foreground">No projects available</p>
-                    ) : (
-                      spaces.map((s) => (
-                        <Link
-                          key={s.id}
-                          href={`/${workspace.id}/${s.id}/settings/general`}
-                          onClick={() => { setProfileOpen(false); setShowProjectPicker(false); }}
-                          className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent"
-                        >
-                          <span
-                            className="size-2.5 shrink-0 rounded-full"
-                            style={{ backgroundColor: s.color ?? "#6B7280" }}
-                          />
-                          <span className="flex-1 truncate">{s.name}</span>
-                        </Link>
-                      ))
-                    )}
-                  </div>
-                </>
-              ) : (
-                <>
+            <PopoverContent align="start" side="top" className="p-0 overflow-hidden w-auto min-w-56">
+              <div className="flex divide-x divide-border">
+                {/* Main menu — always visible */}
+                <div className="w-56 shrink-0 p-1.5">
                   <Link
                     href={`/${workspace.id}/profile`}
                     onClick={() => setProfileOpen(false)}
-                    className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent"
+                    onMouseEnter={() => setShowProjectPicker(false)}
+                    className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors hover:bg-accent"
                   >
-                    <UserCircleIcon className="size-4" />
+                    <UserCircleIcon className="size-4 shrink-0 text-muted-foreground" />
                     Edit profile
                   </Link>
-                  <Separator className="my-1" />
+                  <Separator className="my-1.5" />
                   {isAdmin && (
                     <Link
                       href={`/${workspace.id}/settings/general`}
                       onClick={() => setProfileOpen(false)}
-                      className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent"
+                      onMouseEnter={() => setShowProjectPicker(false)}
+                      className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors hover:bg-accent"
                     >
-                      <GearIcon className="size-4" />
+                      <GearIcon className="size-4 shrink-0 text-muted-foreground" />
                       Workspace settings
                     </Link>
                   )}
                   <button
-                    onClick={() => setShowProjectPicker(true)}
-                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent"
+                    onMouseEnter={() => setShowProjectPicker(true)}
+                    className={`flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors hover:bg-accent ${showProjectPicker ? "bg-accent" : ""}`}
                   >
-                    <FolderIcon className="size-4" />
+                    <FolderIcon className="size-4 shrink-0 text-muted-foreground" />
                     <span className="flex-1 text-left">Project settings</span>
-                    <CaretRightIcon className="size-3.5 text-muted-foreground" />
+                    <CaretRightIcon className={`size-3.5 transition-colors ${showProjectPicker ? "text-foreground" : "text-muted-foreground"}`} />
                   </button>
                   <Link
                     href={`/${workspace.id}/notifications/settings`}
                     onClick={() => setProfileOpen(false)}
-                    className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent"
+                    onMouseEnter={() => setShowProjectPicker(false)}
+                    className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors hover:bg-accent"
                   >
-                    <BellIcon className="size-4" />
+                    <BellIcon className="size-4 shrink-0 text-muted-foreground" />
                     Notification settings
                   </Link>
                   <Link
                     href={`/${workspace.id}/support`}
                     onClick={() => setProfileOpen(false)}
-                    className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent"
+                    onMouseEnter={() => setShowProjectPicker(false)}
+                    className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors hover:bg-accent"
                   >
-                    <HeadsetIcon className="size-4" />
+                    <HeadsetIcon className="size-4 shrink-0 text-muted-foreground" />
                     Support
                   </Link>
-                  <Separator className="my-1" />
+                  <Separator className="my-1.5" />
                   <button
                     onClick={() => { setProfileOpen(false); handleSignOut(); }}
-                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-destructive transition-colors hover:bg-accent"
+                    onMouseEnter={() => setShowProjectPicker(false)}
+                    className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-destructive transition-colors hover:bg-destructive/10"
                   >
-                    <SignOutIcon className="size-4" />
+                    <SignOutIcon className="size-4 shrink-0" />
                     Sign out
                   </button>
-                </>
-              )}
+                </div>
+
+                {/* Project submenu flyout — appears to the right on hover */}
+                {showProjectPicker && (
+                  <div className="w-52 shrink-0 flex flex-col">
+                    <div className="px-3 py-2.5 border-b">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Projects</p>
+                    </div>
+                    <div className="max-h-52 overflow-y-auto p-1.5">
+                      {spaces.length === 0 ? (
+                        <p className="px-2 py-4 text-xs text-center text-muted-foreground">No projects available</p>
+                      ) : (
+                        spaces.map((s) => (
+                          <Link
+                            key={s.id}
+                            href={`/${workspace.id}/${s.id}/settings/general`}
+                            onClick={() => { setProfileOpen(false); setShowProjectPicker(false); }}
+                            className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors hover:bg-accent"
+                          >
+                            <span
+                              className="size-2.5 shrink-0 rounded-full"
+                              style={{ backgroundColor: s.color ?? "#6B7280" }}
+                            />
+                            <span className="flex-1 truncate">{s.name}</span>
+                          </Link>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </PopoverContent>
           </Popover>
         </div>

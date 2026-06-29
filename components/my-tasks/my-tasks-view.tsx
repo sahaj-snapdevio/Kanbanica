@@ -13,6 +13,7 @@ import {
   WarningIcon,
 } from "@phosphor-icons/react";
 import { SearchInput } from "@/components/ui/search-input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format, isToday, isPast, isThisWeek, isFuture, startOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import { getMyTasks, type MyTask, type MyTasksGroupBy } from "@/app/actions/my-tasks";
@@ -301,21 +302,28 @@ export function MyTasksView({ workspaceId }: MyTasksViewProps) {
         />
 
         {/* Group by */}
-        <div className="flex items-center gap-1.5 rounded-md border bg-background px-2 h-8">
-          <SquaresFourIcon className="size-3.5 text-muted-foreground shrink-0" />
-          <select
-            value={groupBy}
-            onChange={(e) => setGroupBy(e.target.value as MyTasksGroupBy)}
-            className="h-full bg-transparent text-xs text-foreground outline-none cursor-pointer pr-1"
-          >
+        <Popover>
+          <PopoverTrigger asChild>
+            <button className="flex items-center gap-1.5 h-8 rounded-lg border border-border px-3 text-xs font-semibold text-foreground/70 hover:bg-accent/30 transition-colors cursor-pointer select-none">
+              <SquaresFourIcon className="size-3.5 text-gray-500" />
+              Group By: {GROUP_BY_OPTIONS.find((o) => o.value === groupBy)?.label}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-44 p-1 flex flex-col gap-0.5">
             {GROUP_BY_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>Group by: {o.label}</option>
+              <button
+                key={o.value}
+                onClick={() => setGroupBy(o.value)}
+                className={cn("px-2 py-1.5 text-xs font-semibold text-left rounded hover:bg-accent/30 cursor-pointer", groupBy === o.value && "bg-accent text-foreground")}
+              >
+                {o.label}
+              </button>
             ))}
-          </select>
-        </div>
+          </PopoverContent>
+        </Popover>
 
         {/* Show completed */}
-        <button
+        {/* <button
           onClick={() => setShowCompleted((v) => !v)}
           className={cn(
             "h-8 rounded-md border px-3 text-xs font-medium transition-colors",
@@ -325,7 +333,7 @@ export function MyTasksView({ workspaceId }: MyTasksViewProps) {
           )}
         >
           {showCompleted ? "Hide Completed" : "Show Completed"}
-        </button>
+        </button> */}
       </div>
 
       {/* Table */}

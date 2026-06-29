@@ -479,29 +479,33 @@ export async function toggleReaction(
   const err = await requireSpaceAccess(session.user.id, workspaceId, spaceId);
   if (err) return err;
 
+  // Find any existing reaction by this user on this comment (regardless of emoji)
   const [existing] = await db
-    .select({ id: commentReaction.id })
+    .select({ id: commentReaction.id, emoji: commentReaction.emoji })
     .from(commentReaction)
     .where(
       and(
         eq(commentReaction.commentId, commentId),
         eq(commentReaction.userId, session.user.id),
-        eq(commentReaction.emoji, emoji),
       ),
     )
     .limit(1);
 
   if (existing) {
+    // Always remove the old reaction first
     await db.delete(commentReaction).where(eq(commentReaction.id, existing.id));
-  } else {
-    await db.insert(commentReaction).values({
-      id: createId(),
-      commentId,
-      userId: session.user.id,
-      emoji,
-      createdAt: new Date(),
-    });
+    // If it was the same emoji, this is a toggle-off — we're done
+    if (existing.emoji === emoji) return { ok: true };
   }
+
+  // Add the new reaction (replaces the old one, or adds fresh)
+  await db.insert(commentReaction).values({
+    id: createId(),
+    commentId,
+    userId: session.user.id,
+    emoji,
+    createdAt: new Date(),
+  });
 
   return { ok: true };
 }

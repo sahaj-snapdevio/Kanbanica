@@ -184,7 +184,7 @@ export function ListContainer({
             key={key}
             onClick={() => switchView(key)}
             className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border-b-2 -mb-px transition-colors",
+              "flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border-b-2 -mb-px transition-colors cursor-pointer",
               view === key
                 ? "border-primary text-foreground"
                 : "border-transparent text-muted-foreground hover:text-foreground",
