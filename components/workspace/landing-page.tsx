@@ -68,7 +68,7 @@ function useInView(threshold = 0.12) {
           obs.disconnect();
         }
       },
-      { threshold }
+      { threshold },
     );
     obs.observe(el);
     return () => obs.disconnect();
@@ -101,7 +101,7 @@ function Animate({
         visible
           ? "opacity-100 translate-x-0 translate-y-0"
           : cn("opacity-0", translate),
-        className
+        className,
       )}
       ref={ref}
       style={{ transitionDelay: `${delay}ms` }}
@@ -183,7 +183,8 @@ const testimonials = [
     role: "Engineering Lead",
     company: "Flowboard",
     initials: "SC",
-    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&h=150&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&h=150&q=80",
     body: "We switched from ClickUp and the onboarding took 20 minutes. The Board view is snappy, the permissions model is exactly what we needed for guest contractors.",
     rating: 5,
   },
@@ -192,7 +193,8 @@ const testimonials = [
     role: "Product Manager",
     company: "Stackd",
     initials: "MR",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=150&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=150&q=80",
     body: "Sprint planning used to take half a day. With Kanbanica's sprint view and story points, we're done in an hour. The burndown chart is a game-changer.",
     rating: 5,
   },
@@ -201,7 +203,8 @@ const testimonials = [
     role: "Founder",
     company: "Loopback",
     initials: "PN",
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&h=150&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&h=150&q=80",
     body: "My Tasks view is something I didn't know I needed. Seeing every task assigned to me across every project in one place — with a due date grouping — is brilliant.",
     rating: 5,
   },
@@ -210,7 +213,8 @@ const testimonials = [
     role: "CTO",
     company: "Acme Co",
     initials: "DK",
-    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&h=150&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&h=150&q=80",
     body: "We consolidated three different tools into Kanbanica. It is blazing fast and the security features with workspace-scoped permissions fit our enterprise requirements perfectly.",
     rating: 5,
   },
@@ -219,7 +223,8 @@ const testimonials = [
     role: "Design Director",
     company: "Nexus",
     initials: "ER",
-    avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&h=150&q=80",
+    avatar:
+      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&h=150&q=80",
     body: "The user interface is gorgeous, clean, and responsive. Designing workflows and managing task lists across our multiple departments is a breeze.",
     rating: 5,
   },
@@ -267,7 +272,7 @@ function SectionLabel({
     <span
       className={cn(
         "inline-flex items-center rounded-full border border-[#174D38]/30 bg-[#174D38]/10 px-3 py-1 font-semibold text-[#174D38] text-xs uppercase tracking-wide",
-        className
+        className,
       )}
     >
       {children}
@@ -291,7 +296,7 @@ function Navbar() {
         "sticky top-0 z-40 transition-all duration-200",
         scrolled
           ? "border-b border-[#CBCBCB] bg-white/95 shadow-sm backdrop-blur-sm"
-          : "bg-transparent"
+          : "bg-transparent",
       )}
     >
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
@@ -589,7 +594,7 @@ function ListView() {
               <span
                 className={cn(
                   "rounded px-2.5 py-0.5 text-[10px] font-bold tracking-wide",
-                  t.statusCls
+                  t.statusCls,
                 )}
               >
                 {t.status}
@@ -599,7 +604,7 @@ function ListView() {
               <span
                 className={cn(
                   "rounded px-2.5 py-0.5 text-[10px] font-bold tracking-wide",
-                  t.pCls
+                  t.pCls,
                 )}
               >
                 {t.priority}
@@ -724,7 +729,7 @@ function BoardView() {
                   <span
                     className={cn(
                       "rounded px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider",
-                      task.pCls
+                      task.pCls,
                     )}
                   >
                     {task.priority}
@@ -780,7 +785,7 @@ function CalendarView() {
             <div
               className={cn(
                 "border border-[#E8E8E8] rounded-md p-1 flex flex-col gap-1 min-h-0 relative bg-white transition-colors hover:border-[#174D38]/30",
-                isValidDay ? "text-[#174D38]" : "text-[#CBCBCB] bg-[#F9F9F9]"
+                isValidDay ? "text-[#174D38]" : "text-[#CBCBCB] bg-[#F9F9F9]",
               )}
               key={idx}
             >
@@ -859,12 +864,12 @@ function ProductShowcaseSection() {
   const listOpacityTransform = useTransform(
     scrollYProgress,
     [0, 0.2, 0.35],
-    [1, 0.5, 0]
+    [1, 0.5, 0],
   );
   const listScaleTransform = useTransform(
     scrollYProgress,
     [0, 0.35],
-    [1, 0.95]
+    [1, 0.95],
   );
   const listYTransform = useTransform(scrollYProgress, [0, 0.35], [0, -50]);
 
@@ -872,34 +877,34 @@ function ProductShowcaseSection() {
   const boardOpacityTransform = useTransform(
     scrollYProgress,
     [0, 0.15, 0.35, 0.55, 0.7],
-    [0, 0.4, 1, 0.5, 0]
+    [0, 0.4, 1, 0.5, 0],
   );
   const boardScaleTransform = useTransform(
     scrollYProgress,
     [0, 0.35, 0.7],
-    [0.9, 1, 0.95]
+    [0.9, 1, 0.95],
   );
   const boardYTransform = useTransform(
     scrollYProgress,
     [0, 0.35, 0.7],
-    [150, 0, -50]
+    [150, 0, -50],
   );
 
   // Scroll Transforms for Calendar View
   const calendarOpacityTransform = useTransform(
     scrollYProgress,
     [0.35, 0.55, 0.7],
-    [0, 0.4, 1]
+    [0, 0.4, 1],
   );
   const calendarScaleTransform = useTransform(
     scrollYProgress,
     [0.35, 0.7],
-    [0.9, 1]
+    [0.9, 1],
   );
   const calendarYTransform = useTransform(
     scrollYProgress,
     [0.35, 0.7],
-    [150, 0]
+    [150, 0],
   );
 
   const listOpacity = prefersReducedMotion
@@ -951,7 +956,7 @@ function ProductShowcaseSection() {
                       "flex size-8 items-center justify-center rounded-md transition-colors",
                       i === activeSidebarIndex
                         ? "bg-[#174D38] text-white"
-                        : "text-[#9ca3af] hover:bg-[#E8E8E8]"
+                        : "text-[#9ca3af] hover:bg-[#E8E8E8]",
                     )}
                     key={i}
                   >
@@ -978,7 +983,7 @@ function ProductShowcaseSection() {
                           "rounded px-2.5 py-1 font-semibold text-xs transition-all duration-200",
                           activeTabIdx === idx
                             ? "bg-[#174D38] text-white"
-                            : "text-[#6b7280] hover:bg-[#E8E8E8] hover:text-[#174D38]"
+                            : "text-[#6b7280] hover:bg-[#E8E8E8] hover:text-[#174D38]",
                         )}
                         key={tab}
                       >
@@ -1110,7 +1115,7 @@ function SocialProofBar() {
                   >
                     {name}
                   </span>
-                )
+                ),
               )}
             </div>
           </div>
@@ -1153,7 +1158,7 @@ function FeaturesSection() {
                 "hover:-translate-y-0.5 hover:border-[#174D38]/40 hover:shadow-md",
                 visible
                   ? "translate-y-0 opacity-100"
-                  : "translate-y-4 opacity-0"
+                  : "translate-y-4 opacity-0",
               )}
               key={title}
               style={{
@@ -1219,7 +1224,7 @@ function StatsSection() {
                 "flex flex-col items-center text-center transition-all duration-500 sm:items-start sm:text-left",
                 visible
                   ? "translate-y-0 opacity-100"
-                  : "translate-y-4 opacity-0"
+                  : "translate-y-4 opacity-0",
               )}
               key={label}
               style={{ transitionDelay: visible ? `${i * 90}ms` : "0ms" }}
@@ -1299,7 +1304,7 @@ function BentoSection() {
                   "hover:-translate-y-0.5 hover:shadow-md hover:border-[#174D38]/40",
                   visible
                     ? "translate-y-0 opacity-100"
-                    : "translate-y-4 opacity-0"
+                    : "translate-y-4 opacity-0",
                 )}
                 key={card.title}
                 style={{ transitionDelay: visible ? `${i * 90}ms` : "0ms" }}
@@ -1383,7 +1388,7 @@ function HowItWorksSection() {
                 "relative rounded-xl border border-[#CBCBCB] bg-white p-6 shadow-sm transition-all duration-500",
                 visible
                   ? "translate-y-0 opacity-100"
-                  : "translate-y-4 opacity-0"
+                  : "translate-y-4 opacity-0",
               )}
               key={step.number}
               style={{
@@ -1397,7 +1402,7 @@ function HowItWorksSection() {
                     "pointer-events-none absolute top-10 left-[100%] w-6 h-6 hidden lg:block z-10 transition-all duration-700 ease-out",
                     visible
                       ? "opacity-100 translate-x-0 scale-100"
-                      : "opacity-0 -translate-x-2 scale-75"
+                      : "opacity-0 -translate-x-2 scale-75",
                   )}
                   style={{
                     transitionDelay: `${i * 120 + 150}ms`,
@@ -1528,7 +1533,7 @@ function ViewsShowcaseSection() {
                           "flex items-center gap-3 rounded border px-3 py-2 text-sm",
                           done
                             ? "border-[#CBCBCB] bg-[#F2F2F2]"
-                            : "border-[#174D38]/20 bg-[#174D38]/5"
+                            : "border-[#174D38]/20 bg-[#174D38]/5",
                         )}
                         key={t}
                       >
@@ -1537,7 +1542,7 @@ function ViewsShowcaseSection() {
                             "flex size-4 shrink-0 items-center justify-center rounded border-2",
                             done
                               ? "border-[#174D38] bg-[#174D38]"
-                              : "border-[#CBCBCB]"
+                              : "border-[#CBCBCB]",
                           )}
                         >
                           {done && (
@@ -1552,7 +1557,7 @@ function ViewsShowcaseSection() {
                             "flex-1 text-xs",
                             done
                               ? "text-[#9ca3af] line-through"
-                              : "text-[#174D38]"
+                              : "text-[#174D38]",
                           )}
                         >
                           {t}
@@ -1789,7 +1794,7 @@ function BeforeAfterSection() {
     (e: React.TouchEvent) => {
       handleMove(e.touches[0].clientX);
     },
-    [handleMove]
+    [handleMove],
   );
 
   React.useEffect(() => {
@@ -1877,7 +1882,7 @@ function BeforeAfterSection() {
                       <div
                         className={cn(
                           "flex size-9 shrink-0 items-center justify-center rounded-lg",
-                          f.color
+                          f.color,
                         )}
                       >
                         <Icon className="size-4" />
@@ -1913,7 +1918,7 @@ function BeforeAfterSection() {
                 draggable={false}
                 height={816}
                 priority
-                src="/before-image.png"
+                src="/before2.png"
                 width={1456}
               />
 
@@ -1930,7 +1935,7 @@ function BeforeAfterSection() {
                   draggable={false}
                   height={816}
                   priority
-                  src="/after-image.png"
+                  src="/after2.png"
                   width={1456}
                 />
               </div>
@@ -2022,7 +2027,7 @@ function TestimonialsSection() {
 
   const prev = () => {
     setActiveIndex(
-      (prev) => (prev - 1 + testimonials.length) % testimonials.length
+      (prev) => (prev - 1 + testimonials.length) % testimonials.length,
     );
   };
 
@@ -2163,7 +2168,7 @@ function TestimonialsSection() {
                         : "border-white/[0.05] bg-white/[0.015]",
                       isHovered
                         ? "border-emerald-400/50 bg-white/[0.07] shadow-[0_0_30px_rgba(16,185,129,0.25)]"
-                        : "shadow-2xl"
+                        : "shadow-2xl",
                     )}
                     key={t.name}
                     style={{
@@ -2190,19 +2195,20 @@ function TestimonialsSection() {
                       y: isEntered && !isHovered && !isMobile ? [0, -8, 0] : y,
                     }}
                     transition={{
-                      y: isEntered && !isHovered && !isMobile
-                        ? {
-                            repeat: Number.POSITIVE_INFINITY,
-                            repeatType: "reverse" as const,
-                            duration: 3 + idx * 0.3,
-                            ease: "easeInOut",
-                          }
-                        : {
-                            type: "spring",
-                            stiffness: 140,
-                            damping: 20,
-                            delay: isEntered ? 0 : idx * 0.15,
-                          },
+                      y:
+                        isEntered && !isHovered && !isMobile
+                          ? {
+                              repeat: Number.POSITIVE_INFINITY,
+                              repeatType: "reverse" as const,
+                              duration: 3 + idx * 0.3,
+                              ease: "easeInOut",
+                            }
+                          : {
+                              type: "spring",
+                              stiffness: 140,
+                              damping: 20,
+                              delay: isEntered ? 0 : idx * 0.15,
+                            },
                       default: {
                         type: "spring",
                         stiffness: 140,
@@ -2232,7 +2238,6 @@ function TestimonialsSection() {
                     {/* Futuristic HUD corner accents */}
                     <div className="absolute top-2.5 left-2.5 size-2.5 border-t border-l border-emerald-500/40 rounded-tl-xs pointer-events-none" />
                     <div className="absolute bottom-2.5 right-2.5 size-2.5 border-b border-r border-emerald-500/40 rounded-br-xs pointer-events-none" />
-                    
 
                     {/* Star Rating */}
                     <div className="flex gap-0.5 text-emerald-400 mb-4">
@@ -2289,7 +2294,7 @@ function TestimonialsSection() {
                   "h-1 rounded-full transition-all duration-300",
                   idx === activeIndex
                     ? "w-6 bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]"
-                    : "w-1.5 bg-white/20"
+                    : "w-1.5 bg-white/20",
                 )}
                 key={idx}
                 onClick={() => setActiveIndex(idx)}
@@ -2325,7 +2330,7 @@ function FaqItem({
         <span
           className={cn(
             "font-semibold text-sm transition-colors duration-200",
-            isOpen ? "text-[#174D38]" : "text-[#174D38]"
+            isOpen ? "text-[#174D38]" : "text-[#174D38]",
           )}
         >
           {question}
@@ -2333,19 +2338,19 @@ function FaqItem({
         <div
           className={cn(
             "relative ml-6 h-5 w-5 shrink-0 transition-transform duration-300 ease-out",
-            isOpen ? "rotate-45" : "rotate-0"
+            isOpen ? "rotate-45" : "rotate-0",
           )}
         >
           <span
             className={cn(
               "absolute top-1/2 left-0 h-0.5 w-full -translate-y-1/2 rounded-full transition-colors duration-300",
-              isOpen ? "bg-[#174D38]" : "bg-[#6b7280]"
+              isOpen ? "bg-[#174D38]" : "bg-[#6b7280]",
             )}
           />
           <span
             className={cn(
               "absolute top-0 left-1/2 h-full w-0.5 -translate-x-1/2 rounded-full transition-all duration-300",
-              isOpen ? "bg-[#174D38]" : "bg-[#6b7280]"
+              isOpen ? "bg-[#174D38]" : "bg-[#6b7280]",
             )}
           />
         </div>

@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   },
   description: PRODUCT_DESCRIPTION,
   icons: {
-    icon: "/Kanbanica3.png",
+    icon: "/kanbanica3.png",
   },
 };
 

@@ -452,3 +452,188 @@ body:has(.workspace-shell) {
     font: inherit;
   }
 }
+
+/* ── Mask CTA Button ────────────────────────────────────────────────────────
+   Ink-spray mask reveal effect for landing page CTA buttons.
+   Two-layer approach: .mask-btn__label is the "hover revealed" state;
+   .mask-btn__inner is the default-visible animated layer.
+   ────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Sprite sheet (23 frames, Robin Dela — no changes needed) */
+  --mb-sprite: url('https://raw.githubusercontent.com/robin-dela/css-mask-animation/master/img/nature-sprite.png');
+
+  /* Brand palette — override per theme */
+  --mb-brand:      #174D38;
+  --mb-brand-fg:   #ffffff;
+  --mb-border-col: #CBCBCB;
+  --mb-muted-col:  #6b7280;
+  --mb-accent-bg:  rgba(23, 77, 56, 0.06);
+
+  /* Animation timing — change here to tune all buttons at once */
+  --mb-duration: 0.7s;
+  --mb-steps:    steps(22);
+}
+
+/* Paint sprays IN (button fades → label shows beneath) */
+@keyframes mask-btn-in {
+  from { -webkit-mask-position: 0 0;    mask-position: 0 0;    }
+  to   { -webkit-mask-position: 100% 0; mask-position: 100% 0; }
+}
+
+/* Paint sprays OUT (button reveals — plays on page-load & mouse-leave) */
+@keyframes mask-btn-out {
+  from { -webkit-mask-position: 100% 0; mask-position: 100% 0; }
+  to   { -webkit-mask-position: 0 0;    mask-position: 0 0;    }
+}
+
+/* ── Wrapper ──────────────────────────────────────────────────────────────── */
+.mask-btn {
+  position: relative;
+  display: inline-flex;
+  overflow: hidden;
+  border-radius: var(--mb-radius, 0.375rem);
+  height: var(--mb-h, 2rem);
+  flex-shrink: 0;
+}
+
+/* ── Label (behind — always visible, the hover-revealed state) ───────────── */
+.mask-btn__label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--mb-px, 0.75rem);
+  color: var(--mb-label-color, var(--mb-brand));
+  background: var(--mb-label-bg, transparent);
+  font-size: var(--mb-fs, 0.75rem);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+  z-index: 0;
+}
+
+/* ── Inner (on top — mask-animated, default-visible layer) ──────────────── */
+.mask-btn__inner {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--mb-px, 0.75rem);
+  width: 101%; /* hairline-gap fix on some browsers */
+  height: 100%;
+  color: var(--mb-color, var(--mb-brand));
+  background: var(--mb-bg, transparent);
+  font-size: var(--mb-fs, 0.75rem);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  white-space: nowrap;
+  /* Mask */
+  -webkit-mask-image: var(--mb-sprite);
+  mask-image: var(--mb-sprite);
+  -webkit-mask-size: 2300% 100%;
+  mask-size: 2300% 100%;
+  -webkit-mask-position: 0 0;
+  mask-position: 0 0;
+  /* Plays on load + mouse-leave: button sprays into view */
+  animation: mask-btn-out var(--mb-duration) var(--mb-steps) forwards;
+}
+
+/* On hover: paint sprays in, inner fades, label shows beneath */
+.mask-btn:hover .mask-btn__inner {
+  animation: mask-btn-in var(--mb-duration) var(--mb-steps) forwards;
+}
+
+/* ── Variants ─────────────────────────────────────────────────────────────── */
+
+/* Primary — solid green → green outline/text on hover */
+.mask-btn--primary {
+  --mb-bg:          var(--mb-brand);
+  --mb-color:       var(--mb-brand-fg);
+  --mb-label-color: var(--mb-brand);
+  --mb-label-bg:    transparent;
+  border: 1.5px solid var(--mb-brand);
+}
+
+/* Outline — bordered transparent → green tint on hover */
+.mask-btn--outline {
+  --mb-bg:          transparent;
+  --mb-color:       var(--mb-brand);
+  --mb-label-color: var(--mb-brand);
+  --mb-label-bg:    var(--mb-accent-bg);
+  border: 1px solid var(--mb-border-col);
+}
+
+/* Ghost — text only; muted → brand-green on hover */
+.mask-btn--ghost {
+  --mb-bg:          transparent;
+  --mb-color:       var(--mb-muted-col);
+  --mb-label-color: var(--mb-brand);
+  --mb-label-bg:    transparent;
+}
+
+/* White — white fill on dark bg → light-green tint on hover */
+.mask-btn--white {
+  --mb-bg:          #ffffff;
+  --mb-color:       var(--mb-brand);
+  --mb-label-color: var(--mb-brand);
+  --mb-label-bg:    rgba(240, 249, 244, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+/* ── Sizes ────────────────────────────────────────────────────────────────── */
+
+.mask-btn--sm {   /* Navbar */
+  --mb-h:  2rem;
+  --mb-px: 0.75rem;
+  --mb-fs: 0.75rem;
+}
+.mask-btn--md {
+  --mb-h:  2.25rem;
+  --mb-px: 1rem;
+  --mb-fs: 0.875rem;
+}
+.mask-btn--lg {   /* Hero CTAs */
+  --mb-h:  2.75rem;
+  --mb-px: 1.5rem;
+  --mb-fs: 1rem;
+}
+.mask-btn--xl {   /* CTA banner */
+  --mb-h:  2.75rem;
+  --mb-px: 2rem;
+  --mb-fs: 1rem;
+}
+
+/* ── Pill modifier ────────────────────────────────────────────────────────── */
+.mask-btn--pill { --mb-radius: 9999px; }
+
+/* ── Fallback — browsers without CSS mask support ────────────────────────── */
+@supports not ((-webkit-mask-image: url('')) or (mask-image: url(''))) {
+  .mask-btn__label { display: none; }
+  .mask-btn__inner {
+    animation: none !important;
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+    transition: color 200ms ease, background 200ms ease;
+  }
+  .mask-btn:hover .mask-btn__inner {
+    color: var(--mb-label-color, var(--mb-brand));
+    background: var(--mb-label-bg, transparent);
+  }
+}
+
+/* ── Reduced motion ───────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .mask-btn__inner {
+    animation: none !important;
+    transition: color 150ms ease;
+  }
+  .mask-btn:hover .mask-btn__inner {
+    color: var(--mb-label-color, var(--mb-brand));
+  }
+}
