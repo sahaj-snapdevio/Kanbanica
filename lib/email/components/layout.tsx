@@ -10,7 +10,12 @@ import {
   Section,
   Text,
 } from "react-email";
-import { PRODUCT_NAME } from "@/config/platform";
+import { LOGO_PATH, PRODUCT_NAME } from "@/config/platform";
+import { env } from "@/lib/env";
+
+// Absolute URL to the same logo the landing page uses. Emails can't resolve
+// relative asset paths, so the public asset must be referenced absolutely.
+const DEFAULT_LOGO_URL = `${env.NEXT_PUBLIC_APP_URL}${LOGO_PATH}`;
 
 export const emailStyles = {
   body: {
@@ -65,7 +70,7 @@ export const emailStyles = {
 
 export function EmailLayout({
   children,
-  logoUrl,
+  logoUrl = DEFAULT_LOGO_URL,
   preview,
   productName = PRODUCT_NAME,
 }: {

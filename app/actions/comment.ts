@@ -398,6 +398,28 @@ export async function deleteComment(
     return { error: "You don't have permission to delete this comment" };
   }
 
+  // Remove any attachments belonging to this comment first. The
+  // task_attachment.commentId FK has no ON DELETE rule, so leaving these rows
+  // would block the hard delete below. Delete the storage files before the DB
+  // rows (orphaned files are unrecoverable — see CLAUDE.md).
+  const attachments = await db
+    .select({ id: taskAttachment.id, fileUrl: taskAttachment.fileUrl })
+    .from(taskAttachment)
+    .where(eq(taskAttachment.commentId, commentId));
+
+  if (attachments.length > 0) {
+    await Promise.all(
+      attachments.map(async (a) => {
+        try {
+          await storage.delete(a.fileUrl);
+        } catch {
+          // Best-effort: a missing storage file must not block comment deletion.
+        }
+      }),
+    );
+    await db.delete(taskAttachment).where(eq(taskAttachment.commentId, commentId));
+  }
+
   // Check if has replies
   const [replyRow] = await db
     .select({ id: comment.id })
@@ -479,29 +501,33 @@ export async function toggleReaction(
   const err = await requireSpaceAccess(session.user.id, workspaceId, spaceId);
   if (err) return err;
 
+  // Find any existing reaction by this user on this comment (regardless of emoji)
   const [existing] = await db
-    .select({ id: commentReaction.id })
+    .select({ id: commentReaction.id, emoji: commentReaction.emoji })
     .from(commentReaction)
     .where(
       and(
         eq(commentReaction.commentId, commentId),
         eq(commentReaction.userId, session.user.id),
-        eq(commentReaction.emoji, emoji),
       ),
     )
     .limit(1);
 
   if (existing) {
+    // Always remove the old reaction first
     await db.delete(commentReaction).where(eq(commentReaction.id, existing.id));
-  } else {
-    await db.insert(commentReaction).values({
-      id: createId(),
-      commentId,
-      userId: session.user.id,
-      emoji,
-      createdAt: new Date(),
-    });
+    // If it was the same emoji, this is a toggle-off — we're done
+    if (existing.emoji === emoji) return { ok: true };
   }
+
+  // Add the new reaction (replaces the old one, or adds fresh)
+  await db.insert(commentReaction).values({
+    id: createId(),
+    commentId,
+    userId: session.user.id,
+    emoji,
+    createdAt: new Date(),
+  });
 
   return { ok: true };
 }

@@ -1069,28 +1069,53 @@ export function SprintListView({ workspaceId, spaceId, listId = "", statuses = [
     if (!over) return;
     const activeId = active.id as string;
     const overId = over.id as string;
+    if (activeId === overId) return;
     const activeTask = boardTasks.find((t) => t.id === activeId);
     if (!activeTask) return;
     const overStatus = effectiveStatuses.find((s) => s.id === overId)?.id
       ?? boardTasks.find((t) => t.id === overId)?.statusId;
-    if (!overStatus || overStatus === activeTask.statusId) return;
-    setBoardTasks((prev) => prev.map((t) => t.id === activeId ? { ...t, statusId: overStatus } : t));
+    if (!overStatus) return;
+
+    if (overStatus === activeTask.statusId) {
+      // Same column — reorder positions optimistically
+      setBoardTasks((prev) => {
+        const oldIndex = prev.findIndex((t) => t.id === activeId);
+        const newIndex = prev.findIndex((t) => t.id === overId);
+        if (oldIndex === -1 || newIndex === -1) return prev;
+        return arrayMove(prev, oldIndex, newIndex);
+      });
+    } else {
+      // Cross-column — move task to new column
+      setBoardTasks((prev) => prev.map((t) => t.id === activeId ? { ...t, statusId: overStatus } : t));
+    }
   }
 
   async function onDragEnd({ active, over }: DragEndEvent) {
     setActiveDragTask(null);
     if (!over) return;
     const activeId = active.id as string;
-    const overId = over.id as string;
     const activeTask = boardTasks.find((t) => t.id === activeId);
     if (!activeTask) return;
-    const newStatus = effectiveStatuses.find((s) => s.id === overId)?.id
-      ?? boardTasks.find((t) => t.id === overId)?.statusId;
+    const finalStatus = activeTask.statusId;
     const originalStatus = tasks.find((t) => t.id === activeId)?.statusId;
-    if (!newStatus || newStatus === originalStatus) return;
-    const res = await updateTaskStatus(workspaceId, spaceId, activeTask.listId, activeId, newStatus);
-    if ("error" in res) { setBoardTasks(tasks); toast.error("Failed to update status"); }
-    else { void fetchData(); }
+
+    if (finalStatus === originalStatus) {
+      // Same column — persist new card order
+      const columnTaskIds = boardTasks
+        .filter((t) => t.statusId === finalStatus)
+        .map((t) => t.id);
+      const originalIds = tasks
+        .filter((t) => t.statusId === originalStatus)
+        .map((t) => t.id);
+      if (columnTaskIds.join(",") === originalIds.join(",")) return;
+      const res = await reorderTasksById(workspaceId, spaceId, columnTaskIds);
+      if ("error" in res) { setBoardTasks(tasks); toast.error("Failed to reorder tasks"); }
+    } else {
+      // Cross-column — update status
+      const res = await updateTaskStatus(workspaceId, spaceId, activeTask.listId, activeId, finalStatus!);
+      if ("error" in res) { setBoardTasks(tasks); toast.error("Failed to update status"); }
+      else { void fetchData(); }
+    }
   }
 
   // ── Filtered tasks ────────────────────────────────────────────────────────

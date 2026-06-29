@@ -8,12 +8,13 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  closestCorners,
+  closestCenter,
   type DragStartEvent,
   type DragOverEvent,
   type DragEndEvent,
 } from "@dnd-kit/core";
 import {
+  arrayMove,
   SortableContext,
   useSortable,
   verticalListSortingStrategy,
@@ -26,7 +27,7 @@ import {
   PlusIcon,
 } from "@phosphor-icons/react";
 import { SearchInput } from "@/components/ui/search-input";
-import { updateTaskStatus } from "@/app/actions/task";
+import { updateTaskStatus, reorderTasksInStatus } from "@/app/actions/task";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CreateTaskModal } from "@/components/task/create-task-modal";
@@ -348,18 +349,29 @@ export function BoardView({ workspaceId, space, list, statuses, tasks, members =
 
     const activeId = active.id as string;
     const overId = over.id as string;
+    if (activeId === overId) return;
 
     const activeStatus = findStatusForTask(activeId);
     // over could be a column (statusId) or another task
     const overStatus = statuses.find((s) => s.id === overId)?.id
       ?? findStatusForTask(overId);
 
-    if (!activeStatus || !overStatus || activeStatus === overStatus) return;
+    if (!activeStatus || !overStatus) return;
 
-    // Optimistically move to new column
-    setLocalTasks((prev) =>
-      prev.map((t) => t.id === activeId ? { ...t, statusId: overStatus } : t),
-    );
+    if (activeStatus === overStatus) {
+      // Same column — reorder positions optimistically
+      setLocalTasks((prev) => {
+        const oldIndex = prev.findIndex((t) => t.id === activeId);
+        const newIndex = prev.findIndex((t) => t.id === overId);
+        if (oldIndex === -1 || newIndex === -1) return prev;
+        return arrayMove(prev, oldIndex, newIndex);
+      });
+    } else {
+      // Cross-column — move task to new column
+      setLocalTasks((prev) =>
+        prev.map((t) => t.id === activeId ? { ...t, statusId: overStatus } : t),
+      );
+    }
   }
 
   async function onDragEnd({ active, over }: DragEndEvent) {
@@ -367,20 +379,26 @@ export function BoardView({ workspaceId, space, list, statuses, tasks, members =
     if (!over) return;
 
     const activeId = active.id as string;
-    const overId = over.id as string;
-
-    const newStatus = statuses.find((s) => s.id === overId)?.id
-      ?? findStatusForTask(overId);
-
+    const finalStatus = findStatusForTask(activeId); // from localTasks after all onDragOver updates
     const originalStatus = tasks.find((t) => t.id === activeId)?.statusId;
 
-    if (!newStatus || newStatus === originalStatus) return;
+    if (!finalStatus) return;
 
-    // Persist to server
-    const res = await updateTaskStatus(workspaceId, space.id, list.id, activeId, newStatus);
-    if ("error" in res) {
-      // Revert on failure
-      setLocalTasks(tasks);
+    if (finalStatus === originalStatus) {
+      // Same column — persist new card order
+      const columnTaskIds = localTasks
+        .filter((t) => t.statusId === finalStatus)
+        .map((t) => t.id);
+      const originalIds = tasks
+        .filter((t) => t.statusId === originalStatus)
+        .map((t) => t.id);
+      if (columnTaskIds.join(",") === originalIds.join(",")) return; // no change
+      const res = await reorderTasksInStatus(workspaceId, space.id, list.id, columnTaskIds);
+      if ("error" in res) setLocalTasks(tasks);
+    } else {
+      // Cross-column — update status
+      const res = await updateTaskStatus(workspaceId, space.id, list.id, activeId, finalStatus);
+      if ("error" in res) setLocalTasks(tasks);
     }
   }
 
@@ -532,7 +550,7 @@ export function BoardView({ workspaceId, space, list, statuses, tasks, members =
       <DndContext
         id="board-dnd"
         sensors={sensors}
-        collisionDetection={closestCorners}
+        collisionDetection={closestCenter}
         onDragStart={onDragStart}
         onDragOver={onDragOver}
         onDragEnd={onDragEnd}

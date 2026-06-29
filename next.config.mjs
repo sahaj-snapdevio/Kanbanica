@@ -8,6 +8,7 @@ const nextConfig = {
   turbopack: {
     root: resolve(__dirname),
   },
+  transpilePackages: ["@emoji-mart/react"],
 };
 
 export default nextConfig;

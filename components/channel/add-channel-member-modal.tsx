@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 interface AddChannelMemberModalProps {
@@ -109,14 +110,15 @@ export function AddChannelMemberModal({
                   className="flex items-center gap-1.5 rounded-full bg-accent px-2.5 py-1 text-xs"
                 >
                   <span className="font-medium">{member.name}</span>
-                  <select
-                    value={role}
-                    onChange={(e) => updateRole(id, e.target.value as "ADMIN" | "MEMBER")}
-                    className="bg-transparent text-xs text-muted-foreground outline-none cursor-pointer"
-                  >
-                    <option value="MEMBER">Member</option>
-                    <option value="ADMIN">Admin</option>
-                  </select>
+                  <Select value={role} onValueChange={(v) => updateRole(id, v as "ADMIN" | "MEMBER")}>
+                    <SelectTrigger className="h-auto border-0 bg-transparent p-0 text-xs text-muted-foreground shadow-none focus:ring-0 [&>svg]:size-3 [&>svg]:ml-0.5">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="MEMBER" className="text-xs">Member</SelectItem>
+                      <SelectItem value="ADMIN" className="text-xs">Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <button
                     onClick={() => toggleSelect(member)}
                     className="ml-0.5 rounded-full p-0.5 hover:bg-background"
