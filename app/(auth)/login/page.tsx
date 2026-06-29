@@ -15,7 +15,19 @@ export default async function LoginPage() {
     <div className="force-light relative flex h-full bg-[#F2F2F2]">
       <WatermarkBackground />
 
-      {/* Left — existing login form, unchanged */}
+      {/* Right — illustration only, no other content */}
+      <div className="relative z-10 hidden items-center justify-center p-8 lg:flex lg:w-1/2">
+        <Image
+          src="/log-illus.png"
+          alt=""
+          width={700}
+          height={700}
+          className="h-auto w-full max-w-lg object-contain"
+          priority
+          aria-hidden="true"
+          />
+      </div>
+          {/* Left — existing login form, unchanged */}
       <div className="relative z-10 flex w-full items-center justify-center overflow-auto p-4 lg:w-1/2">
         <div className="w-full max-w-sm">
           <div className="mb-8 text-center">
@@ -34,18 +46,6 @@ export default async function LoginPage() {
         </div>
       </div>
 
-      {/* Right — illustration only, no other content */}
-      <div className="relative z-10 hidden items-center justify-center p-8 lg:flex lg:w-1/2">
-        <Image
-          src="/log-illu.png"
-          alt=""
-          width={600}
-          height={600}
-          className="h-auto w-full max-w-lg object-contain"
-          priority
-          aria-hidden="true"
-        />
-      </div>
     </div>
   );
 }
