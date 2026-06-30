@@ -132,6 +132,20 @@ export function CreateTaskModal({
     }
   }, [open, defaultStatusId]);
 
+  // Statuses may load asynchronously after the modal opens. Once they're
+  // available, make sure a valid status is selected so the task is never
+  // created without one (otherwise it lands in "No Status").
+  React.useEffect(() => {
+    if (!open || localStatuses.length === 0) {
+      return;
+    }
+    setStatusId((prev) =>
+      prev && localStatuses.some((s) => s.id === prev)
+        ? prev
+        : (defaultStatusId ?? localStatuses[0].id),
+    );
+  }, [open, localStatuses, defaultStatusId]);
+
   async function handleSubmit() {
     if (!title.trim()) { setError("Task name is required"); return; }
     setLoading(true);

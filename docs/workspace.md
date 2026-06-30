@@ -71,6 +71,8 @@ Workspace is the top-level container in Kanbanica. Every user belongs to at leas
 - If the invite expires, Admin must re-send it
 - Pending invites can be cancelled before acceptance
 
+> **Reusable invite modal:** to invite from anywhere in the app (not just the Members settings page), use `components/workspace/invite-member-modal.tsx` (`<InviteMemberModal>`). Props: `open`, `onOpenChange`, `workspaceId`, and an `onInvited` callback so the caller can refresh its member list. It wraps the existing `inviteMember` server action — backend permissions/validation are unchanged — and validates the email format client-side before submitting, with a role select (Admin / Member / Guest).
+
 **Pending Invite Visibility:**
 - **Admin / Owner view (`Settings -> Members`):** A dedicated "Pending" section lists all outstanding invites — showing email, invited by, invited date, expiry date, and a Cancel button
 - **Invited user view:** When an invited user logs in (or registers with the same email), they see a banner: `"You have a pending invite to join [Workspace Name]. [Accept] [Decline]"` — this ensures users who already have an account don't miss the invite

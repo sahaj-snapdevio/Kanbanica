@@ -72,7 +72,11 @@ export function DeleteListDialog({
           </p>
           <div className="space-y-1.5">
             <Label htmlFor="delete-confirm">
-              Type <strong>{list.name}</strong> to confirm
+              Type{" "}
+              <span className="normal-case font-semibold tracking-normal text-foreground">
+                {list.name}
+              </span>{" "}
+              to confirm
             </Label>
             <Input
               id="delete-confirm"

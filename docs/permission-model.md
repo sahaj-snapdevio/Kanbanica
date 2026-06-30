@@ -134,7 +134,6 @@ Each user gets a Space Permission level when added to a Space. This controls eve
 | Delete others' Attachment | [x] | [ ] | [ ] |
 | Add / remove Dependencies | [x] | [x] | [ ] |
 | Create Subtask | [x] | [x] | [ ] |
-| Log time on Task | [x] | [x] | [ ] |
 | Archive Task | [x] | [ ] | [ ] |
 | Delete Task | [x] | [ ] | [ ] |
 | Move Task to another List | [x] | [ ] | [ ] |

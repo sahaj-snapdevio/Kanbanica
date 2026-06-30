@@ -55,8 +55,9 @@ Both Subtasks and Checklists break work into smaller pieces. Knowing which to us
 
 - **Who can create:** Members with **Edit** or **Full Access** on the Space, Admin, Owner
 - Created from inside the parent Task detail panel — Subtasks section
-- Quick create: type title → press Enter → subtask is added instantly
-- Full fields available after creation (same as Task)
+- Quick create: type a title in the inline add input → press **Enter** or click **Save** → the subtask is added and the input stays focused so you can add several in a row
+- **Cancel** clears the input; the input is part of the (open) Subtasks section
+- Full fields available after creation (same as Task) — open the subtask's own detail page
 - A Task can have unlimited subtasks
 - Subtasks are **one level deep only** — a Subtask cannot have its own Subtasks
 
@@ -132,8 +133,10 @@ Subtasks share the same fields as Tasks:
 
 ### 8. Collapse / Expand Subtask List
 
-- The subtask section in the Task detail panel can be collapsed or expanded
-- State is per user — collapsing for yourself does not affect others
+- The **"Subtasks" section header itself is the toggle** — it has a caret (▾ open / ▸ collapsed); clicking the header collapses or expands the whole section (progress bar, rows, and the add input)
+- **Completed subtasks are hidden by default** behind a compact, collapsible **"Completed (N)"** row inside the section. Active (not-CLOSED) subtasks always render first; clicking "Completed (N)" expands the finished ones inline (shown struck-through/muted), clicking again collapses them
+- The header keeps the overall completion count (e.g. `3/8 completed`) and progress bar regardless of the completed-row state
+- Collapse state is per-user session (the section defaults to open, and the completed row defaults to collapsed; both reset when navigating to a different task)
 - The parent Task card in List / Board views always shows the subtask count fraction regardless of collapse state
 
 ---

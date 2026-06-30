@@ -458,7 +458,7 @@ function StatusGroup({
               <div className="w-0.75 self-stretch shrink-0 bg-transparent" />
               <div className="flex items-center pl-2 shrink-0 w-14" />
               <div className="flex-1 py-2 pr-4 pl-1">Name</div>
-              <div className="w-36 shrink-0 py-2 px-4">Assignee</div>
+              <div className="w-36 shrink-0 py-2 px-4 text-center">Assignee</div>
               <div className="w-28 shrink-0 py-2 px-4">Due Date</div>
               <div className="w-32 shrink-0 py-2 px-4">Priority</div>
               <div className="w-48 shrink-0 text-right pr-4">Actions</div>

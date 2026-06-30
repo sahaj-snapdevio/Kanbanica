@@ -9,7 +9,27 @@ import Link from "@tiptap/extension-link";
 import TextAlign from "@tiptap/extension-text-align";
 import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
+import {
+  CodeBlockIcon,
+  CodeIcon,
+  ListBulletsIcon,
+  ListChecksIcon,
+  ListNumbersIcon,
+  QuotesIcon,
+  TextBIcon,
+  TextHOneIcon,
+  TextHThreeIcon,
+  TextHTwoIcon,
+  TextItalicIcon,
+  TextStrikethroughIcon,
+  TextUnderlineIcon,
+} from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
+import {
+  SlashCommandMenu,
+  useSlashCommands,
+  type SlashCommand,
+} from "@/components/task/slash-command-menu";
 
 interface TaskDescriptionEditorProps {
   value: string;
@@ -50,14 +70,35 @@ function ToolbarButton({
   );
 }
 
+// ─── Slash commands ───────────────────────────────────────────────────────────
+// Every command maps to an action that already exists in the toolbar above —
+// the menu (see slash-command-menu.tsx) is just a faster way to invoke them.
+// Ordered so related commands sit together (Headings · Lists · Blocks · Text).
+const SLASH_COMMANDS: SlashCommand[] = [
+  { key: "h1", label: "Heading 1", desc: "Large section heading", keywords: "h1 heading title", icon: TextHOneIcon, run: (e) => e.chain().focus().toggleHeading({ level: 1 }).run() },
+  { key: "h2", label: "Heading 2", desc: "Medium heading", keywords: "h2 heading", icon: TextHTwoIcon, run: (e) => e.chain().focus().toggleHeading({ level: 2 }).run() },
+  { key: "h3", label: "Heading 3", desc: "Small heading", keywords: "h3 heading", icon: TextHThreeIcon, run: (e) => e.chain().focus().toggleHeading({ level: 3 }).run() },
+  { key: "bulletList", label: "Bullet list", desc: "Unordered list", keywords: "bullet unordered list ul", icon: ListBulletsIcon, run: (e) => e.chain().focus().toggleBulletList().run() },
+  { key: "orderedList", label: "Numbered list", desc: "Ordered list", keywords: "numbered ordered list ol", icon: ListNumbersIcon, run: (e) => e.chain().focus().toggleOrderedList().run() },
+  { key: "taskList", label: "Task list", desc: "Checklist with checkboxes", keywords: "task todo checklist checkbox", icon: ListChecksIcon, run: (e) => e.chain().focus().toggleTaskList().run() },
+  { key: "blockquote", label: "Quote", desc: "Block quote", keywords: "quote blockquote", icon: QuotesIcon, run: (e) => e.chain().focus().toggleBlockquote().run() },
+  { key: "codeBlock", label: "Code block", desc: "Code snippet", keywords: "code block", icon: CodeBlockIcon, run: (e) => e.chain().focus().toggleCodeBlock().run() },
+  { key: "bold", label: "Bold", desc: "Bold text", keywords: "bold strong", icon: TextBIcon, run: (e) => e.chain().focus().toggleBold().run() },
+  { key: "italic", label: "Italic", desc: "Italic text", keywords: "italic emphasis", icon: TextItalicIcon, run: (e) => e.chain().focus().toggleItalic().run() },
+  { key: "underline", label: "Underline", desc: "Underlined text", keywords: "underline", icon: TextUnderlineIcon, run: (e) => e.chain().focus().toggleUnderline().run() },
+  { key: "strike", label: "Strikethrough", desc: "Crossed-out text", keywords: "strike strikethrough", icon: TextStrikethroughIcon, run: (e) => e.chain().focus().toggleStrike().run() },
+  { key: "code", label: "Inline code", desc: "Inline code", keywords: "inline code", icon: CodeIcon, run: (e) => e.chain().focus().toggleCode().run() },
+];
+
 export function TaskDescriptionEditor({
   value,
   onChange,
   onSave,
-  placeholder = "Add a description…",
+  placeholder = "Add a description… Type '/' for commands",
   className,
 }: TaskDescriptionEditorProps) {
   const [focused, setFocused] = React.useState(false);
+  const slashMenu = useSlashCommands(SLASH_COMMANDS);
 
   const editor = useEditor({
     extensions: [
@@ -82,10 +123,15 @@ export function TaskDescriptionEditor({
     })(),
     onUpdate: ({ editor }) => {
       onChange(JSON.stringify(editor.getJSON()));
+      slashMenu.refresh(editor);
+    },
+    onSelectionUpdate: ({ editor }) => {
+      slashMenu.refresh(editor);
     },
     onFocus: () => setFocused(true),
     onBlur: () => {
       setFocused(false);
+      slashMenu.close();
       onSave?.();
     },
     editorProps: {
@@ -93,9 +139,12 @@ export function TaskDescriptionEditor({
         class:
           "focus:outline-none min-h-[80px] px-0 py-1 tiptap-content",
       },
+      handleKeyDown: (_view, event) => slashMenu.handleKeyDown(event),
     },
     immediatelyRender: false,
   });
+
+  React.useEffect(() => { slashMenu.setEditor(editor); }, [editor, slashMenu]);
 
   // Sync external value when taskId changes
   React.useEffect(() => {
@@ -227,6 +276,9 @@ export function TaskDescriptionEditor({
       <div className="px-4 py-3">
         <EditorContent editor={editor} />
       </div>
+
+      {/* Slash command menu */}
+      <SlashCommandMenu menu={slashMenu} />
     </div>
   );
 }

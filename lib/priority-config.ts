@@ -1,4 +1,4 @@
-import { format, isToday, isPast } from "date-fns";
+import { format, isPast, isToday } from "date-fns";
 
 export const PRIORITY_CONFIG = {
   NONE:   { label: "No Priority", color: "text-gray-400",   icon: "😴" },

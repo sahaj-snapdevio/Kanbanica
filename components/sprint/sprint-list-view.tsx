@@ -438,7 +438,7 @@ function StatusGroup({
               </div>
             </div>
             <div className="flex-1 py-2 pr-4 pl-1 text-2xs font-bold text-gray-400 uppercase tracking-wider">Name</div>
-            <div className="w-36 shrink-0 py-2 px-4 text-2xs font-bold text-gray-400 uppercase tracking-wider">Assignee</div>
+            <div className="w-36 shrink-0 py-2 px-4 text-2xs font-bold text-gray-400 uppercase tracking-wider text-center">Assignee</div>
             <div className="w-28 shrink-0 py-2 px-4 text-2xs font-bold text-gray-400 uppercase tracking-wider">Due date</div>
             <div className="w-32 shrink-0 py-2 px-4 text-2xs font-bold text-gray-400 uppercase tracking-wider">Priority</div>
             <div className="w-48 shrink-0" />
@@ -459,7 +459,7 @@ function StatusGroup({
                   canEdit={canEdit}
                   selected={selectedIds.has(task.id)}
                   onSelect={onSelect}
-                  onOpen={() => router.push(`/${workspaceId}/task/${task.id}`)}
+                  onOpen={() => router.push(`/${workspaceId}/task/${task.id}?from=sprint&sid=${sprintId}`)}
                   onRefresh={onRefresh}
                   onAfterDuplicate={async (newTaskId) => {
                     await addTaskToSprint(workspaceId, spaceId, sprintId, newTaskId);
@@ -614,6 +614,7 @@ function BulkActionBar({
     if ("error" in res) { toast.error(res.error); return; }
     toast.success(`Updated ${count} task${count > 1 ? "s" : ""}`);
     onClear();
+    onRefresh();
   }
 
   async function handleMoveToSprint(sprintId: string, sprintName: string) {
@@ -643,6 +644,7 @@ function BulkActionBar({
     if ("error" in res) { toast.error(res.error); return; }
     toast.success(`Archived ${count} task${count > 1 ? "s" : ""}`);
     onClear();
+    onRefresh();
   }
 
   async function confirmBulkDelete() {
@@ -653,6 +655,7 @@ function BulkActionBar({
     if ("error" in res) { toast.error(res.error); return; }
     toast.success(`Deleted ${count} task${count > 1 ? "s" : ""}`);
     onClear();
+    onRefresh();
   }
 
   return (
@@ -1010,6 +1013,9 @@ export function SprintListView({ workspaceId, spaceId, listId = "", statuses = [
   const [sprintInfo, setSprintInfo] = React.useState<SprintInfo | null>(null);
   const [tasks, setTasks] = React.useState<SprintTask[]>([]);
   const [fetchedStatuses, setFetchedStatuses] = React.useState<Status[]>([]);
+  // List that new tasks created from the sprint view belong to (so they get a
+  // real list + default status instead of landing in "No Status").
+  const [createListId, setCreateListId] = React.useState<string>("");
   const [loading, setLoading] = React.useState(true);
   const initialLoadedRef = React.useRef(false);
   const [sprintCollapsed, setSprintCollapsed] = React.useState(false);
@@ -1045,6 +1051,7 @@ export function SprintListView({ workspaceId, spaceId, listId = "", statuses = [
       setSprintInfo(res.sprint);
       setTasks(res.tasks as SprintTask[]);
       setFetchedStatuses((res.statuses ?? []) as Status[]);
+      setCreateListId(res.defaultListId ?? "");
     } finally {
       if (!initialLoadedRef.current) {
         initialLoadedRef.current = true;
@@ -1119,8 +1126,10 @@ export function SprintListView({ workspaceId, spaceId, listId = "", statuses = [
   }
 
   // ── Filtered tasks ────────────────────────────────────────────────────────
-  const filteredTasks = React.useMemo(() => {
-    return tasks.filter((t) => {
+  // Shared search/filter predicate, applied to both the list grouping and the
+  // board grouping (the board uses its own `boardTasks` state for drag-and-drop).
+  const matchesFilters = React.useCallback(
+    (t: SprintTask) => {
       if (searchQuery.trim() && !t.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
       if (statusFilter.length && !statusFilter.includes(t.statusId ?? "")) return false;
       if (priorityFilter.length && !priorityFilter.includes(t.priority ?? "NONE")) return false;
@@ -1133,8 +1142,14 @@ export function SprintListView({ workspaceId, spaceId, listId = "", statuses = [
         if (!matchUnassigned && !matchUser) return false;
       }
       return true;
-    });
-  }, [tasks, searchQuery, statusFilter, priorityFilter, assigneeFilter]);
+    },
+    [searchQuery, statusFilter, priorityFilter, assigneeFilter],
+  );
+
+  const filteredTasks = React.useMemo(
+    () => tasks.filter(matchesFilters),
+    [tasks, matchesFilters],
+  );
 
   const effectiveStatuses = React.useMemo(() => {
     if (statuses.length > 0) return statuses;
@@ -1179,14 +1194,15 @@ export function SprintListView({ workspaceId, spaceId, listId = "", statuses = [
     const map = new Map<string, SprintTask[]>();
     for (const s of effectiveStatuses) map.set(s.id, []);
     for (const t of boardTasks) {
+      if (!matchesFilters(t)) continue;
       if (t.statusId && map.has(t.statusId)) map.get(t.statusId)!.push(t);
     }
     return map;
-  }, [boardTasks, effectiveStatuses]);
+  }, [boardTasks, effectiveStatuses, matchesFilters]);
 
   const noStatusBoardTasks = React.useMemo(
-    () => boardTasks.filter((t) => !t.statusId),
-    [boardTasks],
+    () => boardTasks.filter((t) => !t.statusId && matchesFilters(t)),
+    [boardTasks, matchesFilters],
   );
 
   // ── Loading skeleton ──────────────────────────────────────────────────────
@@ -1244,7 +1260,7 @@ export function SprintListView({ workspaceId, spaceId, listId = "", statuses = [
         onOpenChange={setCreateOpen}
         workspaceId={workspaceId}
         spaceId={spaceId}
-        listId={listId || ""}
+        listId={createListId || listId || ""}
         statuses={effectiveStatuses}
         canManage={canEdit || isAdmin}
         onCreated={async (taskId) => {
@@ -1467,7 +1483,7 @@ export function SprintListView({ workspaceId, spaceId, listId = "", statuses = [
                       canEdit={canEdit}
                       selected={selectedIds.has(t.id)}
                       onSelect={handleSelect}
-                      onOpen={() => router.push(`/${workspaceId}/task/${t.id}`)}
+                      onOpen={() => router.push(`/${workspaceId}/task/${t.id}?from=sprint&sid=${sprintInfo.id}`)}
                       onRefresh={fetchData}
                       onAfterDuplicate={async (newTaskId) => {
                         await addTaskToSprint(workspaceId, spaceId, sprintInfo.id, newTaskId);

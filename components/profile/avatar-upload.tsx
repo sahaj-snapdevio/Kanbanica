@@ -30,6 +30,11 @@ export function AvatarUpload({ currentImageKey, name, email }: AvatarUploadProps
   const fileRef = React.useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = React.useState(false);
   const [removing, setRemoving] = React.useState(false);
+  // The preview is driven directly by upload (sets the returned URL) and remove
+  // (sets null), so it updates instantly. We intentionally do NOT mirror
+  // `currentImageKey` after mount: the session is cached briefly server-side, so
+  // a post-action router.refresh() can return a stale key that would otherwise
+  // resurrect a just-removed image and render blank.
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(
     currentImageKey ? `/api/files/${currentImageKey}` : null,
   );
@@ -56,6 +61,9 @@ export function AvatarUpload({ currentImageKey, name, email }: AvatarUploadProps
         return;
       }
 
+      // Swap the temporary blob preview for the persistent server URL before
+      // the blob is revoked, so the avatar doesn't flash blank after upload.
+      if (data.url) setPreviewUrl(data.url);
       toast.success("Avatar updated");
       router.refresh();
     } finally {
@@ -75,8 +83,11 @@ export function AvatarUpload({ currentImageKey, name, email }: AvatarUploadProps
         return;
       }
       setPreviewUrl(null);
-      toast.success("Avatar removed");
-      router.refresh();
+      // Full reload so every avatar (header/sidebar included) re-reads from the
+      // server and shows the name initial — a soft router.refresh() can keep a
+      // stale cached image, leaving a blank until the user reloads manually.
+      window.location.reload();
+      return;
     } finally {
       setRemoving(false);
     }

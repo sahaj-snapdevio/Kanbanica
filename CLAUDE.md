@@ -68,6 +68,14 @@ server/                    ← server actions
 - **Where it's used:** `components/task/task-activity-feed.tsx` — inserting emoji into the Tiptap comment composer and choosing comment reaction emoji.
 - **Pattern:** dynamically import the picker (`dynamic(() => import("@emoji-mart/react"), { ssr: false })`), lazy-load `@emoji-mart/data`, render it inside a shadcn `Popover`, and pass `theme` based on the `.dark` class. Reuse this pattern for any new emoji picker — do not add a second emoji library.
 
+### Slash ("/") Command Menu
+- **Shared module:** `components/task/slash-command-menu.tsx` — exports `useSlashCommands`, `SlashCommandMenu`, `SlashCommandGrid`, `computeSlash`, and the `SlashCommand` type.
+- **Where it's used:** the task description editor (`components/task/task-description-editor.tsx`) and the comment composer (`components/task/task-activity-feed.tsx`, where the composer's "+" button reuses `SlashCommandGrid`).
+- **Pattern:** for any new `/` menu, reuse this module — wire `refresh` (onUpdate/onSelectionUpdate), `handleKeyDown` (editorProps), `close` (onBlur), and `setEditor`. Each `SlashCommand.run(editor)` must only invoke an **existing** editor action — the menu is a shortcut, not new formatting. Do not re-implement a second slash menu.
+
+### Time Tracking (removed)
+- The time-tracking UI (Time Estimate, Time Logged, "Log time", Time Entries) has been **removed** from the task detail. Do not re-add it. The `TaskTimeLog` table may linger in the schema but is unused by the app.
+
 ### User Avatars
 - **Shared component:** `components/common/user-avatar.tsx` (`UserAvatar`) — use this everywhere a user avatar is shown. Props: `name`, `email`, `image` (storage key or null), `size` (`xs/sm/md/lg`), `className`.
 - **Storage key → URL:** `user.image` in the DB is a storage key (e.g. `avatars/{userId}/{uuid}.webp`). Never use it directly as an `<img src>`. `UserAvatar` converts it internally. For files that use raw `AvatarImage` (e.g. task views with custom stacking styles), use the local helper `avatarSrc(key)` → `/api/files/${key}`.

@@ -15,8 +15,8 @@ import {
   LinkIcon,
   PlusIcon,
   TagIcon,
-  TimerIcon,
   TrashIcon,
+  UserPlusIcon,
   UserIcon,
   XIcon,
 } from "@phosphor-icons/react";
@@ -39,7 +39,6 @@ import {
   deleteChecklistItem,
 } from "@/app/actions/task-checklist";
 import { addDependency, removeDependency, searchTasksForDependency } from "@/app/actions/task-dependency";
-import { logTime } from "@/app/actions/task";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -85,6 +84,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { TaskActivityFeed, type TaskActivityFeedHandle } from "@/components/task/task-activity-feed";
+import { AttachmentPreviewProvider } from "@/components/task/attachment-preview-modal";
+import { InviteMemberModal } from "@/components/workspace/invite-member-modal";
 import { ManageStatusesDialog } from "@/components/list/manage-statuses-dialog";
 import { Calendar } from "@/components/ui/calendar";
 
@@ -142,6 +143,7 @@ export function TaskDetailPanel({
   const [descDraft, setDescDraft] = React.useState("");
   const [descEditing, setDescEditing] = React.useState(false);
   const [members, setMembers] = React.useState<{ userId: string | null; name: string; email: string; image: string | null }[]>([]);
+  const [inviteOpen, setInviteOpen] = React.useState(false);
   const [allTags, setAllTags] = React.useState<{ id: string; name: string; color: string }[]>([]);
   const [deleteTagTarget, setDeleteTagTarget] = React.useState<{ id: string; name: string } | null>(null);
   const [newChecklistName, setNewChecklistName] = React.useState("");
@@ -149,8 +151,6 @@ export function TaskDetailPanel({
   const [newItemTexts, setNewItemTexts] = React.useState<Record<string, string>>({});
   const [depQuery, setDepQuery] = React.useState("");
   const [depResults, setDepResults] = React.useState<{ id: string; title: string; seqNumber: number }[]>([]);
-  const [timeInput, setTimeInput] = React.useState("");
-  const [timeNote, setTimeNote] = React.useState("");
   const feedRef = React.useRef<TaskActivityFeedHandle>(null);
   const [saving, setSaving] = React.useState(false);
   const [startCalOpen, setStartCalOpen] = React.useState(false);
@@ -207,7 +207,7 @@ export function TaskDetailPanel({
     );
   }
 
-  const { task: t, assignees, watchers, tags, checklists, dependencies, timeLogs, statuses, currentUserId } = data;
+  const { task: t, assignees, watchers, tags, checklists, dependencies, statuses, currentUserId } = data;
   const isWatching = watchers.some((w) => w.userId === currentUserId);
   const currentStatus = statuses.find((s) => s.id === t.statusId);
   const priority = PRIORITY_CONFIG[t.priority as Priority] ?? PRIORITY_CONFIG.NONE;
@@ -239,8 +239,16 @@ export function TaskDetailPanel({
   }
 
   async function handleDueDateChange(field: "start" | "end", date: Date | null) {
-    if (field === "start") await updateTask(workspaceId, spaceId, listId, taskId, { dueDateStart: date });
-    else await updateTask(workspaceId, spaceId, listId, taskId, { dueDateEnd: date });
+    if (field === "start") {
+      // Keep end >= start: if the new start is after the current end, move end too.
+      const patch =
+        date && dueDateEnd && date > dueDateEnd
+          ? { dueDateStart: date, dueDateEnd: date }
+          : { dueDateStart: date };
+      await updateTask(workspaceId, spaceId, listId, taskId, patch);
+    } else {
+      await updateTask(workspaceId, spaceId, listId, taskId, { dueDateEnd: date });
+    }
     load();
   }
 
@@ -318,15 +326,6 @@ export function TaskDetailPanel({
     load();
   }
 
-  async function handleLogTime() {
-    const mins = parseInt(timeInput);
-    if (!mins || mins <= 0) return;
-    await logTime(workspaceId, spaceId, listId, taskId, mins, timeNote || undefined);
-    setTimeInput("");
-    setTimeNote("");
-    feedRef.current?.refresh();
-    load();
-  }
 
   async function handleDuplicate() {
     setSaving(true);
@@ -720,6 +719,16 @@ export function TaskDetailPanel({
                         );
                       })}
                     </div>
+                    <Separator className="my-1.5" />
+                    <button
+                      onClick={() => setInviteOpen(true)}
+                      className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+                    >
+                      <span className="flex size-6 shrink-0 items-center justify-center rounded-full border border-dashed border-border">
+                        <UserPlusIcon className="size-3.5" />
+                      </span>
+                      <span className="flex-1 truncate text-left">Invite member</span>
+                    </button>
                   </PopoverContent>
                 </Popover>
               </div>
@@ -756,7 +765,7 @@ export function TaskDetailPanel({
                         {dueDateStart ? format(dueDateStart, "MMM d, yyyy") : <span className="text-muted-foreground">Pick a date</span>}
                       </button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
+                    <PopoverContent className="w-auto p-0" align="end" collisionPadding={16}>
                       <Calendar
                         mode="single"
                         selected={dueDateStart ?? undefined}
@@ -774,10 +783,11 @@ export function TaskDetailPanel({
                         {dueDateEnd ? format(dueDateEnd, "MMM d, yyyy") : <span className="text-muted-foreground">Pick a date</span>}
                       </button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
+                    <PopoverContent className="w-auto p-0" align="end" collisionPadding={16}>
                       <Calendar
                         mode="single"
                         selected={dueDateEnd ?? undefined}
+                        disabled={dueDateStart ? { before: dueDateStart } : undefined}
                         onSelect={(date) => { handleDueDateChange("end", date ?? null); setEndCalOpen(false); }}
 
                       />
@@ -849,48 +859,6 @@ export function TaskDetailPanel({
               ) : (
                 <p className="text-xs text-muted-foreground">None</p>
               )}
-            </div>
-
-            <Separator />
-
-            {/* Time log */}
-            <div>
-              <div className="flex items-center gap-1 mb-1.5">
-                <TimerIcon className="size-3.5 text-muted-foreground" />
-                <span className="text-xs font-medium text-muted-foreground">Time logged</span>
-              </div>
-              {timeLogs.length > 0 && (
-                <div className="mb-2 space-y-1">
-                  {timeLogs.map((log) => (
-                    <div key={log.id} className="text-xs text-muted-foreground flex justify-between">
-                      <span>{Math.floor(log.durationMinutes / 60)}h {log.durationMinutes % 60}m</span>
-                      {log.note && <span className="truncate max-w-20">{log.note}</span>}
-                    </div>
-                  ))}
-                  <div className="text-xs font-medium">
-                    Total: {Math.floor(timeLogs.reduce((s, l) => s + l.durationMinutes, 0) / 60)}h {timeLogs.reduce((s, l) => s + l.durationMinutes, 0) % 60}m
-                  </div>
-                </div>
-              )}
-              <div className="space-y-1">
-                <Input
-                  type="number"
-                  placeholder="Minutes"
-                  value={timeInput}
-                  onChange={(e) => setTimeInput(e.target.value)}
-                  className="h-7 text-xs"
-                  min={1}
-                />
-                <Input
-                  placeholder="Note (optional)"
-                  value={timeNote}
-                  onChange={(e) => setTimeNote(e.target.value)}
-                  className="h-7 text-xs"
-                />
-                <Button size="sm" className="h-7 w-full text-xs" onClick={handleLogTime} disabled={!timeInput}>
-                  Log time
-                </Button>
-              </div>
             </div>
 
             <Separator />
@@ -970,10 +938,11 @@ export function TaskDetailPanel({
     return (
       <>
         <div className="h-full overflow-y-auto flex flex-col gap-0">
-          {panelContent}
+          <AttachmentPreviewProvider>{panelContent}</AttachmentPreviewProvider>
         </div>
         {deleteTagDialog}
         {deleteTaskDialog}
+        <InviteMemberModal open={inviteOpen} onOpenChange={setInviteOpen} workspaceId={workspaceId} onInvited={load} />
       </>
     );
   }
@@ -985,7 +954,7 @@ export function TaskDetailPanel({
           className="w-full sm:max-w-2xl overflow-y-auto flex flex-col gap-0 p-0"
           aria-describedby={undefined}
         >
-          {panelContent}
+          <AttachmentPreviewProvider>{panelContent}</AttachmentPreviewProvider>
         </SheetContent>
       </Sheet>
       {deleteTagDialog}
@@ -998,6 +967,7 @@ export function TaskDetailPanel({
         listId={listId}
         onSaved={() => load()}
       />
+      <InviteMemberModal open={inviteOpen} onOpenChange={setInviteOpen} workspaceId={workspaceId} onInvited={load} />
     </>
   );
 }

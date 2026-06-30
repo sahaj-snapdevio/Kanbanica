@@ -6,12 +6,12 @@ import {
   ArchiveIcon,
   ArrowLeftIcon,
   CalendarBlankIcon,
+  CaretDownIcon,
   CaretRightIcon,
   CheckIcon,
   ClipboardTextIcon,
   CopyIcon,
   DotsThreeIcon,
-  DownloadSimpleIcon,
   EyeIcon,
   EyeSlashIcon,
   FileIcon,
@@ -24,9 +24,9 @@ import {
   PlusIcon,
   PushPinIcon,
   TagIcon,
-  TimerIcon,
   TrashIcon,
   UserIcon,
+  UserPlusIcon,
   XIcon,
 } from "@phosphor-icons/react";
 import {
@@ -37,11 +37,14 @@ import {
   archiveTask,
   duplicateTask,
   getWorkspaceMembers,
-  logTime,
-  deleteTimeLog,
   createSubtask,
 } from "@/app/actions/task";
 import { TaskActivityFeed, type TaskActivityFeedHandle } from "@/components/task/task-activity-feed";
+import {
+  AttachmentPreviewProvider,
+  useAttachmentPreview,
+} from "@/components/task/attachment-preview-modal";
+import { InviteMemberModal } from "@/components/workspace/invite-member-modal";
 import {
   addAssignee,
   removeAssignee,
@@ -177,101 +180,6 @@ function FieldRow({
   );
 }
 
-// ─── Time Entries Panel ───────────────────────────────────────────────────────
-
-type TimeLogRow = {
-  id: string;
-  userId: string;
-  durationMinutes: number;
-  note: string | null;
-  loggedAt: Date;
-};
-
-function formatDuration(minutes: number): string {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  if (h > 0 && m > 0) return `${h}h ${m}m`;
-  if (h > 0) return `${h}h`;
-  return `${m}m`;
-}
-
-function TimeEntriesPanel({
-  timeLogs,
-  members,
-  currentUserId,
-  onDelete,
-}: {
-  timeLogs: TimeLogRow[];
-  members: { userId: string; name: string; email: string; image: string | null }[];
-  currentUserId: string;
-  onDelete: (id: string) => void;
-}) {
-  const totalMinutes = timeLogs.reduce((s, l) => s + l.durationMinutes, 0);
-
-  if (timeLogs.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
-        <TimerIcon className="size-8 opacity-20 mb-2" />
-        <p className="text-xs">No time logged yet</p>
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-3 pb-2 border-b">
-        <span className="text-xs text-muted-foreground">Total logged</span>
-        <span className="text-sm font-semibold">{formatDuration(totalMinutes)}</span>
-      </div>
-      <div className="space-y-1">
-        {timeLogs.map((entry) => {
-          const member = members.find((m) => m.userId === entry.userId);
-          const name = member?.name ?? member?.email ?? "Unknown";
-          const initials = name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2);
-          const canDelete = entry.userId === currentUserId;
-
-          return (
-            <div
-              key={entry.id}
-              className="group flex items-start gap-2.5 py-2.5 px-2 rounded-lg hover:bg-accent/40 transition-colors"
-            >
-              <Avatar className="size-6 shrink-0 mt-0.5">
-                {member?.image && <AvatarImage src={`/api/files/${member.image}`} />}
-                <AvatarFallback className="text-[9px] bg-muted">{initials}</AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-xs font-medium text-foreground">{name}</span>
-                  <span className="text-2xs text-muted-foreground">·</span>
-                  <span className="text-2xs text-muted-foreground">
-                    {format(new Date(entry.loggedAt), "MMM d, h:mm a")}
-                  </span>
-                  <span className="ml-auto text-xs font-semibold shrink-0">
-                    {formatDuration(entry.durationMinutes)}
-                  </span>
-                  {canDelete && (
-                    <button
-                      onClick={() => onDelete(entry.id)}
-                      className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all shrink-0"
-                    >
-                      <TrashIcon className="size-3.5" />
-                    </button>
-                  )}
-                </div>
-                {entry.note && (
-                  <p className="text-2xs text-muted-foreground mt-0.5 italic truncate">
-                    &ldquo;{entry.note}&rdquo;
-                  </p>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 interface TaskDetailPageProps {
@@ -327,13 +235,18 @@ export function TaskDetailPage({
   const [depResults, setDepResults] = React.useState<
     { id: string; title: string; seqNumber: number }[]
   >([]);
-  const [timeInput, setTimeInput] = React.useState("");
-  const [timeNote, setTimeNote] = React.useState("");
-  const [rightTab, setRightTab] = React.useState<"activity" | "time">("activity");
   const feedRef = React.useRef<TaskActivityFeedHandle>(null);
   const [saving, setSaving] = React.useState(false);
   const [showDepsSection, setShowDepsSection] = React.useState(false);
   const [subtaskInput, setSubtaskInput] = React.useState("");
+  // The "Subtasks" section header acts as a collapsible dropdown toggle.
+  const [subtasksOpen, setSubtasksOpen] = React.useState(true);
+  // Completed subtasks are hidden behind a "Completed (N)" row by default.
+  const [completedOpen, setCompletedOpen] = React.useState(false);
+  const subtaskInputRef = React.useRef<HTMLInputElement>(null);
+  // Progressive disclosure: on a fully-empty task, one "Add content" action
+  // reveals the subtasks / checklist / dependencies add UIs.
+  const [contentExpanded, setContentExpanded] = React.useState(false);
   const [attachments, setAttachments] = React.useState<
     {
       id: string;
@@ -349,11 +262,22 @@ export function TaskDetailPage({
   const [uploadingFile, setUploadingFile] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [creatingSubtask, setCreatingSubtask] = React.useState(false);
+  // Focus the subtask input when the section is opened.
+  React.useEffect(() => {
+    if (subtasksOpen) subtaskInputRef.current?.focus();
+  }, [subtasksOpen]);
+  // Reset progressive-disclosure expansion when switching tasks.
+  React.useEffect(() => {
+    setContentExpanded(false);
+    setSubtasksOpen(true);
+    setCompletedOpen(false);
+  }, [taskId]);
   const [isPinned, setIsPinned] = React.useState(false);
   const [statusPopoverOpen, setStatusPopoverOpen] = React.useState(false);
   const [manageStatusesOpen, setManageStatusesOpen] = React.useState(false);
   const [priorityPopoverOpen, setPriorityPopoverOpen] = React.useState(false);
   const [assigneePopoverOpen, setAssigneePopoverOpen] = React.useState(false);
+  const [inviteOpen, setInviteOpen] = React.useState(false);
   const [tagPopoverOpen, setTagPopoverOpen] = React.useState(false);
   const [startCalOpen, setStartCalOpen] = React.useState(false);
   const [endCalOpen, setEndCalOpen] = React.useState(false);
@@ -426,7 +350,9 @@ export function TaskDetailPage({
 
   const listBackUrl = fromView === "sprint" && fromSprintId
     ? `/${workspaceId}/${spaceId}/sprint/${fromSprintId}`
-    : `/${workspaceId}/${spaceId}/list/${listId}${fromView && fromView !== "sprint" ? `?view=${fromView}` : ""}`;
+    : listId
+      ? `/${workspaceId}/${spaceId}/list/${listId}${fromView && fromView !== "sprint" ? `?view=${fromView}` : ""}`
+      : `/${workspaceId}`;
 
   if (loading) {
     return <TaskDetailSkeleton />;
@@ -450,12 +376,16 @@ export function TaskDetailPage({
     tags,
     checklists,
     dependencies,
-    timeLogs,
     statuses,
     subtasks,
     parentTask,
     currentUserId,
   } = data;
+  // Whether any of the progressive-disclosure sections already has content.
+  const hasContentSections =
+    (subtasks?.length ?? 0) > 0 ||
+    checklists.length > 0 ||
+    dependencies.length > 0;
   const backUrl = t.parentTaskId
     ? `/${workspaceId}/task/${t.parentTaskId}`
     : listBackUrl;
@@ -511,10 +441,16 @@ export function TaskDetailPage({
   }
 
   async function handleDueDateChange(field: "start" | "end", date: Date | null) {
-    if (field === "start")
-      await updateTask(workspaceId, spaceId, listId, taskId, { dueDateStart: date });
-    else
+    if (field === "start") {
+      // Keep end >= start: if the new start is after the current end, move end too.
+      const patch =
+        date && dueDateEnd && date > dueDateEnd
+          ? { dueDateStart: date, dueDateEnd: date }
+          : { dueDateStart: date };
+      await updateTask(workspaceId, spaceId, listId, taskId, patch);
+    } else {
       await updateTask(workspaceId, spaceId, listId, taskId, { dueDateEnd: date });
+    }
     load();
   }
 
@@ -611,30 +547,6 @@ export function TaskDetailPage({
     load();
   }
 
-  async function handleLogTime() {
-    const mins = parseInt(timeInput);
-    if (!mins || mins <= 0) return;
-    await logTime(
-      workspaceId,
-      spaceId,
-      listId,
-      taskId,
-      mins,
-      timeNote || undefined,
-    );
-    setTimeInput("");
-    setTimeNote("");
-    setRightTab("time");
-    feedRef.current?.refresh();
-    load();
-  }
-
-  async function handleDeleteTimeLog(timeLogId: string) {
-    await deleteTimeLog(workspaceId, spaceId, listId, taskId, timeLogId);
-    feedRef.current?.refresh();
-    load();
-  }
-
   async function handleDuplicate() {
     setSaving(true);
     await duplicateTask(workspaceId, spaceId, listId, taskId);
@@ -684,18 +596,8 @@ export function TaskDetailPage({
     setAttachments((prev) => prev.filter((a) => a.id !== attachmentId));
   }
 
-  function formatBytes(bytes: number) {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  }
-
-  function isImage(mimeType: string) {
-    return mimeType.startsWith("image/");
-  }
-
   return (
-    <>
+    <AttachmentPreviewProvider>
     <div className="flex h-full flex-col overflow-hidden bg-background">
       {/* Top bar */}
       <div className="flex items-center gap-3 border-b px-5 py-3 shrink-0">
@@ -993,6 +895,19 @@ export function TaskDetailPage({
                         );
                       })}
                     </div>
+                    <Separator className="my-1.5" />
+                    <button
+                      onClick={() => {
+                        setAssigneePopoverOpen(false);
+                        setInviteOpen(true);
+                      }}
+                      className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+                    >
+                      <span className="flex size-6 shrink-0 items-center justify-center rounded-full border border-dashed border-border">
+                        <UserPlusIcon className="size-3.5" />
+                      </span>
+                      <span className="flex-1 truncate text-left">Invite member</span>
+                    </button>
                   </PopoverContent>
                 </Popover>
               </div>
@@ -1036,6 +951,7 @@ export function TaskDetailPage({
                     <Calendar
                       mode="single"
                       selected={dueDateEnd ?? undefined}
+                      disabled={dueDateStart ? { before: dueDateStart } : undefined}
                       onSelect={(date) => { handleDueDateChange("end", date ?? null); setEndCalOpen(false); }}
 
                     />
@@ -1175,128 +1091,7 @@ export function TaskDetailPage({
                 </Popover>
               </div>
             </FieldRow>
-
-            {/* Time logged */}
-            {timeLogs.length > 0 && (
-              <FieldRow
-                label="Track time"
-                icon={<TimerIcon className="size-3.5" />}
-              >
-                <span className="text-sm font-medium">
-                  {Math.floor(
-                    timeLogs.reduce((s, l) => s + l.durationMinutes, 0) / 60,
-                  )}
-                  h {timeLogs.reduce((s, l) => s + l.durationMinutes, 0) % 60}m
-                </span>
-              </FieldRow>
-            )}
           </div>
-
-          {/* Subtasks — only shown on parent tasks (not subtask detail pages) */}
-          {!t.parentTaskId && (
-            <div className="mb-6">
-              <div className="flex items-center gap-2 mb-3">
-                <h3 className="text-sm font-semibold">Subtasks</h3>
-                {subtasks && subtasks.length > 0 && (
-                  <span className="text-xs text-muted-foreground">
-                    {subtasks.filter((s) => s.statusType === "CLOSED").length}/
-                    {subtasks.length} completed
-                  </span>
-                )}
-              </div>
-
-              {subtasks && subtasks.length > 0 && (
-                <>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Progress
-                      value={Math.round(
-                        (subtasks.filter((s) => s.statusType === "CLOSED")
-                          .length /
-                          subtasks.length) *
-                          100,
-                      )}
-                      className="flex-1 h-1.5"
-                    />
-                  </div>
-                  <div className="space-y-1 mb-3">
-                    {subtasks.map((sub) => (
-                      <div
-                        key={sub.id}
-                        className="flex items-center gap-2 rounded-md border bg-card px-3 py-2 hover:bg-accent/30 cursor-pointer group"
-                        onClick={() =>
-                          router.push(`/${workspaceId}/task/${sub.id}`)
-                        }
-                      >
-                        <span
-                          className="size-2.5 rounded-full shrink-0"
-                          style={{
-                            backgroundColor: sub.statusColor ?? "#9CA3AF",
-                          }}
-                        />
-                        <span className="font-mono text-xs text-muted-foreground shrink-0">
-                          #{sub.seqNumber}
-                        </span>
-                        <span
-                          className={cn(
-                            "flex-1 text-sm truncate",
-                            sub.statusType === "CLOSED" &&
-                              "line-through text-muted-foreground",
-                          )}
-                        >
-                          {sub.title}
-                        </span>
-                        <CaretRightIcon className="size-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 shrink-0" />
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-
-              <div className="flex gap-2 items-center">
-                <Input
-                  placeholder="Add subtask…"
-                  value={subtaskInput}
-                  onChange={(e) => setSubtaskInput(e.target.value)}
-                  onKeyDown={async (e) => {
-                    if (e.key === "Enter" && subtaskInput.trim()) {
-                      setCreatingSubtask(true);
-                      await createSubtask(
-                        workspaceId,
-                        spaceId,
-                        taskId,
-                        subtaskInput.trim(),
-                      );
-                      setSubtaskInput("");
-                      setCreatingSubtask(false);
-                      load();
-                    }
-                  }}
-                  disabled={creatingSubtask}
-                  className="h-8 rounded-lg text-xs"
-                />
-                <Button
-                  size="sm"
-                  className="h-8 rounded-lg text-xs font-semibold shrink-0 px-3"
-                  disabled={creatingSubtask || !subtaskInput.trim()}
-                  onClick={async () => {
-                    if (!subtaskInput.trim()) return;
-                    setCreatingSubtask(true);
-                    await createSubtask(
-                      workspaceId,
-                      spaceId,
-                      taskId,
-                      subtaskInput.trim(),
-                    );
-                    setSubtaskInput("");
-                    setCreatingSubtask(false);
-                    load();
-                  }}
-                >
-                  Add
-                </Button>
-              </div>
-            </div>
-          )}
 
           {/* Description */}
           <div className="mb-6">
@@ -1307,151 +1102,182 @@ export function TaskDetailPage({
             />
           </div>
 
-          {/* Attachments */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <PaperclipIcon className="size-4 text-muted-foreground" />
-                <h3 className="text-sm font-semibold">Attachments</h3>
-                {attachments.filter((a) => !a.commentId).length > 0 && (
+          {/* Empty task: a single action reveals subtasks / checklist / dependencies */}
+          {!hasContentSections && !contentExpanded && (
+            <div className="mb-6">
+              <button
+                type="button"
+                onClick={() => {
+                  setContentExpanded(true);
+                  setSubtasksOpen(true);
+                }}
+                className="flex w-fit items-center gap-1.5 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+              >
+                <PlusIcon className="size-4" />
+                Add subtask
+              </button>
+            </div>
+          )}
+
+          {/* Subtasks — only shown on parent tasks (not subtask detail pages) */}
+          {!t.parentTaskId && (hasContentSections || contentExpanded) && (
+            <div className="mb-6">
+              {/* Click the "Subtasks" header to expand / collapse the section */}
+              <button
+                type="button"
+                onClick={() => setSubtasksOpen((o) => !o)}
+                className="flex w-full items-center gap-2 mb-3 text-left"
+              >
+                {subtasksOpen ? (
+                  <CaretDownIcon className="size-3.5 text-muted-foreground shrink-0" />
+                ) : (
+                  <CaretRightIcon className="size-3.5 text-muted-foreground shrink-0" />
+                )}
+                <h3 className="text-sm font-semibold">Subtasks</h3>
+                {subtasks && subtasks.length > 0 && (
                   <span className="text-xs text-muted-foreground">
-                    {attachments.filter((a) => !a.commentId).length} file
-                    {attachments.filter((a) => !a.commentId).length !== 1
-                      ? "s"
-                      : ""}
+                    {subtasks.filter((s) => s.statusType === "CLOSED").length}/
+                    {subtasks.length} completed
                   </span>
                 )}
-              </div>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploadingFile}
-                className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs text-muted-foreground border hover:bg-accent hover:text-foreground transition-colors disabled:opacity-50"
-              >
-                <PlusIcon className="size-3.5" />
-                {uploadingFile ? "Uploading…" : "Attach file"}
               </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    handleFileUpload(file);
-                    e.target.value = "";
-                  }
-                }}
-              />
-            </div>
 
-            {/* Drop zone */}
-            <div
-              className="rounded-lg border-2 border-dashed border-border/50 p-4 transition-colors hover:border-primary/30 hover:bg-accent/20 cursor-pointer"
-              onClick={() => fileInputRef.current?.click()}
-              onDragOver={(e) => {
-                e.preventDefault();
-                e.currentTarget.classList.add(
-                  "border-primary/60",
-                  "bg-accent/30",
-                );
-              }}
-              onDragLeave={(e) => {
-                e.currentTarget.classList.remove(
-                  "border-primary/60",
-                  "bg-accent/30",
-                );
-              }}
-              onDrop={(e) => {
-                e.preventDefault();
-                e.currentTarget.classList.remove(
-                  "border-primary/60",
-                  "bg-accent/30",
-                );
-                const file = e.dataTransfer.files[0];
-                if (file) handleFileUpload(file);
-              }}
-            >
-              {attachments.filter((a) => !a.commentId).length === 0 ? (
-                <div className="flex flex-col items-center gap-1 py-2 text-muted-foreground">
-                  <PaperclipIcon className="size-8 opacity-30" />
-                  <p className="text-xs">Drop files here or click to upload</p>
-                  <p className="text-2xs opacity-60">Max 10 MB per file</p>
-                </div>
-              ) : (
-                <div
-                  className="grid grid-cols-2 gap-2 sm:grid-cols-3"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {attachments
-                    .filter((a) => !a.commentId)
-                    .map((att) => (
-                      <div
-                        key={att.id}
-                        className="group relative rounded-md border bg-card overflow-hidden"
-                      >
-                        {isImage(att.mimeType) ? (
-                          <a
-                            href={att.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <img
-                              src={att.url}
-                              alt={att.fileName}
-                              className="w-full h-24 object-cover"
-                            />
-                          </a>
-                        ) : (
-                          <a
-                            href={att.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            download={att.fileName}
-                            className="flex flex-col items-center justify-center gap-2 h-24 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                          >
-                            {att.mimeType === "application/pdf" ? (
-                              <FilePdfIcon className="size-8 text-red-500" />
-                            ) : (
-                              <FileIcon className="size-8" />
-                            )}
-                            <DownloadSimpleIcon className="size-3.5 opacity-0 group-hover:opacity-100 absolute top-2 right-8 transition-opacity" />
-                          </a>
-                        )}
-                        <div className="px-2 py-1.5 border-t">
-                          <p className="text-xs truncate font-medium">
-                            {att.fileName}
-                          </p>
-                          <p className="text-2xs text-muted-foreground">
-                            {formatBytes(att.fileSize)}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => handleDeleteAttachment(att.id)}
-                          className="absolute top-1.5 right-1.5 size-6 inline-flex items-center justify-center leading-none rounded-full bg-black/70 text-white hover:bg-red-500 opacity-0 group-hover:opacity-100 transition-all"
-                        >
-                          <XIcon className="size-3.5 shrink-0" weight="bold" />
-                        </button>
+              {subtasksOpen && (
+                <>
+                  {subtasks && subtasks.length > 0 && (
+                    <>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Progress
+                          value={Math.round(
+                            (subtasks.filter((s) => s.statusType === "CLOSED")
+                              .length /
+                              subtasks.length) *
+                              100,
+                          )}
+                          className="flex-1 h-1.5"
+                        />
                       </div>
-                    ))}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      fileInputRef.current?.click();
-                    }}
-                    disabled={uploadingFile}
-                    className="flex flex-col items-center justify-center h-full min-h-24 rounded-md border-2 border-dashed border-border/50 text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors disabled:opacity-50"
-                  >
-                    <PlusIcon className="size-5" />
-                    <span className="text-2xs mt-1">
-                      {uploadingFile ? "Uploading…" : "Add file"}
-                    </span>
-                  </button>
-                </div>
+                      {(() => {
+                        const renderRow = (sub: (typeof subtasks)[number]) => (
+                          <div
+                            key={sub.id}
+                            className="flex items-center gap-2 rounded-md border bg-card px-3 py-2 hover:bg-accent/30 cursor-pointer group"
+                            onClick={() =>
+                              router.push(`/${workspaceId}/task/${sub.id}`)
+                            }
+                          >
+                            <span
+                              className="size-2.5 rounded-full shrink-0"
+                              style={{
+                                backgroundColor: sub.statusColor ?? "#9CA3AF",
+                              }}
+                            />
+                            <span className="font-mono text-xs text-muted-foreground shrink-0">
+                              #{sub.seqNumber}
+                            </span>
+                            <span
+                              className={cn(
+                                "flex-1 text-sm truncate",
+                                sub.statusType === "CLOSED" &&
+                                  "line-through text-muted-foreground",
+                              )}
+                            >
+                              {sub.title}
+                            </span>
+                            <CaretRightIcon className="size-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 shrink-0" />
+                          </div>
+                        );
+                        const active = subtasks.filter(
+                          (s) => s.statusType !== "CLOSED",
+                        );
+                        const completed = subtasks.filter(
+                          (s) => s.statusType === "CLOSED",
+                        );
+                        return (
+                          <div className="space-y-1 mb-3">
+                            {active.map(renderRow)}
+                            {completed.length > 0 && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => setCompletedOpen((o) => !o)}
+                                  className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                                >
+                                  {completedOpen ? (
+                                    <CaretDownIcon className="size-3.5 shrink-0" />
+                                  ) : (
+                                    <CaretRightIcon className="size-3.5 shrink-0" />
+                                  )}
+                                  Completed ({completed.length})
+                                </button>
+                                {completedOpen && completed.map(renderRow)}
+                              </>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </>
+                  )}
+
+                  <div className="flex gap-2 items-center">
+                    <Input
+                      ref={subtaskInputRef}
+                      placeholder="Subtask name…"
+                      value={subtaskInput}
+                      onChange={(e) => setSubtaskInput(e.target.value)}
+                      onKeyDown={async (e) => {
+                        if (e.key === "Enter" && subtaskInput.trim()) {
+                          setCreatingSubtask(true);
+                          await createSubtask(
+                            workspaceId,
+                            spaceId,
+                            taskId,
+                            subtaskInput.trim(),
+                          );
+                          setSubtaskInput("");
+                          setCreatingSubtask(false);
+                          load();
+                          subtaskInputRef.current?.focus();
+                        }
+                      }}
+                      disabled={creatingSubtask}
+                      className="h-8 rounded-lg text-xs"
+                    />
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 rounded-lg text-xs shrink-0"
+                      disabled={creatingSubtask || !subtaskInput}
+                      onClick={() => setSubtaskInput("")}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="h-8 rounded-lg text-xs font-semibold shrink-0 px-3"
+                      disabled={creatingSubtask || !subtaskInput.trim()}
+                      onClick={async () => {
+                        if (!subtaskInput.trim()) return;
+                        setCreatingSubtask(true);
+                        await createSubtask(
+                          workspaceId,
+                          spaceId,
+                          taskId,
+                          subtaskInput.trim(),
+                        );
+                        setSubtaskInput("");
+                        setCreatingSubtask(false);
+                        load();
+                        subtaskInputRef.current?.focus();
+                      }}
+                    >
+                      Save
+                    </Button>
+                  </div>
+                </>
               )}
             </div>
-          </div>
-
-          <Separator className="mb-6" />
+          )}
 
           {/* Checklists */}
           {checklists.length > 0 && (
@@ -1604,17 +1430,18 @@ export function TaskDetailPage({
             </div>
           )}
 
-          {/* Action buttons */}
-          <div className="flex flex-wrap gap-2">
+          {/* Add actions (checklist / dependencies) — match the "Add subtask" empty-state style */}
+          {(hasContentSections || contentExpanded) && (
+          <div className="space-y-2">
             {!addingChecklist ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 rounded-lg text-xs font-semibold"
+              <button
+                type="button"
                 onClick={() => setAddingChecklist(true)}
+                className="flex w-fit items-center gap-1.5 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
               >
-                <PlusIcon className="size-3.5 mr-1.5" /> Create checklist
-              </Button>
+                <PlusIcon className="size-4" />
+                Add checklist
+              </button>
             ) : (
               <div className="flex gap-2 items-center">
                 <Input
@@ -1647,103 +1474,132 @@ export function TaskDetailPage({
             )}
 
             {!showDepsSection && dependencies.length === 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 rounded-lg text-xs font-semibold"
+              <button
+                type="button"
                 onClick={() => setShowDepsSection(true)}
+                className="flex w-fit items-center gap-1.5 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
               >
-                <PlusIcon className="size-3.5 mr-1.5" /> Relate items or add dependencies
-              </Button>
+                <PlusIcon className="size-4" />
+                Add dependency
+              </button>
             )}
           </div>
+          )}
 
-          {/* Time logging */}
-          <div className="mt-6 pt-6 border-t">
-            <h3 className="text-sm font-semibold mb-3">Log time</h3>
-            <div className="flex gap-3 items-end">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-muted-foreground">Minutes</label>
-                <Input
-                  type="number"
-                  min="1"
-                  placeholder="30"
-                  value={timeInput}
-                  onChange={(e) => setTimeInput(e.target.value)}
-                  className="h-8 rounded-lg text-xs w-24"
-                />
+          <Separator className="mb-6" />
+
+          {/* Attachments */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <PaperclipIcon className="size-4 text-muted-foreground" />
+                <h3 className="text-sm font-semibold">Attachments</h3>
+                {attachments.filter((a) => !a.commentId).length > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    {attachments.filter((a) => !a.commentId).length} file
+                    {attachments.filter((a) => !a.commentId).length !== 1
+                      ? "s"
+                      : ""}
+                  </span>
+                )}
               </div>
-              <div className="flex-1 flex flex-col gap-1.5">
-                <label className="text-xs text-muted-foreground">
-                  Note (optional)
-                </label>
-                <Input
-                  placeholder="What did you work on?"
-                  value={timeNote}
-                  onChange={(e) => setTimeNote(e.target.value)}
-                  className="h-8 rounded-lg text-xs"
-                />
-              </div>
-              <Button
-                size="sm"
-                className="h-8 rounded-lg px-3 text-xs font-semibold shrink-0"
-                onClick={handleLogTime}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingFile}
+                className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs text-muted-foreground border hover:bg-accent hover:text-foreground transition-colors disabled:opacity-50"
               >
-                Log
-              </Button>
+                <PlusIcon className="size-3.5" />
+                {uploadingFile ? "Uploading…" : "Add attachment"}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    handleFileUpload(file);
+                    e.target.value = "";
+                  }
+                }}
+              />
             </div>
+
+            {/* Drop zone + uploaded files — only once at least one attachment exists */}
+            {attachments.filter((a) => !a.commentId).length > 0 && (
+              <div
+                className="rounded-lg border-2 border-dashed border-border/50 p-4 transition-colors hover:border-primary/30 hover:bg-accent/20 cursor-pointer"
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.currentTarget.classList.add(
+                    "border-primary/60",
+                    "bg-accent/30",
+                  );
+                }}
+                onDragLeave={(e) => {
+                  e.currentTarget.classList.remove(
+                    "border-primary/60",
+                    "bg-accent/30",
+                  );
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.currentTarget.classList.remove(
+                    "border-primary/60",
+                    "bg-accent/30",
+                  );
+                  const file = e.dataTransfer.files[0];
+                  if (file) handleFileUpload(file);
+                }}
+              >
+                <div
+                  className="grid grid-cols-2 gap-2 sm:grid-cols-3"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {attachments
+                    .filter((a) => !a.commentId)
+                    .map((att) => (
+                      <TaskAttachmentCard
+                        key={att.id}
+                        att={att}
+                        onDelete={handleDeleteAttachment}
+                      />
+                    ))}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      fileInputRef.current?.click();
+                    }}
+                    disabled={uploadingFile}
+                    className="flex flex-col items-center justify-center h-full min-h-24 rounded-md border-2 border-dashed border-border/50 text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors disabled:opacity-50"
+                  >
+                    <PlusIcon className="size-5" />
+                    <span className="text-2xs mt-1">
+                      {uploadingFile ? "Uploading…" : "Add file"}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* ── Right: activity + time entries ── */}
+        {/* ── Right: activity ── */}
         <div className="w-80 xl:w-96 shrink-0 border-l flex flex-col overflow-hidden">
-          {/* Tab bar */}
-          <div className="flex shrink-0 border-b">
-            <button
-              onClick={() => setRightTab("activity")}
-              className={cn(
-                "flex-1 py-2.5 text-xs font-medium transition-colors border-b-2",
-                rightTab === "activity"
-                  ? "text-foreground border-primary"
-                  : "text-muted-foreground border-transparent hover:text-foreground",
-              )}
-            >
-              Activity
-            </button>
-            <button
-              onClick={() => setRightTab("time")}
-              className={cn(
-                "flex-1 py-2.5 text-xs font-medium transition-colors border-b-2",
-                rightTab === "time"
-                  ? "text-foreground border-primary"
-                  : "text-muted-foreground border-transparent hover:text-foreground",
-              )}
-            >
-              Time Entries
-              {timeLogs.length > 0 && (
-                <span className="ml-1 text-2xs opacity-60">({timeLogs.length})</span>
-              )}
-            </button>
+          <div className="flex shrink-0 border-b px-5 py-2.5">
+            <span className="text-xs font-medium text-foreground">Activity</span>
           </div>
 
           <div className="flex-1 overflow-y-auto px-5 py-4">
-            {rightTab === "activity" ? (
-              <TaskActivityFeed
-                ref={feedRef}
-                workspaceId={workspaceId}
-                spaceId={spaceId}
-                listId={listId}
-                taskId={taskId}
-                currentUserId={currentUserId}
-              />
-            ) : (
-              <TimeEntriesPanel
-                timeLogs={timeLogs}
-                members={members}
-                currentUserId={currentUserId}
-                onDelete={handleDeleteTimeLog}
-              />
-            )}
+            <TaskActivityFeed
+              ref={feedRef}
+              workspaceId={workspaceId}
+              spaceId={spaceId}
+              listId={listId}
+              taskId={taskId}
+              currentUserId={currentUserId}
+            />
           </div>
 
           {/* Task seq footer */}
@@ -1803,6 +1659,81 @@ export function TaskDetailPage({
         </div>
       </DialogContent>
     </Dialog>
-    </>
+    <InviteMemberModal
+      open={inviteOpen}
+      onOpenChange={setInviteOpen}
+      workspaceId={workspaceId}
+      onInvited={load}
+    />
+    </AttachmentPreviewProvider>
+  );
+}
+
+// ─── Task attachment card ─────────────────────────────────────────────────────
+// Rendered inside <AttachmentPreviewProvider> so it can open the in-app preview.
+
+interface TaskAttachmentCardProps {
+  att: {
+    id: string;
+    fileName: string;
+    fileSize: number;
+    mimeType: string;
+    url: string;
+  };
+  onDelete: (id: string) => void;
+}
+
+function TaskAttachmentCard({ att, onDelete }: TaskAttachmentCardProps) {
+  const preview = useAttachmentPreview();
+  const isImg = att.mimeType.startsWith("image/");
+
+  function fmtBytes(bytes: number) {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  function openPreview() {
+    if (preview) {
+      preview.open(att);
+    } else {
+      window.open(att.url, "_blank", "noopener,noreferrer");
+    }
+  }
+
+  return (
+    <div className="group relative rounded-md border bg-card overflow-hidden">
+      {isImg ? (
+        <button type="button" onClick={openPreview} className="block w-full">
+          <img
+            src={att.url}
+            alt={att.fileName}
+            className="w-full h-24 object-cover"
+          />
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={openPreview}
+          className="flex w-full flex-col items-center justify-center gap-2 h-24 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+        >
+          {att.mimeType === "application/pdf" ? (
+            <FilePdfIcon className="size-8 text-red-500" />
+          ) : (
+            <FileIcon className="size-8" />
+          )}
+        </button>
+      )}
+      <div className="px-2 py-1.5 border-t">
+        <p className="text-xs truncate font-medium">{att.fileName}</p>
+        <p className="text-2xs text-muted-foreground">{fmtBytes(att.fileSize)}</p>
+      </div>
+      <button
+        onClick={() => onDelete(att.id)}
+        className="absolute top-1.5 right-1.5 size-6 inline-flex items-center justify-center leading-none rounded-full bg-black/70 text-white hover:bg-red-500 opacity-0 group-hover:opacity-100 transition-all"
+      >
+        <XIcon className="size-3.5 shrink-0" weight="bold" />
+      </button>
+    </div>
   );
 }
