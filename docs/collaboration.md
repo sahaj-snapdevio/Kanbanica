@@ -24,6 +24,7 @@ Comments are threaded discussions attached to a Task. They keep all conversation
   - Inline code, code block
   - Hyperlinks
   - @mentions (see [Mentions](#3-mentions))
+- Type `/` to open a formatting command menu (headings, lists, blockquote, code block). The composer's **"+"** formatting button opens the **same** command grid — both reuse the shared slash-command module.
 - Attach a file directly inside a comment (image or document)
 - Press `Ctrl + Enter` (or `Cmd + Enter`) to submit
 
@@ -33,10 +34,10 @@ Comments are threaded discussions attached to a Task. They keep all conversation
 - All replies notify the parent comment author and anyone mentioned in the thread
 
 **Emoji reactions:**
-- Any comment can receive emoji reactions
-- Click the emoji icon on a comment → pick from emoji picker
-- Multiple users can react with the same emoji — count is shown (e.g. 👍 3)
-- A user can add or remove their own reaction at any time
+- The 👍 (like) reaction has its own dedicated **like button** showing the like count — clicking it toggles your like. It is the only thumbs-up shown (there is no duplicate 👍 pill in the reactions row).
+- Any other emoji reaction is added via the emoji picker (smiley button) and rendered as a pill with its count.
+- Multiple users can react with the same emoji — the count is shown.
+- A user can add or remove their own reaction at any time.
 
 **Edit comment:**
 - Author can edit their own comment at any time
@@ -47,6 +48,7 @@ Comments are threaded discussions attached to a Task. They keep all conversation
 - Author can delete their own comment
 - Admin and Owner can delete any comment
 - Deleting a parent comment with replies removes the parent text but keeps the replies visible with a `[Comment deleted]` placeholder
+- Delete is a **soft delete**: it sets `is_deleted = true` and replaces `body` with an **empty Tiptap doc** (`{ type: "doc", content: [] }`) — never `null` (the `body` column is `NOT NULL`)
 
 **Resolve thread:**
 - A comment thread can be marked as **Resolved** by:
@@ -159,7 +161,9 @@ Every event that creates an `ActivityLog` record is listed below. Each entry sto
 | Removed from Sprint | `sprint_unassigned` | `{ sprint_name }` | *Jane removed this task from Sprint 12* |
 | Story points set | `story_points_set` | `{ from, to }` | *John set story points to 5* |
 
-#### Time Logging
+#### Time Logging _(legacy)_
+
+> The time-tracking UI has been removed. The `time_logged` event may still appear in the timeline for historical entries, but the app no longer creates new ones.
 
 | Event | `event_type` key | `meta` payload | Example display |
 |-------|-----------------|----------------|-----------------|
@@ -319,6 +323,18 @@ Files uploaded directly to a task to share designs, documents, screenshots, or a
 - **Images** — displayed as inline thumbnails in the Attachments section; click to open full-size preview
 - **Non-image files** — shown as a file card with: file name, file type icon, file size, upload date, uploader name, download button
 - Attachments section shows total count and total size (e.g. `4 files · 12.3 MB`)
+
+### Attachment Preview Modal
+
+Clicking a previewable attachment opens an in-app preview modal (`components/task/attachment-preview-modal.tsx`) instead of leaving the app:
+
+- Exposed via `AttachmentPreviewProvider` + the `useAttachmentPreview()` hook. The hook returns `null` when no provider is mounted, so callers fall back to opening the file in a new tab.
+- **Images** — centered, with **zoom** controls (25%–400%, step 25%) and a reset-to-100% button.
+- **PDFs** — rendered in an embedded iframe.
+- **Video / audio** — native player with controls.
+- **Other types** — a fallback card with the file name and Download / Open-in-new-tab actions.
+- Every type has **Download** and **Open in new tab** in the toolbar; close via the X button or `Esc`.
+- The modal is a shadcn `Dialog` (`rounded-xl`, ~90vh × 95vw) following the design system.
 
 ### Limits (MVP)
 

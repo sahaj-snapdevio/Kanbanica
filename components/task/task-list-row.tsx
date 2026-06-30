@@ -17,6 +17,7 @@ import {
   TrayIcon,
   TrashIcon,
   UserIcon,
+  UserPlusIcon,
   XIcon,
 } from "@phosphor-icons/react";
 import { useSWRConfig } from "swr";
@@ -38,6 +39,7 @@ import {
   updateTaskStatus,
 } from "@/app/actions/task";
 import { addAssignee, removeAssignee } from "@/app/actions/task-assignee";
+import { InviteMemberModal } from "@/components/workspace/invite-member-modal";
 import { getSprints, bulkMoveTasksToSprint } from "@/app/actions/sprint";
 import { getWorkspaceLists } from "@/app/actions/list";
 import { cn } from "@/lib/utils";
@@ -125,11 +127,13 @@ export function TaskListRow({
 
   // ── Optimistic state ──────────────────────────────────────────────────────
   const [localPriority, setLocalPriority] = React.useState<string>(task.priority ?? "NONE");
-  const [localDueDate, setLocalDueDate] = React.useState<Date | null>(task.dueDateStart ?? null);
+  // The "Due Date" column represents the deadline — the end date (falling back
+  // to the start date for single-date tasks).
+  const [localDueDate, setLocalDueDate] = React.useState<Date | null>(task.dueDateEnd ?? task.dueDateStart ?? null);
   const [localPersonalPin, setLocalPersonalPin] = React.useState(isPersonallyPinnedProp ?? false);
 
   React.useEffect(() => { setLocalPriority(task.priority ?? "NONE"); }, [task.priority]);
-  React.useEffect(() => { setLocalDueDate(task.dueDateStart ?? null); }, [task.dueDateStart]);
+  React.useEffect(() => { setLocalDueDate(task.dueDateEnd ?? task.dueDateStart ?? null); }, [task.dueDateEnd, task.dueDateStart]);
   React.useEffect(() => {
     if (isPersonallyPinnedProp !== undefined) setLocalPersonalPin(isPersonallyPinnedProp);
   }, [isPersonallyPinnedProp]);
@@ -158,6 +162,7 @@ export function TaskListRow({
   const [assigneeOpen, setAssigneeOpen] = React.useState(false);
   const [members, setMembers] = React.useState<WorkspaceMember[] | null>(null);
   const [memberSearch, setMemberSearch] = React.useState("");
+  const [inviteOpen, setInviteOpen] = React.useState(false);
   const [dateOpen, setDateOpen] = React.useState(false);
   const [priorityOpen, setPriorityOpen] = React.useState(false);
   const [deleteOpen, setDeleteOpen] = React.useState(false);
@@ -171,6 +176,12 @@ export function TaskListRow({
     const res = await getWorkspaceMembers(workspaceId);
     if ("error" in res) return;
     setMembers(res.members);
+  }
+
+  // Force a re-fetch (e.g. after inviting a member) regardless of cache.
+  async function refreshMembers() {
+    const res = await getWorkspaceMembers(workspaceId);
+    if (!("error" in res)) setMembers(res.members);
   }
 
   async function loadMoveData() {
@@ -217,7 +228,12 @@ export function TaskListRow({
     const prev = localDueDate;
     setLocalDueDate(date);
     setDateOpen(false);
-    const res = await updateTask(workspaceId, spaceId, effectiveListId, task.id, { dueDateStart: date, dueDateEnd: date });
+    // "Due Date" is the deadline (end date). Preserve an existing start date; for
+    // tasks with no start, set both so single-date tasks stay consistent.
+    const patch = task.dueDateStart
+      ? { dueDateEnd: date }
+      : { dueDateStart: date, dueDateEnd: date };
+    const res = await updateTask(workspaceId, spaceId, effectiveListId, task.id, patch);
     if ("error" in res) { setLocalDueDate(prev); toast.error("Failed to update due date"); }
     else onRefresh();
   }
@@ -298,11 +314,11 @@ export function TaskListRow({
   // ── Shared column sections ─────────────────────────────────────────────────
 
   const assigneeCell = (
-    <div className="w-36 shrink-0 self-stretch flex items-center px-2" onClick={(e) => e.stopPropagation()}>
+    <div className="w-36 shrink-0 self-stretch flex items-center justify-center px-2" onClick={(e) => e.stopPropagation()}>
       {canEdit ? (
         <Popover open={assigneeOpen} onOpenChange={(o) => { setAssigneeOpen(o); if (o) void loadMembers(); }}>
           <PopoverTrigger asChild>
-            <button className="flex items-center gap-2 w-full h-full px-2 rounded-md border border-transparent hover:border-border hover:bg-accent/30 transition-all text-left cursor-pointer select-none">
+            <button className="inline-flex items-center gap-2 px-2 py-1 rounded-md border border-transparent hover:bg-accent/60 transition-colors cursor-pointer select-none">
               {task.assignees.length > 0 ? (
                 <TooltipProvider>
                   <div className="flex -space-x-1.5">
@@ -351,6 +367,17 @@ export function TaskListRow({
                 })}
               </div>
             )}
+            <div className="mt-1 border-t border-border pt-1">
+              <button
+                onClick={() => { setAssigneeOpen(false); setInviteOpen(true); }}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer"
+              >
+                <span className="flex size-6 shrink-0 items-center justify-center rounded-full border border-dashed border-border">
+                  <UserPlusIcon className="size-3.5" />
+                </span>
+                <span className="flex-1 truncate text-left">Invite member</span>
+              </button>
+            </div>
           </PopoverContent>
         </Popover>
       ) : (
@@ -378,13 +405,13 @@ export function TaskListRow({
       {canEdit ? (
         <Popover open={dateOpen} onOpenChange={setDateOpen}>
           <PopoverTrigger asChild>
-            <button className={cn("flex items-center gap-1.5 w-full h-full px-2 rounded-md border border-transparent hover:border-border hover:bg-accent/30 transition-all text-xs font-semibold text-left cursor-pointer select-none", dueDate?.overdue ? "text-red-500" : "text-gray-600")}>
+            <button className={cn("inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-transparent hover:bg-accent/60 transition-colors text-xs font-semibold cursor-pointer select-none", dueDate?.overdue ? "text-red-500" : "text-gray-600")}>
               <CalendarBlankIcon className="size-3.5 shrink-0" />
               {dueDate ? <span>{dueDate.label}</span> : <span className="text-gray-400">Set date</span>}
             </button>
           </PopoverTrigger>
           <PopoverContent align="end" side="bottom" className="w-auto p-0">
-            <Calendar mode="single" selected={localDueDate ?? undefined} onSelect={(date) => { void handleSetDueDate(date ?? null); setDateOpen(false); }} />
+            <Calendar mode="single" selected={localDueDate ?? undefined} disabled={task.dueDateStart ? { before: new Date(task.dueDateStart) } : undefined} onSelect={(date) => { void handleSetDueDate(date ?? null); setDateOpen(false); }} />
           </PopoverContent>
         </Popover>
       ) : (
@@ -401,7 +428,7 @@ export function TaskListRow({
       {canEdit ? (
         <Popover open={priorityOpen} onOpenChange={setPriorityOpen}>
           <PopoverTrigger asChild>
-            <button className="flex items-center gap-1.5 w-full h-full px-2 rounded-md border border-transparent hover:border-border hover:bg-accent/30 transition-all text-left cursor-pointer select-none">
+            <button className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-transparent hover:bg-accent/60 transition-colors cursor-pointer select-none">
               {localPriority !== "NONE" ? (
                 <span className={cn("flex items-center gap-1.5 text-xs font-bold", priority.color)}>
                   <span>{priority.icon}</span>{priority.label}
@@ -550,6 +577,14 @@ export function TaskListRow({
 
   return (
     <>
+      {/* Invite member (from assignee dropdown) */}
+      <InviteMemberModal
+        open={inviteOpen}
+        onOpenChange={setInviteOpen}
+        workspaceId={workspaceId}
+        onInvited={refreshMembers}
+      />
+
       {/* Delete confirmation */}
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent showCloseButton={false} className="sm:max-w-sm text-center" onClick={(e) => e.stopPropagation()}>

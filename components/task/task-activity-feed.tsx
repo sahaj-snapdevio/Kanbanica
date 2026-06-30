@@ -7,12 +7,20 @@ import {
   CaretRightIcon,
   CheckCircleIcon,
   FileIcon,
+  CodeBlockIcon,
   FilePdfIcon,
+  ListBulletsIcon,
+  ListNumbersIcon,
   PaperclipIcon,
+  ParagraphIcon,
   PaperPlaneRightIcon,
   PencilSimpleIcon,
   PlusIcon,
+  QuotesIcon,
   SmileyIcon,
+  TextHOneIcon,
+  TextHThreeIcon,
+  TextHTwoIcon,
   ThumbsUpIcon,
   TrashIcon,
   XCircleIcon,
@@ -22,10 +30,29 @@ import { formatDistanceToNow, format } from "date-fns";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Mention from "@tiptap/extension-mention";
+import Placeholder from "@tiptap/extension-placeholder";
 import { getWorkspaceMentionMembers, type MentionMember } from "@/app/actions/mention";
 import { buildMentionSuggestion } from "@/components/task/mention-suggestion";
+import {
+  SlashCommandGrid,
+  SlashCommandMenu,
+  useSlashCommands,
+  type SlashCommand,
+} from "@/components/task/slash-command-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+
+// Slash commands for the comment composer — mirror its "+" formatting menu.
+const COMMENT_SLASH_COMMANDS: SlashCommand[] = [
+  { key: "paragraph", label: "Normal text", desc: "Plain paragraph", keywords: "text paragraph normal", icon: ParagraphIcon, run: (e) => e.chain().focus().setParagraph().run() },
+  { key: "h1", label: "Heading 1", desc: "Large heading", keywords: "h1 heading title", icon: TextHOneIcon, run: (e) => e.chain().focus().setHeading({ level: 1 }).run() },
+  { key: "h2", label: "Heading 2", desc: "Medium heading", keywords: "h2 heading", icon: TextHTwoIcon, run: (e) => e.chain().focus().setHeading({ level: 2 }).run() },
+  { key: "h3", label: "Heading 3", desc: "Small heading", keywords: "h3 heading", icon: TextHThreeIcon, run: (e) => e.chain().focus().setHeading({ level: 3 }).run() },
+  { key: "bulletList", label: "Bullet list", desc: "Unordered list", keywords: "bullet unordered list ul", icon: ListBulletsIcon, run: (e) => e.chain().focus().toggleBulletList().run() },
+  { key: "orderedList", label: "Numbered list", desc: "Ordered list", keywords: "numbered ordered list ol", icon: ListNumbersIcon, run: (e) => e.chain().focus().toggleOrderedList().run() },
+  { key: "blockquote", label: "Blockquote", desc: "Block quote", keywords: "quote blockquote", icon: QuotesIcon, run: (e) => e.chain().focus().setBlockquote().run() },
+  { key: "codeBlock", label: "Code block", desc: "Code snippet", keywords: "code block", icon: CodeBlockIcon, run: (e) => e.chain().focus().setCodeBlock().run() },
+];
 import {
   getTaskComments,
   createComment,
@@ -39,6 +66,7 @@ import {
 } from "@/app/actions/comment";
 import { getTaskActivity } from "@/app/actions/task";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useAttachmentPreview } from "@/components/task/attachment-preview-modal";
 import dynamic from "next/dynamic";
 
 const EmojiPicker = dynamic(() => import("@emoji-mart/react"), {
@@ -197,6 +225,8 @@ function CommentEditor({
     membersRef.current = members ?? [];
   }, [members]);
 
+  const slashMenu = useSlashCommands(COMMENT_SLASH_COMMANDS);
+
   const mentionExtension = React.useMemo(
     () =>
       Mention.configure({
@@ -213,12 +243,23 @@ function CommentEditor({
   );
 
   const editor = useEditor({
-    extensions: [StarterKit, mentionExtension],
+    extensions: [
+      StarterKit,
+      Placeholder.configure({ placeholder: placeholder ?? "Write a comment…" }),
+      mentionExtension,
+    ],
     content: (initialContent as object) ?? "",
     autofocus: autoFocus,
-    onUpdate: ({ editor: e }) => setEditorEmpty(e.isEmpty),
+    onUpdate: ({ editor: e }) => {
+      setEditorEmpty(e.isEmpty);
+      slashMenu.refresh(e);
+    },
+    onSelectionUpdate: ({ editor: e }) => slashMenu.refresh(e),
+    onBlur: () => slashMenu.close(),
     editorProps: {
       handleKeyDown: (view, event) => {
+        // Slash command menu takes priority while it's open.
+        if (slashMenu.handleKeyDown(event)) return true;
         if (event.key === "Enter" && !event.metaKey && !event.ctrlKey) {
           // Let the mention suggestion handle Enter when popup is open
           if (isMentionActiveRef.current) return false;
@@ -255,6 +296,8 @@ function CommentEditor({
       },
     },
   });
+
+  React.useEffect(() => { slashMenu.setEditor(editor); }, [editor, slashMenu]);
 
   async function handleSubmit() {
     if (!editor || (editorEmpty && pendingFiles.length === 0)) return;
@@ -293,6 +336,7 @@ function CommentEditor({
   return (
     <div className="rounded-xl border bg-background shadow-sm focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary/40 transition-all">
       <EditorContent editor={editor} />
+      <SlashCommandMenu menu={slashMenu} />
 
       {/* Pending file previews */}
       {pendingFiles.length > 0 && (
@@ -334,59 +378,18 @@ function CommentEditor({
               <PlusIcon className="size-3.5" />
             </button>
           </PopoverTrigger>
-          <PopoverContent align="start" side="top" className="w-52 p-1 mb-1">
-            <p className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Text</p>
-            {([
-              { icon: "T",  label: "Normal text", cmd: () => editor?.chain().focus().setParagraph().run() },
-              { icon: "H1", label: "Heading 1",   cmd: () => editor?.chain().focus().setHeading({ level: 1 }).run() },
-              { icon: "H2", label: "Heading 2",   cmd: () => editor?.chain().focus().setHeading({ level: 2 }).run() },
-              { icon: "H3", label: "Heading 3",   cmd: () => editor?.chain().focus().setHeading({ level: 3 }).run() },
-            ] as const).map(({ icon, label, cmd }) => (
-              <button
-                key={label}
-                onClick={() => { cmd(); setPlusOpen(false); }}
-                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
-              >
-                <span className="flex size-6 shrink-0 items-center justify-center rounded border border-border bg-background text-xs font-semibold">
-                  {icon}
-                </span>
-                {label}
-              </button>
-            ))}
-
-            <p className="px-2 pb-1 pt-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Lists</p>
-            {([
-              { icon: "•—", label: "Bullet list",   cmd: () => editor?.chain().focus().toggleBulletList().run() },
-              { icon: "1.", label: "Numbered list",  cmd: () => editor?.chain().focus().toggleOrderedList().run() },
-            ] as const).map(({ icon, label, cmd }) => (
-              <button
-                key={label}
-                onClick={() => { cmd(); setPlusOpen(false); }}
-                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
-              >
-                <span className="flex size-6 shrink-0 items-center justify-center rounded border border-border bg-background text-xs font-semibold">
-                  {icon}
-                </span>
-                {label}
-              </button>
-            ))}
-
-            <p className="px-2 pb-1 pt-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Blocks</p>
-            {([
-              { icon: "❝",   label: "Blockquote",  cmd: () => editor?.chain().focus().setBlockquote().run() },
-              { icon: "</>", label: "Code block",   cmd: () => editor?.chain().focus().setCodeBlock().run() },
-            ] as const).map(({ icon, label, cmd }) => (
-              <button
-                key={label}
-                onClick={() => { cmd(); setPlusOpen(false); }}
-                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
-              >
-                <span className="flex size-6 shrink-0 items-center justify-center rounded border border-border bg-background text-xs font-semibold">
-                  {icon}
-                </span>
-                {label}
-              </button>
-            ))}
+          <PopoverContent
+            align="start"
+            side="top"
+            className="w-110 max-w-[calc(100vw-2rem)] p-1.5 mb-1"
+          >
+            <SlashCommandGrid
+              commands={COMMENT_SLASH_COMMANDS}
+              onSelect={(cmd) => {
+                if (editor) cmd.run(editor);
+                setPlusOpen(false);
+              }}
+            />
           </PopoverContent>
         </Popover>
 
@@ -526,8 +529,24 @@ function CommentBody({ body }: { body: unknown }) {
 // ─── Comment attachments ──────────────────────────────────────────────────────
 
 function CommentAttachments({ attachments }: { attachments: CommentAttachment[] }) {
+  const preview = useAttachmentPreview();
   const images = attachments.filter((a) => a.mimeType.startsWith("image/"));
   const files = attachments.filter((a) => !a.mimeType.startsWith("image/"));
+
+  // Open in the in-app preview modal; fall back to a new tab if no provider.
+  function openAttachment(a: CommentAttachment) {
+    if (preview) {
+      preview.open({
+        id: a.id,
+        fileName: a.fileName,
+        mimeType: a.mimeType,
+        fileSize: a.fileSize,
+        url: a.url,
+      });
+    } else {
+      window.open(a.url, "_blank", "noopener,noreferrer");
+    }
+  }
 
   return (
     <div className="px-3 pb-2 space-y-2">
@@ -538,11 +557,10 @@ function CommentAttachments({ attachments }: { attachments: CommentAttachment[] 
           images.length === 1 ? "grid-cols-1" : images.length === 2 ? "grid-cols-2" : "grid-cols-3",
         )}>
           {images.map((img) => (
-            <a
+            <button
               key={img.id}
-              href={img.url}
-              target="_blank"
-              rel="noopener noreferrer"
+              type="button"
+              onClick={() => openAttachment(img)}
               className="block overflow-hidden rounded-lg border bg-muted/30 hover:opacity-90 transition-opacity"
             >
               <img
@@ -553,7 +571,7 @@ function CommentAttachments({ attachments }: { attachments: CommentAttachment[] 
                   images.length === 1 ? "max-h-64" : "h-28",
                 )}
               />
-            </a>
+            </button>
           ))}
         </div>
       )}
@@ -562,12 +580,11 @@ function CommentAttachments({ attachments }: { attachments: CommentAttachment[] 
       {files.length > 0 && (
         <div className="space-y-1">
           {files.map((file) => (
-            <a
+            <button
               key={file.id}
-              href={file.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2 hover:bg-accent transition-colors"
+              type="button"
+              onClick={() => openAttachment(file)}
+              className="flex w-full items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-left hover:bg-accent transition-colors"
             >
               {file.mimeType === "application/pdf" ? (
                 <FilePdfIcon className="size-4 text-red-500 shrink-0" />
@@ -578,7 +595,7 @@ function CommentAttachments({ attachments }: { attachments: CommentAttachment[] 
               <span className="text-2xs text-muted-foreground shrink-0">
                 {(file.fileSize / 1024).toFixed(0)} KB
               </span>
-            </a>
+            </button>
           ))}
         </div>
       )}
@@ -770,8 +787,10 @@ function CommentItem({
         {/* Footer */}
         {!comment.isDeleted && (
           <div className="flex items-center gap-1 px-3 pb-2 pt-1 border-t border-border/40">
-            {/* Existing emoji reactions */}
-            {comment.reactions.map((r) => {
+            {/* Existing emoji reactions (👍 is shown on the dedicated like button) */}
+            {comment.reactions
+              .filter((r) => r.emoji !== "👍")
+              .map((r) => {
               const reacted = r.userIds.includes(currentUserId);
               return (
                 <button
@@ -790,11 +809,11 @@ function CommentItem({
               );
             })}
 
-            {/* Thumbs up quick reaction */}
+            {/* Thumbs up quick reaction (the only thumbs-up shown) */}
             <button
               onClick={() => handleReaction("👍")}
               className={cn(
-                "size-7 flex items-center justify-center rounded-md border transition-colors",
+                "h-7 flex items-center justify-center gap-1 rounded-md border px-2 transition-colors",
                 hasThumbsUp
                   ? "border-primary/40 bg-primary/10 text-primary"
                   : "border-border hover:bg-accent text-muted-foreground hover:text-foreground",
@@ -802,6 +821,11 @@ function CommentItem({
               title="Like"
             >
               <ThumbsUpIcon className="size-3.5" weight={hasThumbsUp ? "fill" : "regular"} />
+              {(thumbsUpReaction?.count ?? 0) > 0 && (
+                <span className="text-xs font-medium">
+                  {thumbsUpReaction?.count}
+                </span>
+              )}
             </button>
 
             {/* Emoji picker */}
@@ -1037,7 +1061,7 @@ function TaskActivityFeed({
       {/* New comment editor */}
       <div className="pt-1">
         <CommentEditor
-          placeholder="Comment, use '/' for commands"
+          placeholder="Add a comment… Type '/' for commands"
           onSubmit={handleNewComment}
           enableAttachments
           members={members}

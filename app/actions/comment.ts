@@ -428,10 +428,11 @@ export async function deleteComment(
     .limit(1);
 
   if (replyRow) {
-    // Soft delete — keep tombstone
+    // Soft delete — keep a tombstone row. `body` is NOT NULL, so clear it to an
+    // empty doc (the UI shows "[Comment deleted]" based on isDeleted, not body).
     await db
       .update(comment)
-      .set({ body: null, isDeleted: true, updatedAt: new Date() })
+      .set({ body: { type: "doc", content: [] }, isDeleted: true, updatedAt: new Date() })
       .where(eq(comment.id, commentId));
   } else {
     // Hard delete

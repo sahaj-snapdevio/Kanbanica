@@ -331,6 +331,20 @@ When a task has no comments.
 
 ---
 
+## 13a. Task Body — Progressive Disclosure (no subtasks / checklists / dependencies)
+
+When a task has **none** of subtasks, checklists, or dependencies, the detail page does not render three empty section headers. Instead it shows a single subtle action to keep a fresh task uncluttered:
+
+```
+|  + Add subtask                      |   <- one left-aligned action
+```
+
+- Clicking **+ Add subtask** reveals the Subtasks section (open, with its inline add input focused) and the "Add checklist" / "Add dependency" actions.
+- Once **any** of those sections has content, all the section actions stay visible — the disclosure does not collapse again.
+- This is purely presentational; it does not change how subtasks, checklists, or dependencies are created. (See [subtask.md](subtask.md) §8 for the Subtasks section's own caret toggle and the "Completed (N)" row.)
+
+---
+
 ## 14. Support Tickets — No Tickets
 
 When the user has no support tickets submitted.

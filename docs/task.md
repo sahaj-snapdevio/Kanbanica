@@ -39,7 +39,7 @@ Workspace
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | Title | Short text | Yes | The name of the task |
-| Description | Rich text | No | Detailed context — supports bold, italic, headings, bullet lists, numbered lists, code blocks, inline code, links. **The previous version is saved as a snapshot before each edit** (one level of recovery). Full version history with diff and restore is post-MVP. |
+| Description | Rich text | No | Detailed context — supports bold, italic, headings, bullet lists, numbered lists, code blocks, inline code, links. Type `/` to open a formatting command menu (the same actions as the toolbar). **The previous version is saved as a snapshot before each edit** (one level of recovery). Full version history with diff and restore is post-MVP. |
 | Status | Enum (per List) | Yes | Defaults to first status in the List (usually "Todo") |
 | Priority | Enum | No | None / Low / Medium / High / Urgent |
 | Assignees | User[] | No | One or more workspace members |
@@ -51,8 +51,8 @@ Workspace
 | Checklists | Checklist[] | No | Named checklists with checkable items inside the task |
 | Dependencies | Task[] | No | Blocked by / Blocking relationships to other tasks |
 | Subtasks | Task[] | No | Child tasks nested under this task |
-| Time Estimate | Number (hours) | No | Estimated effort |
-| Time Logged | Number (hours) | No | Manually logged time entries |
+
+> **Time tracking removed:** the time-tracking UI (Time Estimate, Time Logged, "Log time") has been removed from the task detail. Any legacy time-log records may still exist in the database, but there is no UI to create or view them.
 
 ---
 
@@ -89,7 +89,7 @@ Clicking a task opens a side panel (or full-page modal) showing all fields.
 **Panel sections:**
 - Header: Title (editable inline), Status pill, Priority badge
 - Left/Main column: Description (rich text editor), Subtasks, Checklists, Attachments, Comments
-- Right/Sidebar column: Assignees, Reporter, Due Date, Tags, Watchers, Time Estimate, Time Logged, Dependencies
+- Right/Sidebar column: Assignees, Reporter, Due Date, Tags, Watchers, Dependencies
 - Bottom: Activity Timeline
 
 ---
@@ -133,7 +133,8 @@ Clicking a task opens a side panel (or full-page modal) showing all fields.
 
 - **Single date:** a deadline
 - **Date range:** start date + end date (useful for planning work blocks)
-- Due date appears on the task card in List and Board views
+- **Validation:** the end date can never be before the start date. The calendars disable invalid days, and moving the start date past the current end date auto-clamps the end date to match.
+- Due date appears on the task card in List and Board views — list/board rows show the **end date** (falling back to the start date when there's no end date), with a **days-remaining** label (e.g. "2d", "Today", "3d ago")
 - Overdue tasks (past due date, not closed) are highlighted in red
 - Due date triggers a reminder notification (default: 1 day before due date)
 
@@ -235,7 +236,7 @@ Each entry shows: **who** did it, **what** changed, and **when** (timestamp).
 - Creates a copy of the task with:
   - Same title (prefixed with "Copy of")
   - Same description, priority, tags, checklists, status
-  - **Not copied:** assignees, due date, comments, attachments, time logged, activity timeline
+  - **Not copied:** assignees, due date, comments, attachments, activity timeline
 - Duplicated task is placed in the same List as the original
 - User can edit all fields after duplication
 
@@ -285,7 +286,9 @@ Each entry shows: **who** did it, **what** changed, and **when** (timestamp).
 
 ### 19. Bulk Actions
 
-Bulk actions allow users to apply changes to multiple tasks simultaneously from List View or My Tasks.
+Bulk actions allow users to apply changes to multiple tasks simultaneously from List View, the Sprint View, or My Tasks.
+
+> **Scope:** bulk actions are scoped to the **Space**, not a single List. This lets the selection span multiple Lists (e.g. the Sprint View, where tasks come from different Lists). Bulk **status** updates derive the target status's own List from the status ID rather than assuming a single caller-provided list, keeping status changes valid across cross-list selections.
 
 **Triggering bulk mode:**
 - Hover over any task row -> a checkbox appears on the left
@@ -397,7 +400,7 @@ TaskAttachment
 +-- mime_type           (string)
 L-- created_at          (timestamp)
 
-TaskTimeLog
+TaskTimeLog   (LEGACY — table may remain, but the time-tracking UI has been removed; not written or read by the app)
 +-- id                  (uuid, primary key)
 +-- task_id             (foreign key -> Task)
 +-- user_id             (foreign key -> User)
@@ -450,7 +453,6 @@ L-- saved_at            (timestamp — when the snapshot was taken, i.e. when th
 | DELETE | `/api/tasks/:id/checklists/:checklistId` | Delete checklist | Full Access / Admin+ |
 | POST | `/api/tasks/:id/dependencies` | Add dependency | Edit / Full Access / Admin+ |
 | DELETE | `/api/tasks/:id/dependencies/:depId` | Remove dependency | Edit / Full Access / Admin+ |
-| POST | `/api/tasks/:id/time-logs` | Log time | Edit / Full Access / Admin+ |
 | POST | `/api/tasks/bulk` | Apply a bulk action to multiple tasks | Edit / Full Access / Admin+ |
 | GET | `/api/tasks/:id/description-snapshot` | Get the previous description snapshot (for recovery) | Edit / Full Access / Admin+ |
 | POST | `/api/tasks/:id/description-snapshot/restore` | Restore the snapshot as the current description | Edit / Full Access / Admin+ |
@@ -461,7 +463,7 @@ L-- saved_at            (timestamp — when the snapshot was taken, i.e. when th
 
 | Screen | Description | Access |
 |--------|-------------|--------|
-| List View | Tasks as rows in a List | All Space members |
+| List View | Tasks as rows in a List — the due-date column shows the end date (or start date if no end date) with a days-remaining label | All Space members |
 | Board View | Tasks as cards grouped by status | All Space members |
 | Task Detail Panel | Side panel or full page with all task fields — shows `#42` in header with copy icon | All Space members |
 | Task context menu (`...`) | Quick actions: duplicate, move, archive, delete, copy link | Based on permission |
@@ -676,7 +678,6 @@ src/
         checklists/[checklistId]/route.ts <- PATCH, DELETE
         dependencies/route.ts             <- POST (with cycle check)
         dependencies/[depId]/route.ts     <- DELETE
-        time-logs/route.ts                <- POST
         subtasks/route.ts                 <- POST, GET
         activity/route.ts                 <- GET
         description-snapshot/
@@ -699,6 +700,6 @@ src/
 - Email-to-task (create task by sending an email)
 - AI-generated task descriptions
 - Task approval workflow
-- Time tracking with a live timer (only manual time log in MVP)
+- Time tracking (live timer **and** manual time log) — the time-tracking UI has been removed; all of time tracking is now out of scope
 - Subtask progress auto-closing parent task
 - **Description version history with diff and restore** — full history (like Notion's page history or Jira's description diff) is post-MVP. MVP provides one level of recovery via `TaskDescriptionSnapshot` (restore the immediately previous version only). Research note: ClickUp and Linear also do not offer description restore — they only log that the description changed, not what it was.

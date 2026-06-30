@@ -136,6 +136,27 @@ Tailwind's default spacing scale. Stick to these values — no arbitrary pixel v
 
 ---
 
+## Scrollbars & Cursor (app-wide)
+
+These are global rules in `app/globals.css` — every scrollable container and interactive element gets them automatically; no per-component work is needed.
+
+**Unified scrollbar** — thin, minimal, theme-aware:
+- Firefox: `scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb) transparent;`
+- WebKit: 6px wide, transparent track, fully rounded thumb, brightens on hover.
+- Thumb colors via CSS vars: light `--scrollbar-thumb: #c9cdd4` / hover `#aeb5bf`; dark `rgba(255,255,255,.18)` / hover `rgba(255,255,255,.32)`. The same vars are set under `.force-light` so forced-light surfaces match.
+- Do **not** add custom scrollbar styling to individual containers — rely on the global rule.
+
+**Cursor** — Tailwind v4's Preflight resets buttons to `cursor: default`. We restore the expected pointer globally:
+```css
+button:not(:disabled),
+[role="button"]:not(:disabled),
+label[for],
+summary { cursor: pointer; }
+```
+Disabled buttons keep the default cursor (the `:not(:disabled)` guard). New buttons need no extra class to get the pointer.
+
+---
+
 ## Components
 
 ### Buttons

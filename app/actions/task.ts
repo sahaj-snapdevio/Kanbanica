@@ -341,7 +341,7 @@ export async function updateTask(
   const [existing] = await db
     .select({ title: task.title, priority: task.priority, description: task.description })
     .from(task)
-    .where(and(eq(task.id, taskId), listId != null ? eq(task.listId, listId) : isNull(task.listId)))
+    .where(and(eq(task.id, taskId), listId ? eq(task.listId, listId) : isNull(task.listId)))
     .limit(1);
   if (!existing) return { error: "Task not found" };
 
@@ -454,7 +454,7 @@ export async function updateTaskStatus(
   await db
     .update(task)
     .set({ statusId, updatedAt: new Date() })
-    .where(and(eq(task.id, taskId), listId != null ? eq(task.listId, listId) : isNull(task.listId)));
+    .where(and(eq(task.id, taskId), listId ? eq(task.listId, listId) : isNull(task.listId)));
 
   await writeActivityLog(taskId, session.user.id, "status_changed", {
     from: existing.statusId,
@@ -509,7 +509,7 @@ export async function deleteTask(
   const permErr = await requireFullAccess(session.user.id, workspaceId, spaceId);
   if (permErr) return { error: "You don't have permission to delete tasks" };
 
-  await db.delete(task).where(and(eq(task.id, taskId), listId != null ? eq(task.listId, listId) : isNull(task.listId)));
+  await db.delete(task).where(and(eq(task.id, taskId), listId ? eq(task.listId, listId) : isNull(task.listId)));
 
   if (listId) revalidateList(workspaceId, spaceId, listId); else revalidateSpace(workspaceId, spaceId);
   return { ok: true };
@@ -540,7 +540,7 @@ export async function archiveTask(
       pinnedToListOrder: null,
       updatedAt: new Date(),
     })
-    .where(and(eq(task.id, taskId), listId != null ? eq(task.listId, listId) : isNull(task.listId)));
+    .where(and(eq(task.id, taskId), listId ? eq(task.listId, listId) : isNull(task.listId)));
 
   await writeActivityLog(taskId, session.user.id, "task_archived");
   if (listId) revalidateList(workspaceId, spaceId, listId); else revalidateSpace(workspaceId, spaceId);
@@ -562,7 +562,7 @@ export async function unarchiveTask(
   await db
     .update(task)
     .set({ isArchived: false, archivedAt: null, updatedAt: new Date() })
-    .where(and(eq(task.id, taskId), listId != null ? eq(task.listId, listId) : isNull(task.listId)));
+    .where(and(eq(task.id, taskId), listId ? eq(task.listId, listId) : isNull(task.listId)));
 
   await writeActivityLog(taskId, session.user.id, "task_unarchived");
   if (listId) revalidateList(workspaceId, spaceId, listId); else revalidateSpace(workspaceId, spaceId);
@@ -946,7 +946,7 @@ export async function deleteTimeLog(
 export async function bulkUpdateStatus(
   workspaceId: string,
   spaceId: string,
-  listId: string,
+  _listId: string,
   taskIds: string[],
   statusId: string,
 ): Promise<{ ok: true } | { error: string }> {
@@ -955,19 +955,38 @@ export async function bulkUpdateStatus(
   const permErr = await requireEditAccess(session.user.id, workspaceId, spaceId);
   if (permErr) return permErr;
 
+  if (taskIds.length === 0) return { ok: true };
+
+  // A status always belongs to exactly one list. Derive the target list from the
+  // status itself rather than trusting the caller's listId — the sprint view (and
+  // any cross-list view) doesn't have a single list to pass, so only the status's
+  // own list is authoritative. This keeps the update scoped to tasks that can
+  // legitimately receive this status.
+  const [statusRow] = await db
+    .select({ listId: listStatus.listId })
+    .from(listStatus)
+    .innerJoin(list, eq(listStatus.listId, list.id))
+    .where(and(eq(listStatus.id, statusId), eq(list.spaceId, spaceId)))
+    .limit(1);
+
+  if (!statusRow) return { error: "Status not found" };
+
+  // Set the status and align the task's list with the status's own list. This
+  // covers sprint tasks that have no list yet (their listId is null, so a
+  // list-scoped filter would never match them) and keeps status/list consistent.
   await db
     .update(task)
-    .set({ statusId, updatedAt: new Date() })
-    .where(and(inArray(task.id, taskIds), eq(task.listId, listId)));
+    .set({ statusId, listId: statusRow.listId, updatedAt: new Date() })
+    .where(and(inArray(task.id, taskIds), eq(task.spaceId, spaceId)));
 
-  revalidateList(workspaceId, spaceId, listId);
+  revalidateList(workspaceId, spaceId, statusRow.listId);
   return { ok: true };
 }
 
 export async function bulkDeleteTasks(
   workspaceId: string,
   spaceId: string,
-  listId: string,
+  _listId: string,
   taskIds: string[],
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -975,18 +994,22 @@ export async function bulkDeleteTasks(
   const permErr = await requireFullAccess(session.user.id, workspaceId, spaceId);
   if (permErr) return { error: "You don't have permission to delete tasks" };
 
+  if (taskIds.length === 0) return { ok: true };
+
+  // Scope by space, not a single list — the sprint view (and other cross-list
+  // views) selects tasks that may span lists and has no single listId to pass.
   await db
     .delete(task)
-    .where(and(inArray(task.id, taskIds), eq(task.listId, listId)));
+    .where(and(inArray(task.id, taskIds), eq(task.spaceId, spaceId)));
 
-  revalidateList(workspaceId, spaceId, listId);
+  revalidateSpace(workspaceId, spaceId);
   return { ok: true };
 }
 
 export async function bulkArchiveTasks(
   workspaceId: string,
   spaceId: string,
-  listId: string,
+  _listId: string,
   taskIds: string[],
 ): Promise<{ ok: true } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -994,12 +1017,15 @@ export async function bulkArchiveTasks(
   const permErr = await requireEditAccess(session.user.id, workspaceId, spaceId);
   if (permErr) return permErr;
 
+  if (taskIds.length === 0) return { ok: true };
+
+  // Scope by space, not a single list — see bulkDeleteTasks.
   await db
     .update(task)
     .set({ isArchived: true, archivedAt: new Date(), updatedAt: new Date() })
-    .where(and(inArray(task.id, taskIds), eq(task.listId, listId)));
+    .where(and(inArray(task.id, taskIds), eq(task.spaceId, spaceId)));
 
-  revalidateList(workspaceId, spaceId, listId);
+  revalidateSpace(workspaceId, spaceId);
   return { ok: true };
 }
 

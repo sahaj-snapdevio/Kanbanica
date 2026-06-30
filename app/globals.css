@@ -9,11 +9,26 @@
 * {
   box-sizing: border-box;
   scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
+/* Unified app-wide scrollbar (WebKit): 6px, transparent track, rounded
+   theme-adaptive thumb that brightens on hover / while scrolling. Colors are
+   defined as --scrollbar-thumb / --scrollbar-thumb-hover further down. */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover,
+*:hover::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb-hover);
 }
 
 html {
@@ -414,6 +429,8 @@ body:has(.workspace-shell) {
   --bg-app:      #F7F9FB;
   --bg-surface:  #FFFFFF;
   --bg-elevated: #FFFFFF;
+  --scrollbar-thumb: #c9cdd4;
+  --scrollbar-thumb-hover: #aeb5bf;
   --background:  #FFFFFF;
   --foreground:  #0F1117;
   --card:        #FFFFFF;
@@ -452,6 +469,27 @@ body:has(.workspace-shell) {
   input {
     font: inherit;
   }
+  /* Tailwind v4's Preflight resets buttons to cursor: default. Restore the
+     pointer cursor for all enabled buttons / button-role elements app-wide. */
+  button:not(:disabled),
+  [role="button"]:not(:disabled),
+  label[for],
+  summary {
+    cursor: pointer;
+  }
+}
+
+/* ── Scrollbar colors (theme-adaptive) ───────────────────────────────────────
+   Drive the unified app-wide scrollbar defined near the top of this file.
+   Subtle neutral grays in light mode; low-opacity whites in dark mode.
+   ────────────────────────────────────────────────────────────────────────── */
+:root {
+  --scrollbar-thumb: #c9cdd4;
+  --scrollbar-thumb-hover: #aeb5bf;
+}
+.dark {
+  --scrollbar-thumb: rgba(255, 255, 255, 0.18);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.32);
 }
 
 /* ── Mask CTA Button ────────────────────────────────────────────────────────

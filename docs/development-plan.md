@@ -666,7 +666,7 @@ Phase 20 ->  QA & Launch Prep
 - [ ] Add / update / delete Checklist
 - [ ] Add / update / check / delete ChecklistItem
 - [ ] Add / remove Dependency
-- [ ] Log time
+- [ ] ~~Log time~~ (dropped — time-tracking removed from the product)
 - [ ] Get Activity Log for a Task
 
 **UI:**

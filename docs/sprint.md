@@ -153,7 +153,8 @@ Visible on the Sprint panel and Sprint detail page.
 ### 7. Close Sprint
 
 - **Who can close:** Members with **Full Access**, Admin, Owner
-- Triggered manually — sprints do not auto-close when the end date passes
+- Triggered manually, **or** automatically by the background worker when the space has **Auto-mark sprint as done** enabled and the sprint's end date has passed (see [Sprint Settings](#sprint-settings) and [Auto-Close Job Spec](#auto-close-job-spec))
+- Both paths run the same shared logic — `closeSprintAndRollover()` in `lib/sprint/rollover.ts`
 
 **Close Sprint modal — step 1: Mark tasks done (optional)**
 
@@ -182,11 +183,13 @@ If any incomplete tasks remain (user skipped step 1 or only some were closed), u
 | Option | Description |
 |--------|-------------|
 | Move to Backlog | Task is removed from the sprint, stays in the List with no sprint assignment |
-| Move to Next Sprint | Task is assigned to a selected existing Planned sprint |
+| Move to Next Sprint | Task is assigned to a selected existing Planned sprint — or, when the space has **Auto-create next sprint** enabled, to a newly auto-created next sprint |
 | Leave as-is | Task stays in the closed sprint for reference (no further action) |
 
 - User can apply one option to **all remaining incomplete tasks at once** (bulk apply) or handle them individually row by row
-- If no Planned sprint exists for "Move to Next Sprint", the option is disabled with a tooltip: `"No planned sprint available — create one first"`
+- "Move to Next Sprint" behaviour depends on the space's **Auto-create next sprint** setting:
+  - **Enabled:** no existing Planned sprint is required — the modal shows _"A new sprint will be created automatically"_ and `closeSprintAndRollover()` creates it (or reuses an existing PLANNED sprint) and carries the tasks over
+  - **Disabled:** an existing Planned sprint must be selected; if none exists the option is disabled with a tooltip: `"No planned sprint available — create one first"`
 
 **After closing:**
 - Sprint status changes to **Closed**
@@ -244,6 +247,8 @@ The Sprint has its own Board View showing all tasks assigned to the active Sprin
 
 The Project Backlog is accessible via a toggle: `Show Backlog` — it displays all unassigned tasks from all Lists in the Project.
 
+**Creating tasks from the sprint view:** `getActiveSprintView()` returns a `defaultListId` so that tasks quick-created inside the sprint land in a real List instead of "No Status". It resolves to the first List among the sprint's existing tasks, falling back to the space's first non-archived List.
+
 ---
 
 ## Data Model
@@ -258,9 +263,9 @@ Sprint
 ├── start_date              (date, required)
 ├── duration_weeks          (integer, required — 1 | 2 | 3 | 4)
 ├── end_date                (date, required — calculated: start_date + duration_weeks * 7)
-├── auto_create_next        (boolean, default: false)
-├── auto_close_on_next      (boolean, default: false — only relevant when auto_create_next = true)
-├── auto_incomplete_strategy (enum: move_to_backlog | move_to_next_sprint | leave_as_is, default: move_to_backlog — only relevant when auto_close_on_next = true)
+├── auto_create_next        (boolean, default: false — LEGACY/display only, see note below)
+├── auto_close_on_next      (boolean, default: false — LEGACY/display only)
+├── auto_incomplete_strategy (enum: move_to_backlog | move_to_next_sprint | leave_as_is, default: move_to_backlog — LEGACY/display only)
 ├── started_at              (timestamp, nullable — when sprint was manually started)
 ├── closed_at               (timestamp, nullable — when sprint was closed)
 ├── created_by              (foreign key → User)
@@ -276,6 +281,8 @@ TaskSprint
 ```
 
 > Story points live on `TaskSprint`, not on `Task` directly — the same task may have different story point estimates across different sprints if it is carried over.
+
+> **Auto-close source of truth:** the `auto_create_next` / `auto_close_on_next` / `auto_incomplete_strategy` columns on `Sprint` are legacy/display fields. Auto-close behaviour is now driven by **space-level** settings — `space.sprint_auto_mark_done`, `space.sprint_auto_create_next`, `space.sprint_auto_move_incomplete` (see [Sprint Settings](#sprint-settings)). Both the manual close action and the background worker read these space settings.
 
 ---
 
@@ -352,13 +359,14 @@ TaskSprint
 8. Closing a Sprint shows a two-step modal: (1) optional "Mark all as Done" shortcut, (2) handle any remaining incomplete tasks — move to backlog, move to next sprint, or leave as-is. If all tasks are closed after step 1, step 2 is skipped automatically.
 9. A Closed Sprint cannot be reopened.
 10. Only Planned sprints can be deleted — Active and Closed sprints cannot be deleted.
-11. Sprint end date does not auto-close the sprint unless **Auto-close on next sprint** is enabled.
-12. When **Auto-create next sprint** is enabled, a new Planned sprint is created automatically when the end date is reached — it is never auto-started.
-13. When **Auto-close on next sprint** is enabled, incomplete tasks are handled according to `auto_incomplete_strategy` — no manual decision prompt since the action is automated. Default strategy is `move_to_backlog`.
-14. If `auto_incomplete_strategy = move_to_next_sprint` but no planned sprint exists at close time, the system falls back to `move_to_backlog` and logs a warning in the activity feed: `"Sprint auto-closed — no planned sprint found, incomplete tasks moved to backlog instead."`
-15. **Auto-close on next sprint** can only be enabled when **Auto-create next sprint** is also enabled — it has no meaning otherwise.
-16. Sprint History is read-only — no edits after closing.
-17. Sprints are scoped to a Project — they cannot span multiple Projects.
+11. Sprint end date does not auto-close the sprint unless the space-level **Auto-mark sprint as done** (`sprint_auto_mark_done`) setting is enabled. The background worker then closes ACTIVE sprints whose end date has passed.
+12. When the space-level **Auto-create next sprint** (`sprint_auto_create_next`) setting is enabled, closing a sprint creates a new PLANNED sprint (or reuses an existing one) — it is never auto-started. This applies to **both** the worker and the manual "Move to Next Sprint" choice.
+13. When the space-level **Auto-move incomplete tasks** (`sprint_auto_move_incomplete`) setting is enabled, the worker carries incomplete tasks into the next sprint (`move_to_next_sprint`); otherwise they return to the backlog (`move_to_backlog`).
+14. If incomplete tasks should move to the next sprint but none can be resolved/created, they are returned to the backlog (the `taskSprint` link is simply removed).
+15. The three space-level sprint settings are **independent** — any can be toggled on its own (there is no longer an "auto-close requires auto-create" coupling).
+16. `closeSprintAndRollover()` is **idempotent** — it no-ops on a sprint that is not currently ACTIVE, so the worker can safely retry and the manual + automated paths cannot double-close.
+17. Sprint History is read-only — no edits after closing.
+18. Sprints are scoped to a Project — they cannot span multiple Projects.
 
 ---
 
@@ -397,90 +405,59 @@ await boss.schedule(JOB_NAMES.SPRINT_AUTO_CLOSE, '*/15 * * * *', {})
 // Runs every 15 minutes
 ```
 
-**Handler** (`src/lib/worker/handlers/sprint-auto-close.ts`):
-1. Query all sprints eligible for auto-close:
+**Handler** (`lib/worker/handlers/sprint-auto-close.ts`):
+1. Query all sprints eligible for auto-close, joining the **space** so the space-level settings drive everything:
    ```sql
-   SELECT s.* FROM Sprint s
+   SELECT s.id, s.name, s.space_id, s.created_by,
+          sp.sprint_auto_create_next, sp.sprint_auto_move_incomplete
+   FROM Sprint s
+   INNER JOIN Space sp ON s.space_id = sp.id
    WHERE s.status = 'ACTIVE'
+     AND sp.sprint_auto_mark_done = true
      AND s.end_date < CURRENT_DATE
-     AND s.auto_close_on_next = true
-   -- Note: sprints are now scoped to space_id (Project), not list_id
    ```
-2. For each eligible sprint, run the close transaction (see below)
-3. If `auto_create_next = true`, create the next sprint (status: PLANNED, start_date = closed sprint end_date + 1 day, same duration)
-4. Write `ActivityLog` entry per affected sprint
+2. For each eligible sprint, call the shared `closeSprintAndRollover()` (see below), passing:
+   - `autoCreateNext = space.sprint_auto_create_next`
+   - `incompleteStrategy = space.sprint_auto_move_incomplete ? "move_to_next_sprint" : "move_to_backlog"`
+3. Errors are caught per-sprint and logged — one bad sprint does not abort the run.
 
-**Idempotency guard:** At the start of the handler, re-fetch each sprint inside the transaction and check `status = 'ACTIVE'` before acting. If another process already closed it, skip silently.
+**Idempotency guard:** `closeSprintAndRollover()` re-fetches the sprint and returns a no-op when its status is not `ACTIVE`, so retries / overlapping runs cannot double-close.
 
-### Close Sprint Transaction Spec
+### Close Sprint — Shared Rollover Module
 
-All three incomplete-task strategies must be handled inside a single `db.$transaction()`:
+Both the manual `closeSprint` server action (`app/actions/sprint.ts`) and the auto-close worker delegate to a single shared function so the two paths can never diverge:
 
 ```typescript
-// src/lib/sprints/close-sprint.ts
+// lib/sprint/rollover.ts  (plain module — NO "use server", so the standalone
+// worker process can import it safely)
 
-async function closeSprint(
-  sprintId: string,
-  strategy: 'move_to_backlog' | 'move_to_next_sprint' | 'leave_as_is',
-  targetSprintId?: string,  // required when strategy = 'move_to_next_sprint'
-  actorId: string,
-) {
-  return db.$transaction(async (tx) => {
-    // 1. Lock and re-fetch sprint -- idempotency guard
-    const sprint = await tx.sprint.findUniqueOrThrow({ where: { id: sprintId } })
-    if (sprint.status !== 'ACTIVE') throw new Error('Sprint is not active')
+export type IncompleteStrategy =
+  | "move_to_backlog"
+  | "move_to_next_sprint"
+  | "leave_as_is";
 
-    // 2. Find incomplete tasks (status type != 'CLOSED')
-    const incompleteTasks = await tx.taskSprint.findMany({
-      where: {
-        sprintId,
-        task: { status: { type: { not: 'CLOSED' } } }
-      },
-      include: { task: true }
-    })
-
-    // 3. Apply strategy
-    if (strategy === 'move_to_backlog') {
-      await tx.taskSprint.deleteMany({
-        where: { sprintId, taskId: { in: incompleteTasks.map(t => t.taskId) } }
-      })
-    } else if (strategy === 'move_to_next_sprint') {
-      if (!targetSprintId) throw new Error('targetSprintId required for move_to_next_sprint')
-      // Verify target sprint exists and is PLANNED
-      const target = await tx.sprint.findUniqueOrThrow({ where: { id: targetSprintId } })
-      if (target.status !== 'PLANNED') throw new Error('Target sprint must be PLANNED')
-      // Move: delete from current, insert into target
-      await tx.taskSprint.deleteMany({
-        where: { sprintId, taskId: { in: incompleteTasks.map(t => t.taskId) } }
-      })
-      await tx.taskSprint.createMany({
-        data: incompleteTasks.map(t => ({
-          taskId: t.taskId,
-          sprintId: targetSprintId,
-          // story_points preserved from original TaskSprint
-          storyPoints: t.storyPoints,
-        }))
-      })
-    }
-    // 'leave_as_is' -- no TaskSprint changes, tasks stay linked to closed sprint for history
-
-    // 4. Close the sprint
-    await tx.sprint.update({
-      where: { id: sprintId },
-      data: { status: 'CLOSED', closedAt: new Date() }
-    })
-
-    // 5. Write ActivityLog entries
-    // One entry per sprint close action + one per task affected
-  })
-}
+export async function closeSprintAndRollover(params: {
+  spaceId: string;
+  sprintId: string;
+  actorId: string;
+  incompleteStrategy: IncompleteStrategy;
+  /** Explicit target sprint for `move_to_next_sprint` (manual flow). */
+  targetSprintId?: string;
+  /** Whether to create the next sprint when none is targeted/planned. */
+  autoCreateNext: boolean;
+}): Promise<{ nextSprintId: string | null }>;
 ```
 
-**Fallback for `move_to_next_sprint` when no PLANNED sprint exists:**
-```typescript
-// If no targetSprintId and strategy = move_to_next_sprint, fall back to move_to_backlog
-// Log a warning to ActivityLog: "Sprint auto-closed — no planned sprint found, incomplete tasks moved to backlog"
-```
+**Steps:**
+1. **Load + idempotency guard** — re-fetch the sprint; if its status is not `ACTIVE`, return `{ nextSprintId: null }` (no-op). This is what makes worker retries and the manual/auto paths safe.
+2. **Collect incomplete tasks** — tasks linked via `taskSprint` whose `listStatus.type !== "CLOSED"` (archived tasks excluded).
+3. **Resolve the next/target sprint:**
+   - An explicit `targetSprintId` (manual flow) wins, if it's a valid `PLANNED` sprint in the space.
+   - Else, when `autoCreateNext` is true: reuse the first existing `PLANNED` sprint, or create a new one (`incrementSprintName(current.name)`, `startDate = endDate + 1 day`, same `durationWeeks`).
+4. **Roll incomplete tasks over** — remove their `taskSprint` link from the closing sprint; if `move_to_next_sprint` and a next sprint was resolved, insert links into it (`onConflictDoNothing`). `move_to_backlog` is just the removal; `leave_as_is` skips this step.
+5. **Close the sprint** — set `status = "CLOSED"`, `closedAt = now`.
+
+Helpers `addDays()` and `incrementSprintName()` also live in this module (previously duplicated in the action and the worker).
 
 ### Sprint Progress Query
 
@@ -755,6 +732,10 @@ src/
   server/
     sprint.ts                   <- createSprint, startSprint, deleteSprint, addTaskToSprint, markAllSprintTasksDone, closeSprint, getBacklog
     sprint-progress.ts          <- getSprintProgress
+  lib/sprint/
+    rollover.ts                 <- closeSprintAndRollover() + addDays/incrementSprintName (shared module, no "use server")
   lib/worker/handlers/
-    sprint-auto-close.ts
+    sprint-auto-close.ts        <- reads space-level settings, calls closeSprintAndRollover()
 ```
+
+> Note: in the current codebase server actions live under `app/actions/sprint.ts` (not `server/`); `closeSprint` there delegates to `lib/sprint/rollover.ts`.
