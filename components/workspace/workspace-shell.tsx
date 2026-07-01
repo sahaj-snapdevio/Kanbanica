@@ -40,6 +40,7 @@ import useSWR, { useSWRConfig } from "swr";
 import { SearchPalette } from "@/components/search/search-palette";
 import { archiveSpace, deleteSpace, unarchiveSpace } from "@/app/actions/space";
 import { archiveList, duplicateList, unarchiveList } from "@/app/actions/list";
+import { toastWithUndo } from "@/lib/undo-toast";
 import { SpaceActionDialog } from "@/components/workspace/space-action-dialog";
 import { authClient } from "@/lib/auth-client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -554,7 +555,13 @@ export function WorkspaceShell({
                                 <button
                                   onClick={async () => {
                                     const res = await archiveList(workspace.id, s.id, l.id);
-                                    if (!("error" in res)) router.push(`/${workspace.id}`);
+                                    if (!("error" in res)) {
+                                      router.push(`/${workspace.id}/${s.id}`);
+                                      toastWithUndo("List archived", async () => {
+                                        const undo = await unarchiveList(workspace.id, s.id, l.id);
+                                        if (!("error" in undo)) router.push(`/${workspace.id}/${s.id}/list/${l.id}`);
+                                      });
+                                    }
                                   }}
                                   className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                                 >
@@ -704,7 +711,7 @@ export function WorkspaceShell({
                         <span className="flex-1 truncate italic">{l.name}</span>
                         {s.canManageList && (
                           <button
-                            onClick={async () => { await unarchiveList(workspace.id, s.id, l.id); }}
+                            onClick={async () => { const res = await unarchiveList(workspace.id, s.id, l.id); if (!("error" in res)) toastWithUndo("List unarchived", async () => { await archiveList(workspace.id, s.id, l.id); }); }}
                             className="hidden group-hover:block text-2xs px-1.5 py-0.5 rounded bg-(--bg-sidebar-item-hover) hover:bg-(--bg-sidebar-item-active) text-(--text-sidebar)"
                           >
                             Unarchive

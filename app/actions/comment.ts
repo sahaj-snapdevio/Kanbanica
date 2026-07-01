@@ -10,7 +10,7 @@ import { canAccessSpace, getSpacePermission, hasPermissionLevel } from "@/lib/pe
 import { writeActivityLog } from "@/lib/activity-log";
 import { createNotifications } from "@/lib/notifications/create-notification";
 import { storage } from "@/lib/storage";
-import { revalidatePath } from "next/cache";
+import { refreshWorkspace } from "@/lib/realtime/refresh";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -52,7 +52,7 @@ async function requireSpaceAccess(userId: string, workspaceId: string, spaceId: 
 }
 
 function revalidateTask(workspaceId: string, spaceId: string, listId: string) {
-  revalidatePath(`/${workspaceId}/${spaceId}/list/${listId}`);
+  void refreshWorkspace(workspaceId, [`/${workspaceId}/${spaceId}/list/${listId}`]);
 }
 
 // ─── extractMentionIds ────────────────────────────────────────────────────────

@@ -15,7 +15,7 @@ import {
 } from "@/db/schema";
 import { getWorkspaceMembership } from "@/lib/permissions";
 import { createNotifications } from "@/lib/notifications/create-notification";
-import { revalidatePath } from "next/cache";
+import { refreshWorkspace } from "@/lib/realtime/refresh";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -164,7 +164,7 @@ export async function createChannel(
     });
   });
 
-  revalidatePath(`/${workspaceId}`);
+  void refreshWorkspace(workspaceId);
   return { channelId };
 }
 
@@ -197,7 +197,7 @@ export async function deleteChannel(
 
   await db.delete(channel).where(and(eq(channel.id, channelId), eq(channel.workspaceId, workspaceId)));
 
-  revalidatePath(`/${workspaceId}`);
+  void refreshWorkspace(workspaceId);
   return { ok: true };
 }
 

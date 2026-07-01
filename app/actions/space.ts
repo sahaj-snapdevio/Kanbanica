@@ -1,15 +1,73 @@
 "use server";
 
 import { headers } from "next/headers";
-import { revalidatePath } from "next/cache";
+import { refreshWorkspace } from "@/lib/realtime/refresh";
 import { createId } from "@paralleldrive/cuid2";
 import { and, count, eq, ne } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { list, listStatus, space, spaceMember } from "@/db/schema";
+import { list, listStatus, space, spaceMember, workspaceMember } from "@/db/schema";
 import { getWorkspaceMembership } from "@/lib/permissions";
+import { createNotifications } from "@/lib/notifications/create-notification";
 
 type SpacePermission = "FULL_ACCESS" | "EDIT" | "VIEW";
+
+const PERMISSION_LABELS: Record<SpacePermission, string> = {
+  FULL_ACCESS: "Full access",
+  EDIT: "Edit",
+  VIEW: "View",
+};
+
+/** Fetch a Space's name for user-facing notification titles ("Project" in UI copy). */
+async function spaceName(spaceId: string): Promise<string> {
+  const [row] = await db
+    .select({ name: space.name })
+    .from(space)
+    .where(eq(space.id, spaceId))
+    .limit(1);
+  return row?.name ?? "a project";
+}
+
+function actorNameFrom(session: { user: { name?: string | null; email?: string | null } }): string {
+  return session.user.name ?? session.user.email ?? "Someone";
+}
+
+/**
+ * Everyone who can ACCESS a Space — recipients for project-wide events (archive /
+ * restore). Mirrors `getAccessibleSpaceIds`: owners/admins always, workspace members
+ * for public spaces, and explicit `space_member` rows (guests + private-space members).
+ * NOTE: public spaces usually have no explicit `space_member` rows, so we must derive
+ * recipients from workspace membership, not just the `space_member` table.
+ */
+async function spaceRecipientUserIds(workspaceId: string, spaceId: string): Promise<string[]> {
+  const [sp] = await db
+    .select({ isPrivate: space.isPrivate })
+    .from(space)
+    .where(eq(space.id, spaceId))
+    .limit(1);
+  const isPrivate = sp?.isPrivate ?? false;
+
+  const [members, explicit] = await Promise.all([
+    db
+      .select({ userId: workspaceMember.userId, role: workspaceMember.role })
+      .from(workspaceMember)
+      .where(and(eq(workspaceMember.workspaceId, workspaceId), eq(workspaceMember.status, "ACTIVE"))),
+    db
+      .select({ userId: spaceMember.userId })
+      .from(spaceMember)
+      .where(eq(spaceMember.spaceId, spaceId)),
+  ]);
+
+  const explicitIds = new Set(explicit.map((r) => r.userId).filter((id): id is string => id !== null));
+  const ids = new Set<string>();
+  for (const m of members) {
+    if (!m.userId) continue;
+    if (m.role === "OWNER" || m.role === "ADMIN") ids.add(m.userId);
+    else if (m.role === "MEMBER" && !isPrivate) ids.add(m.userId);
+    else if (explicitIds.has(m.userId)) ids.add(m.userId); // guest / private-space member
+  }
+  return [...ids];
+}
 
 async function requireWorkspaceAdmin(userId: string, workspaceId: string) {
   const m = await getWorkspaceMembership(userId, workspaceId);
@@ -83,7 +141,7 @@ export async function createSpace(
     );
   });
 
-  revalidatePath(`/${workspaceId}`, "layout");
+  void refreshWorkspace(workspaceId);
   return { spaceId, listId };
 }
 
@@ -115,7 +173,7 @@ export async function updateSpace(
     .set({ name, color: data.color, isPrivate: data.isPrivate, updatedAt: new Date() })
     .where(and(eq(space.id, spaceId), eq(space.workspaceId, workspaceId)));
 
-  revalidatePath(`/${workspaceId}`, "layout");
+  void refreshWorkspace(workspaceId);
   return { ok: true };
 }
 
@@ -134,7 +192,21 @@ export async function archiveSpace(
     .set({ isArchived: true, archivedAt: new Date(), updatedAt: new Date() })
     .where(and(eq(space.id, spaceId), eq(space.workspaceId, workspaceId)));
 
-  revalidatePath(`/${workspaceId}`, "layout");
+  const archivedRecipients = await spaceRecipientUserIds(workspaceId, spaceId);
+  if (archivedRecipients.length > 0) {
+    createNotifications({
+      workspaceId,
+      actorId: session.user.id,
+      recipientIds: archivedRecipients,
+      triggerType: "space_archived",
+      entityType: "SPACE",
+      entityId: spaceId,
+      title: `${await spaceName(spaceId)} was archived by ${actorNameFrom(session)}`,
+      muteCheckEntityIds: [spaceId],
+    });
+  }
+
+  void refreshWorkspace(workspaceId);
   return { ok: true };
 }
 
@@ -153,7 +225,21 @@ export async function unarchiveSpace(
     .set({ isArchived: false, archivedAt: null, updatedAt: new Date() })
     .where(and(eq(space.id, spaceId), eq(space.workspaceId, workspaceId)));
 
-  revalidatePath(`/${workspaceId}`, "layout");
+  const restoredRecipients = await spaceRecipientUserIds(workspaceId, spaceId);
+  if (restoredRecipients.length > 0) {
+    createNotifications({
+      workspaceId,
+      actorId: session.user.id,
+      recipientIds: restoredRecipients,
+      triggerType: "space_restored",
+      entityType: "SPACE",
+      entityId: spaceId,
+      title: `${actorNameFrom(session)} restored ${await spaceName(spaceId)}`,
+      muteCheckEntityIds: [spaceId],
+    });
+  }
+
+  void refreshWorkspace(workspaceId);
   return { ok: true };
 }
 
@@ -169,7 +255,7 @@ export async function deleteSpace(
 
   await db.delete(space).where(and(eq(space.id, spaceId), eq(space.workspaceId, workspaceId)));
 
-  revalidatePath(`/${workspaceId}`, "layout");
+  void refreshWorkspace(workspaceId);
   return { ok: true };
 }
 
@@ -205,6 +291,17 @@ export async function addSpaceMember(
     updatedAt: new Date(),
   });
 
+  createNotifications({
+    workspaceId,
+    actorId: session.user.id,
+    recipientIds: [userId],
+    triggerType: "space_added",
+    entityType: "SPACE",
+    entityId: spaceId,
+    title: `${actorNameFrom(session)} added you to ${await spaceName(spaceId)}`,
+    muteCheckEntityIds: [spaceId],
+  });
+
   return { ok: true };
 }
 
@@ -231,6 +328,17 @@ export async function changeSpaceMemberPermission(
     .set({ permission, updatedAt: new Date() })
     .where(and(eq(spaceMember.spaceId, spaceId), eq(spaceMember.userId, userId)));
 
+  createNotifications({
+    workspaceId,
+    actorId: session.user.id,
+    recipientIds: [userId],
+    triggerType: "space_permission_changed",
+    entityType: "SPACE",
+    entityId: spaceId,
+    title: `Your permission in ${await spaceName(spaceId)} was changed to ${PERMISSION_LABELS[permission]}`,
+    muteCheckEntityIds: [spaceId],
+  });
+
   return { ok: true };
 }
 
@@ -248,6 +356,17 @@ export async function removeSpaceMember(
   await db
     .delete(spaceMember)
     .where(and(eq(spaceMember.spaceId, spaceId), eq(spaceMember.userId, userId)));
+
+  createNotifications({
+    workspaceId,
+    actorId: session.user.id,
+    recipientIds: [userId],
+    triggerType: "space_removed",
+    entityType: "SPACE",
+    entityId: spaceId,
+    title: `You were removed from ${await spaceName(spaceId)}`,
+    muteCheckEntityIds: [spaceId],
+  });
 
   return { ok: true };
 }

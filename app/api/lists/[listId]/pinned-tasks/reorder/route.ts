@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { list, space } from "@/db/schema";
 import { requireSpacePermission } from "@/lib/permissions";
 import { reorderListPins } from "@/server/list-pin";
+import { refreshWorkspace } from "@/lib/realtime/refresh";
 
 // PATCH /api/lists/:listId/pinned-tasks/reorder
 export async function PATCH(
@@ -36,5 +37,6 @@ export async function PATCH(
   const result = await reorderListPins(listId, body.orderedIds);
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: 500 });
 
+  await refreshWorkspace(l.workspaceId);
   return NextResponse.json({ ok: true });
 }

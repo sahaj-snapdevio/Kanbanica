@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { task, list } from "@/db/schema";
 import { requireSpacePermission } from "@/lib/permissions";
 import { pinTaskToList, unpinTaskFromList } from "@/server/list-pin";
+import { refreshWorkspace } from "@/lib/realtime/refresh";
 
 async function resolveTask(taskId: string) {
   const [row] = await db
@@ -47,6 +48,7 @@ export async function POST(
     return NextResponse.json({ error: result.error }, { status });
   }
 
+  await refreshWorkspace(ctx.workspaceId);
   return NextResponse.json({ ok: true });
 }
 
@@ -73,5 +75,6 @@ export async function DELETE(
   const result = await unpinTaskFromList(taskId);
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: 500 });
 
+  await refreshWorkspace(ctx.workspaceId);
   return NextResponse.json({ ok: true });
 }

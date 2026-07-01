@@ -1,13 +1,13 @@
 "use server";
 
 import { headers } from "next/headers";
-import { revalidatePath } from "next/cache";
 import { createId } from "@paralleldrive/cuid2";
 import { and, count, eq, inArray, max, ne } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { list, listStatus, task, taskAttachment, spaceMember, space } from "@/db/schema";
 import { getWorkspaceMembership } from "@/lib/permissions";
+import { refreshWorkspace } from "@/lib/realtime/refresh";
 
 // ── Permission helpers ─────────────────────────────────────────────────────
 
@@ -100,7 +100,7 @@ export async function createList(
     );
   });
 
-  revalidatePath(`/${workspaceId}`, "layout");
+  void refreshWorkspace(workspaceId);
   return { listId };
 }
 
@@ -124,7 +124,7 @@ export async function updateList(
     .set({ name, color: data.color ?? null, description: data.description ?? null, updatedAt: new Date() })
     .where(and(eq(list.id, listId), eq(list.spaceId, spaceId)));
 
-  revalidatePath(`/${workspaceId}`, "layout");
+  void refreshWorkspace(workspaceId);
   return { ok: true };
 }
 
@@ -144,7 +144,7 @@ export async function archiveList(
     .set({ isArchived: true, archivedAt: new Date(), updatedAt: new Date() })
     .where(and(eq(list.id, listId), eq(list.spaceId, spaceId)));
 
-  revalidatePath(`/${workspaceId}`, "layout");
+  void refreshWorkspace(workspaceId);
   return { ok: true };
 }
 
@@ -164,7 +164,7 @@ export async function unarchiveList(
     .set({ isArchived: false, archivedAt: null, updatedAt: new Date() })
     .where(and(eq(list.id, listId), eq(list.spaceId, spaceId)));
 
-  revalidatePath(`/${workspaceId}`, "layout");
+  void refreshWorkspace(workspaceId);
   return { ok: true };
 }
 
@@ -200,7 +200,7 @@ export async function deleteList(
 
   await db.delete(list).where(and(eq(list.id, listId), eq(list.spaceId, spaceId)));
 
-  revalidatePath(`/${workspaceId}`, "layout");
+  void refreshWorkspace(workspaceId);
   return { ok: true };
 }
 
@@ -252,7 +252,7 @@ export async function duplicateList(
     }
   });
 
-  revalidatePath(`/${workspaceId}`, "layout");
+  void refreshWorkspace(workspaceId);
   return { listId: newListId };
 }
 
@@ -285,7 +285,7 @@ export async function createListStatus(
     orderIndex,
   });
 
-  revalidatePath(`/${workspaceId}`, "layout");
+  void refreshWorkspace(workspaceId);
   return { statusId };
 }
 
@@ -312,7 +312,7 @@ export async function updateListStatus(
     .set(updates)
     .where(and(eq(listStatus.id, statusId), eq(listStatus.listId, listId)));
 
-  revalidatePath(`/${workspaceId}`, "layout");
+  void refreshWorkspace(workspaceId);
   return { ok: true };
 }
 
@@ -370,7 +370,7 @@ export async function deleteListStatus(
     throw err;
   }
 
-  revalidatePath(`/${workspaceId}`, "layout");
+  void refreshWorkspace(workspaceId);
   return { ok: true };
 }
 
@@ -397,7 +397,7 @@ export async function reorderListStatuses(
     );
   });
 
-  revalidatePath(`/${workspaceId}`, "layout");
+  void refreshWorkspace(workspaceId);
   return { ok: true };
 }
 

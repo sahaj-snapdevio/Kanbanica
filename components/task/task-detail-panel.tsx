@@ -26,9 +26,11 @@ import {
   updateTaskStatus,
   deleteTask,
   archiveTask,
+  unarchiveTask,
   duplicateTask,
   getWorkspaceMembers,
 } from "@/app/actions/task";
+import { toastWithUndo } from "@/lib/undo-toast";
 import { addAssignee, removeAssignee, toggleWatcher } from "@/app/actions/task-assignee";
 import { getWorkspaceTags, createTag, deleteTag, addTaskTag, removeTaskTag } from "@/app/actions/task-tag";
 import {
@@ -340,6 +342,10 @@ export function TaskDetailPanel({
   async function handleArchive() {
     await archiveTask(workspaceId, spaceId, listId, taskId);
     onOpenChange(false);
+    toastWithUndo("Task archived", async () => {
+      await unarchiveTask(workspaceId, spaceId, listId, taskId);
+      router.refresh();
+    });
   }
 
   function handleDelete() {

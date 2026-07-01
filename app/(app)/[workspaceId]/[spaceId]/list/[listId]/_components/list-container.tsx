@@ -12,8 +12,9 @@ import {
   SquaresFourIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
-import { archiveList, duplicateList } from "@/app/actions/list";
+import { archiveList, duplicateList, unarchiveList } from "@/app/actions/list";
 import { getArchivedTasksForList } from "@/app/actions/task";
+import { toastWithUndo } from "@/lib/undo-toast";
 import { useSetTopbar } from "@/lib/topbar-context";
 import { DeleteListDialog } from "@/components/list/delete-list-dialog";
 import { CreateTaskModal } from "@/components/task/create-task-modal";
@@ -110,7 +111,7 @@ export function ListContainer({
                 <CopyIcon className="size-3.5 shrink-0 text-muted-foreground" /> Duplicate
               </button>
               <div className="my-1 h-px bg-border" />
-              <button onClick={async () => { const res = await archiveList(workspaceId, space.id, list.id); if (!("error" in res)) router.push(`/${workspaceId}`); }} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+              <button onClick={async () => { const res = await archiveList(workspaceId, space.id, list.id); if (!("error" in res)) { router.push(`/${workspaceId}/${space.id}`); toastWithUndo("List archived", async () => { const undo = await unarchiveList(workspaceId, space.id, list.id); if (!("error" in undo)) router.push(`/${workspaceId}/${space.id}/list/${list.id}`); }); } }} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
                 <ArchiveIcon className="size-3.5 shrink-0" /> Archive List
               </button>
             </>
@@ -215,6 +216,9 @@ export function ListContainer({
           members={members}
           tags={tags}
           archivedTasks={showArchived ? archivedTasks : []}
+          showArchived={showArchived}
+          onToggleArchived={handleToggleArchived}
+          archivedLoading={archivedLoading}
           onArchivedChanged={async () => {
             const result = await getArchivedTasksForList(workspaceId, space.id, list.id);
             if (!("error" in result)) setArchivedTasks(result.tasks);

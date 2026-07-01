@@ -1,7 +1,6 @@
 "use server";
 
 import { headers } from "next/headers";
-import { revalidatePath } from "next/cache";
 import { createId } from "@paralleldrive/cuid2";
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { auth } from "@/lib/auth";
@@ -28,6 +27,7 @@ import {
 } from "@/db/schema";
 import { canAccessSpace, getSpacePermission, hasPermissionLevel } from "@/lib/permissions";
 import { writeActivityLog } from "@/lib/activity-log";
+import { refreshWorkspace } from "@/lib/realtime/refresh";
 import { createNotifications } from "@/lib/notifications/create-notification";
 
 // ─── Permission helpers ──────────────────────────────────────────────────────
@@ -70,12 +70,11 @@ async function requireFullAccess(
 // ─── Revalidation helper ─────────────────────────────────────────────────────
 
 function revalidateList(workspaceId: string, spaceId: string, listId: string) {
-  revalidatePath(`/${workspaceId}/${spaceId}/list/${listId}`);
+  void refreshWorkspace(workspaceId, [`/${workspaceId}/${spaceId}/list/${listId}`]);
 }
 
 function revalidateSpace(workspaceId: string, spaceId: string) {
-  revalidatePath(`/${workspaceId}/${spaceId}`);
-  revalidatePath(`/${workspaceId}`);
+  void refreshWorkspace(workspaceId, [`/${workspaceId}/${spaceId}`, `/${workspaceId}`]);
 }
 
 // ─── Create Task ─────────────────────────────────────────────────────────────
@@ -720,7 +719,7 @@ export async function moveTask(
     toListId: targetListId,
   });
 
-  revalidatePath(`/${workspaceId}`);
+  void refreshWorkspace(workspaceId);
   return { ok: true };
 }
 
@@ -836,7 +835,7 @@ export async function createSubtask(
   });
 
   await writeActivityLog(taskId, session.user.id, "subtask_created", { title: trimmedTitle, parentTaskId });
-  if (listId) revalidatePath(`/${workspaceId}/${spaceId}/list/${listId}`);
+  void refreshWorkspace(workspaceId, listId ? [`/${workspaceId}/${spaceId}/list/${listId}`] : undefined);
   return { taskId };
 }
 
@@ -1109,7 +1108,7 @@ export async function bulkMoveTasks(
     moved++;
   }
 
-  revalidatePath(`/${workspaceId}`);
+  void refreshWorkspace(workspaceId);
   return { ok: true, moved };
 }
 

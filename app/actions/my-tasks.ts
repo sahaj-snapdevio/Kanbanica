@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { task, taskAssignee, taskTag, tag, listStatus, list, space } from "@/db/schema";
+import { task, taskAssignee, taskTag, tag, listStatus, list, space, workspace, workspaceMember } from "@/db/schema";
 import { getAccessibleSpaceIds } from "@/lib/permissions";
 
 export interface MyTask {
@@ -17,19 +17,40 @@ export interface MyTask {
   status: { id: string; name: string; color: string; type: "OPEN" | "ACTIVE" | "CLOSED" };
   list: { id: string; name: string };
   space: { id: string; name: string; color: string | null };
+  workspace: { id: string; name: string };
   tags: { id: string; name: string; color: string }[];
 }
 
-export type MyTasksGroupBy = "due_date" | "space" | "list" | "priority" | "status";
+export type MyTasksGroupBy = "due_date" | "workspace" | "space" | "list" | "priority" | "status";
 
+/**
+ * Personal task list — every task assigned to the current user across ALL their
+ * workspaces (not just the one being viewed), respecting the space access model.
+ */
 export async function getMyTasks(
-  workspaceId: string,
   options?: { showCompleted?: boolean },
 ): Promise<{ tasks: MyTask[] } | { error: string }> {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { error: "Unauthorized" };
 
-  const accessibleSpaceIds = await getAccessibleSpaceIds(session.user.id, workspaceId);
+  // Union of accessible space ids across every ACTIVE workspace the user belongs to.
+  const workspaces = await db
+    .select({ workspaceId: workspaceMember.workspaceId })
+    .from(workspaceMember)
+    .innerJoin(workspace, eq(workspaceMember.workspaceId, workspace.id))
+    .where(
+      and(
+        eq(workspaceMember.userId, session.user.id),
+        eq(workspaceMember.status, "ACTIVE"),
+        eq(workspace.status, "ACTIVE"),
+      ),
+    );
+  if (workspaces.length === 0) return { tasks: [] };
+
+  const spaceIdLists = await Promise.all(
+    workspaces.map((w) => getAccessibleSpaceIds(session.user.id, w.workspaceId)),
+  );
+  const accessibleSpaceIds = [...new Set(spaceIdLists.flat())];
   if (accessibleSpaceIds.length === 0) return { tasks: [] };
 
   // Tasks assigned to me in accessible spaces, not archived
@@ -59,11 +80,14 @@ export async function getMyTasks(
       spaceId: space.id,
       spaceName: space.name,
       spaceColor: space.color,
+      workspaceId: workspace.id,
+      workspaceName: workspace.name,
     })
     .from(task)
     .innerJoin(listStatus, eq(task.statusId, listStatus.id))
     .innerJoin(list, eq(task.listId, list.id))
     .innerJoin(space, eq(list.spaceId, space.id))
+    .innerJoin(workspace, eq(space.workspaceId, workspace.id))
     .where(
       and(
         inArray(task.id, taskIds),
@@ -112,6 +136,7 @@ export async function getMyTasks(
     status: { id: r.statusId, name: r.statusName, color: r.statusColor, type: r.statusType as MyTask["status"]["type"] },
     list: { id: r.listId, name: r.listName },
     space: { id: r.spaceId, name: r.spaceName, color: r.spaceColor },
+    workspace: { id: r.workspaceId, name: r.workspaceName },
     tags: tagsByTask.get(r.id) ?? [],
   }));
 

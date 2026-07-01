@@ -1,7 +1,7 @@
 "use server";
 
 import { headers } from "next/headers";
-import { revalidatePath } from "next/cache";
+import { refreshWorkspace } from "@/lib/realtime/refresh";
 import { createId } from "@paralleldrive/cuid2";
 import { and, asc, eq, max } from "drizzle-orm";
 import { auth } from "@/lib/auth";
@@ -10,7 +10,7 @@ import { checklist, checklistItem } from "@/db/schema";
 import { getSpacePermission, hasPermissionLevel } from "@/lib/permissions";
 
 function revalidateList(workspaceId: string, spaceId: string, listId: string) {
-  revalidatePath(`/${workspaceId}/${spaceId}/list/${listId}`);
+  void refreshWorkspace(workspaceId, [`/${workspaceId}/${spaceId}/list/${listId}`]);
 }
 
 // Checklist mutations require at least "edit" permission

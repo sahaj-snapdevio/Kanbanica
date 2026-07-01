@@ -25,6 +25,7 @@ import {
   bulkArchiveTasks,
   bulkDeleteTasks,
   bulkMoveTasks,
+  archiveTask,
   bulkUpdateStatus,
   createTask,
   reorderTasksInStatus,
@@ -32,6 +33,7 @@ import {
   updateTask,
   updateTaskStatus,
 } from "@/app/actions/task";
+import { toastWithUndo } from "@/lib/undo-toast";
 import { addAssignee, removeAssignee } from "@/app/actions/task-assignee";
 import { getSprints, bulkMoveTasksToSprint } from "@/app/actions/sprint";
 import { createListStatus, getWorkspaceLists, updateListStatus } from "@/app/actions/list";
@@ -67,6 +69,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { TaskListRow, type TaskListRowProps } from "@/components/task/task-list-row";
+import { useRealtimePause } from "@/components/realtime/realtime-provider";
 
 interface Status {
   id: string;
@@ -107,6 +110,9 @@ interface ListViewProps {
   tags?: { id: string; name: string; color: string }[];
   archivedTasks?: { id: string; title: string; seqNumber: number }[];
   onArchivedChanged?: () => Promise<void>;
+  showArchived?: boolean;
+  onToggleArchived?: () => void;
+  archivedLoading?: boolean;
 }
 
 type SprintOption = { id: string; name: string; status: "PLANNED" | "ACTIVE" | "CLOSED" };
@@ -550,8 +556,10 @@ function StatusGroup({
                   key={color}
                   onClick={() => setNewStatusColor(color)}
                   className={cn(
-                    "size-6 rounded-full border-2 transition-transform cursor-pointer",
-                    newStatusColor === color ? "border-gray-800 scale-110" : "border-transparent",
+                    "size-6 rounded-full transition-transform cursor-pointer",
+                    newStatusColor === color
+                      ? "scale-110 ring-2 ring-foreground ring-offset-2 ring-offset-popover"
+                      : "",
                   )}
                   style={{ backgroundColor: color }}
                 />
@@ -836,6 +844,9 @@ export function ListView({
   tags = [],
   archivedTasks,
   onArchivedChanged,
+  showArchived,
+  onToggleArchived,
+  archivedLoading,
 }: ListViewProps) {
   const router = useRouter();
   const [createForStatusId, setCreateForStatusId] = React.useState<string | null>(null);
@@ -993,6 +1004,21 @@ export function ListView({
   }
 
 
+  // Pause live auto-refresh while dragging so it can't clobber the drag.
+  const pauseRealtime = useRealtimePause();
+  const dragResumeRef = React.useRef<null | (() => void)>(null);
+  const endDrag = React.useCallback(() => {
+    dragResumeRef.current?.();
+    dragResumeRef.current = null;
+  }, []);
+  function onDragStart() {
+    endDrag();
+    dragResumeRef.current = pauseRealtime();
+  }
+  function onDragCancel() {
+    endDrag();
+  }
+
   function onDragOver({ active, over }: DragOverEvent) {
     if (!over) return;
 
@@ -1041,6 +1067,7 @@ export function ListView({
   }
 
   async function onDragEnd({ active, over }: DragEndEvent) {
+    endDrag();
     if (!over) return;
 
     const activeId = active.id as string;
@@ -1115,8 +1142,10 @@ export function ListView({
         id="list-dnd"
         sensors={sensors}
         collisionDetection={closestCenter}
+        onDragStart={onDragStart}
         onDragOver={onDragOver}
         onDragEnd={onDragEnd}
+        onDragCancel={onDragCancel}
       >
         {/* ClickUp-style unified workspace container */}
         <div className="w-full bg-card border border-border rounded-2xl p-5 shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] overflow-hidden flex flex-col gap-4">
@@ -1220,6 +1249,21 @@ export function ListView({
                       </div>
                     )}
 
+                    {/* Archived tasks */}
+                    {onToggleArchived && (
+                      <div className="border-t border-border pt-3">
+                        <label className="flex items-center gap-2 text-xs text-foreground cursor-pointer py-0.5 hover:bg-accent/30 rounded">
+                          <input
+                            type="checkbox"
+                            checked={!!showArchived}
+                            onChange={() => onToggleArchived()}
+                            className="rounded border-gray-300 text-primary focus:ring-primary size-3.5"
+                          />
+                          <span>Show archived tasks</span>
+                        </label>
+                      </div>
+                    )}
+
                     {/* Clear all */}
                     <button
                       onClick={() => { setPriorityFilter([]); setAssigneeFilter([]); setStatusFilter([]); }}
@@ -1317,14 +1361,19 @@ export function ListView({
           </div>
 
           {/* Archived tasks section */}
-          {archivedTasks && archivedTasks.length > 0 && (
+          {showArchived && (
             <div className="mt-6 border border-border rounded-xl overflow-hidden bg-muted/20">
               <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 text-xs font-bold text-muted-foreground uppercase tracking-wide border-b border-border select-none">
                 <ArchiveIcon className="size-4" />
-                Archived ({archivedTasks.length})
+                Archived ({archivedTasks?.length ?? 0})
               </div>
+              {(!archivedTasks || archivedTasks.length === 0) && (
+                <div className="px-4 py-6 text-center text-xs text-muted-foreground italic">
+                  {archivedLoading ? "Loading archived tasks…" : "No archived tasks"}
+                </div>
+              )}
               <div className="divide-y divide-border">
-                {archivedTasks.map((t) => (
+                {archivedTasks?.map((t) => (
                   <div
                     key={t.id}
                     className="group flex items-center gap-3 px-4 py-2 hover:bg-accent/30 transition-colors"
@@ -1335,6 +1384,10 @@ export function ListView({
                       onClick={async () => {
                         await unarchiveTask(workspaceId, spaceId, listId, t.id);
                         await onArchivedChanged?.();
+                        toastWithUndo("Task unarchived", async () => {
+                          await archiveTask(workspaceId, spaceId, listId, t.id);
+                          await onArchivedChanged?.();
+                        });
                       }}
                       className="hidden group-hover:flex items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 py-1 text-2xs font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer select-none"
                     >

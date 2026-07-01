@@ -2,7 +2,7 @@
 
 import { createId } from "@paralleldrive/cuid2";
 import { and, asc, desc, eq, inArray, isNull, notInArray } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { refreshWorkspace } from "@/lib/realtime/refresh";
 import { headers } from "next/headers";
 import {
   list,
@@ -71,13 +71,15 @@ async function requireFullAccess(
 }
 
 function revalidateSpace(workspaceId: string, spaceId: string) {
-  revalidatePath(`/${workspaceId}/${spaceId}`);
-  revalidatePath(`/${workspaceId}`);
+  void refreshWorkspace(workspaceId, [`/${workspaceId}/${spaceId}`, `/${workspaceId}`]);
 }
 
 function revalidateList(workspaceId: string, spaceId: string, listId: string) {
-  revalidatePath(`/${workspaceId}/${spaceId}/list/${listId}`);
-  revalidateSpace(workspaceId, spaceId);
+  void refreshWorkspace(workspaceId, [
+    `/${workspaceId}/${spaceId}/list/${listId}`,
+    `/${workspaceId}/${spaceId}`,
+    `/${workspaceId}`,
+  ]);
 }
 
 function addDays(date: Date, days: number): Date {
@@ -1024,6 +1026,42 @@ export async function getActiveSprintView(
   }
 
   return { sprint: activeSprint, tasks, statuses: allStatuses, defaultListId };
+}
+
+// ─── getArchivedTasksForSprint ────────────────────────────────────────────────
+
+export async function getArchivedTasksForSprint(
+  workspaceId: string,
+  spaceId: string,
+): Promise<{ tasks: { id: string; title: string; seqNumber: number; listId: string | null }[] } | { error: string }> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return { error: "Unauthorized" };
+
+  const err = await requireAccess(session.user.id, workspaceId, spaceId);
+  if (err) return err;
+
+  const [activeSprint] = await db
+    .select({ id: sprint.id })
+    .from(sprint)
+    .where(and(eq(sprint.spaceId, spaceId), eq(sprint.status, "ACTIVE")))
+    .limit(1);
+
+  if (!activeSprint) return { tasks: [] };
+
+  const tasks = await db
+    .select({ id: task.id, title: task.title, seqNumber: task.seqNumber, listId: task.listId })
+    .from(taskSprint)
+    .innerJoin(task, eq(task.id, taskSprint.taskId))
+    .where(
+      and(
+        eq(taskSprint.sprintId, activeSprint.id),
+        eq(task.isArchived, true),
+        isNull(task.parentTaskId),
+      ),
+    )
+    .orderBy(asc(task.orderIndex));
+
+  return { tasks };
 }
 
 // ─── bulkMoveTasksToSprint ────────────────────────────────────────────────────
