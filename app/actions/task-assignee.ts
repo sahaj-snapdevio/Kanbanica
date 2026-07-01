@@ -1,7 +1,7 @@
 "use server";
 
 import { headers } from "next/headers";
-import { revalidatePath } from "next/cache";
+import { refreshWorkspace } from "@/lib/realtime/refresh";
 import { and, eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -11,7 +11,7 @@ import { writeActivityLog } from "@/lib/activity-log";
 import { createNotifications } from "@/lib/notifications/create-notification";
 
 function revalidateTask(workspaceId: string, spaceId: string, listId: string) {
-  revalidatePath(`/${workspaceId}/${spaceId}/list/${listId}`);
+  void refreshWorkspace(workspaceId, [`/${workspaceId}/${spaceId}/list/${listId}`]);
 }
 
 export async function addAssignee(
@@ -90,6 +90,27 @@ export async function removeAssignee(
     .where(and(eq(taskAssignee.taskId, taskId), eq(taskAssignee.userId, assigneeUserId)));
 
   await writeActivityLog(taskId, session.user.id, "assignee_removed", { userId: assigneeUserId });
+
+  if (assigneeUserId !== session.user.id) {
+    const [taskRow] = await db
+      .select({ title: task.title })
+      .from(task)
+      .where(eq(task.id, taskId))
+      .limit(1);
+    if (taskRow) {
+      createNotifications({
+        workspaceId,
+        actorId: session.user.id,
+        recipientIds: [assigneeUserId],
+        triggerType: "task_unassigned",
+        entityType: "TASK",
+        entityId: taskId,
+        title: `You were unassigned from "${taskRow.title}"`,
+        muteCheckEntityIds: [taskId],
+      });
+    }
+  }
+
   if (listId) revalidateTask(workspaceId, spaceId, listId);
   return { ok: true };
 }

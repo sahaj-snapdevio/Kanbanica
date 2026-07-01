@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { workspaceMember, workspace, space, list } from "@/db/schema";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { getAccessibleSpaceIds } from "@/lib/permissions";
 import { OnboardingWizard } from "@/components/workspace/onboarding-wizard";
 import { PRODUCT_NAME } from "@/config/platform";
@@ -50,7 +50,7 @@ export default async function OnboardingPage({ searchParams }: OnboardingPagePro
       const [firstList] = await db
         .select({ id: list.id, spaceId: list.spaceId })
         .from(list)
-        .where(and(eq(list.spaceId, spaceIds[0]), eq(list.isArchived, false)))
+        .where(and(inArray(list.spaceId, spaceIds), eq(list.isArchived, false)))
         .orderBy(asc(list.createdAt))
         .limit(1);
       if (firstList) {

@@ -4,7 +4,7 @@ function formatError(err: unknown): string {
   const lines: string[] = [];
   let current: unknown = err;
   let depth = 0;
-  const seen = new Set<unknown>();
+  const seen = new Set<unknown>();                                              
 
   while (current && !seen.has(current) && depth < 5) {
     seen.add(current);

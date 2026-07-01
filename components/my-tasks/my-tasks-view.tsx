@@ -80,6 +80,16 @@ function groupByDueDate(tasks: MyTask[]): Group[] {
   ].filter((g) => g.tasks.length > 0);
 }
 
+function groupByWorkspace(tasks: MyTask[]): Group[] {
+  const map = new Map<string, { label: string; tasks: MyTask[] }>();
+  for (const t of tasks) {
+    const existing = map.get(t.workspace.id);
+    if (existing) existing.tasks.push(t);
+    else map.set(t.workspace.id, { label: t.workspace.name, tasks: [t] });
+  }
+  return Array.from(map.values()).map((g, i) => ({ key: `ws-${i}`, label: g.label, tasks: g.tasks }));
+}
+
 function groupBySpace(tasks: MyTask[]): Group[] {
   const map = new Map<string, { label: string; color: string | null; tasks: MyTask[] }>();
   for (const t of tasks) {
@@ -134,8 +144,9 @@ function groupByStatus(tasks: MyTask[]): Group[] {
 
 function buildGroups(tasks: MyTask[], groupBy: MyTasksGroupBy): Group[] {
   switch (groupBy) {
-    case "due_date": return groupByDueDate(tasks);
-    case "space":    return groupBySpace(tasks);
+    case "due_date":  return groupByDueDate(tasks);
+    case "workspace": return groupByWorkspace(tasks);
+    case "space":     return groupBySpace(tasks);
     case "list":     return groupByList(tasks);
     case "priority": return groupByPriority(tasks);
     case "status":   return groupByStatus(tasks);
@@ -144,7 +155,7 @@ function buildGroups(tasks: MyTask[], groupBy: MyTasksGroupBy): Group[] {
 
 // ─── Task row ─────────────────────────────────────────────────────────────────
 
-function TaskRow({ task, workspaceId }: { task: MyTask; workspaceId: string }) {
+function TaskRow({ task }: { task: MyTask }) {
   const router = useRouter();
   const priority = PRIORITY_CONFIG[task.priority];
   const due = formatDue(task);
@@ -152,7 +163,7 @@ function TaskRow({ task, workspaceId }: { task: MyTask; workspaceId: string }) {
   return (
     <tr
       className="group/row border-b border-border/40 hover:bg-accent/30 cursor-pointer transition-colors"
-      onClick={() => router.push(`/${workspaceId}/task/${task.id}`)}
+      onClick={() => router.push(`/${task.workspace.id}/task/${task.id}`)}
     >
       {/* Title + breadcrumb */}
       <td className="py-2.5 pl-10 pr-4">
@@ -164,7 +175,8 @@ function TaskRow({ task, workspaceId }: { task: MyTask; workspaceId: string }) {
             <span className="text-[15px] font-medium truncate">{task.title}</span>
           </div>
           <span className="pl-8 text-xs text-muted-foreground/60 truncate">
-            {task.space.name} › {task.list.name}
+            <span className="font-medium text-muted-foreground/80">{task.workspace.name}</span>
+            {" › "}{task.space.name} › {task.list.name}
           </span>
         </div>
       </td>
@@ -208,13 +220,7 @@ function TaskRow({ task, workspaceId }: { task: MyTask; workspaceId: string }) {
 
 // ─── Task group ───────────────────────────────────────────────────────────────
 
-function TaskGroup({
-  group,
-  workspaceId,
-}: {
-  group: Group;
-  workspaceId: string;
-}) {
+function TaskGroup({ group }: { group: Group }) {
   const [collapsed, setCollapsed] = React.useState(false);
 
   return (
@@ -235,7 +241,7 @@ function TaskGroup({
         </td>
       </tr>
       {!collapsed && group.tasks.map((t) => (
-        <TaskRow key={t.id} task={t} workspaceId={workspaceId} />
+        <TaskRow key={t.id} task={t} />
       ))}
     </>
   );
@@ -245,13 +251,14 @@ function TaskGroup({
 
 const GROUP_BY_OPTIONS: { value: MyTasksGroupBy; label: string }[] = [
   { value: "due_date",  label: "Due Date" },
+  { value: "workspace", label: "Workspace" },
   { value: "space",     label: "Space" },
   { value: "list",      label: "List" },
   { value: "priority",  label: "Priority" },
   { value: "status",    label: "Status" },
 ];
 
-export function MyTasksView({ workspaceId }: MyTasksViewProps) {
+export function MyTasksView(_props: MyTasksViewProps) {
   const [tasks, setTasks] = React.useState<MyTask[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [groupBy, setGroupBy] = React.useState<MyTasksGroupBy>("due_date");
@@ -261,13 +268,13 @@ export function MyTasksView({ workspaceId }: MyTasksViewProps) {
   const fetchTasks = React.useCallback(async () => {
     setLoading(true);
     try {
-      const res = await getMyTasks(workspaceId, { showCompleted });
+      const res = await getMyTasks({ showCompleted });
       if ("error" in res) return;
       setTasks(res.tasks);
     } finally {
       setLoading(false);
     }
-  }, [workspaceId, showCompleted]);
+  }, [showCompleted]);
 
   React.useEffect(() => { void fetchTasks(); }, [fetchTasks]);
 
@@ -386,7 +393,7 @@ export function MyTasksView({ workspaceId }: MyTasksViewProps) {
                       <td colSpan={4} className="h-2 bg-transparent border-none" />
                     </tr>
                   )}
-                  <TaskGroup group={group} workspaceId={workspaceId} />
+                  <TaskGroup group={group} />
                 </React.Fragment>
               ))}
             </tbody>

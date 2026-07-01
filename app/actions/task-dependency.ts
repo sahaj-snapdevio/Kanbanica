@@ -1,7 +1,7 @@
 "use server";
 
 import { headers } from "next/headers";
-import { revalidatePath } from "next/cache";
+import { refreshWorkspace } from "@/lib/realtime/refresh";
 import { createId } from "@paralleldrive/cuid2";
 import { and, eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
@@ -11,7 +11,7 @@ import { canAccessSpace, getSpacePermission, hasPermissionLevel } from "@/lib/pe
 import { writeActivityLog } from "@/lib/activity-log";
 
 function revalidateList(workspaceId: string, spaceId: string, listId: string) {
-  revalidatePath(`/${workspaceId}/${spaceId}/list/${listId}`);
+  void refreshWorkspace(workspaceId, [`/${workspaceId}/${spaceId}/list/${listId}`]);
 }
 
 // DFS cycle detection: returns true if adding taskId -> dependsOnTaskId would create a cycle

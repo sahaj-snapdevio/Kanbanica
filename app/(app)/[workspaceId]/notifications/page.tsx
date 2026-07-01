@@ -1,10 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import useSWR, { mutate as globalMutate } from "swr";
-import { CheckIcon, EnvelopeIcon, EnvelopeOpenIcon, XIcon } from "@phosphor-icons/react";
+import { ArrowSquareOutIcon, EnvelopeIcon, EnvelopeOpenIcon, XIcon } from "@phosphor-icons/react";
+import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { TaskDetailPanel } from "@/components/task/task-detail-panel";
 import { getTaskLocation } from "@/app/actions/task";
@@ -33,6 +34,7 @@ interface NotificationsResponse {
 
 interface TaskLocation {
   taskId: string;
+  workspaceId: string;
   spaceId: string;
   listId: string | null;
 }
@@ -52,8 +54,56 @@ function getInitials(name: string | null) {
   return name.split(" ").map((p) => p[0]).join("").toUpperCase().slice(0, 2);
 }
 
+// Historical events with no valid destination — clicking informs instead of navigating.
+const INFO_MESSAGES: Record<string, string> = {
+  space_archived: "This project has been archived.",
+  space_removed: "You no longer have access to this project.",
+  workspace_removed: "You no longer have access to this workspace.",
+  task_deleted: "This task no longer exists.",
+};
+
+type NotifTarget =
+  | { type: "task" }
+  | { type: "route"; href: string }
+  | { type: "info"; message: string };
+
+/**
+ * Where a notification should take the user. `task` opens the inline task panel
+ * (verified at click time — may become `info` if the task was deleted); `route`
+ * navigates to a page; `info` shows a toast explaining why there's nowhere to go.
+ */
+function getNotificationTarget(n: Notification): NotifTarget {
+  const info = INFO_MESSAGES[n.triggerType];
+  if (info) return { type: "info", message: info };
+
+  // Membership events point at workspace pages regardless of entity mapping.
+  if (n.triggerType === "invite_accepted" || n.triggerType === "role_changed") {
+    return { type: "route", href: `/${n.entityId}/settings/members` };
+  }
+  if (n.triggerType === "workspace_invited") {
+    // entityId is the invite token — open the accept/decline page (not the
+    // workspace home, which 404s until the invite is accepted).
+    return { type: "route", href: `/invite/${n.entityId}` };
+  }
+
+  switch (n.entityType) {
+    case "TASK":
+      return { type: "task" };
+    case "SPACE":
+      return { type: "route", href: `/${n.workspaceId}/${n.entityId}` };
+    case "WORKSPACE":
+      return { type: "route", href: `/${n.entityId}` };
+    case "COMMENT":
+      // Channel messages aren't linkable from here.
+      return { type: "info", message: "Open the channel to view this mention." };
+    default:
+      return { type: "info", message: "This notification has no linked page." };
+  }
+}
+
 export default function InboxPage() {
   const { workspaceId } = useParams<{ workspaceId: string }>();
+  const router = useRouter();
   const [activeTab, setActiveTab] = React.useState<Tab>("all");
   const [selectedTask, setSelectedTask] = React.useState<TaskLocation | null>(null);
 
@@ -102,19 +152,40 @@ export default function InboxPage() {
     setSelectedTask(null);
   }
 
+  // Clicking marks read (notification stays in the Inbox) and then opens the
+  // destination when there is one, or explains why there isn't.
   async function handleRowClick(n: Notification) {
     if (!n.isRead) void markRead(n.id);
-    if (n.entityType !== "TASK") return;
 
-    // Already showing this task — toggle close
-    if (selectedTask?.taskId === n.entityId) {
-      setSelectedTask(null);
+    const target = getNotificationTarget(n);
+
+    if (target.type === "info") {
+      toast.info(target.message);
       return;
     }
 
-    const result = await getTaskLocation(workspaceId, n.entityId);
-    if ("error" in result) return;
-    setSelectedTask({ taskId: n.entityId, spaceId: result.spaceId, listId: result.listId });
+    if (target.type === "route") {
+      router.push(target.href);
+      return;
+    }
+
+    // target.type === "task" — open inline, using the notification's OWN workspace
+    // (the Inbox is cross-workspace, so it may differ from the page's workspace).
+    if (selectedTask?.taskId === n.entityId) {
+      setSelectedTask(null); // toggle closed
+      return;
+    }
+    const result = await getTaskLocation(n.workspaceId, n.entityId);
+    if ("error" in result) {
+      toast.info("This task no longer exists.");
+      return;
+    }
+    setSelectedTask({
+      taskId: n.entityId,
+      workspaceId: n.workspaceId,
+      spaceId: result.spaceId,
+      listId: result.listId,
+    });
   }
 
   return (
@@ -234,6 +305,11 @@ export default function InboxPage() {
 
                 {/* Time → actions on hover */}
                 <div className="hidden group-hover:flex items-center gap-1 shrink-0">
+                  {getNotificationTarget(n).type !== "info" && (
+                    <ActionBtn onClick={(e) => { e.stopPropagation(); void handleRowClick(n); }} title="Open">
+                      <ArrowSquareOutIcon className="size-3.5" />
+                    </ActionBtn>
+                  )}
                   {n.isRead ? (
                     <ActionBtn onClick={(e) => void markUnread(n.id, e)} title="Mark as unread">
                       <EnvelopeIcon className="size-3.5" />
@@ -243,8 +319,8 @@ export default function InboxPage() {
                       <EnvelopeOpenIcon className="size-3.5" />
                     </ActionBtn>
                   )}
-                  <ActionBtn onClick={(e) => void dismiss(n.id, e)} title="Clear" label="Clear">
-                    <CheckIcon className="size-3.5" />
+                  <ActionBtn onClick={(e) => void dismiss(n.id, e)} title="Dismiss" label="Dismiss">
+                    <XIcon className="size-3.5" />
                   </ActionBtn>
                 </div>
               </div>
@@ -271,7 +347,7 @@ export default function InboxPage() {
               open
               onOpenChange={(open) => { if (!open) setSelectedTask(null); }}
               taskId={selectedTask.taskId}
-              workspaceId={workspaceId}
+              workspaceId={selectedTask.workspaceId}
               spaceId={selectedTask.spaceId}
               listId={selectedTask.listId ?? ""}
             />

@@ -2,6 +2,7 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { ThemeProvider } from "@/components/theme/theme-provider";
+import { RealtimeProvider } from "@/components/realtime/realtime-provider";
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";
 import {
   channel,
@@ -216,6 +217,7 @@ export default async function WorkspaceLayout({
       initialTheme={ws.theme}
       workspaceId={workspaceId}
     >
+      <RealtimeProvider workspaceId={workspaceId}>
       <WorkspaceShell
         role={membership.role}
         spaces={spaces.map((s) => ({
@@ -244,6 +246,7 @@ export default async function WorkspaceLayout({
       >
         {children}
       </WorkspaceShell>
+      </RealtimeProvider>
     </ThemeProvider>
   );
 }

@@ -425,6 +425,55 @@ L-- created_at          (timestamp)
 
 ---
 
+## Implementation Notes (as built)
+
+Conventions to follow when emitting or rendering notifications.
+
+- **Single entry point:** `createNotifications()` (`lib/notifications/create-notification.ts`)
+  handles actor-exclusion, dedup, mute checks, per-trigger preferences, the SSE push, and web
+  push. It is **fire-and-forget** — it runs an internal async IIFE and swallows errors in
+  `.catch`, so a failed notification **never breaks the mutation** and also fails **silently**
+  (check the server log when debugging a missing notification).
+- **Trigger types are a plain `text` column.** Add a new one to `NOTIFICATION_TRIGGERS`
+  (`lib/notifications/types.ts`) and a label to `TRIGGER_LABELS` (the notification settings page)
+  — **no migration needed.** `entityType` is a pgEnum already covering
+  `TASK / COMMENT / SPACE / WORKSPACE / SPRINT`.
+- **Terminology:** every user-facing title says **"Project"**, never "Space". `entityType` stays
+  `"SPACE"` internally.
+- **Project-wide recipients (gotcha):** for `space_archived` / `space_restored`, compute
+  recipients with **`spaceRecipientUserIds()`** (`app/actions/space.ts`), which mirrors
+  `getAccessibleSpaceIds` (owners/admins always; all members for public projects; explicit
+  `space_member` rows for private projects / guests). **Do NOT query `space_member` directly** —
+  public projects usually have *no* explicit rows, so you would notify nobody.
+- **`workspace_invited` stores the invite TOKEN as `entityId`** (not the workspaceId) so clicking
+  the notification opens `/invite/{token}` (accept/decline) instead of the workspace home, which
+  404s for a not-yet-member. `resendInvite` rotates the token and re-creates this notification.
+- **Inbox click model** — `getNotificationTarget()` in
+  `app/(app)/[workspaceId]/notifications/page.tsx` classifies each notification as **navigable**
+  (open the task panel, or `router.push` a route) or **info-only** (show a toast). Never navigate
+  to a broken route: archived/removed/deleted/lost-access events show a toast
+  ("This project has been archived.", "You no longer have access…", "This task no longer
+  exists."). Clicking marks-read but keeps the row; hover actions are **Open** (navigable only) /
+  **Mark read** / **Dismiss**. Task navigation uses the notification's own `workspaceId` (the
+  Inbox is cross-workspace).
+
+**Emitted triggers and their call sites** (beyond the pre-existing task/comment/mention ones):
+
+| Trigger | Emitted from | Recipient |
+|---|---|---|
+| `workspace_invited` | `inviteMember`, `resendInvite` (`workspace.ts`) | invited user (if registered) |
+| `invite_accepted` | `acceptInvite` (`workspace.ts`) | the inviter |
+| `role_changed` | `changeMemberRole` | the member |
+| `workspace_removed` | `removeMember` | the removed user |
+| `space_added` / `space_permission_changed` / `space_removed` | `space.ts` member actions | the affected user |
+| `space_archived` / `space_restored` | `archiveSpace` / `unarchiveSpace` | all project members (`spaceRecipientUserIds`) |
+| `task_unassigned` | `removeAssignee` (`task-assignee.ts`) | the unassigned user |
+
+Real-time propagation of *data* changes (task/list/board/sprint) is a separate system — see
+`docs/realtime.md`.
+
+---
+
 ## Out of Scope (MVP)
 
 - Mobile app push notifications (native iOS / Android)

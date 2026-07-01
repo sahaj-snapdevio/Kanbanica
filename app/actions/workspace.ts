@@ -3,15 +3,22 @@
 import { createId } from "@paralleldrive/cuid2";
 import { and, eq, ne } from "drizzle-orm";
 import { headers } from "next/headers";
-import { workspace, workspaceMember } from "@/db/schema";
+import { user, workspace, workspaceMember } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { enqueueEmail } from "@/lib/email";
 import { workspaceInviteTemplate } from "@/lib/email/templates/workspace-invite";
 import { env } from "@/lib/env";
 import { getWorkspaceMembership } from "@/lib/permissions";
+import { createNotifications } from "@/lib/notifications/create-notification";
+import { refreshWorkspace } from "@/lib/realtime/refresh";
 
 type WorkspaceRole = "OWNER" | "ADMIN" | "MEMBER" | "GUEST";
+
+/** "ADMIN" → "Admin" for user-facing notification titles. */
+function roleLabel(role: string): string {
+  return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
+}
 
 async function requireSession() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -81,6 +88,7 @@ export async function updateWorkspace(data: {
     .set({ name, slug, logoEmoji: data.logoEmoji, updatedAt: new Date() })
     .where(eq(workspace.id, data.workspaceId));
 
+  void refreshWorkspace(data.workspaceId);
   return { ok: true };
 }
 
@@ -196,6 +204,26 @@ export async function inviteMember(data: {
     text,
   });
 
+  // In-app notification for invitees who already have an account (others get the email only).
+  const [invitedUser] = await db
+    .select({ id: user.id })
+    .from(user)
+    .where(eq(user.email, email))
+    .limit(1);
+  if (invitedUser) {
+    createNotifications({
+      workspaceId: data.workspaceId,
+      actorId: session.user.id,
+      recipientIds: [invitedUser.id],
+      triggerType: "workspace_invited",
+      entityType: "WORKSPACE",
+      // entityId carries the invite TOKEN (not the workspaceId) so clicking the
+      // notification opens the accept/decline page — the invitee isn't a member yet.
+      entityId: inviteToken,
+      title: `${inviterName} invited you to ${workspaceName}`,
+    });
+  }
+
   return { ok: true };
 }
 
@@ -240,15 +268,38 @@ export async function resendInvite(data: {
     const inviterName = session.user.name ?? session.user.email ?? "Someone";
     const workspaceName = ws?.name ?? "a workspace";
 
-    console.log(`[invite] ${member.email} → ${inviteUrl}`);
+    // Re-deliver the in-app invite (if the invitee has an account) pointing at the
+    // NEW token — the old workspace_invited notification is now stale after rotation.
+    const [invitedUser] = await db
+      .select({ id: user.id })
+      .from(user)
+      .where(eq(user.email, member.email))
+      .limit(1);
+    if (invitedUser) {
+      createNotifications({
+        workspaceId: data.workspaceId,
+        actorId: session.user.id,
+        recipientIds: [invitedUser.id],
+        triggerType: "workspace_invited",
+        entityType: "WORKSPACE",
+        entityId: newToken,
+        title: `${inviterName} invited you to ${workspaceName}`,
+      });
+    }
 
-    const { html, text } = await workspaceInviteTemplate({ inviterName, workspaceName, inviteUrl });
-    await enqueueEmail({
-      to: member.email,
-      subject: `${inviterName} invited you to ${workspaceName}`,
-      html,
-      text,
-    });
+    // Email is best-effort (no SMTP in dev) — never let it fail the resend.
+    try {
+      console.log(`[invite] ${member.email} → ${inviteUrl}`);
+      const { html, text } = await workspaceInviteTemplate({ inviterName, workspaceName, inviteUrl });
+      await enqueueEmail({
+        to: member.email,
+        subject: `${inviterName} invited you to ${workspaceName}`,
+        html,
+        text,
+      });
+    } catch (err) {
+      console.error("[invite] resend email failed", err);
+    }
   }
 
   return { ok: true };
@@ -286,7 +337,45 @@ export async function acceptInvite(token: string): Promise<
     })
     .where(eq(workspaceMember.id, invite.id));
 
+  // Notify the inviter that their invitation was accepted.
+  if (invite.invitedBy) {
+    const accepterName = session.user.name ?? session.user.email ?? "Someone";
+    const [wsRow] = await db
+      .select({ name: workspace.name })
+      .from(workspace)
+      .where(eq(workspace.id, invite.workspaceId))
+      .limit(1);
+    createNotifications({
+      workspaceId: invite.workspaceId,
+      actorId: session.user.id,
+      recipientIds: [invite.invitedBy],
+      triggerType: "invite_accepted",
+      entityType: "WORKSPACE",
+      entityId: invite.workspaceId,
+      title: `${accepterName} accepted your invitation to ${wsRow?.name ?? "your workspace"}`,
+    });
+  }
+
   return { workspaceId: invite.workspaceId };
+}
+
+export async function declineInvite(token: string): Promise<{ ok: true } | { error: string }> {
+  const session = await requireSession();
+  if (!session) return { error: "Unauthorized" };
+
+  const [invite] = await db
+    .select()
+    .from(workspaceMember)
+    .where(eq(workspaceMember.inviteToken, token));
+
+  if (!invite) return { error: "Invalid or expired invitation" };
+  if (invite.status !== "INVITED") return { error: "This invitation has already been used" };
+  if (invite.email && invite.email !== session.user.email?.toLowerCase())
+    return { error: "This invitation was sent to a different email address" };
+
+  await db.delete(workspaceMember).where(eq(workspaceMember.id, invite.id));
+
+  return { ok: true };
 }
 
 export async function cancelInvite(data: {
@@ -357,6 +446,18 @@ export async function changeMemberRole(data: {
     .set({ role: data.role, updatedAt: new Date() })
     .where(eq(workspaceMember.id, data.memberId));
 
+  if (target[0].userId) {
+    createNotifications({
+      workspaceId: data.workspaceId,
+      actorId: session.user.id,
+      recipientIds: [target[0].userId],
+      triggerType: "role_changed",
+      entityType: "WORKSPACE",
+      entityId: data.workspaceId,
+      title: `Your workspace role was changed to ${roleLabel(data.role)}`,
+    });
+  }
+
   return { ok: true };
 }
 
@@ -394,6 +495,25 @@ export async function removeMember(data: {
   }
 
   await db.delete(workspaceMember).where(eq(workspaceMember.id, data.memberId));
+
+  // Notify the removed member so they understand why they lost access.
+  if (target[0].userId) {
+    const actorName = session.user.name ?? session.user.email ?? "Someone";
+    const [wsRow] = await db
+      .select({ name: workspace.name })
+      .from(workspace)
+      .where(eq(workspace.id, data.workspaceId))
+      .limit(1);
+    createNotifications({
+      workspaceId: data.workspaceId,
+      actorId: session.user.id,
+      recipientIds: [target[0].userId],
+      triggerType: "workspace_removed",
+      entityType: "WORKSPACE",
+      entityId: data.workspaceId,
+      title: `${actorName} removed you from ${wsRow?.name ?? "the workspace"}`,
+    });
+  }
 
   return { ok: true };
 }

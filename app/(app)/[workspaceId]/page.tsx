@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { list } from "@/db/schema";
@@ -23,7 +23,7 @@ export default async function WorkspaceHomePage({ params }: WorkspaceHomeProps) 
     const [firstList] = await db
       .select({ id: list.id, spaceId: list.spaceId })
       .from(list)
-      .where(and(eq(list.spaceId, spaceIds[0]), eq(list.isArchived, false)))
+      .where(and(inArray(list.spaceId, spaceIds), eq(list.isArchived, false)))
       .orderBy(asc(list.createdAt))
       .limit(1);
 

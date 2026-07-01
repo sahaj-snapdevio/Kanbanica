@@ -1,7 +1,7 @@
 "use server";
 
 import { headers } from "next/headers";
-import { revalidatePath } from "next/cache";
+import { refreshWorkspace } from "@/lib/realtime/refresh";
 import { createId } from "@paralleldrive/cuid2";
 import { and, asc, eq, ilike } from "drizzle-orm";
 import { auth } from "@/lib/auth";
@@ -21,7 +21,7 @@ function randomTagColor() {
 }
 
 function revalidateList(workspaceId: string, spaceId: string, listId: string) {
-  revalidatePath(`/${workspaceId}/${spaceId}/list/${listId}`);
+  void refreshWorkspace(workspaceId, [`/${workspaceId}/${spaceId}/list/${listId}`]);
 }
 
 export async function getWorkspaceTags(workspaceId: string) {

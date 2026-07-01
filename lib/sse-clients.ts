@@ -1,5 +1,16 @@
 const encoder = new TextEncoder();
-const clients = new Map<string, Set<ReadableStreamDefaultController>>();
+
+// The SSE route handler and server actions get bundled into SEPARATE module
+// graphs by Turbopack, so a plain module-level `new Map()` is duplicated — the
+// route registers connections in one copy while `pushToUser` (called from
+// server actions) reads an empty second copy. Pin the registry to `globalThis`
+// so every module instance in the process shares ONE map. (Same pattern used
+// for the DB client singleton.)
+const globalForSse = globalThis as unknown as {
+  __sseClients?: Map<string, Set<ReadableStreamDefaultController>>;
+};
+const clients: Map<string, Set<ReadableStreamDefaultController>> =
+  (globalForSse.__sseClients ??= new Map());
 
 export function registerClient(userId: string, ctrl: ReadableStreamDefaultController): void {
   if (!clients.has(userId)) clients.set(userId, new Set());

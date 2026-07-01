@@ -31,6 +31,7 @@ import { updateTaskStatus, reorderTasksInStatus } from "@/app/actions/task";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CreateTaskModal } from "@/components/task/create-task-modal";
+import { useRealtimePause } from "@/components/realtime/realtime-provider";
 import { cn } from "@/lib/utils";
 import { QuickCreateTask } from "./quick-create-task";
 
@@ -340,8 +341,23 @@ export function BoardView({ workspaceId, space, list, statuses, tasks, members =
     return localTasks.find((t) => t.id === taskId)?.statusId ?? null;
   }
 
+  // Pause live auto-refresh while dragging so it can't clobber the drag.
+  const pauseRealtime = useRealtimePause();
+  const dragResumeRef = React.useRef<null | (() => void)>(null);
+  const endDrag = React.useCallback(() => {
+    dragResumeRef.current?.();
+    dragResumeRef.current = null;
+  }, []);
+
   function onDragStart({ active }: DragStartEvent) {
+    endDrag();
+    dragResumeRef.current = pauseRealtime();
     setActiveTask(localTasks.find((t) => t.id === active.id) ?? null);
+  }
+
+  function onDragCancel() {
+    setActiveTask(null);
+    endDrag();
   }
 
   function onDragOver({ active, over }: DragOverEvent) {
@@ -376,6 +392,7 @@ export function BoardView({ workspaceId, space, list, statuses, tasks, members =
 
   async function onDragEnd({ active, over }: DragEndEvent) {
     setActiveTask(null);
+    endDrag();
     if (!over) return;
 
     const activeId = active.id as string;
@@ -554,6 +571,7 @@ export function BoardView({ workspaceId, space, list, statuses, tasks, members =
         onDragStart={onDragStart}
         onDragOver={onDragOver}
         onDragEnd={onDragEnd}
+        onDragCancel={onDragCancel}
       >
         <div className="flex gap-3 overflow-x-auto pb-4 items-start">
           {statuses.map((status) => (

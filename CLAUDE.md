@@ -22,7 +22,7 @@ Full product specs live in `docs/`. Read the relevant doc before implementing an
 | Rich Text | Tiptap |
 | Emoji Picker | emoji-mart (`@emoji-mart/react` + `@emoji-mart/data`) |
 | State | Zustand (client) + SWR (server) |
-| Real-time | SSE via `lib/sse-clients.ts` (notifications) |
+| Real-time | SSE via `lib/sse-clients.ts` — notifications + live `data_changed` broadcasts (`refreshWorkspace`); see `docs/realtime.md` |
 | File Storage | files-sdk (local `fs` adapter in dev → S3/R2/GCS in prod) |
 | Background Jobs | pg-boss |
 | Email | Nodemailer (SMTP) |
@@ -140,6 +140,26 @@ server/                    ← server actions
 - Stored as Tiptap JSON in a `jsonb` column (`description`).
 - Full-text search on description is post-MVP.
 
+### Real-time Sync
+- Live collaboration is broadcast over SSE. **Every mutation (server action AND route handler) must call `refreshWorkspace(workspaceId, paths?)`** (`lib/realtime/refresh.ts`) after writing — it does the `revalidatePath` + the `data_changed` broadcast. Never call `broadcastDataChanged()` directly.
+- **Gotcha:** the SSE `clients` registry in `lib/sse-clients.ts` is pinned to `globalThis`. Turbopack bundles route handlers and server actions separately, so a plain module-level `Map` gets duplicated and `pushToUser` reads an empty copy. Any in-memory singleton shared across route handlers + actions needs the same treatment.
+- Client: `RealtimeProvider` (`components/realtime/`) — one EventSource, debounced refresh, **pause-while-busy** (editing / open overlay / dragging). List/Board/sidebar refresh via `router.refresh()`; Sprint via `useRealtimeRefetch`. Registry is in-memory per process (prod → Redis). Full detail in `docs/realtime.md`.
+
+### Notifications
+- `createNotifications()` (`lib/notifications/create-notification.ts`) is the single, **fire-and-forget** entry (errors are swallowed silently). Trigger types are a plain **text** column — add to `NOTIFICATION_TRIGGERS` (`lib/notifications/types.ts`) + a settings label, **no migration**.
+- User-facing titles say **"Project"**, never "Space" (`entityType` stays `"SPACE"`).
+- For project-wide notifications (archive/restore) use **`spaceRecipientUserIds()`** (`app/actions/space.ts`) — public projects have no explicit `space_member` rows, so querying that table notifies nobody.
+- Inbox click behavior lives in `getNotificationTarget()` (`notifications/page.tsx`): navigate or show an info-toast — never route to a broken page. See `docs/notifications.md` § Implementation Notes.
+
+### My Tasks (global)
+- `getMyTasks()` (`app/actions/my-tasks.ts`) is **cross-workspace** — it aggregates tasks assigned to the user across ALL their workspaces (union of `getAccessibleSpaceIds` per workspace), not just the current one. Navigate to a task via `task.workspace.id` (each task carries its workspace).
+
+### Undo Toast
+- For reversible actions (task/list archive & unarchive) use **`toastWithUndo(message, onUndo)`** (`lib/undo-toast.tsx`) — shows an "Undo" toast and wires **Ctrl/Cmd+Z** to the same undo. The `<Toaster>` is **bottom-right** (`app/layout.tsx`); the default ("normal") toast is inverted/elevated (`components/ui/sonner.tsx`). Do not add a second toast library.
+
+### Space (Project) Landing Page
+- `app/(app)/[workspaceId]/[spaceId]/page.tsx` redirects to the space's first non-archived list, or renders `EmptySpace` if it has none. After archiving a list or project, navigation goes here (or the workspace's first list) — **never to `/onboarding`**. The workspace-home + onboarding pages search **all** accessible spaces (not just the first) before falling back to onboarding.
+
 ### Folder
 - Folder is **post-MVP**. Do not implement it. `folder_id` on List is nullable and always null in MVP.
 
@@ -159,6 +179,7 @@ server/                    ← server actions
 | Pinned Tasks | `docs/pinned-tasks.md` |
 | Views | `docs/views.md` |
 | Collaboration | `docs/collaboration.md` |
+| Real-time Sync | `docs/realtime.md` |
 | Notifications | `docs/notifications.md` |
 | Search & Filters | `docs/search-and-filters.md` |
 | Permissions | `docs/permission-model.md` |

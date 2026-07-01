@@ -39,6 +39,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { SearchInput } from "@/components/ui/search-input";
+import { useRealtimeRefetch, useRealtimePause } from "@/components/realtime/realtime-provider";
 import { TaskListRow, type TaskListRowProps } from "@/components/task/task-list-row";
 import { PRIORITY_CONFIG, userInitials, avatarSrc } from "@/lib/priority-config";
 import { format } from "date-fns";
@@ -59,20 +60,24 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   getActiveSprintView,
+  getArchivedTasksForSprint,
   addTaskToSprint,
   getSprints,
   bulkMoveTasksToSprint,
   bulkRemoveTasksFromSprint,
 } from "@/app/actions/sprint";
 import {
+  archiveTask,
   bulkArchiveTasks,
   bulkDeleteTasks,
   bulkMoveTasks,
   bulkUpdateStatus,
   createTask,
   reorderTasksById,
+  unarchiveTask,
   updateTaskStatus,
 } from "@/app/actions/task";
+import { toastWithUndo } from "@/lib/undo-toast";
 import { createListStatus, getWorkspaceLists, updateListStatus } from "@/app/actions/list";
 import { CreateTaskModal } from "@/components/task/create-task-modal";
 import { cn } from "@/lib/utils";
@@ -163,10 +168,27 @@ function QuickCreateRow({
   const [title, setTitle] = React.useState("");
   const [saving, setSaving] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const wrapperRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 0);
   }, [open]);
+
+  // Close the quick-create row when the user clicks anywhere outside of it.
+  // This also closes it when another group's "Add Task" is clicked, so only
+  // one quick-create row is ever open at a time. An in-flight save is left
+  // untouched so the submit isn't interrupted.
+  React.useEffect(() => {
+    if (!open) return;
+    function handlePointerDown(e: PointerEvent) {
+      if (saving) return;
+      if (wrapperRef.current?.contains(e.target as Node)) return;
+      onOpenChange(false);
+      setTitle("");
+    }
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [open, saving, onOpenChange]);
 
   async function submit() {
     const trimmed = title.trim();
@@ -197,7 +219,7 @@ function QuickCreateRow({
   }
 
   return (
-    <div className="py-1.5 pl-10 pr-4">
+    <div ref={wrapperRef} className="py-1.5 pl-10 pr-4">
       <div className="flex items-center gap-2 rounded-md border border-primary/40 bg-background px-2 py-1.5 ring-1 ring-primary/20">
         <input
           ref={inputRef}
@@ -278,7 +300,10 @@ function StatusGroup({
   onRefresh: () => void;
 }) {
   const router = useRouter();
-  const [localTasks, setLocalTasks] = React.useState<SprintTask[]>(tasks);
+  // Droppable zone so tasks can be dragged into this status group (including
+  // when it is empty). Reorder + cross-status persistence is handled by the
+  // single parent DndContext, mirroring the project List view.
+  const { setNodeRef: setDropRef, isOver } = useDroppable({ id: status.id });
   const [collapsed, setCollapsed] = React.useState(false);
   const [quickCreateOpen, setQuickCreateOpen] = React.useState(false);
   const [menuOpen, setMenuOpen] = React.useState(false);
@@ -288,23 +313,6 @@ function StatusGroup({
   const [newStatusName, setNewStatusName] = React.useState("");
   const [newStatusColor, setNewStatusColor] = React.useState("#6B7280");
   const [saving, setSaving] = React.useState(false);
-
-  React.useEffect(() => { setLocalTasks(tasks); }, [tasks]);
-
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
-
-  async function handleListDragEnd({ active, over }: DragEndEvent) {
-    if (!over || active.id === over.id) return;
-    const activeId = active.id as string;
-    const overId = over.id as string;
-    const oldIndex = localTasks.findIndex((t) => t.id === activeId);
-    const newIndex = localTasks.findIndex((t) => t.id === overId);
-    if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
-    const reordered = arrayMove(localTasks, oldIndex, newIndex);
-    setLocalTasks(reordered);
-    const res = await reorderTasksById(workspaceId, spaceId, reordered.map((t) => t.id));
-    if ("error" in res) { setLocalTasks(tasks); toast.error(res.error); }
-  }
 
   async function handleRename() {
     const trimmed = renameName.trim();
@@ -444,9 +452,12 @@ function StatusGroup({
             <div className="w-48 shrink-0" />
           </div>
 
-          <DndContext id={`sprint-list-dnd-${status.id}`} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleListDragEnd}>
-            <SortableContext items={localTasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-              {localTasks.map((task) => (
+          <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+            <div
+              ref={setDropRef}
+              className={cn("flex flex-col transition-colors min-h-1", isOver && "bg-accent/20")}
+            >
+              {tasks.map((task) => (
                 <SortableSprintListRow
                   key={task.id}
                   task={task}
@@ -471,8 +482,8 @@ function StatusGroup({
                   }}
                 />
               ))}
-            </SortableContext>
-          </DndContext>
+            </div>
+          </SortableContext>
 
           <QuickCreateRow
             open={quickCreateOpen}
@@ -1035,6 +1046,25 @@ export function SprintListView({ workspaceId, spaceId, listId = "", statuses = [
 
   const hasActiveFilters = statusFilter.length > 0 || priorityFilter.length > 0 || assigneeFilter.length > 0;
 
+  // ── Archived tasks ────────────────────────────────────────────────────────
+  const [showArchived, setShowArchived] = React.useState(false);
+  const [archivedTasks, setArchivedTasks] = React.useState<{ id: string; title: string; seqNumber: number; listId: string | null }[]>([]);
+  const [archivedLoading, setArchivedLoading] = React.useState(false);
+
+  const refreshArchived = React.useCallback(async () => {
+    const result = await getArchivedTasksForSprint(workspaceId, spaceId);
+    if (!("error" in result)) setArchivedTasks(result.tasks);
+  }, [workspaceId, spaceId]);
+
+  async function handleToggleArchived() {
+    if (!showArchived && archivedTasks.length === 0) {
+      setArchivedLoading(true);
+      await refreshArchived();
+      setArchivedLoading(false);
+    }
+    setShowArchived((v) => !v);
+  }
+
   function handleSelect(id: string, checked: boolean) {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -1068,8 +1098,25 @@ export function SprintListView({ workspaceId, spaceId, listId = "", statuses = [
   // ── DnD sensors + handlers ────────────────────────────────────────────────
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
+  // Live-sync: re-pull the sprint when another member changes something, and
+  // pause auto-refresh while this user is dragging so it can't clobber the drag.
+  useRealtimeRefetch(fetchData);
+  const pauseRealtime = useRealtimePause();
+  const dragResumeRef = React.useRef<null | (() => void)>(null);
+  const endDrag = React.useCallback(() => {
+    dragResumeRef.current?.();
+    dragResumeRef.current = null;
+  }, []);
+
   function onDragStart({ active }: DragStartEvent) {
+    endDrag();
+    dragResumeRef.current = pauseRealtime();
     setActiveDragTask(boardTasks.find((t) => t.id === active.id) ?? null);
+  }
+
+  function onDragCancel() {
+    setActiveDragTask(null);
+    endDrag();
   }
 
   function onDragOver({ active, over }: DragOverEvent) {
@@ -1099,6 +1146,7 @@ export function SprintListView({ workspaceId, spaceId, listId = "", statuses = [
 
   async function onDragEnd({ active, over }: DragEndEvent) {
     setActiveDragTask(null);
+    endDrag();
     if (!over) return;
     const activeId = active.id as string;
     const activeTask = boardTasks.find((t) => t.id === activeId);
@@ -1170,19 +1218,6 @@ export function SprintListView({ workspaceId, spaceId, listId = "", statuses = [
     }
     return derived;
   }, [statuses, fetchedStatuses, tasks]);
-
-  const tasksByStatus = React.useMemo(() => {
-    const knownIds = new Set(effectiveStatuses.map((s) => s.id));
-    const map = new Map<string, SprintTask[]>();
-    for (const s of effectiveStatuses) map.set(s.id, []);
-    for (const t of filteredTasks) {
-      if (t.statusId && knownIds.has(t.statusId)) {
-        map.get(t.statusId)!.push(t);
-      }
-      // tasks with null/unknown status go to noStatusListTasks below
-    }
-    return map;
-  }, [effectiveStatuses, filteredTasks]);
 
   const noStatusListTasks = React.useMemo(() => {
     const knownIds = new Set(effectiveStatuses.map((s) => s.id));
@@ -1385,6 +1420,19 @@ export function SprintListView({ workspaceId, spaceId, listId = "", statuses = [
                 </div>
               )}
 
+              {/* Archived tasks */}
+              <div className="border-t border-border pt-3">
+                <label className="flex items-center gap-2 text-xs text-foreground cursor-pointer py-0.5 hover:bg-accent/30 rounded">
+                  <input
+                    type="checkbox"
+                    checked={showArchived}
+                    onChange={() => void handleToggleArchived()}
+                    className="rounded border-input text-primary focus:ring-primary size-3.5"
+                  />
+                  <span>Show archived tasks</span>
+                </label>
+              </div>
+
               {/* Clear all */}
               <button
                 onClick={() => { setPriorityFilter([]); setAssigneeFilter([]); setStatusFilter([]); }}
@@ -1439,25 +1487,35 @@ export function SprintListView({ workspaceId, spaceId, listId = "", statuses = [
           {/* Status groups */}
           {!sprintCollapsed && (
             <div>
-              {effectiveStatuses.map((status, i) => (
-                <React.Fragment key={status.id}>
-                  {i > 0 && <div className="h-2" />}
-                  <StatusGroup
-                    status={status}
-                    tasks={tasksByStatus.get(status.id) ?? []}
-                    workspaceId={workspaceId}
-                    spaceId={spaceId}
-                    listId={listId}
-                    sprintId={sprintInfo.id}
-                    statuses={effectiveStatuses}
-                    isAdmin={isAdmin}
-                    canEdit={canEdit}
-                    selectedIds={selectedIds}
-                    onSelect={handleSelect}
-                    onRefresh={fetchData}
-                  />
-                </React.Fragment>
-              ))}
+              <DndContext
+                id="sprint-list-dnd"
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragStart={onDragStart}
+                onDragOver={onDragOver}
+                onDragEnd={onDragEnd}
+                onDragCancel={onDragCancel}
+              >
+                {effectiveStatuses.map((status, i) => (
+                  <React.Fragment key={status.id}>
+                    {i > 0 && <div className="h-2" />}
+                    <StatusGroup
+                      status={status}
+                      tasks={boardTasksByStatus.get(status.id) ?? []}
+                      workspaceId={workspaceId}
+                      spaceId={spaceId}
+                      listId={listId}
+                      sprintId={sprintInfo.id}
+                      statuses={effectiveStatuses}
+                      isAdmin={isAdmin}
+                      canEdit={canEdit}
+                      selectedIds={selectedIds}
+                      onSelect={handleSelect}
+                      onRefresh={fetchData}
+                    />
+                  </React.Fragment>
+                ))}
+              </DndContext>
               {noStatusListTasks.length > 0 && (
                 <div>
                   {effectiveStatuses.length > 0 && <div className="h-2" />}
@@ -1497,6 +1555,48 @@ export function SprintListView({ workspaceId, spaceId, listId = "", statuses = [
                   ))}
                 </div>
               )}
+
+              {/* Archived tasks section */}
+              {showArchived && (
+                <div className="mt-6 border border-border rounded-xl overflow-hidden bg-muted/20">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 text-xs font-bold text-muted-foreground uppercase tracking-wide border-b border-border select-none">
+                    <ArchiveIcon className="size-4" />
+                    Archived ({archivedTasks.length})
+                  </div>
+                  {archivedTasks.length === 0 && (
+                    <div className="px-4 py-6 text-center text-xs text-muted-foreground italic">
+                      {archivedLoading ? "Loading archived tasks…" : "No archived tasks"}
+                    </div>
+                  )}
+                  <div className="divide-y divide-border">
+                    {archivedTasks.map((t) => (
+                      <div
+                        key={t.id}
+                        className="group flex items-center gap-3 px-4 py-2 hover:bg-accent/30 transition-colors"
+                      >
+                        <span className="text-2xs text-muted-foreground font-mono shrink-0 select-none">#{t.seqNumber}</span>
+                        <span className="flex-1 text-[13px] text-muted-foreground font-medium line-through truncate">{t.title}</span>
+                        {canEdit && (
+                          <button
+                            onClick={async () => {
+                              await unarchiveTask(workspaceId, spaceId, t.listId, t.id);
+                              await Promise.all([refreshArchived(), fetchData()]);
+                              toastWithUndo("Task unarchived", async () => {
+                                await archiveTask(workspaceId, spaceId, t.listId, t.id);
+                                await Promise.all([refreshArchived(), fetchData()]);
+                              });
+                            }}
+                            className="hidden group-hover:flex items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 py-1 text-2xs font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer select-none"
+                          >
+                            <ArchiveIcon className="size-3.5 text-muted-foreground" />
+                            Unarchive
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1508,6 +1608,7 @@ export function SprintListView({ workspaceId, spaceId, listId = "", statuses = [
           onDragStart={onDragStart}
           onDragOver={onDragOver}
           onDragEnd={onDragEnd}
+          onDragCancel={onDragCancel}
         >
           {/* Sprint header row */}
           <div className="flex items-center gap-2 mb-3 px-1">

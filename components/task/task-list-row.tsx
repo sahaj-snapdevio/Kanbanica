@@ -10,7 +10,6 @@ import {
   CopyIcon,
   DotsThreeIcon,
   DotsSixVerticalIcon,
-  FlagIcon,
   LightningIcon,
   PencilSimpleIcon,
   PushPinIcon,
@@ -35,9 +34,11 @@ import {
   duplicateTask,
   getWorkspaceMembers,
   moveTask,
+  unarchiveTask,
   updateTask,
   updateTaskStatus,
 } from "@/app/actions/task";
+import { toastWithUndo } from "@/lib/undo-toast";
 import { addAssignee, removeAssignee } from "@/app/actions/task-assignee";
 import { InviteMemberModal } from "@/components/workspace/invite-member-modal";
 import { getSprints, bulkMoveTasksToSprint } from "@/app/actions/sprint";
@@ -273,6 +274,10 @@ export function TaskListRow({
     e.stopPropagation();
     await archiveTask(workspaceId, spaceId, effectiveListId, task.id);
     onRefresh();
+    toastWithUndo("Task archived", async () => {
+      await unarchiveTask(workspaceId, spaceId, effectiveListId, task.id);
+      onRefresh();
+    });
   }
 
   async function handlePinToList(e: React.MouseEvent) {
@@ -429,15 +434,9 @@ export function TaskListRow({
         <Popover open={priorityOpen} onOpenChange={setPriorityOpen}>
           <PopoverTrigger asChild>
             <button className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-transparent hover:bg-accent/60 transition-colors cursor-pointer select-none">
-              {localPriority !== "NONE" ? (
-                <span className={cn("flex items-center gap-1.5 text-xs font-bold", priority.color)}>
-                  <span>{priority.icon}</span>{priority.label}
-                </span>
-              ) : (
-                <span className="flex items-center gap-1.5 text-xs font-bold text-gray-400">
-                  <FlagIcon className="size-3.5 shrink-0" />No priority
-                </span>
-              )}
+              <span className={cn("flex items-center gap-1.5 text-xs font-bold", priority.color)}>
+                <span>{priority.icon}</span>{priority.label}
+              </span>
             </button>
           </PopoverTrigger>
           <PopoverContent align="start" side="bottom" className="w-44 p-1">
@@ -456,15 +455,9 @@ export function TaskListRow({
         </Popover>
       ) : (
         <div className="flex items-center gap-1.5 px-2">
-          {localPriority !== "NONE" ? (
-            <span className={cn("flex items-center gap-1.5 text-xs font-bold", priority.color)}>
-              <span>{priority.icon}</span>{priority.label}
-            </span>
-          ) : (
-            <span className="flex items-center gap-1.5 text-xs font-bold text-gray-400">
-              <FlagIcon className="size-3.5 shrink-0" />No priority
-            </span>
-          )}
+          <span className={cn("flex items-center gap-1.5 text-xs font-bold", priority.color)}>
+            <span>{priority.icon}</span>{priority.label}
+          </span>
         </div>
       )}
     </div>

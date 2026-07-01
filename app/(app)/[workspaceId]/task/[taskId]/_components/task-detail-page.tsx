@@ -35,10 +35,12 @@ import {
   updateTaskStatus,
   deleteTask,
   archiveTask,
+  unarchiveTask,
   duplicateTask,
   getWorkspaceMembers,
   createSubtask,
 } from "@/app/actions/task";
+import { toastWithUndo } from "@/lib/undo-toast";
 import { TaskActivityFeed, type TaskActivityFeedHandle } from "@/components/task/task-activity-feed";
 import {
   AttachmentPreviewProvider,
@@ -557,6 +559,10 @@ export function TaskDetailPage({
   async function handleArchive() {
     await archiveTask(workspaceId, spaceId, listId, taskId);
     router.push(backUrl);
+    toastWithUndo("Task archived", async () => {
+      await unarchiveTask(workspaceId, spaceId, listId, taskId);
+      router.refresh();
+    });
   }
 
   function handleDelete() {
