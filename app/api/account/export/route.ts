@@ -1,6 +1,7 @@
 import { desc, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import { PRODUCT_NAME } from "@/config/platform";
 import { account, auditLogs, session as sessionTable, user } from "@/db/schema";
 import { audit } from "@/lib/audit";
 import { auth } from "@/lib/auth";
@@ -92,7 +93,7 @@ export async function GET() {
     })),
   };
 
-  const filename = `krova-account-export-${current.user.email.replace(/[^a-z0-9]/gi, "_")}-${new Date().toISOString().slice(0, 10)}.json`;
+  const filename = `${PRODUCT_NAME.toLowerCase()}-account-export-${current.user.email.replace(/[^a-z0-9]/gi, "_")}-${new Date().toISOString().slice(0, 10)}.json`;
 
   return new NextResponse(JSON.stringify(payload, null, 2), {
     headers: {

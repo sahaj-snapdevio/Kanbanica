@@ -14,6 +14,14 @@ export default function PrivacyPage() {
         <p className="text-sm text-muted-foreground">Last updated: June 2026</p>
       </header>
 
+      <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm leading-relaxed text-foreground/80">
+        <strong className="font-semibold">Template notice —</strong> This is a
+        starter Privacy Policy provided for self-hosters. It is not legal
+        advice. Review it with your own legal counsel and replace it with a
+        policy that reflects how your deployment of {PRODUCT_NAME} actually
+        handles data before using it in production.
+      </div>
+
       <p className="text-sm leading-relaxed text-foreground/80">
         This Privacy Policy explains how {PRODUCT_NAME} collects, uses, and
         protects your information when you use the Service. By using

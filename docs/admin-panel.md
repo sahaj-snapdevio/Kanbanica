@@ -1,5 +1,23 @@
 ﻿# Admin Panel
 
+> **Admin surfaces — canonical vs. legacy (audit note).**
+> The codebase currently has **two** admin surfaces, and they are intertwined:
+> - **`/orbit`** (`app/(orbit)/`) is the **canonical entry point** — admins are
+>   redirected here after login (`app/post-auth/page.tsx`) and the in-app "Admin
+>   Panel" button links here (`components/scaffold/app-shell.tsx`). It uses
+>   session-based auth (`requireAdmin`, `lib/authz.ts`) and covers overview,
+>   users, queues, and email.
+> - **`/admin`** (`app/admin/`) holds most feature pages (workspaces, tickets,
+>   help center, analytics, audit log), has its own **password-based** login
+>   (`/admin/login`, used by `scripts/create-admin.ts`), and is reached via the
+>   **shared** `AdminSidebar` that both surfaces render.
+>
+> Because the shared sidebar links to `/admin/*`, `/admin` has unique pages, and
+> `/admin/login` provides password auth, **neither surface can be safely removed
+> or redirected without breaking navigation or admin login.** Consolidating them
+> is a deliberate refactor tracked as future work — do not delete either surface
+> in the meantime. The spec below documents the `/admin` feature set.
+
 ## Overview
 
 The Admin Panel is an internal tool for the Kanbanica platform operators (us) to monitor, manage, and support the SaaS platform. It is completely separate from the customer-facing app and is not accessible to any customer regardless of their Workspace Role.

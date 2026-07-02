@@ -46,6 +46,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  LOGO_PATH,
   MARKETING_DOMAIN,
   PRODUCT_NAME,
   SUPPORT_EMAIL,
@@ -194,7 +195,7 @@ const testimonials = [
     initials: "MR",
     avatar:
       "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=150&q=80",
-    body: "Sprint planning used to take half a day. With Kanbanica's sprint view and story points, we're done in an hour. The burndown chart is a game-changer.",
+    body: `Sprint planning used to take half a day. With ${PRODUCT_NAME}'s sprint view and story points, we're done in an hour. The burndown chart is a game-changer.`,
     rating: 5,
   },
   {
@@ -214,7 +215,7 @@ const testimonials = [
     initials: "DK",
     avatar:
       "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&h=150&q=80",
-    body: "We consolidated three different tools into Kanbanica. It is blazing fast and the security features with workspace-scoped permissions fit our enterprise requirements perfectly.",
+    body: `We consolidated three different tools into ${PRODUCT_NAME}. It is blazing fast and the security features with workspace-scoped permissions fit our enterprise requirements perfectly.`,
     rating: 5,
   },
   {
@@ -361,7 +362,7 @@ function Navbar() {
             alt={`${PRODUCT_NAME} Logo`}
             className="h-8 w-auto object-contain"
             height={32}
-            src="/Kanbanica2.png"
+            src={LOGO_PATH}
             width={150}
           />
         </span>
@@ -1784,7 +1785,7 @@ const comparisonFeatures = [
     icon: Sparkles,
     title: "95% On-Time Delivery",
     description:
-      "Teams using Kanbanica complete 95% of tasks before their deadlines.",
+      `Teams using ${PRODUCT_NAME} complete 95% of tasks before their deadlines.`,
     color: "bg-emerald-100 text-emerald-600",
   },
   {
@@ -1974,7 +1975,7 @@ function BeforeAfterSection() {
                 draggable={false}
                 height={816}
                 priority
-                src="/before2.png"
+                src="/before2.webp"
                 width={1456}
               />
 
@@ -1986,12 +1987,12 @@ function BeforeAfterSection() {
                 }}
               >
                 <Image
-                  alt="After — organized with Kanbanica"
+                  alt={`After — organized with ${PRODUCT_NAME}`}
                   className="block w-full"
                   draggable={false}
                   height={816}
                   priority
-                  src="/after2.png"
+                  src="/after2.webp"
                   width={1456}
                 />
               </div>
@@ -2525,7 +2526,7 @@ function Footer() {
                 alt={`${PRODUCT_NAME} Logo`}
                 className="h-7 w-auto object-contain"
                 height={28}
-                src="/Kanbanica2.png"
+                src={LOGO_PATH}
                 width={130}
               />
             </span>

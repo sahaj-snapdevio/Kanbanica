@@ -14,6 +14,14 @@ export default function TermsPage() {
         <p className="text-sm text-muted-foreground">Last updated: June 2026</p>
       </header>
 
+      <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm leading-relaxed text-foreground/80">
+        <strong className="font-semibold">Template notice —</strong> This is a
+        starter Terms of Service provided for self-hosters. It is not legal
+        advice. Review it with your own legal counsel and replace it with terms
+        appropriate for your deployment before using {PRODUCT_NAME} in
+        production.
+      </div>
+
       <p className="text-sm leading-relaxed text-foreground/80">
         These Terms of Service (&ldquo;Terms&rdquo;) govern your access to and
         use of {PRODUCT_NAME} (the &ldquo;Service&rdquo;). By creating an account

@@ -11,6 +11,7 @@ import { workspaceInviteTemplate } from "@/lib/email/templates/workspace-invite"
 import { env } from "@/lib/env";
 import { getWorkspaceMembership } from "@/lib/permissions";
 import { createNotifications } from "@/lib/notifications/create-notification";
+import { rateLimit } from "@/lib/rate-limit";
 import { refreshWorkspace } from "@/lib/realtime/refresh";
 
 type WorkspaceRole = "OWNER" | "ADMIN" | "MEMBER" | "GUEST";
@@ -150,6 +151,11 @@ export async function inviteMember(data: {
     return { error: "Only admins can invite members" };
   }
 
+  // Rate limit: 30 invites per admin per hour (curbs invite-email spam).
+  if (!rateLimit(`invite:${session.user.id}`, 30, 60 * 60_000).ok) {
+    return { error: "Too many invites sent. Please try again later." };
+  }
+
   const email = data.email.trim().toLowerCase();
   if (!email) {
     return { error: "Email is required" };
@@ -194,7 +200,10 @@ export async function inviteMember(data: {
   const inviterName = session.user.name ?? session.user.email ?? "Someone";
   const workspaceName = ws?.name ?? "a workspace";
 
-  console.log(`[invite] ${email} → ${inviteUrl}`);
+  // Dev convenience only — never log invite tokens/URLs in production.
+  if (env.NODE_ENV !== "production") {
+    console.log(`[invite] ${email} → ${inviteUrl}`);
+  }
 
   const { html, text } = await workspaceInviteTemplate({ inviterName, workspaceName, inviteUrl });
   await enqueueEmail({
@@ -238,6 +247,11 @@ export async function resendInvite(data: {
   const actor = await requireAdmin(session.user.id, data.workspaceId);
   if (!actor) {
     return { error: "Only admins can resend invites" };
+  }
+
+  // Rate limit: 30 invite resends per admin per hour.
+  if (!rateLimit(`invite:${session.user.id}`, 30, 60 * 60_000).ok) {
+    return { error: "Too many invites sent. Please try again later." };
   }
 
   const newToken = createId();
@@ -289,7 +303,10 @@ export async function resendInvite(data: {
 
     // Email is best-effort (no SMTP in dev) — never let it fail the resend.
     try {
-      console.log(`[invite] ${member.email} → ${inviteUrl}`);
+      // Dev convenience only — never log invite tokens/URLs in production.
+      if (env.NODE_ENV !== "production") {
+        console.log(`[invite] ${member.email} → ${inviteUrl}`);
+      }
       const { html, text } = await workspaceInviteTemplate({ inviterName, workspaceName, inviteUrl });
       await enqueueEmail({
         to: member.email,
@@ -310,6 +327,11 @@ export async function acceptInvite(token: string): Promise<
 > {
   const session = await requireSession();
   if (!session) return { error: "Unauthorized" };
+
+  // Rate limit token attempts per user to slow invite-token guessing.
+  if (!rateLimit(`invite-accept:${session.user.id}`, 20, 60_000).ok) {
+    return { error: "Too many attempts. Please try again shortly." };
+  }
 
   const [invite] = await db
     .select()

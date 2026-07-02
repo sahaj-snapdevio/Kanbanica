@@ -194,8 +194,4 @@ server/                    ← server actions
 
 ## Development Plan
 
-Phases are in `docs/development-plan.md`. Work through them in order. Do not skip phases.
-
-**Retroactive changes** to already-implemented code are tracked in `docs/revision-plan.md`. Work through that file alongside the development plan.
-
-Current phase: **Phase 7 (skipped) → Phase 8 — List**
+Feature-by-feature specs live in the `docs/` files listed above — read the relevant doc before implementing a feature. Historical build phases and retroactive-change notes live in `docs/internal/` for reference; they describe how the project was originally built and are not required reading for contributing a change.

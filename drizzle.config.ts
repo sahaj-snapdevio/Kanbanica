@@ -5,6 +5,10 @@ export default defineConfig({
   out: "./db/migrations",
   dialect: "postgresql",
   dbCredentials: {
-    url: process.env.DATABASE_URL!,
+    // Falls back to the local dev database so migrations run without a .env.
+    // Production always sets DATABASE_URL explicitly.
+    url:
+      process.env.DATABASE_URL ??
+      "postgresql://krova:krova@localhost:54329/krova",
   },
 });
