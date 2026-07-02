@@ -15,14 +15,16 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 
-RUN corepack enable \
-  && groupadd --system --gid 1001 krova \
+# No corepack/pnpm at runtime. Corepack would try to download & initialize the
+# package manager into ~/.cache on first `pnpm` call, which fails for the
+# non-root user on a fresh host (EACCES). Everything needed is already baked in
+# node_modules at build time, so we run the bundled `tsx` binary directly.
+RUN groupadd --system --gid 1001 krova \
   && useradd --system --uid 1001 --gid krova krova
 
 COPY --from=deps /app/node_modules ./node_modules
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json ./
+COPY package.json tsconfig.json ./
 COPY config ./config
 COPY db ./db
 COPY lib ./lib
@@ -30,4 +32,6 @@ COPY scripts ./scripts
 
 USER krova
 
-CMD ["pnpm", "worker:start"]
+# Default command: run the worker. The compose `migrate` service overrides this
+# to run scripts/migrate.ts. Both invoke tsx directly (no pnpm/corepack).
+CMD ["/app/node_modules/.bin/tsx", "scripts/worker.ts"]
