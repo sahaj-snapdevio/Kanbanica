@@ -1,42 +1,36 @@
 import { Files } from "files-sdk";
 import { fs as fsAdapter } from "files-sdk/fs";
-// import { s3 } from "files-sdk/s3";
-// import { S3Client } from "@aws-sdk/client-s3";
+import { s3 } from "files-sdk/s3";
 import path from "path";
+import { env } from "@/lib/env";
 
-// const STORAGE_DRIVER = process.env.STORAGE_DRIVER ?? "local"; // uncomment when enabling S3/R2
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+const APP_URL = env.NEXT_PUBLIC_APP_URL;
 
 function createStorage() {
   // ── Production: S3 or Cloudflare R2 ─────────────────────────────────────────
-  // Uncomment this block and set the env vars below when ready for production.
-  //
-  // Required env vars:
-  //   STORAGE_DRIVER=s3          (or "r2" — both use the S3 adapter)
-  //   S3_BUCKET=kanbanica-uploads
-  //   S3_REGION=auto             (use "auto" for R2, e.g. "us-east-1" for AWS S3)
-  //   S3_ACCESS_KEY_ID=...
-  //   S3_SECRET_ACCESS_KEY=...
-  //   S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com  (R2 only; omit for AWS S3)
-  //
-  // if (process.env.STORAGE_DRIVER === "s3" || process.env.STORAGE_DRIVER === "r2") {
-  //   return new Files({
-  //     adapter: s3({
-  //       client: new S3Client({
-  //         region: process.env.S3_REGION!,
-  //         endpoint: process.env.S3_ENDPOINT,   // R2 / MinIO only; omit for AWS S3
-  //         credentials: {
-  //           accessKeyId: process.env.S3_ACCESS_KEY_ID!,
-  //           secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
-  //         },
-  //       }),
-  //       bucket: process.env.S3_BUCKET!,
-  //     }),
-  //   });
-  // }
-  // ────────────────────────────────────────────────────────────────────────────
+  // Enabled by STORAGE_DRIVER=s3 (or "r2" — both use the S3 adapter). Set:
+  //   S3_BUCKET, S3_REGION ("auto" for R2, e.g. "us-east-1" for AWS S3),
+  //   S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY,
+  //   S3_ENDPOINT (R2 / MinIO / other S3-compatible; omit for AWS S3),
+  //   S3_PUBLIC_URL (optional CDN / public bucket origin for serving files).
+  if (env.STORAGE_DRIVER === "s3" || env.STORAGE_DRIVER === "r2") {
+    return new Files({
+      adapter: s3({
+        bucket: env.S3_BUCKET,
+        region: env.S3_REGION,
+        endpoint: env.S3_ENDPOINT, // R2 / MinIO / S3-compatible; omit for AWS S3
+        forcePathStyle: !!env.S3_ENDPOINT, // needed by MinIO and most S3-compatible services
+        credentials: {
+          accessKeyId: env.S3_ACCESS_KEY_ID,
+          secretAccessKey: env.S3_SECRET_ACCESS_KEY,
+        },
+        publicBaseUrl: env.S3_PUBLIC_URL,
+      }),
+    });
+  }
 
-  // Default: local filesystem — stores files in ./uploads/, served via /api/files
+  // Default: local filesystem — stores files in ./uploads/, served via /api/files.
+  // In containers, mount a persistent volume at ./uploads or uploads are lost on redeploy.
   return new Files({
     adapter: fsAdapter({
       root: path.join(process.cwd(), "uploads"),

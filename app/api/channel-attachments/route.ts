@@ -4,6 +4,7 @@ import { createId } from "@paralleldrive/cuid2";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { channelMessageAttachment } from "@/db/schema";
+import { rateLimit } from "@/lib/rate-limit";
 import { storage } from "@/lib/storage";
 import { getWorkspaceMembership } from "@/lib/permissions";
 
@@ -29,6 +30,15 @@ export async function POST(request: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Rate limit: 60 attachment uploads per user per minute.
+  const limit = rateLimit(`channel-attachment:${session.user.id}`, 60, 60_000);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "Too many uploads. Please try again shortly." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfter) } }
+    );
   }
 
   const formData = await request.formData();

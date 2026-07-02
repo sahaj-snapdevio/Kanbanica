@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { ThemeSettingsForm } from "@/components/workspace/theme-settings-form";
+import { PRODUCT_NAME } from "@/config/platform";
 import { workspace } from "@/db/schema";
 import { db } from "@/lib/db";
 
@@ -8,7 +9,7 @@ interface ThemesPageProps {
   params: Promise<{ workspaceId: string }>;
 }
 
-export const metadata = { title: "Themes Settings — Kanbanica" };
+export const metadata = { title: `Themes Settings — ${PRODUCT_NAME}` };
 
 export default async function ThemesSettingsPage({ params }: ThemesPageProps) {
   const { workspaceId } = await params;

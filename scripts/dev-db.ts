@@ -6,11 +6,10 @@ if (existsSync(".env")) {
   process.loadEnvFile();
 }
 
-const databaseUrl = process.env.DATABASE_URL;
-if (!databaseUrl) {
-  console.error("DATABASE_URL is not set. Copy .env.example to .env first.");
-  process.exit(1);
-}
+// Fall back to the standard local dev URL so `pnpm db:local` works without a
+// .env. Copying .env.example is still recommended; this just enables zero-config.
+const databaseUrl =
+  process.env.DATABASE_URL ?? "postgresql://krova:krova@localhost:54329/krova";
 
 const url = new URL(databaseUrl);
 const user = decodeURIComponent(url.username) || "postgres";

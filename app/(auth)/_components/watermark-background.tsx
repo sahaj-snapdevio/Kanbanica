@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { LOGO_PATH } from "@/config/platform";
 
 export function WatermarkBackground() {
   const [logos, setLogos] = useState<{
@@ -95,7 +96,7 @@ export function WatermarkBackground() {
           }}
         >
           <img
-            src="/Kanbanica2.png"
+            src={LOGO_PATH}
             alt=""
             className="w-full h-full object-contain"
             aria-hidden="true"

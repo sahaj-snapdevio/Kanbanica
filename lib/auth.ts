@@ -63,7 +63,11 @@ export const auth = betterAuth({
     }),
     magicLink({
       sendMagicLink: async ({ email, url }) => {
-        console.log(`[magic-link] ${email} → ${url}`);
+        // Dev convenience: print the link so you can sign in without SMTP.
+        // Never log the email + magic-link URL in production (sensitive).
+        if (env.NODE_ENV !== "production") {
+          console.log(`[magic-link] ${email} → ${url}`);
+        }
         const { html, text } = await magicLinkTemplate({
           email,
           magicLinkUrl: url,
@@ -90,6 +94,18 @@ export const auth = betterAuth({
     cookieCache: {
       enabled: true,
       maxAge: 60,
+    },
+  },
+  // Throttle auth endpoints (in-memory store; fine for a single instance).
+  // Stricter limits on the credential/magic-link entry points to curb abuse
+  // (magic-link email spam, password guessing).
+  rateLimit: {
+    enabled: true,
+    window: 60,
+    max: 100,
+    customRules: {
+      "/sign-in/magic-link": { window: 60, max: 5 },
+      "/sign-in/email": { window: 60, max: 10 },
     },
   },
   databaseHooks: {

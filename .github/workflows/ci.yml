@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: Typecheck & build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Required gate: types must be correct.
+      - name: Typecheck
+        run: pnpm typecheck
+
+      # Required gate: the app must build. Placeholder env satisfies build-time
+      # validation (lib/env.ts); real values are provided at runtime. The
+      # production auth guard is skipped during `next build` (NEXT_PHASE).
+      - name: Build
+        run: pnpm build
+        env:
+          DATABASE_URL: postgresql://build:build@localhost:5432/build
+          APP_SECRET: build-time-placeholder-value-000000000000
+          NEXT_PUBLIC_APP_URL: https://ci.example.com
+
+      # Lint is intentionally ADVISORY (continue-on-error) for now.
+      #
+      # Why: the repository currently carries a large backlog of pre-existing
+      # lint findings from the strict Biome/ultracite config. Making lint a
+      # required gate today would fail every PR for reasons unrelated to the
+      # change under review. Running it here keeps the results visible so new
+      # issues are noticed, without blocking contributions.
+      #
+      # TODO: once the existing lint backlog has been cleared, remove
+      # `continue-on-error` below so lint becomes a required check like
+      # typecheck and build.
+      - name: Lint (advisory)
+        run: pnpm lint
+        continue-on-error: true

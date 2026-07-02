@@ -1,0 +1,84 @@
+# ── Kanbanica — single-server self-hosting stack ──────────────────────────────
+# Brings up Postgres + a one-shot migration runner + the web app + the worker.
+# See DEPLOYMENT.md for the full guide.
+#
+#   cp .env.example .env      # then edit the required values (see DEPLOYMENT.md)
+#   docker compose up -d --build
+#
+# Docker Compose auto-loads variables from a sibling .env file.
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-kanbanica}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kanbanica}
+      POSTGRES_DB: ${POSTGRES_DB:-kanbanica}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kanbanica} -d ${POSTGRES_DB:-kanbanica}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # One-shot: applies pending migrations, then exits. Reuses the worker image
+  # (it already bundles db/migrations + tsx + drizzle-orm).
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    command: ["pnpm", "db:migrate:prod"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      APP_SECRET: ${APP_SECRET}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    volumes:
+      # Persist local uploads (only needed when STORAGE_DRIVER=local).
+      - uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # Background jobs (email, notification digests, reminders, sprint auto-close).
+  # IMPORTANT: run exactly ONE worker — do not scale this service.
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    command: ["pnpm", "worker:start"]
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  pgdata:
+  uploads:

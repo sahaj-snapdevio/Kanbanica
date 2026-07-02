@@ -5,6 +5,7 @@ import sharp from "sharp";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { user } from "@/db/schema";
+import { rateLimit } from "@/lib/rate-limit";
 import { storage } from "@/lib/storage";
 
 const MAX_AVATAR_SIZE = 2 * 1024 * 1024; // 2 MB raw upload limit
@@ -14,6 +15,15 @@ const AVATAR_DIMENSION = 256; // resize to 256×256 before storing
 export async function POST(request: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Rate limit: 20 avatar uploads per user per minute.
+  const limit = rateLimit(`avatar:${session.user.id}`, 20, 60_000);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "Too many uploads. Please try again shortly." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfter) } }
+    );
+  }
 
   let formData: FormData;
   try {

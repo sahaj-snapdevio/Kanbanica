@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { task, list, taskAttachment } from "@/db/schema";
 import { storage, ALLOWED_MIME_TYPES, MAX_FILE_SIZE } from "@/lib/storage";
 import { canAccessSpace, getWorkspaceMembership } from "@/lib/permissions";
+import { rateLimit } from "@/lib/rate-limit";
 import { writeActivityLog } from "@/lib/activity-log";
 
 async function resolveTask(taskId: string) {
@@ -67,6 +68,15 @@ export async function POST(
 ) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Rate limit: 60 task-attachment uploads per user per minute.
+  const limit = rateLimit(`task-attachment:${session.user.id}`, 60, 60_000);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "Too many uploads. Please try again shortly." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfter) } }
+    );
+  }
 
   const { taskId } = await params;
   const ctx = await resolveTask(taskId);

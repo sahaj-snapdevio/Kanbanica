@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import { getCurrentSession } from "@/lib/authz";
-import { PRODUCT_NAME } from "@/config/platform";
+import { LOGO_PATH, PRODUCT_NAME } from "@/config/platform";
 import { LoginFormFlat } from "../_components/auth-form";
 import { WatermarkBackground } from "../_components/watermark-background";
 
@@ -26,7 +26,7 @@ export default async function LoginPage() {
               alt={`${PRODUCT_NAME} Logo`}
               className="h-10 w-auto object-contain"
               height={52}
-              src="/Kanbanica2.png"
+              src={LOGO_PATH}
               width={200}
               priority
             />
@@ -60,7 +60,7 @@ export default async function LoginPage() {
 
           <div className="relative z-10 w-full max-w-sm">
             <Image
-              src="/log-illus.png"
+              src="/log-illus.webp"
               alt=""
               width={500}
               height={500}

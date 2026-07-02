@@ -1918,7 +1918,7 @@ function BeforeAfterSection() {
                 draggable={false}
                 height={816}
                 priority
-                src="/before2.png"
+                src="/before2.webp"
                 width={1456}
               />
 
@@ -1935,7 +1935,7 @@ function BeforeAfterSection() {
                   draggable={false}
                   height={816}
                   priority
-                  src="/after2.png"
+                  src="/after2.webp"
                   width={1456}
                 />
               </div>

@@ -5,6 +5,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Emit a self-contained server (.next/standalone) for lean production/Docker images.
+  output: "standalone",
   turbopack: {
     root: resolve(__dirname),
   },
